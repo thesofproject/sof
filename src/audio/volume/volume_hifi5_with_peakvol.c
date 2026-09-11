@@ -62,7 +62,8 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 	ae_int32x2 in_sample, in_sample1;
 	ae_int32x2 out_sample, out_sample1;
 	ae_int32x2 volume, volume1;
-	int i, n, m;
+	size_t i, n, m;
+	int j;
 	ae_int32x4 *vol;
 	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
@@ -70,7 +71,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 	ae_int32x4 *out = sink->ptr;
 	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_int32x4);
-	int samples = channels_count * frames;
+	size_t samples = channels_count * frames;
 	ae_int32x2 temp, temp1;
 	ae_int32x4 *peakvol = (ae_int32x4 *)cd->peak_vol;
 
@@ -139,11 +140,11 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 
-	for (i = 0; i < channels_count; i++) {
-		m = MAX(cd->peak_vol[i], cd->peak_vol[i + channels_count]);
-		m = MAX(m, cd->peak_vol[i + channels_count * 2]);
-		m = MAX(m, cd->peak_vol[i + channels_count * 3]);
-		cd->peak_regs.peak_meter[i] = m << (attenuation + PEAK_24S_32C_ADJUST);
+	for (j = 0; j < channels_count; j++) {
+		m = MAX(cd->peak_vol[j], cd->peak_vol[j + channels_count]);
+		m = MAX(m, cd->peak_vol[j + channels_count * 2]);
+		m = MAX(m, cd->peak_vol[j + channels_count * 3]);
+		cd->peak_regs.peak_meter[j] = m << (attenuation + PEAK_24S_32C_ADJUST);
 	}
 }
 
@@ -162,14 +163,15 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	ae_int32x2 in_sample, in_sample1;
-	int i, n, m;
+	size_t i, n, m;
+	int j;
 	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
 	const ae_int32x4 *in = source->ptr;
 	ae_int32x4 *out = sink->ptr;
 	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_int32x4);
-	int samples = channels_count * frames;
+	size_t samples = channels_count * frames;
 	ae_int32x2 temp, temp1;
 	ae_int32x4 *peakvol = (ae_int32x4 *)cd->peak_vol;
 
@@ -200,11 +202,11 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
-	for (i = 0; i < channels_count; i++) {
-		m = MAX(cd->peak_vol[i], cd->peak_vol[i + channels_count]);
-		m = MAX(m, cd->peak_vol[i + channels_count * 2]);
-		m = MAX(m, cd->peak_vol[i + channels_count * 3]);
-		cd->peak_regs.peak_meter[i] = m << (attenuation + PEAK_24S_32C_ADJUST);
+	for (j = 0; j < channels_count; j++) {
+		m = MAX(cd->peak_vol[j], cd->peak_vol[j + channels_count]);
+		m = MAX(m, cd->peak_vol[j + channels_count * 2]);
+		m = MAX(m, cd->peak_vol[j + channels_count * 3]);
+		cd->peak_regs.peak_meter[j] = m << (attenuation + PEAK_24S_32C_ADJUST);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
@@ -225,7 +227,8 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 	ae_int32x2 in_sample, in_sample1;
 	ae_int32x2 out_sample, out_sample1;
 	ae_int32x2 volume, volume1;
-	int i, n, m;
+	size_t i, n, m;
+	int j;
 	ae_int32x4 *buf;
 	ae_int32x4 *buf_end;
 	ae_int32x4 *vol;
@@ -233,7 +236,7 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 	ae_valignx2 outu = AE_ZALIGN128();
 	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_int32x4);
-	int samples = channels_count * frames;
+	size_t samples = channels_count * frames;
 	const ae_int32x4 *in = source->ptr;
 	ae_int32x4 *out = sink->ptr;
 	ae_int32x2 temp, temp1;
@@ -303,11 +306,11 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
-	for (i = 0; i < channels_count; i++) {
-		m = MAX(cd->peak_vol[i], cd->peak_vol[i + channels_count]);
-		m = MAX(m, cd->peak_vol[i + channels_count * 2]);
-		m = MAX(m, cd->peak_vol[i + channels_count * 3]);
-		cd->peak_regs.peak_meter[i] = m << attenuation;
+	for (j = 0; j < channels_count; j++) {
+		m = MAX(cd->peak_vol[j], cd->peak_vol[j + channels_count]);
+		m = MAX(m, cd->peak_vol[j + channels_count * 2]);
+		m = MAX(m, cd->peak_vol[j + channels_count * 3]);
+		cd->peak_regs.peak_meter[j] = m << attenuation;
 	}
 }
 
@@ -326,12 +329,13 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	ae_int32x2 in_sample, in_sample1;
-	int i, n, m;
+	size_t i, n, m;
+	int j;
 	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
 	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_int32x4);
-	int samples = channels_count * frames;
+	size_t samples = channels_count * frames;
 	const ae_int32x4 *in = source->ptr;
 	ae_int32x4 *out = sink->ptr;
 	ae_int32x2 temp, temp1;
@@ -364,11 +368,11 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
-	for (i = 0; i < channels_count; i++) {
-		m = MAX(cd->peak_vol[i], cd->peak_vol[i + channels_count]);
-		m = MAX(m, cd->peak_vol[i + channels_count * 2]);
-		m = MAX(m, cd->peak_vol[i + channels_count * 3]);
-		cd->peak_regs.peak_meter[i] = m << attenuation;
+	for (j = 0; j < channels_count; j++) {
+		m = MAX(cd->peak_vol[j], cd->peak_vol[j + channels_count]);
+		m = MAX(m, cd->peak_vol[j + channels_count * 2]);
+		m = MAX(m, cd->peak_vol[j + channels_count * 3]);
+		cd->peak_regs.peak_meter[j] = m << attenuation;
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
@@ -390,7 +394,8 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 	ae_int32x2 out_temp, out_temp1;
 	ae_int16x4 in_sample, in_sample1;
 	ae_int16x4 out_sample, out_sample1;
-	int i, n, m;
+	size_t i, n, m;
+	int j;
 	ae_int32x4 *buf;
 	ae_int32x4 *buf_end;
 	ae_int32x4 *vol;
@@ -400,7 +405,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 	ae_int16x8 *out = sink->ptr;
 	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_int32x4);
-	int samples = channels_count * frames;
+	size_t samples = channels_count * frames;
 	ae_int32x2 temp, temp1;
 	ae_int32x4 *peakvol = (ae_int32x4 *)cd->peak_vol;
 
@@ -483,11 +488,11 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
-	for (i = 0; i < channels_count; i++) {
-		m = MAX(cd->peak_vol[i], cd->peak_vol[i + channels_count]);
-		m = MAX(m, cd->peak_vol[i + channels_count * 2]);
-		m = MAX(m, cd->peak_vol[i + channels_count * 3]);
-		cd->peak_regs.peak_meter[i] = m << PEAK_16S_32C_ADJUST;
+	for (j = 0; j < channels_count; j++) {
+		m = MAX(cd->peak_vol[j], cd->peak_vol[j + channels_count]);
+		m = MAX(m, cd->peak_vol[j + channels_count * 2]);
+		m = MAX(m, cd->peak_vol[j + channels_count * 3]);
+		cd->peak_regs.peak_meter[j] = m << PEAK_16S_32C_ADJUST;
 	}
 }
 
@@ -506,14 +511,15 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	ae_int16x4 in_sample, in_sample1;
-	int i, n, m;
+	size_t i, n, m;
+	int j;
 	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
 	const ae_int16x8 *in = source->ptr;
 	ae_int16x8 *out = sink->ptr;
 	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_int32x4);
-	int samples = channels_count * frames;
+	size_t samples = channels_count * frames;
 	ae_int32x2 temp, temp1;
 	ae_int32x4 *peakvol = (ae_int32x4 *)cd->peak_vol;
 
@@ -549,11 +555,11 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
-	for (i = 0; i < channels_count; i++) {
-		m = MAX(cd->peak_vol[i], cd->peak_vol[i + channels_count]);
-		m = MAX(m, cd->peak_vol[i + channels_count * 2]);
-		m = MAX(m, cd->peak_vol[i + channels_count * 3]);
-		cd->peak_regs.peak_meter[i] = m << PEAK_16S_32C_ADJUST;
+	for (j = 0; j < channels_count; j++) {
+		m = MAX(cd->peak_vol[j], cd->peak_vol[j + channels_count]);
+		m = MAX(m, cd->peak_vol[j + channels_count * 2]);
+		m = MAX(m, cd->peak_vol[j + channels_count * 3]);
+		cd->peak_regs.peak_meter[j] = m << PEAK_16S_32C_ADJUST;
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */

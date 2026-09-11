@@ -163,9 +163,9 @@ static inline size_t cir_buf_samples_to_wrap_s32(const int32_t *ptr, const int32
  * @param buf_end End address of circular buffer.
  * @return Number of samples to buffer wrap.
  */
-static inline int cir_buf_samples_without_wrap_s16(const void *ptr, const void *buf_end)
+static inline size_t cir_buf_samples_without_wrap_s16(const void *ptr, const void *buf_end)
 {
-	int to_end = (const int16_t *)buf_end - (const int16_t *)ptr;
+	size_t to_end = (const int16_t *)buf_end - (const int16_t *)ptr;
 
 	assert((intptr_t)buf_end >= (intptr_t)ptr);
 	return to_end;
@@ -179,9 +179,9 @@ static inline int cir_buf_samples_without_wrap_s16(const void *ptr, const void *
  * @return Number of bytes to buffer wrap. For number of samples calculate
  *	   need to add size of sample to returned bytes count.
  */
-static inline int cir_buf_samples_without_wrap_s32(const void *ptr, const void *buf_end)
+static inline size_t cir_buf_samples_without_wrap_s32(const void *ptr, const void *buf_end)
 {
-	int to_end = (const int32_t *)buf_end - (const int32_t *)ptr;
+	size_t to_end = (const int32_t *)buf_end - (const int32_t *)ptr;
 
 	assert((intptr_t)buf_end >= (intptr_t)ptr);
 	return to_end;
