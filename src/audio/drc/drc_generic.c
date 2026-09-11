@@ -508,18 +508,18 @@ static inline void drc_pre_delay_index_inc(int *idx, int increment)
 static void drc_delay_input_sample_s16(struct drc_state *state,
 				       const struct cir_buf_source *source,
 				       struct cir_buf_sink *sink,
-				       const int16_t **x, int16_t **y, int samples, int nch)
+				       const int16_t **x, int16_t **y, size_t samples, int nch)
 {
 	const int16_t *x1;
 	int16_t *y1;
 	int16_t *pd;
 	int pd_write_index, pd_read_index;
-	int nbuf, npcm, nfrm;
+	size_t nbuf, npcm, nfrm;
 	int ch;
-	int i;
+	size_t i;
 	const int16_t *x0 = *x;
 	int16_t *y0 = *y;
-	int remaining_samples = samples;
+	size_t remaining_samples = samples;
 
 	while (remaining_samples) {
 		nbuf = cir_buf_samples_without_wrap_s16(x0, source->buf_end);
@@ -562,11 +562,11 @@ static void drc_s16_default(struct processing_module *mod,
 	int nch = cd->channels;
 	const int16_t *x = (int16_t *)source->ptr;
 	int16_t *y = (int16_t *)sink->ptr;
-	int samples = frames * nch;
+	size_t samples = frames * nch;
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
-	int fragment_samples;
-	int fragment;
+	size_t fragment_samples;
+	size_t fragment;
 
 	if (!cd->enabled) {
 		/* Delay the input sample only and don't do other processing. This is used when the
@@ -602,18 +602,18 @@ static void drc_s16_default(struct processing_module *mod,
 static void drc_delay_input_sample_s32(struct drc_state *state,
 				       const struct cir_buf_source *source,
 				       struct cir_buf_sink *sink,
-				       const int32_t **x, int32_t **y, int samples, int nch)
+				       const int32_t **x, int32_t **y, size_t samples, int nch)
 {
 	const int32_t *x1;
 	int32_t *y1;
 	int32_t *pd;
 	int pd_write_index, pd_read_index;
-	int nbuf, npcm, nfrm;
+	size_t nbuf, npcm, nfrm;
 	int ch;
-	int i;
+	size_t i;
 	const int32_t *x0 = *x;
 	int32_t *y0 = *y;
-	int remaining_samples = samples;
+	size_t remaining_samples = samples;
 
 	while (remaining_samples) {
 		nbuf = cir_buf_samples_without_wrap_s32(x0, source->buf_end);
@@ -652,18 +652,18 @@ static void drc_delay_input_sample_s32(struct drc_state *state,
 static void drc_delay_input_sample_s24(struct drc_state *state,
 				       const struct cir_buf_source *source,
 				       struct cir_buf_sink *sink,
-				       const int32_t **x, int32_t **y, int samples, int nch)
+				       const int32_t **x, int32_t **y, size_t samples, int nch)
 {
 	const int32_t *x1;
 	int32_t *y1;
 	int32_t *pd;
 	int pd_write_index, pd_read_index;
-	int nbuf, npcm, nfrm;
+	size_t nbuf, npcm, nfrm;
 	int ch;
-	int i;
+	size_t i;
 	const int32_t *x0 = *x;
 	int32_t *y0 = *y;
-	int remaining_samples = samples;
+	size_t remaining_samples = samples;
 
 	while (remaining_samples) {
 		nbuf = cir_buf_samples_without_wrap_s32(x0, source->buf_end);
@@ -706,11 +706,11 @@ static void drc_s24_default(struct processing_module *mod,
 	int nch = cd->channels;
 	const int32_t *x = (int32_t *)source->ptr;
 	int32_t *y = (int32_t *)sink->ptr;
-	int samples = frames * nch;
+	size_t samples = frames * nch;
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
-	int fragment_samples;
-	int fragment;
+	size_t fragment_samples;
+	size_t fragment;
 
 	if (!cd->enabled) {
 		/* Delay the input sample only and don't do other processing. This is used when the
@@ -754,11 +754,11 @@ static void drc_s32_default(struct processing_module *mod,
 	int nch = cd->channels;
 	const int32_t *x = (int32_t *)source->ptr;
 	int32_t *y = (int32_t *)sink->ptr;
-	int samples = frames * nch;
+	size_t samples = frames * nch;
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
-	int fragment_samples;
-	int fragment;
+	size_t fragment_samples;
+	size_t fragment;
 
 	if (!cd->enabled) {
 		/* Delay the input sample only and don't do other processing. This is used when the

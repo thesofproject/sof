@@ -157,31 +157,30 @@ static inline size_t cir_buf_samples_to_wrap_s32(const int32_t *ptr, const int32
 }
 
 /**
- * @brief Calculates numbers of s16 samples to buffer wrap when reading stream
- *	  backwards from current sample pointed by ptr towards begin.
+ * @brief Calculates numbers of s16 samples to buffer wrap when reading a circular
+ *	  buffer forward from current pointer towards the buffer end.
  * @param ptr Read or write pointer of circular buffer.
  * @param buf_end End address of circular buffer.
- * @return Number of samples to buffer wrap.
+ * @return Number of s16 samples between the pointer and the buffer end.
  */
-static inline int cir_buf_samples_without_wrap_s16(const void *ptr, const void *buf_end)
+static inline size_t cir_buf_samples_without_wrap_s16(const void *ptr, const void *buf_end)
 {
-	int to_end = (const int16_t *)buf_end - (const int16_t *)ptr;
+	size_t to_end = (const int16_t *)buf_end - (const int16_t *)ptr;
 
 	assert((intptr_t)buf_end >= (intptr_t)ptr);
 	return to_end;
 }
 
 /**
- * @brief Calculates numbers of s32 samples to buffer wrap when reading stream
- *	  backwards from current sample pointed by ptr towards begin.
- * @param ptr Read or write pointer og circular buffer.
+ * @brief Calculates numbers of s32 samples to buffer wrap when reading a circular
+ *	  buffer forward from current pointer towards the buffer end.
+ * @param ptr Read or write pointer of circular buffer.
  * @param buf_end End address of circular buffer.
- * @return Number of bytes to buffer wrap. For number of samples calculate
- *	   need to add size of sample to returned bytes count.
+ * @return Number of s32 samples between the pointer and the buffer end.
  */
-static inline int cir_buf_samples_without_wrap_s32(const void *ptr, const void *buf_end)
+static inline size_t cir_buf_samples_without_wrap_s32(const void *ptr, const void *buf_end)
 {
-	int to_end = (const int32_t *)buf_end - (const int32_t *)ptr;
+	size_t to_end = (const int32_t *)buf_end - (const int32_t *)ptr;
 
 	assert((intptr_t)buf_end >= (intptr_t)ptr);
 	return to_end;
