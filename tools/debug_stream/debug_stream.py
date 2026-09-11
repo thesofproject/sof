@@ -52,6 +52,7 @@ class CPUInfo(ctypes.Structure):
     """
 
     _pack_ = 1
+    _layout_ = "gcc-sysv"
     _fields_ = [
         ("hdr", DebugStreamRecord),
         ("load", ctypes.c_ubyte),
@@ -65,6 +66,7 @@ class ThreadInfo(ctypes.Structure):
     """
 
     _pack_ = 1
+    _layout_ = "gcc-sysv"
     _fields_ = [
         ("stack_usage", ctypes.c_ubyte),
         ("cpu_load", ctypes.c_ubyte),
@@ -78,6 +80,7 @@ class TextMsg(ctypes.Structure):
     """
 
     _pack_ = 1
+    _layout_ = "gcc-sysv"
     _fields_ = [
         ("hdr", DebugStreamRecord),
     ]
