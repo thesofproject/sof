@@ -38,6 +38,8 @@
 #   NOISE_SNR_MAX_DB   Max SNR in dB for noise mixing (default 30.0).
 #   NOISE_DIR          Directory containing background noise WAVs (default:
 #                      $SC_CACHE/_background_noise_ or ~/.cache/speech_commands_v2/_background_noise_).
+#   NOISE_STATIONARY_BIAS Probability of picking from the stationary-noise subset
+#                      (white/pink/exercise_bike/running_tap) when it exists (default 0.7).
 #   GAIN_NORM          1 = peak-normalize all clean WAVs to GAIN_PEAK_DBFS, 0 = keep input level (default 1).
 #   GAIN_PEAK_DBFS     Peak-normalization target in dBFS (default -10).
 
@@ -139,6 +141,7 @@ fi
 : "${NOISE_SNR_MIN_DB:=12.0}"
 : "${NOISE_SNR_MAX_DB:=30.0}"
 : "${NOISE_DIR:=}"
+: "${NOISE_STATIONARY_BIAS:=0.7}"
 : "${GAIN_NORM:=1}"
 : "${GAIN_PEAK_DBFS:=-10}"
 : "${SC_CACHE:=$HOME/.cache/speech_commands_v2}"
@@ -265,7 +268,7 @@ for i in "${!SRC_DIRS[@]}"; do
 
 	# 3. Acoustic augmentations: RIR convolution & Additive Noise
 	export IR_AUG IR_PROB IR_WET IR_DIR
-	export NOISE_AUG NOISE_PROB NOISE_SNR_MIN_DB NOISE_SNR_MAX_DB NOISE_DIR
+	export NOISE_AUG NOISE_PROB NOISE_SNR_MIN_DB NOISE_SNR_MAX_DB NOISE_DIR NOISE_STATIONARY_BIAS
 
 	echo "    Applying acoustic augmentations (RIR: prob=$IR_PROB, Noise: prob=$NOISE_PROB SNR=[$NOISE_SNR_MIN_DB,$NOISE_SNR_MAX_DB] dB)"
 
@@ -292,6 +295,14 @@ noise_prob = float(os.environ.get("NOISE_PROB", "0.60"))
 noise_snr_min = float(os.environ.get("NOISE_SNR_MIN_DB", "12.0"))
 noise_snr_max = float(os.environ.get("NOISE_SNR_MAX_DB", "30.0"))
 noise_dir = os.environ.get("NOISE_DIR", "").strip()
+noise_stationary_bias = float(os.environ.get("NOISE_STATIONARY_BIAS", "0.7"))
+
+# Broadband, near-stationary noise files in Google Speech Commands v2 _background_noise_.
+# Bias the mix toward these to match the runtime microphone floor.
+STATIONARY_NOISE_NAMES = {
+    "white_noise.wav", "pink_noise.wav",
+    "exercise_bike.wav", "running_tap.wav",
+}
 
 # Try importing scipy for fast FFT convolution and high-quality resampling
 try:
@@ -373,10 +384,19 @@ for ir_p in ir_files:
 
 # Pre-load noise waveforms resampled to 16 kHz
 noise_cache = []
+stationary_indices = []
 for n_p in noise_files:
     n_samp = read_wav_float(n_p, target_sr=16000)
     if n_samp.size > 0:
         noise_cache.append(n_samp)
+        if os.path.basename(n_p) in STATIONARY_NOISE_NAMES:
+            stationary_indices.append(len(noise_cache) - 1)
+
+if noise_cache and stationary_indices:
+    print(
+        f"      Stationary-noise bias: {len(stationary_indices)}/{len(noise_cache)} files, prob={noise_stationary_bias}",
+        file=sys.stderr,
+    )
 
 def write_wav_int16(path, samples, sr=16000):
     samples = np.clip(samples, -1.0, 1.0)
@@ -389,6 +409,11 @@ def write_wav_int16(path, samples, sr=16000):
 
 rng = random.Random(42)
 np_rng = np.random.default_rng(42)
+
+def pick_noise_index():
+    if stationary_indices and rng.random() < noise_stationary_bias:
+        return rng.choice(stationary_indices)
+    return rng.randrange(len(noise_cache))
 
 perturbed_files = sorted(glob.glob(os.path.join(src_dir, "*.wav")))
 for f in perturbed_files:
@@ -420,7 +445,7 @@ for f in perturbed_files:
 
     # B. Apply Additive Background Noise (sliced exactly to match speech duration)
     if noise_cache and rng.random() < noise_prob:
-        n_audio = rng.choice(noise_cache)
+        n_audio = noise_cache[pick_noise_index()]
         if n_audio.size >= x.size:
             start = np_rng.integers(0, n_audio.size - x.size + 1)
             n_slice = n_audio[start : start + x.size]

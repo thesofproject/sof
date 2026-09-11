@@ -32,6 +32,14 @@
 #   GAIN_PEAK_DBFS  Peak-normalization target in dBFS (default -10).
 #   GAIN_SIGMA_DB   Gaussian jitter sigma in dB (default 5).
 #   GAIN_HEADROOM_DB Headroom below full scale (default 1).
+#   NOISE_AUG       1 = mix background noise onto positives, 0 = disable (default 1).
+#   NOISE_PROB      Probability of mixing noise into a clip (default 0.9).
+#   NOISE_SNR_MIN_DB Min SNR in dB (default 0).
+#   NOISE_SNR_MAX_DB Max SNR in dB (default 25).
+#   NOISE_DIR       Directory of *.wav background noise files (default:
+#                   $SC_CACHE/_background_noise_ or ~/.cache/speech_commands_v2/_background_noise_).
+#   NOISE_STATIONARY_BIAS Probability of picking from the stationary-noise subset
+#                   (white/pink/exercise_bike/running_tap) when it exists (default 0.7).
 
 set -e
 
@@ -109,6 +117,17 @@ fi
 : "${SLERP_WEIGHTS:=0.0}"
 : "${GAIN_NORM:=1}"
 : "${GAIN_PEAK_DBFS:=-10}"
+: "${NOISE_AUG:=1}"
+: "${NOISE_PROB:=0.9}"
+: "${NOISE_SNR_MIN_DB:=0.0}"
+: "${NOISE_SNR_MAX_DB:=25.0}"
+: "${NOISE_DIR:=}"
+: "${NOISE_STATIONARY_BIAS:=0.7}"
+: "${SC_CACHE:=$HOME/.cache/speech_commands_v2}"
+
+if [[ -z "$NOISE_DIR" && -d "$SC_CACHE/_background_noise_" ]]; then
+	NOISE_DIR="$SC_CACHE/_background_noise_"
+fi
 
 apply_peak_norm() {
 	local dir="$1"
@@ -227,8 +246,9 @@ for i in "${!KEYWORDS[@]}"; do
 		done
 	done
 
-	echo ">>> Augmenting into $FINAL_DIR (16 kHz resampling, Accoustic2 RIR convolution)"
+	echo ">>> Augmenting into $FINAL_DIR (16 kHz resampling, Accoustic2 RIR, additive noise NOISE_PROB=$NOISE_PROB SNR=[$NOISE_SNR_MIN_DB,$NOISE_SNR_MAX_DB] dB)"
 	export IR_AUG IR_PROB IR_WET IR_DIR
+	export NOISE_AUG NOISE_PROB NOISE_SNR_MIN_DB NOISE_SNR_MAX_DB NOISE_DIR NOISE_STATIONARY_BIAS
 	python3 - "$RAW_DIR" "$FINAL_DIR" <<'PYEOF'
 import glob
 from math import gcd
@@ -246,6 +266,21 @@ ir_aug_enabled = os.environ.get("IR_AUG", "1") == "1"
 ir_prob = float(os.environ.get("IR_PROB", "0.50"))
 ir_wet = float(os.environ.get("IR_WET", "0.20"))
 ir_dir = os.environ.get("IR_DIR", "").strip()
+
+noise_aug_enabled = os.environ.get("NOISE_AUG", "1") == "1"
+noise_prob = float(os.environ.get("NOISE_PROB", "0.9"))
+noise_snr_min = float(os.environ.get("NOISE_SNR_MIN_DB", "0.0"))
+noise_snr_max = float(os.environ.get("NOISE_SNR_MAX_DB", "25.0"))
+noise_dir = os.environ.get("NOISE_DIR", "").strip()
+noise_stationary_bias = float(os.environ.get("NOISE_STATIONARY_BIAS", "0.7"))
+
+# Broadband, near-stationary noise files in Google Speech Commands v2 _background_noise_.
+# The runtime microphone floor is dominated by stationary broadband hiss, so we bias
+# the mix toward these to match observed capture conditions.
+STATIONARY_NOISE_NAMES = {
+    "white_noise.wav", "pink_noise.wav",
+    "exercise_bike.wav", "running_tap.wav",
+}
 
 try:
     from scipy.signal import fftconvolve, resample_poly
@@ -308,6 +343,28 @@ for ir_p in ir_files:
             h[-fade_len:] *= np.linspace(1.0, 0.0, fade_len)
         ir_cache.append(h)
 
+noise_files = []
+if noise_aug_enabled and noise_dir and os.path.isdir(noise_dir):
+    noise_files = sorted(glob.glob(os.path.join(noise_dir, "*.wav")))
+
+noise_cache = []
+stationary_indices = []
+for idx, n_p in enumerate(noise_files):
+    n_samp = read_wav_float(n_p, target_sr=16000)
+    if n_samp.size > 0:
+        noise_cache.append(n_samp)
+        if os.path.basename(n_p) in STATIONARY_NOISE_NAMES:
+            stationary_indices.append(len(noise_cache) - 1)
+
+if noise_cache:
+    print(
+        f"    Loaded {len(noise_cache)} noise files from {noise_dir} "
+        f"({len(stationary_indices)} stationary, bias={noise_stationary_bias})",
+        file=sys.stderr,
+    )
+else:
+    print("    Noise augmentation disabled or no noise files found", file=sys.stderr)
+
 def write_wav_int16(path, samples, sr=16000):
     samples = np.clip(samples, -1.0, 1.0)
     int16_data = (samples * 32767.0).astype(np.int16).tobytes()
@@ -318,6 +375,12 @@ def write_wav_int16(path, samples, sr=16000):
         wo.writeframes(int16_data)
 
 rng = random.Random(42)
+np_rng = np.random.default_rng(42)
+
+def pick_noise_index():
+    if stationary_indices and rng.random() < noise_stationary_bias:
+        return rng.choice(stationary_indices)
+    return rng.randrange(len(noise_cache))
 
 for f in sorted(glob.glob(os.path.join(src_dir, "*.wav"))):
     x = read_wav_float(f, target_sr=16000)
@@ -343,6 +406,22 @@ for f in sorted(glob.glob(os.path.join(src_dir, "*.wav"))):
         pad = wet.size - x.size
         dry_padded = np.pad(x, (0, pad)) if pad > 0 else x[:wet.size]
         x = (1.0 - ir_wet) * dry_padded + ir_wet * wet
+
+    if noise_cache and rng.random() < noise_prob:
+        n_audio = noise_cache[pick_noise_index()]
+        if n_audio.size >= x.size:
+            start = np_rng.integers(0, n_audio.size - x.size + 1)
+            n_slice = n_audio[start : start + x.size]
+        else:
+            reps = (x.size // n_audio.size) + 1
+            n_slice = np.tile(n_audio, reps)[:x.size]
+
+        speech_rms = float(np.sqrt(np.mean(x ** 2)))
+        noise_rms = float(np.sqrt(np.mean(n_slice ** 2)))
+        if speech_rms > 1e-5 and noise_rms > 1e-5:
+            snr_db = np_rng.uniform(noise_snr_min, noise_snr_max)
+            target_noise_rms = speech_rms * (10.0 ** (-snr_db / 20.0))
+            x = x + (target_noise_rms / noise_rms) * n_slice
 
     out_name = os.path.basename(f)
     write_wav_int16(os.path.join(dst_dir, out_name), x, sr=16000)
