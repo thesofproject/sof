@@ -113,7 +113,7 @@ static void pipeline_check(void)
 	zassert_not_null(p, "pipeline creation failed");
 
 	/* Verify heap assignment */
-	zassert_equal(p->heap, heap, "pipeline heap not equal to user heap");
+	zassert_equal(p->alloc->heap, heap, "pipeline heap not equal to user heap");
 
 	/* Verify pipeline properties */
 	zassert_equal(p->pipeline_id, pipeline_id, "pipeline id mismatch");

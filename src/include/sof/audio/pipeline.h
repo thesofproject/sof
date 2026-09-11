@@ -26,6 +26,7 @@ struct comp_dev;
 struct ipc;
 struct ipc_msg;
 struct k_heap;
+struct mod_alloc_ctx;
 
 /*
  * Pipeline status to stop execution of current path, but to keep the
@@ -53,7 +54,7 @@ struct k_heap;
  * Audio pipeline.
  */
 struct pipeline {
-	struct k_heap *heap;	/**< heap used for allocating this pipeline */
+	struct mod_alloc_ctx *alloc;	/**< alloc context used for allocating this pipeline */
 	uint32_t comp_id;	/**< component id for pipeline */
 	uint32_t pipeline_id;	/**< pipeline id */
 	uint32_t sched_id;	/**< Scheduling component id */

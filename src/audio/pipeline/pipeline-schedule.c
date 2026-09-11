@@ -349,7 +349,7 @@ static struct task *ipc4_pipeline_trigger_task_init(struct pipeline *p, uint32_t
 {
 	struct task *task;
 
-	task = sof_heap_alloc(p->heap, SOF_MEM_FLAG_USER, sizeof(*task), 0);
+	task = sof_ctx_alloc(p->alloc, SOF_MEM_FLAG_USER, sizeof(*task), 0);
 	if (!task)
 		return NULL;
 
@@ -358,7 +358,7 @@ static struct task *ipc4_pipeline_trigger_task_init(struct pipeline *p, uint32_t
 	/* All trigger tasks use the highest priority, regardless of pipeline priority. */
 	if (schedule_task_init_ll(task, SOF_UUID(pipe_trigger_task_uuid), type, -1,
 				  ipc4_pipeline_trigger_task, p, p->core, 0) < 0) {
-		sof_heap_free(p->heap, task);
+		sof_ctx_free(p->alloc, task);
 		return NULL;
 	}
 
@@ -370,8 +370,8 @@ static struct task *pipeline_task_init(struct pipeline *p, uint32_t type)
 {
 	struct pipeline_task *task = NULL;
 
-	task = sof_heap_alloc(p->heap, SOF_MEM_FLAG_USER,
-			      sizeof(*task), 0);
+	task = sof_ctx_alloc(p->alloc, SOF_MEM_FLAG_USER,
+			     sizeof(*task), 0);
 	if (!task)
 		return NULL;
 
@@ -385,7 +385,7 @@ static struct task *pipeline_task_init(struct pipeline *p, uint32_t type)
 				  ipc3_pipeline_task,
 #endif
 				  p, p->core, 0) < 0) {
-		sof_heap_free(p->heap, task);
+		sof_ctx_free(p->alloc, task);
 		return NULL;
 	}
 
@@ -562,14 +562,14 @@ void pipeline_comp_ll_task_free(struct pipeline *p)
 		delayed_trigger_owner[p->core] = NULL;
 
 	if (p->trigger_task)
-		sof_heap_free(p->heap, p->trigger_task);
+		sof_ctx_free(p->alloc, p->trigger_task);
 #endif
 
 	if (p->pipe_task) {
 #if !CONFIG_LIBRARY || UNIT_TEST
 		schedule_task_free(p->pipe_task);
 #endif
-		sof_heap_free(p->heap, p->pipe_task);
+		sof_ctx_free(p->alloc, p->pipe_task);
 	}
 }
 
