@@ -5,6 +5,7 @@
 // Author: Jakub Dabek <jakub.dabek@linux.intel.com>
 
 #include <sof/audio/ipc-config.h>
+#include <rtos/alloc.h>
 #include "pipeline_connection_mocks.h"
 
 extern struct schedulers *schedulers;
@@ -32,6 +33,7 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 
 	struct pipeline *pipe = &pipeline_connect_data->p;
 
+	pipe->alloc = calloc(sizeof(*pipe->alloc), 1);
 	pipe->frames_per_sched = 5;
 	pipe->pipeline_id = PIPELINE_ID_SAME;
 	pipe->status = COMP_STATE_INIT;
@@ -91,6 +93,7 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 
 void free_standard_connect_objects(struct pipeline_connect_data *data)
 {
+	free(data->p.alloc);
 	free(data->p.pipe_task);
 	free(data->p.sched_comp);
 	free(data->second);

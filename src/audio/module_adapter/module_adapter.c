@@ -75,26 +75,17 @@ static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *
 }
 
 static
-struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
-						   const struct comp_ipc_config *config,
-						   const struct module_ext_init_data *ext_init)
+struct mod_alloc_ctx *module_adapter_dp_alloc_ctx_new(const struct comp_driver *drv,
+						      const struct comp_ipc_config *config,
+						      const struct module_ext_init_data *ext_init,
+						      uint32_t flags)
 {
 	struct k_heap *mod_heap;
 	struct vregion *mod_vreg;
-	struct processing_module *mod;
-	struct comp_dev *dev;
-	/*
-	 * For DP shared modules the struct processing_module object must be
-	 * accessible from all cores. Unfortunately at this point there's no
-	 * information of components the module will be bound to. So we need to
-	 * allocate shared memory for each DP module.
-	 * To be removed when pipeline 2.0 is ready.
-	 */
-	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
-		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
+	struct mod_alloc_ctx *alloc;
 
-	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_SOF_VREGIONS) &&
-	    IS_ENABLED(CONFIG_USERSPACE) && !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
+	if (IS_ENABLED(CONFIG_SOF_VREGIONS) && IS_ENABLED(CONFIG_USERSPACE) &&
+	    !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
 		mod_vreg = module_adapter_dp_heap_new(config, ext_init);
 		if (!mod_vreg) {
 			comp_cl_err(drv, "Failed to allocate DP module heap / vregion");
@@ -114,27 +105,59 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 #endif
 		mod_vreg = NULL;
 	}
+	alloc = sof_heap_alloc(mod_heap, flags, sizeof(*alloc), 0);
+	if (!alloc) {
+		comp_cl_err(drv, "sof_alloc_ctx allocation failed");
+		vregion_put(mod_vreg);
+		return NULL;
+	}
 
-	if (!mod_vreg)
-		mod = sof_heap_alloc(mod_heap, flags, sizeof(*mod), 0);
-	else if (flags & SOF_MEM_FLAG_COHERENT)
-		mod = vregion_alloc_coherent(mod_vreg, sizeof(*mod));
-	else
-		mod = vregion_alloc(mod_vreg, sizeof(*mod));
+	memset(alloc, 0, sizeof(*alloc));
+	alloc->heap = mod_heap;
+	alloc->vreg = mod_vreg;
 
+	return alloc;
+}
+
+static
+struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
+						   const struct comp_ipc_config *config,
+						   const struct module_ext_init_data *ext_init,
+						   struct mod_alloc_ctx *ppl_alloc)
+{
+	struct processing_module *mod;
+	struct mod_alloc_ctx *alloc;
+	struct comp_dev *dev;
+	/*
+	 * For DP shared modules the struct processing_module object must be
+	 * accessible from all cores. Unfortunately at this point there's no
+	 * information of components the module will be bound to. So we need to
+	 * allocate shared memory for each DP module.
+	 * To be removed when pipeline 2.0 is ready.
+	 */
+	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
+		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
+
+	if (config->proc_domain == COMP_PROCESSING_DOMAIN_LL) {
+		/* LL modules share the pipeline's alloc context */
+		alloc = ppl_alloc;
+		vregion_get(alloc->vreg);
+	} else if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		alloc = module_adapter_dp_alloc_ctx_new(drv, config, ext_init, flags);
+		if (!alloc)
+			return NULL;
+	} else {
+		comp_cl_err(drv, "bad proc_domain %d", config->proc_domain);
+		return NULL;
+	}
+
+	mod = sof_ctx_alloc(alloc, flags, sizeof(*mod), 0);
 	if (!mod) {
 		comp_cl_err(drv, "failed to allocate memory for module");
 		goto emod;
 	}
 
-	struct mod_alloc_ctx *alloc = sof_heap_alloc(mod_heap, flags, sizeof(*alloc), 0);
-
-	if (!alloc)
-		goto ealloc;
-
 	memset(mod, 0, sizeof(*mod));
-	alloc->heap = mod_heap;
-	alloc->vreg = mod_vreg;
 	mod->priv.resources.alloc = alloc;
 	mod_resource_init(mod);
 
@@ -144,11 +167,7 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 	 * then it can be cached. Effectively it can be only cached in
 	 * single-core configurations.
 	 */
-	if (mod_vreg)
-		dev = vregion_alloc_coherent(mod_vreg, sizeof(*dev));
-	else
-		dev = sof_heap_alloc(mod_heap, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
-
+	dev = sof_ctx_alloc(alloc, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
 	if (!dev) {
 		comp_cl_err(drv, "failed to allocate memory for comp_dev");
 		goto edev;
@@ -163,14 +182,11 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 	return mod;
 
 edev:
-	sof_heap_free(mod_heap, alloc);
-ealloc:
-	if (mod_vreg)
-		vregion_free(mod_vreg, mod);
-	else
-		sof_heap_free(mod_heap, mod);
+	sof_ctx_free(alloc, mod);
 emod:
-	vregion_put(mod_vreg);
+	vregion_put(alloc->vreg);
+	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		sof_heap_free(alloc->heap, alloc);
 
 	return NULL;
 }
@@ -178,26 +194,33 @@ emod:
 static void module_adapter_mem_free(struct processing_module *mod)
 {
 	struct mod_alloc_ctx *alloc = mod->priv.resources.alloc;
-	struct k_heap *mod_heap = alloc->heap;
+	bool ppl_alloc = mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL &&
+			 mod->dev->pipeline && mod->dev->pipeline->alloc == alloc;
 
 	/*
 	 * In principle it shouldn't even be needed to free individual objects
 	 * on the module heap since we're freeing the heap itself too
 	 */
 #if CONFIG_IPC_MAJOR_4
-	sof_heap_free(mod_heap, mod->priv.cfg.input_pins);
+	sof_heap_free(alloc->heap, mod->priv.cfg.input_pins);
 #endif
-	if (alloc->vreg) {
-		struct vregion *mod_vreg = alloc->vreg;
+	sof_ctx_free(alloc, mod->dev);
+	sof_ctx_free(alloc, mod);
 
-		vregion_free(mod_vreg, mod->dev);
-		vregion_free(mod_vreg, mod);
-		if (!vregion_put(mod_vreg))
+	if (ppl_alloc) {
+		/* alloc belongs to pipeline, just release vregion reference */
+		vregion_put(alloc->vreg);
+	} else if (alloc->vreg) {
+		/*
+		 * This is DP userpsace case
+		 * Only remove the alloc ctx, if vreg was freed. If it was not
+		 * the DP userspace thread is still holding a reference to it,
+		 * and will free alloc ctx eventually.
+		 */
+		if (!vregion_put(alloc->vreg))
 			sof_heap_free(alloc->heap, alloc);
 	} else {
-		sof_heap_free(mod_heap, mod->dev);
-		sof_heap_free(mod_heap, mod);
-		sof_heap_free(mod_heap, alloc);
+		sof_heap_free(alloc->heap, alloc);
 	}
 }
 
@@ -248,8 +271,19 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		NULL;
 #endif
 
-	struct processing_module *mod = module_adapter_mem_alloc(drv, config, ext_init);
+	struct mod_alloc_ctx *ppl_alloc = NULL;
+#if CONFIG_IPC_MAJOR_4
+	struct ipc_comp_dev *ipc_pipe;
+	struct ipc *ipc = ipc_get();
 
+	/* resolve the pipeline pointer early to pass its alloc to mem_alloc */
+	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id,
+					  IPC_COMP_IGNORE_REMOTE);
+	if (ipc_pipe && ipc_pipe->pipeline)
+		ppl_alloc = ipc_pipe->pipeline->alloc;
+#endif
+
+	struct processing_module *mod = module_adapter_mem_alloc(drv, config, ext_init, ppl_alloc);
 	if (!mod)
 		return NULL;
 
@@ -271,6 +305,21 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	 */
 #if CONFIG_IPC_MAJOR_4
 	dst->ext_data = &ext_data;
+#endif
+
+#if CONFIG_IPC_MAJOR_4
+	/*
+	 * Set the pipeline pointer if ipc_pipe is valid. Do this
+	 * early so that we can use module_adapter_mem_free() in error
+	 * handling.
+	 */
+	if (ipc_pipe) {
+		dev->pipeline = ipc_pipe->pipeline;
+
+		/* LL modules have the same period as the pipeline */
+		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+			dev->period = ipc_pipe->pipeline->period;
+	}
 #endif
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
@@ -305,22 +354,6 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		mod->proc_type = MODULE_PROCESS_TYPE_RAW;
 	else
 		goto err;
-
-#if CONFIG_IPC_MAJOR_4
-	struct ipc_comp_dev *ipc_pipe;
-	struct ipc *ipc = ipc_get();
-
-	/* set the pipeline pointer if ipc_pipe is valid */
-	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id,
-					  IPC_COMP_IGNORE_REMOTE);
-	if (ipc_pipe) {
-		dev->pipeline = ipc_pipe->pipeline;
-
-		/* LL modules have the same period as the pipeline */
-		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
-			dev->period = ipc_pipe->pipeline->period;
-	}
-#endif
 
 	/* Init processing module */
 	ret = module_init(mod);
