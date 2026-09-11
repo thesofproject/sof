@@ -87,11 +87,11 @@ void user_ll_assert_locked(int core)
 	assert(core < CONFIG_CORE_COUNT &&
 	       zephyr_ll_lock_owner[core] == k_current_get());
 }
-#else
+#else /* CONFIG_ASSERT */
 static inline void zephyr_ll_lock_acquired(int core) { (void)core; }
 static inline void zephyr_ll_lock_releasing(int core) { (void)core; }
 #endif /* CONFIG_ASSERT */
-#endif
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
 {
@@ -491,7 +491,7 @@ int z_impl_zephyr_ll_task_sem_alloc(struct task *task)
 
 	if (ll_tid)
 		k_thread_access_grant(ll_tid, ts->sem);
-#endif
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 	ts->task = task;
 	pdata->sem_p = ts->sem;
@@ -557,8 +557,8 @@ static inline int z_vrfy_zephyr_ll_task_sem_free(struct task *task)
 	return z_impl_zephyr_ll_task_sem_free(task);
 }
 #include <zephyr/syscalls/zephyr_ll_task_sem_free_mrsh.c>
-#endif
-#endif
+#endif /* CONFIG_USERSPACE */
+#endif /* CONFIG_DYNAMIC_OBJECTS */
 
 /*
  * This is synchronous - after this returns the object can be destroyed!
@@ -682,7 +682,7 @@ static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 #endif
 	sof_heap_free(sch->heap, sch);
 }
-#endif
+#endif /* CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY */
 
 #if CONFIG_SOF_USERSPACE_LL
 struct k_thread *zephyr_ll_init_context(void *data, struct task *task)
@@ -712,7 +712,7 @@ struct k_thread *zephyr_ll_init_context(void *data, struct task *task)
 
 	return zephyr_domain_thread_tid(sch->ll_domain);
 }
-#endif
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 static const struct scheduler_ops zephyr_ll_ops = {
 	.schedule_task		= zephyr_ll_task_schedule,

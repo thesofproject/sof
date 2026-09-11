@@ -336,7 +336,7 @@ void z_vrfy_ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 	z_impl_ipc_msg_send(msg, data, high_priority);
 }
 #include <zephyr/syscalls/ipc_msg_send_mrsh.c>
-#endif
+#endif /* CONFIG_USERSPACE */
 
 void z_impl_ipc_msg_list_remove(struct ipc_msg *msg)
 {
@@ -375,7 +375,7 @@ void z_vrfy_ipc_msg_list_remove(struct ipc_msg *msg)
 	z_impl_ipc_msg_list_remove(msg);
 }
 #include <zephyr/syscalls/ipc_msg_list_remove_mrsh.c>
-#endif
+#endif /* CONFIG_USERSPACE */
 
 #ifdef __ZEPHYR__
 static void ipc_work_handler(struct k_work *work)
@@ -683,7 +683,7 @@ __cold static void ipc_user_init(void)
 			LOG_WRN("cold rodata partition %#zx @ %#lx add failed: %d",
 				cold_part.size, cold_part.start, ret);
 	}
-#endif
+#endif /* CONFIG_COLD_STORE_EXECUTE_DRAM */
 
 	k_sem_init(ipc_user->sem, 0, 1);
 
@@ -730,7 +730,7 @@ __cold static void ipc_user_init(void)
 	/* Wait for user thread startup — consumes the initial k_sem_give from thread */
 	k_sem_take(ipc_user->sem, K_FOREVER);
 }
-#else
+#else /* CONFIG_SOF_USERSPACE_LL */
 static void ipc_user_init(void)
 {
 }
@@ -768,7 +768,7 @@ __cold int ipc_init(struct sof *sof)
 		return -ENOMEM;
 	}
 	sof->ipc = ipc;
-#endif
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 	ipc->comp_data = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 					SOF_IPC_MSG_MAX_SIZE, 0);
@@ -818,7 +818,7 @@ __cold int ipc_init(struct sof *sof)
 	k_thread_resume(thread);
 
 	k_work_init_delayable(&ipc->z_delayed_work, ipc_work_handler);
-#endif
+#endif /* __ZEPHYR__ */
 
 	ipc_user_init();
 

@@ -113,4 +113,4 @@ static inline bool z_vrfy_send_resource_notif(uint32_t resource_id, uint32_t eve
 	return z_impl_send_resource_notif(resource_id, event_type, resource_type, data, data_size);
 }
 #include <zephyr/syscalls/send_resource_notif_mrsh.c>
-#endif
+#endif /* CONFIG_USERSPACE */

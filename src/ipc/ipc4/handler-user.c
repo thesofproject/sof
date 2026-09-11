@@ -86,7 +86,7 @@ static inline const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data(
 
 	return ppl_data;
 }
-#endif
+#endif /* CONFIG_LIBRARY */
 /*
  * Global IPC Operations.
  */
@@ -114,7 +114,7 @@ static unsigned int ipc4_user_target_core_module(struct ipc4_message_request *ip
 
 	return cpu_get_id();
 }
-#else
+#else /* CONFIG_SOF_USERSPACE_LL */
 __cold static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc *ipc = ipc_get();
@@ -136,7 +136,7 @@ __cold static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 
 	return ipc_pipeline_free(ipc, pipe->primary.r.instance_id);
 }
-#endif
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 static int ipc4_pcm_params(struct ipc_comp_dev *pcm_dev)
 {
@@ -653,9 +653,9 @@ __cold static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 		return IPC4_INVALID_CHAIN_STATE_TRANSITION;
 
 	return IPC4_SUCCESS;
-#else
+#else /* CONFIG_COMP_CHAIN_DMA */
 	return IPC4_UNAVAILABLE;
-#endif
+#endif /* CONFIG_COMP_CHAIN_DMA */
 }
 
 __cold static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
@@ -678,10 +678,10 @@ __cold static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
 	}
 
 	return err < 0 ? IPC4_FAILURE : IPC4_SUCCESS;
-#else
+#else /* CONFIG_IPC4_GATEWAY */
 	ipc_cmd_err(&ipc_tr, "CONFIG_IPC4_GATEWAY is disabled");
 	return IPC4_UNAVAILABLE;
-#endif
+#endif /* CONFIG_IPC4_GATEWAY */
 }
 
 static int ipc_glb_gdb_debug(struct ipc4_message_request *ipc4)
@@ -774,9 +774,9 @@ int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4,
 		}
 		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat, ppl->core);
 	}
-#else
+#else /* CONFIG_SOF_USERSPACE_LL */
 		ret = ipc4_set_pipeline_state(ipc4);
-#endif
+#endif /* CONFIG_SOF_USERSPACE_LL */
 		break;
 
 	case SOF_IPC4_GLB_GET_PIPELINE_STATE:
@@ -1599,7 +1599,7 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 			ipc_get()->ipc_user_pdata->init_drv = drv;
 			ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat,
 						   mi->extension.r.core_id);
-#endif
+#endif /* CONFIG_SOF_USERSPACE_LL */
 		} else {
 			/*
 			 * DP module creation starts running in kernel mode and
@@ -1659,9 +1659,9 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 			ret = ipc4_get_large_config_module_instance(ipc4);
 		}
 	}
-#else
+#else /* CONFIG_SOF_USERSPACE_LL */
 		ret = ipc4_get_large_config_module_instance(ipc4);
-#endif
+#endif /* CONFIG_SOF_USERSPACE_LL */
 		break;
 	case SOF_IPC4_MOD_LARGE_CONFIG_SET:
 #ifdef CONFIG_SOF_USERSPACE_LL

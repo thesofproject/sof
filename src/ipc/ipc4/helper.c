@@ -109,7 +109,7 @@ __cold static inline unsigned char *ipc4_get_comp_new_data(void)
 
 	return (unsigned char *)MAILBOX_HOSTBOX_BASE;
 }
-#endif
+#endif /* CONFIG_LIBRARY */
 
 __cold static int ipc4_comp_new_config(struct comp_ipc_config *ipc_config,
 				       const struct ipc4_module_init_instance *module_init)
@@ -731,7 +731,7 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 		else \
 			irq_local_enable(flags); \
 	} while (0)
-#endif
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 /* Calling both ll_block() and ll_wait_finished_on_core() makes sure LL will not start its
  * next cycle and its current cycle on specified core has finished.
@@ -761,7 +761,7 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 	return 0;
 }
 
-#else
+#else /* CONFIG_CROSS_CORE_STREAM */
 
 #if CONFIG_SOF_USERSPACE_LL
 /* note: cross-core streams are disabled so src_core==dst_core */
@@ -780,7 +780,7 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 #define ll_unblock(src_core, dst_core, flags)	irq_local_enable(flags)
 #endif
 
-#endif
+#endif /* CONFIG_CROSS_CORE_STREAM */
 
 /* Only called from ipc4_bind_module_instance(), which is __cold */
 __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbind *bu)
@@ -830,7 +830,7 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 		dp = NULL;
 
 	alloc = dp && dp->mod ? dp->mod->priv.resources.alloc : NULL;
-#else
+#else /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	alloc = NULL;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
@@ -1129,7 +1129,7 @@ __cold int ipc4_comp_disconnect(struct ipc *ipc, const struct ipc4_module_bind_u
 		tr_err(&ipc_tr, "Cross-core binding is disabled");
 		ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
 		return IPC4_FAILURE;
-#endif
+#endif /* CONFIG_CROSS_CORE_STREAM */
 	}
 
 	pipeline_disconnect(src, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
@@ -1222,7 +1222,7 @@ __cold int ipc4_chain_dma_state(struct comp_dev *dev, const struct ipc4_chain_dm
 	}
 	return ret;
 }
-#endif
+#endif /* CONFIG_COMP_CHAIN_DMA */
 
 __cold static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
 {
@@ -1407,7 +1407,7 @@ static const struct comp_driver *ipc4_get_fuzzer_drv(uint32_t module_id)
 	       module_id, idx);
 	return NULL;
 }
-#endif
+#endif /* defined(CONFIG_ARCH_POSIX_LIBFUZZER) && !defined(RIMAGE_MANIFEST) */
 
 /*
  * Called from

@@ -232,7 +232,7 @@ static int comp_specific_builder(struct sof_ipc_comp *comp,
 		config->file.module_header.data = (uint8_t *)proc->data -
 			sizeof(struct ipc_config_process);
 		break;
-#endif
+#endif /* CONFIG_LIBRARY */
 	case SOF_COMP_HOST:
 	case SOF_COMP_SG_HOST:
 		if (IPC_TAIL_IS_SIZE_INVALID(*host))
