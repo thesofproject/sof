@@ -164,7 +164,7 @@ out_release_channel:
 
 	return ret;
 }
-#else
+#else /* CONFIG_ZEPHYR_NATIVE_DRIVERS */
 static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 				    struct sof_ipc_host_buffer *ring)
 {
