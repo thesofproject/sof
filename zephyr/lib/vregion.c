@@ -9,6 +9,7 @@
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
 #include <zephyr/app_memory/mem_domain.h>
+#include <zephyr/llext/symbol.h>
 #include <zephyr/logging/log.h>
 #include <sof/lib/vpage.h>
 #include <sof/lib/vregion.h>
