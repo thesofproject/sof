@@ -45,6 +45,10 @@
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/dai.h>
+#ifdef CONFIG_UAOL_INTEL_ADSP
+#include <zephyr/drivers/uaol.h>
+#include <sof/audio/intel_uaol.h>
+#endif
 
 #include <sof/debug/telemetry/performance_monitor.h>
 
@@ -392,8 +396,14 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 			}
 		}
 #endif
-		ret = dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
-					 dd->process, bytes, dd->chmap);
+
+#ifdef CONFIG_UAOL_INTEL_ADSP
+		if (dd->uaol.feedback_drift)
+			ret = uaol_dma_buffer_copy_to(dd, bytes);
+		else
+#endif /* CONFIG_UAOL_INTEL_ADSP */
+			ret = dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
+				     dd->process, bytes, dd->chmap);
 	} else {
 		audio_stream_invalidate(&dd->dma_buffer->stream, bytes);
 		/*
@@ -475,6 +485,12 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 		/* update host position (in bytes offset) for drivers */
 		dd->total_data_processed += bytes;
 	}
+
+#ifdef CONFIG_UAOL_INTEL_ADSP
+	if (dd->uaol.fb_chan_idx >= 0)
+		process_uaol_feedback(dev, dd);
+#endif	/* CONFIG_UAOL_INTEL_ADSP */
+
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	/* Increment performance counters */
 	io_perf_monitor_update_data(dd->io_perf_dai_byte_count, bytes);
@@ -633,6 +649,75 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 	return 0;
 }
 
+static void dai_dma_release_channel(struct dai_data *dd)
+{
+	if (dd->chan_index >= 0) {
+		sof_dma_release_channel(dd->dma, dd->chan_index);
+		dd->chan_index = -EINVAL;
+	}
+
+#if CONFIG_UAOL_INTEL_ADSP
+	if (dd->uaol.fb_chan_idx >= 0) {
+		sof_dma_release_channel(dd->dma, dd->uaol.fb_chan_idx);
+		dd->uaol.fb_chan_idx = -EINVAL;
+	}
+#endif
+}
+
+static int dai_dma_config(struct dai_data *dd)
+{
+	int ret = sof_dma_config(dd->dma, dd->chan_index, dd->z_config);
+	if (ret < 0)
+		return ret;
+
+#if CONFIG_UAOL_INTEL_ADSP
+	if (dd->uaol.fb_chan_idx >= 0)
+		ret = sof_dma_config(dd->dma, dd->uaol.fb_chan_idx, dd->uaol.fb_z_config);
+#endif
+
+	return ret;
+}
+
+static int dai_dma_start(struct dai_data *dd)
+{
+	int ret = sof_dma_start(dd->dma, dd->chan_index);
+	if (ret < 0)
+		return ret;
+
+#if CONFIG_UAOL_INTEL_ADSP
+	if (dd->uaol.fb_chan_idx >= 0)
+		ret = sof_dma_start(dd->dma, dd->uaol.fb_chan_idx);
+#endif
+
+	return ret;
+}
+
+static int dai_dma_stop(struct dai_data *dd)
+{
+	int ret = sof_dma_stop(dd->dma, dd->chan_index);
+
+#if CONFIG_UAOL_INTEL_ADSP
+	/* seems it's better to stop feedback even when the above fails */
+	if (dd->uaol.fb_chan_idx >= 0)
+		sof_dma_stop(dd->dma, dd->uaol.fb_chan_idx);
+#endif
+
+	return ret;
+}
+
+static int dai_dma_suspend(struct dai_data *dd)
+{
+	int ret = sof_dma_suspend(dd->dma, dd->chan_index);
+
+#if CONFIG_UAOL_INTEL_ADSP
+	/* seems it's better to suspend feedback even when the above fails */
+	if (dd->uaol.fb_chan_idx >= 0)
+		sof_dma_suspend(dd->dma, dd->uaol.fb_chan_idx);
+#endif
+
+	return ret;
+}
+
 __cold static struct comp_dev *dai_new(const struct comp_driver *drv,
 				       const struct comp_ipc_config *config,
 				       const void *spec)
@@ -689,11 +774,7 @@ __cold void dai_common_free(struct dai_data *dd)
 	if (dd->group)
 		dai_group_put(dd->group);
 
-	if (dd->chan_index >= 0) {
-		sof_dma_release_channel(dd->dma, dd->chan_index);
-		dd->chan_index = -EINVAL;
-	}
-
+	dai_dma_release_channel(dd);
 	sof_dma_put(dd->dma);
 
 	dai_release_llp_slot(dd);
@@ -701,6 +782,10 @@ __cold void dai_common_free(struct dai_data *dd)
 	dai_put(dd->dai);
 
 	sof_heap_free(dd->alloc_ctx.heap, dd->dai_spec_config);
+
+#if CONFIG_UAOL_INTEL_ADSP
+	uaol_free(dd);
+#endif
 }
 
 __cold static void dai_free(struct comp_dev *dev)
@@ -1183,8 +1268,34 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 	}
 
 	err = dai_set_dma_config(dd, dev);
-	if (err < 0)
+	if (err < 0) {
 		comp_err(dev, "set dma config failed.");
+		goto out;
+	}
+
+	/* Ideally, this should be moved into setup_uaol_feedback_dma() in intel_uaol.c, but
+	 * there is no easy access to "params" there to set up the buffer format.
+	 */
+#ifdef CONFIG_UAOL_INTEL_ADSP
+	/* create DSRC output buffer (if needed) */
+	if (dd->ipc_config.type == SOF_DAI_INTEL_UAOL &&
+			dd->ipc_config.direction == SOF_IPC_STREAM_PLAYBACK) {
+		/* resampling might generate 1 extra frame; DSRC only works with 32-bit data */
+		size_t dsrc_buf_size = (dev->frames + 1) * dd->ipc_config.gtw_fmt->channels_count * 4;
+		dd->uaol.dsrc_buf = buffer_alloc_range(&dd->alloc_ctx, dsrc_buf_size,
+						       dsrc_buf_size,
+					       SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN,
+					       BUFFER_USAGE_NOT_SHARED);
+		if (!dd->uaol.dsrc_buf) {
+			comp_err(dev, "failed to alloc dsrc buffer");
+			goto out;
+		}
+
+		/* params should be same as local_buffer's */
+		buffer_set_params(dd->uaol.dsrc_buf, &params, BUFFER_UPDATE_FORCE);
+	}
+#endif	/* CONFIG_UAOL_INTEL_ADSP */
+
 out:
 	/*
 	 * Make sure to free all allocated items, all functions
@@ -1250,6 +1361,11 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	comp_dbg(dev, "new configured dma channel index %d",
 		 dd->chan_index);
 
+#ifdef CONFIG_UAOL_INTEL_ADSP
+	/* Does nothing if feedback DMA is not needed */
+	setup_uaol_feedback_dma(dd, dev);
+#endif	/* CONFIG_UAOL_INTEL_ADSP */
+
 	return 0;
 }
 
@@ -1273,6 +1389,10 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 
 	/* clear dma buffer to avoid pop noise */
 	buffer_zero(dd->dma_buffer);
+#ifdef CONFIG_UAOL_INTEL_ADSP
+	if (dd->uaol.fb_dma_buf)
+		memset(dd->uaol.fb_dma_buf, 0, dd->uaol.fb_dma_buf_size);
+#endif	/* CONFIG_UAOL_INTEL_ADSP */
 
 	/* dma reconfig not required if XRUN handling */
 	if (dd->xrun) {
@@ -1281,7 +1401,7 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 		return 0;
 	}
 
-	ret = sof_dma_config(dd->dma, dd->chan_index, dd->z_config);
+	ret = dai_dma_config(dd);
 	if (ret < 0)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 
@@ -1332,6 +1452,10 @@ void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 		dd->dma_buffer = NULL;
 	}
 
+#ifdef CONFIG_UAOL_INTEL_ADSP
+	uaol_free(dd);
+#endif	/* CONFIG_UAOL_INTEL_ADSP */
+
 	dd->wallclock = 0;
 	dd->total_data_processed = 0;
 	dd->xrun = 0;
@@ -1368,7 +1492,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
-			ret = sof_dma_start(dd->dma, dd->chan_index);
+			ret = dai_dma_start(dd);
 			if (ret < 0)
 				return ret;
 
@@ -1389,6 +1513,14 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 			buffer_zero(dd->dma_buffer);
 		}
 
+#ifdef CONFIG_UAOL_INTEL_ADSP
+		/* It might be beneficial to clear any old obsolete feedback value to prevent
+		 * it from being used to adjust the rate immediately after resume. A feedback
+		 * value of 0 will be rejected by the sanity check. */
+		if (dd->uaol.fb_dma_buf)
+			memset(dd->uaol.fb_dma_buf, 0, dd->uaol.fb_dma_buf_size);
+#endif	/* CONFIG_UAOL_INTEL_ADSP */
+
 		/* DMA driver and SOF's view of the DMA buffer's
 		 * read and write cursors must be the same to
 		 * avoid scenarios in which the DMA driver
@@ -1406,16 +1538,16 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* recover valid start position */
-			ret = sof_dma_stop(dd->dma, dd->chan_index);
+			ret = dai_dma_stop(dd);
 			if (ret < 0)
 				return ret;
 
 			/* dma_config needed after stop */
-			ret = sof_dma_config(dd->dma, dd->chan_index, dd->z_config);
+			ret = dai_dma_config(dd);
 			if (ret < 0)
 				return ret;
 
-			ret = sof_dma_start(dd->dma, dd->chan_index);
+			ret = dai_dma_start(dd);
 			if (ret < 0)
 				return ret;
 
@@ -1443,11 +1575,11 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
  * as soon as possible.
  */
 #if CONFIG_COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
-		ret = sof_dma_stop(dd->dma, dd->chan_index);
+		ret = dai_dma_stop(dd);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger_op(dd->dai, cmd, dev->direction);
-		ret = sof_dma_stop(dd->dma, dd->chan_index);
+		ret = dai_dma_stop(dd);
 		if (ret) {
 			comp_warn(dev, "dma was stopped earlier");
 			ret = 0;
@@ -1457,11 +1589,11 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "PAUSE");
 #if CONFIG_COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
-		ret = sof_dma_suspend(dd->dma, dd->chan_index);
+		ret = dai_dma_suspend(dd);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger_op(dd->dai, cmd, dev->direction);
-		ret = sof_dma_suspend(dd->dma, dd->chan_index);
+		ret = dai_dma_suspend(dd);
 #endif
 		break;
 	case COMP_TRIGGER_PRE_START:
@@ -1892,7 +2024,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 		comp_warn(dev, "dai trigger copy failed");
 
 	if (dai_dma_cb(dd, dev, copy_bytes, converter) == SOF_DMA_CB_STATUS_END)
-		sof_dma_stop(dd->dma, dd->chan_index);
+		dai_dma_stop(dd);
 
 	ret = sof_dma_reload(dd->dma, dd->chan_index, copy_bytes);
 	if (ret < 0) {
