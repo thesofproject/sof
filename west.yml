@@ -17,26 +17,26 @@ manifest:
     # the 'revision:' SHA below.
     - name: ffmpeg
       url-base: https://github.com/lgirdwood
-    # libshine fixed-point MP3 encoder for FFMPEG_ENC_MP3 (upstream mirror).
+    # libshine fixed-point MP3 encoder for FFMPEG_ENC_MP3 (SOF fork).
     - name: shine
-      url-base: https://github.com/toots
+      url-base: https://github.com/lgirdwood
     # vo-aacenc fixed-point AAC encoder for FFMPEG_ENC_AAC (SOF fork).
     - name: vo-aacenc
       url-base: https://github.com/lgirdwood
     # libfvad: pure-C BSD-3 extraction of the WebRTC GMM VAD for the
-    # webrtc_vad module (CONFIG_COMP_WEBRTC_VAD). Cross-built by
+    # webrtc_vad module (CONFIG_COMP_WEBRTC_VAD, SOF fork). Cross-built by
     # src/audio/webrtc_vad/webrtc_vad.cmake.
     - name: libfvad
-      url-base: https://github.com/dpirch
-    # webrtc-apm: webrtc-audio-processing 0.3.x source used for the classic
-    # WebRTC Noise Suppression module (CONFIG_COMP_WEBRTC_NS). Pure-C subset,
-    # no abseil. Cross-built by src/audio/webrtc_ns/webrtc_ns.cmake.
+      url-base: https://github.com/lgirdwood
+    # webrtc-apm: WebRTC audio processing with AEC3 C++17 core (SOF fork).
+    # Cross-built by src/audio/webrtc_ns/webrtc_ns.cmake and
+    # src/audio/webrtc_aec/webrtc_aec.cmake.
     - name: webrtc-apm
-      url-base: https://gitlab.freedesktop.org/pulseaudio
-    # rnnoise: xiph/rnnoise deep-learning noise suppressor used by webrtc_ns2.
-    # Pure C, BSD-3-Clause. Pinned at Feb-2025 tip.
+      url-base: https://github.com/lgirdwood
+    # rnnoise: xiph/rnnoise deep-learning noise suppressor used by webrtc_ns2 (SOF fork).
+    # Pure C, BSD-3-Clause.
     - name: rnnoise
-      url-base: https://github.com/xiph
+      url-base: https://github.com/lgirdwood
 
   # When upgrading projects here please run git log --oneline in the
   # project and if not too long then include the output in your commit
@@ -78,12 +78,12 @@ manifest:
       revision: 08ab4baa3400d55be75be1280f6119e210ce354e
       remote: ffmpeg
 
-    # libshine: small fixed-point MP3 encoder for FFMPEG_ENC_MP3 (FFmpeg has no
-    # native MP3 encoder). Cross-built by ffmpeg.cmake.
+    # libshine: small fixed-point MP3 encoder for FFMPEG_ENC_MP3 (SOF fork with
+    # Xtensa HiFi accelerated multipliers). Cross-built by ffmpeg.cmake.
     - name: shine
       repo-path: shine
       path: modules/audio/shine
-      revision: ab5e3526b64af1a2eaa43aa6f441a7312e013519
+      revision: ab594a06915cfd10349765f73435592e65cbf746
       remote: shine
 
     # vo-aacenc: pure 32-bit fixed-point AAC-LC encoder for FFMPEG_ENC_AAC.
@@ -99,24 +99,24 @@ manifest:
     - name: libfvad
       repo-path: libfvad
       path: modules/audio/libfvad
-      revision: 532ab666c20d3cfda38bca63abbb0f152706c369
+      revision: e4b0c4d00b3db23f5825631ae8f84058e7a1b366
       remote: libfvad
 
-    # webrtc-audio-processing 0.3.1 — classic WebRTC APM for webrtc_ns module.
-    # Pure-C NS subset only; no C++ or abseil dependency.
-    # Cross-built by src/audio/webrtc_ns/webrtc_ns.cmake.
+    # webrtc-audio-processing — WebRTC APM with modern AEC3 (C++17) and classic NS.
+    # Cross-built by src/audio/webrtc_ns/webrtc_ns.cmake and
+    # src/audio/webrtc_aec/webrtc_aec.cmake.
     - name: webrtc-apm
       repo-path: webrtc-audio-processing
       path: modules/audio/webrtc-apm
-      revision: v0.3.1
+      revision: 3e9c41a268fbeb36a7de2c5cb2f1b02bc7fef098
       remote: webrtc-apm
 
     # rnnoise — xiph/rnnoise deep-learning noise suppressor (webrtc_ns2).
-    # Pure C, BSD-3-Clause. Pinned at v0.1.1 (self-contained model weights in rnn_data.c).
+    # Pure C, BSD-3-Clause (SOF fork with freestanding Zephyr minimal libc support).
     - name: rnnoise
       repo-path: rnnoise
       path: modules/audio/rnnoise
-      revision: 6cbfd53eb348a8d394e0757b4025c6ded34eb2b6
+      revision: 24dbb35115c6d27f9f14cc654bf0a32417f70bf9
       remote: rnnoise
 
     - name: zephyr
