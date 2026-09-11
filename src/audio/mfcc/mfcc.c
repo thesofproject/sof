@@ -241,7 +241,16 @@ static int mfcc_prepare(struct processing_module *mod,
 
 	/* Initialize MFCC, max_frames is set to dev->frames + 4 */
 	if (cd->config && data_size > 0) {
-		ret = mfcc_setup(mod, dev->frames + 4, audio_stream_get_rate(&sourceb->stream),
+		int max_frames = dev->frames + 4;
+
+		/* DP wakes on ibs (~1 hop of input); consume the whole
+		 * hop per call so we don't re-enter the DP thread many
+		 * times per LL tick just to nibble dev->frames at a time.
+		 */
+		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+			max_frames = MAX(max_frames, cd->config->frame_shift);
+
+		ret = mfcc_setup(mod, max_frames, audio_stream_get_rate(&sourceb->stream),
 				 audio_stream_get_channels(&sourceb->stream));
 		if (ret < 0) {
 			comp_err(dev, "setup failed.");

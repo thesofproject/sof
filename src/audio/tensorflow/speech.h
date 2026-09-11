@@ -7,6 +7,12 @@
 
 #include "tensorflow/lite/core/c/common.h"
 
+/* Class-count and label names emitted alongside the retrained model by
+ * sof_tflm_train.py. Regenerated on every training run so speech.h never
+ * needs a manual edit when the keyword list changes.
+ */
+#include "sof_tflm_labels.h"
+
 /* default model configuration */
 #define TFLM_SAMPLE_RATE 16000
 #define TFLM_FEATURE_SIZE 40
@@ -14,15 +20,20 @@
 #define TFLM_FEATURE_ELEM_COUNT (TFLM_FEATURE_SIZE * TFLM_FEATURE_COUNT)
 #define TFLM_FEATURE_STRIDE_MS 20
 #define TFLM_FEATURE_DURATION_MS 30
+#define TFLM_MAX_CATEGORY_COUNT 16
+#define TFLM_MAX_LABEL_LEN 16
 
-#define TFLM_CATEGORY_COUNT  4
-#define TFLM_CATEGORY_DATA   {"silence", "unknown", "yes", "no",}
 struct tf_classify {
 	int8_t *audio_features;
 	size_t audio_data_size;
 	int categories;
+	char category_names[TFLM_MAX_CATEGORY_COUNT][TFLM_MAX_LABEL_LEN];
 	const char *error;
-	float predictions[TFLM_CATEGORY_COUNT];
+	float predictions[TFLM_MAX_CATEGORY_COUNT];
+	int8_t raw_output[TFLM_MAX_CATEGORY_COUNT];
+	int op_count;
+	uint32_t node_cycles[10];
+	int node_codes[10];
 };
 
 /* Export of C++ APIs into C namespace for linkage */
@@ -41,6 +52,14 @@ extern "C"
 
 	/* 3rd - perform the inference */
 	int TF_ProcessClassify(struct tf_classify *tfc);
+
+	/* Interpreter tensor-arena usage after AllocateTensors(); 0 if the
+	 * interpreter is not initialized. Diagnostic for tuning kArenaSize.
+	 */
+	size_t TF_ArenaUsedBytes(void);
+
+	/* Total tensor-arena capacity provisioned in the firmware image. */
+	size_t TF_ArenaCapacity(void);
 
 #ifdef __cplusplus
 }
