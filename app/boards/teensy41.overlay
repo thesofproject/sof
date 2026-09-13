@@ -124,8 +124,9 @@
 			pinmux = <&iomuxc_gpio_ad_b1_02_spdif_out>,
 				 <&iomuxc_gpio_ad_b1_03_spdif_in>;
 			drive-strength = "r0-6";
-			slew-rate = "slow";
+			slew-rate = "fast";
 			nxp,speed = "100-mhz";
+			input-enable;
 		};
 	};
 };
@@ -151,6 +152,20 @@
 			tx-sync-mode = <1>;
 			rx-sync-mode = <0>;
 			tx-dataline = <2>;
+			status = "okay";
+		};
+
+		spdif: dai@40380000 {
+			compatible = "nxp,dai-spdif";
+			reg = <0x40380000 0x1000>;
+			interrupts = <60 0>;
+			clocks = <&ccm IMX_CCM_SPDIF0_CLK 0x7c 14>;
+			clock-names = "bus";
+			pinctrl-0 = <&pinmux_spdif>;
+			pinctrl-names = "default";
+			dai-index = <0>;
+			dmas = <&edma0 2 86>, <&edma0 3 85>;
+			dma-names = "tx", "rx";
 			status = "okay";
 		};
 	};

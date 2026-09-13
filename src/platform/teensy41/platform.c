@@ -153,7 +153,19 @@ static void teensy41_audio_hardware_init(void)
 	CLOCK_EnableClock(kCLOCK_Sai1);
 
 	/* 3. Configure S/PDIF clock root and clock gate */
+	CLOCK_SetMux(kCLOCK_SpdifMux, 0);     /* PLL4 (Audio PLL: 688.128 MHz) */
+	CLOCK_SetDiv(kCLOCK_Spdif0PreDiv, 3); /* /4 */
+	CLOCK_SetDiv(kCLOCK_Spdif0Div, 6);    /* /7 => 688.128 / 28 = 24.576000 MHz */
 	CLOCK_EnableClock(kCLOCK_Spdif);
+
+	/* Configure S/PDIF I/O Pins:
+	 * Pin 14: GPIO_AD_B1_02 -> ALT3 (SPDIF_OUT)
+	 * Pin 15: GPIO_AD_B1_03 -> ALT3 (SPDIF_IN), Daisy Chain 0x401F85C8 = 0
+	 */
+	IOMUXC_SetPinMux(IOMUXC_GPIO_AD_B1_02_SPDIF_OUT, 0U);
+	IOMUXC_SetPinConfig(IOMUXC_GPIO_AD_B1_02_SPDIF_OUT, 0x10B1);
+	IOMUXC_SetPinMux(IOMUXC_GPIO_AD_B1_03_SPDIF_IN, 1U);
+	IOMUXC_SetPinConfig(IOMUXC_GPIO_AD_B1_03_SPDIF_IN, 0x10B1);
 
 	/* 4. Configure SAI1 I/O Pins and Daisy Chains */
 #if defined(CONFIG_TEENSY41_BOARD_B)
@@ -196,11 +208,11 @@ static void teensy41_audio_hardware_init(void)
 	/* 5. Configure S/PDIF Pins (Pin 14 = SPDIF_OUT, Pin 15 = SPDIF_IN) */
 	/* Pin 14: SPDIF_OUT on GPIO_AD_B1_02 */
 	IOMUXC_SetPinMux(IOMUXC_GPIO_AD_B1_02_SPDIF_OUT, 0U);
-	IOMUXC_SetPinConfig(IOMUXC_GPIO_AD_B1_02_SPDIF_OUT, 0x10B0);
+	IOMUXC_SetPinConfig(IOMUXC_GPIO_AD_B1_02_SPDIF_OUT, 0x10B1);
 
 	/* Pin 15: SPDIF_IN on GPIO_AD_B1_03, Daisy Chain 0x401F85C8 = 0 */
 	IOMUXC_SetPinMux(IOMUXC_GPIO_AD_B1_03_SPDIF_IN, 1U);
-	IOMUXC_SetPinConfig(IOMUXC_GPIO_AD_B1_03_SPDIF_IN, 0x10B0);
+	IOMUXC_SetPinConfig(IOMUXC_GPIO_AD_B1_03_SPDIF_IN, 0x10B1);
 
 	/* Explicitly ensure daisy chain select input registers */
 	*((volatile uint32_t *)0x401F8590) = 1; /* SAI1_RX_BCLK (GPIO_AD_B1_11) */

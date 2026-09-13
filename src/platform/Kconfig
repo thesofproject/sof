@@ -391,6 +391,24 @@ config TEENSY41_BOARD_B
 
 endchoice
 
+choice
+	prompt "Teensy 4.1 Audio Hardware Interface"
+	default TEENSY41_INTERFACE_SPDIF
+	help
+	  Select whether the static audio pipeline connects to SAI1 (I2S) or S/PDIF.
+
+config TEENSY41_INTERFACE_SAI_I2S
+	bool "SAI1 I2S Digital Audio Interface"
+	help
+	  Route audio through NXP SAI1 (I2S mode).
+
+config TEENSY41_INTERFACE_SPDIF
+	bool "S/PDIF Hardware Transceiver"
+	help
+	  Route audio through NXP on-chip S/PDIF transceiver.
+
+endchoice
+
 endif
 
 #

@@ -104,6 +104,7 @@ struct k_heap;
 #define SOF_DMA_DEV_TDM         BIT(16) /**< connectable to ACP TDM I2S */
 #define SOF_DMA_DEV_I2S         BIT(17) /**< connectable to ESP32 I2S */
 #define SOF_DMA_DEV_PDM         BIT(18) /**< connectable to ESP32 PDM */
+#define SOF_DMA_DEV_SPDIF       BIT(19) /**< connectable to S/PDIF */
 
 /* DMA access privilege flag */
 #define SOF_DMA_ACCESS_EXCLUSIVE	1

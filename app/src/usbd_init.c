@@ -137,6 +137,22 @@ static struct net_buf *teensy_diag_to_host(const struct usbd_context *const ctx,
 	uint16_t len;
 
 	memset(&diag, 0, sizeof(diag));
+#if defined(CONFIG_TEENSY41_INTERFACE_SPDIF)
+	diag.tcsr = SPDIF->SCR;
+	diag.rcsr = SPDIF->SRPC;
+	diag.tcr2 = SPDIF->STC;
+	diag.rcr2 = SPDIF->SRFM;
+	diag.tcr3 = SPDIF->SIS;
+	diag.rcr3 = SPDIF->SIE;
+	diag.tfr0 = 0;
+	diag.rfr0 = 0;
+	diag.dma_tx_csr = DMA0->TCD[2].CSR;
+	diag.dma_rx_csr = DMA0->TCD[3].CSR;
+	diag.dma_tx_saddr = DMA0->TCD[2].SADDR;
+	diag.dma_rx_daddr = DMA0->TCD[3].DADDR;
+	diag.dma_tx_citer = DMA0->TCD[2].CITER_ELINKNO;
+	diag.dma_rx_citer = DMA0->TCD[3].CITER_ELINKNO;
+#else
 	diag.tcsr = SAI1->TCSR;
 	diag.rcsr = SAI1->RCSR;
 	diag.tcr2 = SAI1->TCR2;
@@ -145,6 +161,14 @@ static struct net_buf *teensy_diag_to_host(const struct usbd_context *const ctx,
 	diag.rcr3 = SAI1->RCR3;
 	diag.tfr0 = (SAI1->TCR3 & I2S_TCR3_TCE(4)) ? SAI1->TFR[2] : SAI1->TFR[0];
 	diag.rfr0 = SAI1->RFR[0];
+	diag.dma_tx_csr = DMA0->TCD[0].CSR;
+	diag.dma_rx_csr = DMA0->TCD[1].CSR;
+	diag.dma_tx_saddr = DMA0->TCD[0].SADDR;
+	diag.dma_rx_daddr = DMA0->TCD[1].DADDR;
+	diag.dma_tx_citer = DMA0->TCD[0].CITER_ELINKNO;
+	diag.dma_rx_citer = DMA0->TCD[1].CITER_ELINKNO;
+#endif
+
 	diag.rx_pkt_cnt = g_rx_pkt_cnt;
 	diag.tx_pkt_cnt = g_tx_pkt_cnt;
 
@@ -165,15 +189,6 @@ static struct net_buf *teensy_diag_to_host(const struct usbd_context *const ctx,
 	if (c6) diag.dai6_state = c6->state;
 	if (c9) diag.c9_state = c9->state;
 	if (c10) diag.c10_state = c10->state;
-
-	struct dai_data *dd6 = c6 ? comp_get_drvdata(c6) : NULL;
-
-	diag.dma_tx_csr = DMA0->TCD[0].CSR;
-	diag.dma_rx_csr = DMA0->TCD[1].CSR;
-	diag.dma_tx_saddr = DMA0->TCD[0].SADDR;
-	diag.dma_rx_daddr = DMA0->TCD[1].DADDR;
-	diag.dma_tx_citer = DMA0->TCD[0].CITER_ELINKNO;
-	diag.dma_rx_citer = DMA0->TCD[1].CITER_ELINKNO;
 
 	diag.tcr4 = SAI1->TCR4;
 	diag.rcr4 = SAI1->RCR4;

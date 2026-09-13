@@ -327,6 +327,8 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 					spec_cfg.sai.tx_slots = 0x3;
 					spec_cfg.sai.rx_slots = 0x3;
 					spec_cfg.sai.mclk_rate = 12288000;
+				} else if (cdesc->ep.dai.dai_type == SOF_DAI_IMX_SPDIF) {
+					spec_cfg.spdif.sample_rate = dai_cfg.sampling_frequency;
 				}
 				comp_dai_config(dev, &dai_cfg, &spec_cfg);
 

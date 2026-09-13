@@ -297,7 +297,7 @@ APP_SYSUSER_DATA struct sof_dma dma[] = {
 	.plat_data = {
 		.dir		= SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,
 		.caps		= SOF_DMA_CAP_GP_LP | SOF_DMA_CAP_GP_HP,
-		.devs		= SOF_DMA_DEV_SAI,
+		.devs		= SOF_DMA_DEV_SAI | SOF_DMA_DEV_SPDIF,
 		.channels	= 32,
 		.period_count	= 2,
 	},

@@ -217,6 +217,10 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg.type = DAI_IMX_MICFIL;
 		cfg_params = &sof_cfg->micfil;
 		break;
+	case SOF_DAI_IMX_SPDIF:
+		cfg.type = DAI_IMX_SPDIF;
+		cfg_params = &sof_cfg->spdif;
+		break;
 	case SOF_DAI_AMD_SDW:
 		cfg.type = DAI_AMD_SDW;
 		cfg_params = &sof_cfg->acpsdw;
@@ -855,6 +859,7 @@ static int dai_get_dma_slot(struct dai_data *dd, struct comp_dev *dev, uint32_t 
 	case DAI_IMX_SAI:
 	case DAI_IMX_ESAI:
 	case DAI_IMX_MICFIL:
+	case DAI_IMX_SPDIF:
 		if (hs & GENMASK(15, 8))
 			*slot = (hs & GENMASK(15, 8)) >> 8;
 		else
@@ -1000,6 +1005,9 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 		 * 16 words * sample_bytes (32 bytes for 16-bit audio).
 		 */
 		dma_cfg->source_burst_length = 16 * config->src_width;
+	} else if (dd->dai->type == SOF_DAI_IMX_SPDIF) {
+		/* S/PDIF: 8 bytes per minor loop (interleaved L + R) */
+		dma_cfg->source_burst_length = 8;
 	} else if (config->burst_elems) {
 		dma_cfg->source_burst_length = config->burst_elems;
 	} else {

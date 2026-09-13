@@ -100,7 +100,7 @@ size_t usb_audio_fetch_capture_data(void *dst, size_t bytes)
 		static uint32_t s_cap_underrun_cnt;
 		s_cap_underrun_cnt++;
 		if (s_cap_underrun_cnt <= 5 || s_cap_underrun_cnt % 100 == 0) {
-			LOG_WRN("[CAP UNDERRUN %u] to_read=%u < bytes=%u, ring_count=%u",
+			LOG_DBG("[CAP UNDERRUN %u] to_read=%u < bytes=%u, ring_count=%u",
 				s_cap_underrun_cnt, to_read, bytes, ring->count);
 		}
 		memset(d + to_read, 0, bytes - to_read);
@@ -143,7 +143,7 @@ bool usb_audio_peek_capture_data(void *dst, size_t bytes)
 		static uint32_t s_cap_underrun_cnt;
 		s_cap_underrun_cnt++;
 		if (s_cap_underrun_cnt <= 5 || s_cap_underrun_cnt % 100 == 0) {
-			LOG_WRN("[CAP UNDERRUN %u] to_read=%u < bytes=%u, ring_count=%u",
+			LOG_DBG("[CAP UNDERRUN %u] to_read=%u < bytes=%u, ring_count=%u",
 				s_cap_underrun_cnt, to_read, bytes, ring->count);
 		}
 		memset(d + to_read, 0, bytes - to_read);
@@ -345,7 +345,7 @@ static int usb_audio_copy(struct comp_dev *dev)
 					static uint32_t s_pb_underrun_cnt;
 					s_pb_underrun_cnt++;
 					if (s_pb_underrun_cnt <= 5 || s_pb_underrun_cnt % 100 == 0) {
-						LOG_WRN("[PB UNDERRUN %u] to_copy=%u < s16_bytes=%u, ring_count=%u",
+						LOG_DBG("[PB UNDERRUN %u] to_copy=%u < s16_bytes=%u, ring_count=%u",
 							s_pb_underrun_cnt, to_copy, s16_bytes, ring->count);
 					}
 					memset(s16_raw + to_copy, 0, s16_bytes - to_copy);
@@ -411,7 +411,7 @@ static int usb_audio_copy(struct comp_dev *dev)
 					static uint32_t s_pb_underrun_cnt;
 					s_pb_underrun_cnt++;
 					if (s_pb_underrun_cnt <= 5 || s_pb_underrun_cnt % 100 == 0) {
-						LOG_WRN("[PB UNDERRUN %u] available=%u < period_bytes=%u",
+						LOG_DBG("[PB UNDERRUN %u] available=%u < period_bytes=%u",
 							s_pb_underrun_cnt, available, chunk);
 					}
 					memset(temp_buf, 0, chunk);
@@ -506,7 +506,7 @@ static int usb_audio_copy(struct comp_dev *dev)
 					static uint32_t s_cap_overflow_cnt;
 					s_cap_overflow_cnt++;
 					if (s_cap_overflow_cnt <= 5 || s_cap_overflow_cnt % 100 == 0) {
-						LOG_WRN("[CAP OVERFLOW %u] ring_count=%u, chunk=%u",
+						LOG_DBG("[CAP OVERFLOW %u] ring_count=%u, chunk=%u",
 							s_cap_overflow_cnt, ring->count, chunk);
 					}
 					uint32_t drop = (ring->count + chunk) - USB_AUDIO_RING_BUFFER_SIZE;

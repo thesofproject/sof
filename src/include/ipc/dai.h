@@ -36,6 +36,7 @@
 #define SOF_DAI_FMT_DSP_A	4 /**< L data MSB after FRM LRC */
 #define SOF_DAI_FMT_DSP_B	5 /**< L data MSB during FRM LRC */
 #define SOF_DAI_FMT_PDM		6 /**< Pulse density modulation */
+#define SOF_DAI_FMT_SPDIF	7 /**< SPDIF mode */
 
 #define SOF_DAI_FMT_CONT	(1 << 4) /**< continuous clock */
 #define SOF_DAI_FMT_GATED	(0 << 4) /**< clock is gated */
@@ -99,7 +100,8 @@ enum sof_ipc_dai_type {
 	SOF_DAI_INTEL_UAOL,		/**< Intel UAOL */
 	SOF_DAI_AMD_TDM,		/**< Amd TDM */
 	SOF_DAI_ESP32_I2S,		/**< ESP32 I2S */
-	SOF_DAI_ESP32_PDM		/**< ESP32 PDM */
+	SOF_DAI_ESP32_PDM,		/**< ESP32 PDM */
+	SOF_DAI_IMX_SPDIF		/**< i.MX S/PDIF */
 };
 
 #define SOF_DAI_CONFIG_HW_SPEC_OFFSET offsetof(struct sof_ipc_dai_config, ssp)
@@ -133,6 +135,7 @@ struct sof_ipc_dai_config {
 		struct sof_ipc_dai_afe_params afe;
 		struct sof_ipc_dai_micfil_params micfil;
 		struct sof_ipc_dai_acp_sdw_params acpsdw;
+		struct sof_ipc_dai_spdif_params spdif;
 	};
 } __attribute__((packed, aligned(4)));
 

@@ -100,6 +100,26 @@ static const struct sof_static_comp teensy41_comps[] = {
 		.init_blob = teensy41_default_drc_coef,
 		.init_blob_size = sizeof(teensy41_default_drc_coef)
 	),
+#if defined(CONFIG_TEENSY41_INTERFACE_SPDIF)
+	SOF_STATIC_COMP_DAI(
+		.id = 5, .pipeline_id = 1, .name = "DAI_SPDIF_PB",
+		.uuid = &dai_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
+		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_S24_4LE, 48000, 2),
+		.ep.dai.dai_type = SOF_DAI_IMX_SPDIF,
+		.ep.dai.dai_index = 0,
+		.ep.dai.format = SOF_DAI_FMT_SPDIF
+	),
+
+	/* --- Capture Pipeline (Pipeline 2) --- */
+	SOF_STATIC_COMP_DAI(
+		.id = 6, .pipeline_id = 2, .name = "DAI_SPDIF_CAP",
+		.uuid = &dai_uuid, .direction = SOF_IPC_STREAM_CAPTURE,
+		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_S24_4LE, 48000, 2),
+		.ep.dai.dai_type = SOF_DAI_IMX_SPDIF,
+		.ep.dai.dai_index = 0,
+		.ep.dai.format = SOF_DAI_FMT_SPDIF
+	),
+#else
 	SOF_STATIC_COMP_DAI(
 		.id = 5, .pipeline_id = 1, .name = "DAI_I2S_PB",
 		.uuid = &dai_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
@@ -118,6 +138,7 @@ static const struct sof_static_comp teensy41_comps[] = {
 		.ep.dai.dai_index = 1,
 		.ep.dai.format = (SOF_DAI_FMT_I2S | TEENSY41_SAI_CLOCK_MODE)
 	),
+#endif
 	SOF_STATIC_COMP_MODULE(
 		.id = 8, .pipeline_id = 2, .name = "EQ_CAP",
 		.uuid = &eq_iir_uuid, .direction = SOF_IPC_STREAM_CAPTURE,

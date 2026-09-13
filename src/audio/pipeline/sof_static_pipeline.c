@@ -111,14 +111,19 @@ static void sof_uac2_send_capture_pending(const struct device *dev)
 			have_data = usb_audio_peek_capture_data(buf, frame_bytes);
 		}
 
-		if (!have_data || g_status.capture_mute) {
+		if (!have_data) {
+			k_mem_slab_free(&uac2_tx_slab, buf);
+			break;
+		}
+
+		if (g_status.capture_mute) {
 			memset(buf, 0, frame_bytes);
 		}
 
 		int ret = usbd_uac2_send(dev, CAPTURE_TERM_ID, buf, frame_bytes);
 		if (ret == 0) {
 			g_tx_pkt_cnt++;
-			if (have_data && !g_status.capture_mute) {
+			if (!g_status.capture_mute) {
 #if CONFIG_COMP_BT_AUDIO
 				if (g_status.audio_route == SOF_AUDIO_ROUTE_USB_BT) {
 					bt_audio_consume_capture_data(frame_bytes);
