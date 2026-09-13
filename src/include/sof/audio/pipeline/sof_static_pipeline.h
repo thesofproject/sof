@@ -35,6 +35,7 @@ enum sof_audio_route {
 struct sof_static_pipeline_status {
 	bool playback_active;
 	bool capture_active;
+	bool microframes;
 	uint32_t sample_rate;
 	enum sof_audio_interface active_interface;
 	enum sof_clock_mode clock_mode;

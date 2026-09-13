@@ -9,6 +9,9 @@ add_subdirectory(../zephyr sof_zephyr)
 
 target_sources(app PRIVATE
     src/main.c
+  )
+
+target_sources_ifdef(CONFIG_PLATFORM_ESP32P4 app PRIVATE
     ../src/debug/shell/esp32_shell.c
   )
 
@@ -20,7 +23,7 @@ target_include_directories(app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../zephyr/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/platform/esp32p4/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/platform/${PLATFORM}/include
     ${PROJECT_BINARY_DIR}/include/generated
   )
 

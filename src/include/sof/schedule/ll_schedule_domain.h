@@ -326,6 +326,10 @@ struct ll_schedule_domain *zephyr_dma_domain_init(struct dma *dma_array,
 struct ll_schedule_domain *zephyr_ll_domain(void);
 struct ll_schedule_domain *zephyr_domain_init(int clk);
 #define timer_domain_init(timer, clk) zephyr_domain_init(clk)
+#if defined(CONFIG_PLATFORM_TEENSY41)
+void zephyr_domain_audio_timer_cb(void);
+bool dai_zephyr_has_active_audio_domain(void);
+#endif
 #ifdef CONFIG_SOF_USERSPACE_LL
 struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain);
 struct k_thread *zephyr_domain_thread_tid_for_core(int core);

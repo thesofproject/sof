@@ -24,6 +24,8 @@
 #include "../volume/peak_volume.h"
 #include <rtos/sof.h>
 #include <rtos/alloc.h>
+#include <rtos/task.h>
+#include <sof/schedule/schedule.h>
 #include "../level_multiplier/level_multiplier.h"
 #include <user/selector.h>
 #include <zephyr/logging/log.h>
@@ -317,7 +319,25 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 					.dai_index = cdesc->ep.dai.dai_index,
 					.format = cdesc->ep.dai.format,
 				};
+				if (cdesc->ep.dai.dai_type == SOF_DAI_IMX_SAI) {
+					spec_cfg.sai.fsync_rate = dai_cfg.sampling_frequency;
+					spec_cfg.sai.tdm_slots = 2;
+					spec_cfg.sai.tdm_slot_width = 16;
+					spec_cfg.sai.bclk_rate = spec_cfg.sai.fsync_rate * 16 * 2;
+					spec_cfg.sai.tx_slots = 0x3;
+					spec_cfg.sai.rx_slots = 0x3;
+					spec_cfg.sai.mclk_rate = 12288000;
+				}
 				comp_dai_config(dev, &dai_cfg, &spec_cfg);
+
+				struct dai_data *dd = comp_get_drvdata(dev);
+				if (dd && !dd->dai_spec_config) {
+					dd->dai_spec_config = sof_heap_alloc(dd->alloc_ctx.heap,
+									     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+									     sizeof(struct sof_ipc_dai_config), 0);
+					if (dd->dai_spec_config)
+						memcpy(dd->dai_spec_config, &spec_cfg, sizeof(struct sof_ipc_dai_config));
+				}
 
 				struct dai *dai = dai_get(cdesc->ep.dai.dai_type, cdesc->ep.dai.dai_index,
 							  DAI_CREAT);
@@ -459,8 +479,38 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 			prms.params.chmap[0] = SOF_CHMAP_FL;
 			prms.params.chmap[1] = SOF_CHMAP_FR;
 
-			pipeline_params(pipe, host_or_sched, &prms);
-			pipeline_prepare(pipe, host_or_sched);
+			int ret_prms = pipeline_params(pipe, host_or_sched, &prms);
+			int ret_prep = pipeline_prepare(pipe, host_or_sched);
+			LOG_INF("Pipeline %u params ret=%d, prepare ret=%d", pdesc->pipeline_id, ret_prms, ret_prep);
+		}
+	}
+
+	/* 5b. Explicitly Configure and Prepare All Components */
+	for (size_t i = 0; i < topo->num_comps; i++) {
+		struct comp_dev *dev = sof_static_comp_get(topo->comps[i].id);
+		if (!dev)
+			continue;
+		if (dev->state == COMP_STATE_READY) {
+			struct sof_ipc_pcm_params prms;
+			memset(&prms, 0, sizeof(prms));
+			prms.params.rate = 48000;
+			prms.params.channels = 2;
+			prms.params.frame_fmt = dev->ipc_config.frame_fmt;
+			uint32_t sbytes = (prms.params.frame_fmt == SOF_IPC_FRAME_FLOAT ||
+					   prms.params.frame_fmt == SOF_IPC_FRAME_S32_LE) ? 4 : 2;
+			prms.params.sample_container_bytes = sbytes;
+			prms.params.sample_valid_bytes = sbytes;
+			prms.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
+			prms.params.host_period_bytes = 48 * 2 * sbytes;
+			prms.comp_id = dev_comp_id(dev);
+			prms.params.direction = dev->direction;
+			prms.params.chmap[0] = SOF_CHMAP_FL;
+			prms.params.chmap[1] = SOF_CHMAP_FR;
+
+			int ret_prms = comp_params(dev, &prms.params);
+			int ret_prep = comp_prepare(dev);
+			LOG_INF("Component %u ('%s') explicit prepare: prms=%d prep=%d state=%d",
+				dev_comp_id(dev), topo->comps[i].name, ret_prms, ret_prep, dev->state);
 		}
 	}
 
@@ -545,11 +595,13 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 		return sof_static_pipeline_set_route((enum sof_audio_route)val);
 	}
 
+#if CONFIG_COMP_BT_AUDIO
 	if (ctl->id == 14 || (ctl->name && !strcmp(ctl->name, "BT Audio Format"))) {
 		s_control_vals[ctl_idx] = val;
 		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
 		return bt_service_set_format((enum bt_audio_format)val);
 	}
+#endif
 
 	struct comp_dev *dev = sof_static_comp_get(ctl->target_comp_id);
 	if (!dev)
@@ -758,12 +810,34 @@ int sof_static_pipeline_trigger_by_uac2_term(uint8_t terminal_id, bool start)
 			if (pipe && dev) {
 				if (start) {
 					if (pipe->status != COMP_STATE_ACTIVE) {
-						pipeline_trigger(pipe, dev, COMP_TRIGGER_PRE_START);
-						pipeline_trigger(pipe, dev, COMP_TRIGGER_START);
+						if (pipe->status == COMP_STATE_READY ||
+						    pipe->status == COMP_STATE_INIT ||
+						    pipe->status == COMP_STATE_PAUSED) {
+							int ret_prep = pipeline_prepare(pipe, dev);
+							if (ret_prep < 0) {
+								LOG_ERR("Pipeline %u prepare failed: %d", cdesc->pipeline_id, ret_prep);
+							}
+						}
+						int ret = pipeline_trigger_run(pipe, dev, COMP_TRIGGER_PRE_START);
+						if (ret < 0) {
+							LOG_ERR("Pipeline %u start trigger failed: %d", cdesc->pipeline_id, ret);
+						} else {
+							pipe->status = COMP_STATE_ACTIVE;
+						}
+					}
+					if (pipe->pipe_task && !task_is_active(pipe->pipe_task)) {
+						pipeline_schedule_copy(pipe, 0);
 					}
 				} else {
 					if (pipe->status == COMP_STATE_ACTIVE || pipe->status == COMP_STATE_PAUSED) {
-						pipeline_trigger(pipe, dev, COMP_TRIGGER_STOP);
+						int ret = pipeline_trigger_run(pipe, dev, COMP_TRIGGER_STOP);
+						if (ret < 0) {
+							LOG_ERR("Pipeline %u stop trigger failed: %d", cdesc->pipeline_id, ret);
+						}
+						pipe->status = COMP_STATE_PAUSED;
+					}
+					if (pipe->pipe_task && task_is_active(pipe->pipe_task)) {
+						schedule_task_cancel(pipe->pipe_task);
 					}
 				}
 				LOG_INF("Pipeline %u %s via UAC2 terminal %u", cdesc->pipeline_id,
@@ -787,12 +861,34 @@ int sof_static_pipeline_trigger(uint32_t pipeline_id, bool start)
 
 	if (start) {
 		if (pipe->status != COMP_STATE_ACTIVE) {
-			pipeline_trigger(pipe, dev, COMP_TRIGGER_PRE_START);
-			pipeline_trigger(pipe, dev, COMP_TRIGGER_START);
+			if (pipe->status == COMP_STATE_READY ||
+			    pipe->status == COMP_STATE_INIT ||
+			    pipe->status == COMP_STATE_PAUSED) {
+				int ret_prep = pipeline_prepare(pipe, dev);
+				if (ret_prep < 0) {
+					LOG_ERR("Pipeline %u prepare failed: %d", pipeline_id, ret_prep);
+				}
+			}
+			int ret = pipeline_trigger_run(pipe, dev, COMP_TRIGGER_PRE_START);
+			if (ret < 0) {
+				LOG_ERR("Pipeline %u start trigger failed: %d", pipeline_id, ret);
+			} else {
+				pipe->status = COMP_STATE_ACTIVE;
+			}
+		}
+		if (pipe->pipe_task && !task_is_active(pipe->pipe_task)) {
+			pipeline_schedule_copy(pipe, 0);
 		}
 	} else {
 		if (pipe->status == COMP_STATE_ACTIVE || pipe->status == COMP_STATE_PAUSED) {
-			pipeline_trigger(pipe, dev, COMP_TRIGGER_STOP);
+			int ret = pipeline_trigger_run(pipe, dev, COMP_TRIGGER_STOP);
+			if (ret < 0) {
+				LOG_ERR("Pipeline %u stop trigger failed: %d", pipeline_id, ret);
+			}
+			pipe->status = COMP_STATE_PAUSED;
+		}
+		if (pipe->pipe_task && task_is_active(pipe->pipe_task)) {
+			schedule_task_cancel(pipe->pipe_task);
 		}
 	}
 	LOG_INF("Pipeline %u %s", pipeline_id, start ? "STARTED" : "STOPPED");

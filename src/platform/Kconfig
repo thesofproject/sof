@@ -194,6 +194,13 @@ config PLATFORM_ESP32P4
 	help
 	  Select if your target platform is Espressif ESP32-P4 RISC-V SoC.
 
+config PLATFORM_TEENSY41
+	bool "Build for PJRC Teensy 4.1 (NXP i.MX RT1062 ARM Cortex-M7)"
+	select ZEPHYR_LOG
+	select ZEPHYR_NATIVE_DRIVERS
+	help
+	  Select if your target platform is PJRC Teensy 4.1.
+
 config RENOIR
 	bool "Build for Renoir"
 	select XT_INTERRUPT_LEVEL_5
@@ -359,6 +366,32 @@ config MT8196
           Select this option if your target platform is MT8196-compatible.
 
 endchoice
+
+if PLATFORM_TEENSY41
+
+choice
+	prompt "Teensy 4.1 Board Role"
+	default TEENSY41_BOARD_A
+	help
+	  Select whether this binary is for Board A (Master Tx) or Board B (Slave Rx).
+
+config TEENSY41_BOARD_A
+	bool "Teensy 4.1 Board A (Master Clock Provider / Tx)"
+	help
+	  Configure board as Board A (Master clock provider on SAI1,
+	  generates BCLK and SYNC). Appears on host USB as
+	  'SOF Teensy 4.1 Audio A'.
+
+config TEENSY41_BOARD_B
+	bool "Teensy 4.1 Board B (Slave Clock Consumer / Rx)"
+	help
+	  Configure board as Board B (Slave clock consumer on SAI1,
+	  receives BCLK and SYNC). Appears on host USB as
+	  'SOF Teensy 4.1 Audio B'.
+
+endchoice
+
+endif
 
 #
 # For non-Zephyr builds like testbench, cmocka and SOF ALSA plugin,

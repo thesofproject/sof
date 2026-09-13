@@ -339,6 +339,10 @@ static void dai_set_device_params(struct dai *d)
 		d->dma_dev = SOF_DMA_DEV_I2S;
 		d->dma_caps = SOF_DMA_CAP_GP_LP | SOF_DMA_CAP_GP_HP;
 		break;
+	case SOF_DAI_IMX_SAI:
+		d->dma_dev = SOF_DMA_DEV_SAI;
+		d->dma_caps = SOF_DMA_CAP_GP_LP | SOF_DMA_CAP_GP_HP;
+		break;
 	default:
 		break;
 	}

@@ -150,7 +150,7 @@ bool usb_audio_peek_capture_data(void *dst, size_t bytes)
 	}
 
 	k_spin_unlock(&ring->lock, key);
-	return true;
+	return (to_read > 0);
 }
 
 void usb_audio_consume_capture_data(size_t bytes)
@@ -251,12 +251,22 @@ static int usb_audio_trigger(struct comp_dev *dev, int cmd)
 	struct usb_audio_data *uad = comp_get_drvdata(dev);
 
 	switch (cmd) {
+	case COMP_TRIGGER_PRE_START:
+	case COMP_TRIGGER_PRE_RELEASE:
+		dev->state = COMP_STATE_PRE_ACTIVE;
+		break;
 	case COMP_TRIGGER_START:
-	case COMP_TRIGGER_RELEASE:
+	case COMP_TRIGGER_RELEASE: {
+		k_spinlock_key_t key = k_spin_lock(&uad->ring.lock);
+		uad->ring.head = 0;
+		uad->ring.tail = 0;
+		uad->ring.count = 0;
+		k_spin_unlock(&uad->ring.lock, key);
 		uad->active = true;
 		uad->started = false;
 		dev->state = COMP_STATE_ACTIVE;
 		break;
+	}
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_PAUSE: {
 		uad->active = false;
@@ -266,7 +276,7 @@ static int usb_audio_trigger(struct comp_dev *dev, int cmd)
 		uad->ring.tail = 0;
 		uad->ring.count = 0;
 		k_spin_unlock(&uad->ring.lock, key);
-		dev->state = COMP_STATE_READY;
+		dev->state = COMP_STATE_PREPARE;
 		break;
 	}
 	default:
@@ -281,6 +291,17 @@ static int usb_audio_copy(struct comp_dev *dev)
 	struct usb_audio_data *uad = comp_get_drvdata(dev);
 	struct comp_buffer *sink = comp_dev_get_first_data_consumer(dev);
 	struct comp_buffer *source = comp_dev_get_first_data_producer(dev);
+
+	if (!uad || !uad->active) {
+		if (source) {
+			/* Capture inactive: consume data so source buffer doesn't overflow */
+			uint32_t avail_bytes = audio_stream_get_avail_bytes(&source->stream);
+			if (avail_bytes > 0) {
+				comp_update_buffer_consume(source, avail_bytes);
+			}
+		}
+		return 0;
+	}
 
 	if (sink) {
 		/* USB Playback Source -> SOF Sink Buffer */
@@ -482,6 +503,12 @@ static int usb_audio_copy(struct comp_dev *dev)
 				k_spinlock_key_t key = k_spin_lock(&ring->lock);
 
 				if (ring->count + chunk > USB_AUDIO_RING_BUFFER_SIZE) {
+					static uint32_t s_cap_overflow_cnt;
+					s_cap_overflow_cnt++;
+					if (s_cap_overflow_cnt <= 5 || s_cap_overflow_cnt % 100 == 0) {
+						LOG_WRN("[CAP OVERFLOW %u] ring_count=%u, chunk=%u",
+							s_cap_overflow_cnt, ring->count, chunk);
+					}
 					uint32_t drop = (ring->count + chunk) - USB_AUDIO_RING_BUFFER_SIZE;
 					drop = (drop + 3) & ~3;
 					if (drop > ring->count) {

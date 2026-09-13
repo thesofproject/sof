@@ -13,30 +13,43 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/usb/usbd.h>
 #include <zephyr/usb/class/usbd_uac2.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/dai.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dai-zephyr.h>
 #include <ipc/dai.h>
+
+#if defined(CONFIG_PLATFORM_ESP32P4)
 #include <soc/i2s_struct.h>
 #include <soc/gpio_struct.h>
 #include <soc/io_mux_struct.h>
 #include <soc/hp_sys_clkrst_struct.h>
+#endif
 
 LOG_MODULE_REGISTER(sof_static_pipeline, CONFIG_SOF_LOG_LEVEL);
 
 #define PLAYBACK_FU_ID       UAC2_ENTITY_ID(DT_NODELABEL(i2s_fu))
 #define PLAYBACK_EQ_FU_ID    UAC2_ENTITY_ID(DT_NODELABEL(pb_eq_fu))
 #define PLAYBACK_DRC_FU_ID   UAC2_ENTITY_ID(DT_NODELABEL(pb_drc_fu))
+#if DT_NODE_EXISTS(DT_NODELABEL(cap_tdfb_fu))
 #define CAPTURE_TDFB_FU_ID   UAC2_ENTITY_ID(DT_NODELABEL(cap_tdfb_fu))
+#else
+#define CAPTURE_TDFB_FU_ID   0xFF
+#endif
 #define CAPTURE_EQ_FU_ID     UAC2_ENTITY_ID(DT_NODELABEL(cap_eq_fu))
 #define CAPTURE_FU_ID        UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_fu))
 #define PLAYBACK_TERM_ID     UAC2_ENTITY_ID(DT_NODELABEL(i2s_out_terminal))
 #define CAPTURE_TERM_ID      UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_terminal))
 
+#if defined(CONFIG_NOCACHE_MEMORY)
+K_MEM_SLAB_DEFINE_IN_SECT_STATIC(uac2_rx_slab, __nocache, 256, 32, 64);
+K_MEM_SLAB_DEFINE_IN_SECT_STATIC(uac2_tx_slab, __nocache, 256, 64, 64);
+#else
 K_MEM_SLAB_DEFINE_STATIC(uac2_rx_slab, 256, 32, 64);
 K_MEM_SLAB_DEFINE_STATIC(uac2_tx_slab, 256, 64, 64);
+#endif
 
 static struct sof_static_pipeline_status g_status = {
 	.playback_active = false,
@@ -57,6 +70,70 @@ static struct sof_static_pipeline_status g_status = {
 };
 
 static uint32_t s_sof_diag_cnt;
+uint32_t g_rx_pkt_cnt = 0;
+uint32_t g_tx_pkt_cnt = 0;
+
+static void sof_uac2_send_capture_pending(const struct device *dev)
+{
+	if (!g_status.capture_active || !dev) {
+		return;
+	}
+
+	uint32_t rate = g_status.sample_rate ? g_status.sample_rate : 48000;
+	uint32_t frame_bytes;
+	if (g_status.microframes) {
+		frame_bytes = (rate / 8000) * 4; /* 6 samples * 4 bytes = 24 bytes */
+	} else {
+		frame_bytes = (rate / 1000) * 4; /* 48 samples * 4 bytes = 192 bytes */
+	}
+	if (frame_bytes == 0 || frame_bytes > 512) {
+		frame_bytes = g_status.microframes ? 24 : 192;
+	}
+
+	while (1) {
+		void *buf = NULL;
+		if (k_mem_slab_alloc(&uac2_tx_slab, &buf, K_NO_WAIT) != 0) {
+			static uint32_t s_slab_alloc_fails;
+			s_slab_alloc_fails++;
+			if (s_slab_alloc_fails <= 5 || s_slab_alloc_fails % 100 == 0) {
+				LOG_WRN("[UAC2 TX SLAB FULL %u] Failed to allocate TX slab block!", s_slab_alloc_fails);
+			}
+			break;
+		}
+
+		bool have_data = false;
+#if CONFIG_COMP_BT_AUDIO
+		if (g_status.audio_route == SOF_AUDIO_ROUTE_USB_BT) {
+			have_data = bt_audio_peek_capture_data(buf, frame_bytes);
+		} else
+#endif
+		{
+			have_data = usb_audio_peek_capture_data(buf, frame_bytes);
+		}
+
+		if (!have_data || g_status.capture_mute) {
+			memset(buf, 0, frame_bytes);
+		}
+
+		int ret = usbd_uac2_send(dev, CAPTURE_TERM_ID, buf, frame_bytes);
+		if (ret == 0) {
+			g_tx_pkt_cnt++;
+			if (have_data && !g_status.capture_mute) {
+#if CONFIG_COMP_BT_AUDIO
+				if (g_status.audio_route == SOF_AUDIO_ROUTE_USB_BT) {
+					bt_audio_consume_capture_data(frame_bytes);
+				} else
+#endif
+				{
+					usb_audio_consume_capture_data(frame_bytes);
+				}
+			}
+		} else {
+			k_mem_slab_free(&uac2_tx_slab, buf);
+			break;
+		}
+	}
+}
 
 /* UAC2 Class Callbacks */
 void sof_uac2_sof_cb(const struct device *dev, void *user_data)
@@ -65,6 +142,7 @@ void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 
 	if (g_status.playback_active || g_status.capture_active) {
 		s_sof_diag_cnt++;
+#if defined(CONFIG_PLATFORM_ESP32P4)
 		if (s_sof_diag_cnt % 1000 == 0) {
 			LOG_INF("[DIAG SOF %u] tx_start=%u, rx_start=%u, int_raw=0x%08x, state=0x%08x | I2S0: rx_conf=0x%08x, rx_conf1=0x%08x, rx_tdm=0x%08x, rx_eof=%u",
 				s_sof_diag_cnt,
@@ -85,55 +163,13 @@ void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 				(uint32_t)((GPIO.in.val >> 22) & 1),
 				(uint32_t)((GPIO.in.val >> 23) & 1));
 		}
+#endif
 	} else {
 		s_sof_diag_cnt = 0;
 	}
 
 	if (g_status.capture_active && dev) {
-		uint32_t rate = g_status.sample_rate ? g_status.sample_rate : 48000;
-		uint32_t frame_bytes = (rate / 1000) * 4; /* 2ch 16-bit */
-		if (frame_bytes == 0 || frame_bytes > 512) {
-			frame_bytes = 192;
-		}
-
-		void *buf = NULL;
-		if (k_mem_slab_alloc(&uac2_tx_slab, &buf, K_NO_WAIT) == 0) {
-			bool have_data = false;
-			if (g_status.audio_route == SOF_AUDIO_ROUTE_USB_BT) {
-				have_data = bt_audio_peek_capture_data(buf, frame_bytes);
-			} else {
-				have_data = usb_audio_peek_capture_data(buf, frame_bytes);
-			}
-
-			if (have_data) {
-				if (g_status.capture_mute) {
-					memset(buf, 0, frame_bytes);
-				}
-				int ret = usbd_uac2_send(dev, CAPTURE_TERM_ID, buf, frame_bytes);
-				if (ret == 0) {
-					if (g_status.audio_route == SOF_AUDIO_ROUTE_USB_BT) {
-						bt_audio_consume_capture_data(frame_bytes);
-					} else {
-						usb_audio_consume_capture_data(frame_bytes);
-					}
-				} else {
-					static uint32_t s_send_fail_cnt;
-					s_send_fail_cnt++;
-					if (s_send_fail_cnt <= 10 || s_send_fail_cnt % 100 == 0) {
-						LOG_WRN("[UAC2 SEND RET %d (%u)] data retained in ring buffer", ret, s_send_fail_cnt);
-					}
-					k_mem_slab_free(&uac2_tx_slab, buf);
-				}
-			} else {
-				k_mem_slab_free(&uac2_tx_slab, buf);
-			}
-		} else {
-			static uint32_t s_slab_alloc_fails;
-			s_slab_alloc_fails++;
-			if (s_slab_alloc_fails <= 10 || s_slab_alloc_fails % 100 == 0) {
-				LOG_WRN("[UAC2 TX SLAB FULL %u] Failed to allocate TX slab block!", s_slab_alloc_fails);
-			}
-		}
+		sof_uac2_send_capture_pending(dev);
 	}
 }
 
@@ -141,11 +177,12 @@ void sof_uac2_terminal_update_cb(const struct device *dev, uint8_t terminal,
 				 bool enabled, bool microframes, void *user_data)
 {
 	ARG_UNUSED(dev);
-	ARG_UNUSED(microframes);
 	ARG_UNUSED(user_data);
 
-	LOG_INF("[UAC2 Terminal] update: terminal %u, enabled %d (PB expected %u, CAP expected %u)",
-		terminal, enabled, PLAYBACK_TERM_ID, CAPTURE_TERM_ID);
+	LOG_INF("[UAC2 Terminal] update: terminal %u, enabled %d, microframes %d (PB expected %u, CAP expected %u)",
+		terminal, enabled, microframes, PLAYBACK_TERM_ID, CAPTURE_TERM_ID);
+
+	g_status.microframes = microframes;
 
 	if (terminal == PLAYBACK_TERM_ID) {
 		g_status.playback_active = enabled;
@@ -179,14 +216,18 @@ void sof_uac2_data_recv_cb(const struct device *dev, uint8_t terminal,
 
 	static uint32_t s_rx_pkt_cnt;
 	s_rx_pkt_cnt++;
+	g_rx_pkt_cnt++;
 	if (s_rx_pkt_cnt == 1 || s_rx_pkt_cnt % 1000 == 0) {
 		LOG_INF("[SOF UAC2] Received playback packet #%u, size %u bytes", s_rx_pkt_cnt, size);
 	}
 
 	if (buf && size > 0) {
+#if CONFIG_COMP_BT_AUDIO
 		if (g_status.audio_route == SOF_AUDIO_ROUTE_USB_BT) {
 			bt_audio_feed_playback_data(buf, size);
-		} else {
+		} else
+#endif
+		{
 			usb_audio_feed_playback_data(buf, size);
 		}
 	}
@@ -198,12 +239,14 @@ void sof_uac2_data_recv_cb(const struct device *dev, uint8_t terminal,
 void sof_uac2_buf_release(const struct device *dev, uint8_t terminal,
 			  void *buf, void *user_data)
 {
-	ARG_UNUSED(dev);
-	ARG_UNUSED(terminal);
 	ARG_UNUSED(user_data);
 
 	if (buf) {
 		k_mem_slab_free(&uac2_tx_slab, buf);
+	}
+
+	if (terminal == CAPTURE_TERM_ID && dev) {
+		sof_uac2_send_capture_pending(dev);
 	}
 }
 
@@ -232,6 +275,8 @@ int sof_uac2_set_sample_rate(const struct device *dev, uint8_t clock_id,
 	return 0;
 }
 
+enum usbd_speed sample_usbd_get_speed(void);
+
 uint32_t sof_uac2_feedback_cb(const struct device *dev, uint8_t terminal,
 			      void *user_data)
 {
@@ -240,8 +285,14 @@ uint32_t sof_uac2_feedback_cb(const struct device *dev, uint8_t terminal,
 	ARG_UNUSED(user_data);
 
 	uint32_t rate = g_status.sample_rate ? g_status.sample_rate : 48000;
-	/* Q16.16 feedback format */
-	return ((rate / 1000) << 14);
+
+	if (sample_usbd_get_speed() == USBD_SPEED_HS) {
+		/* High-Speed UAC2 explicit feedback: Q16.16 format in samples per microframe (8000/s) */
+		return (uint32_t)(((uint64_t)rate << 16) / 8000);
+	} else {
+		/* Full-Speed UAC2 explicit feedback: Q10.14 format in samples per frame (1000/s) */
+		return (uint32_t)(((uint64_t)rate << 14) / 1000);
+	}
 }
 
 int sof_uac2_set_feature_mute(const struct device *dev, uint8_t entity_id,
@@ -358,11 +409,27 @@ const struct uac2_ops *sof_get_uac2_ops(void)
 	return &g_uac2_ops;
 }
 
+#if defined(CONFIG_PLATFORM_TEENSY41)
+extern const struct sof_static_topology g_teensy41_static_topology;
+#else
 extern const struct sof_static_topology g_esp32p4_static_topology;
+#endif
 
 int sof_static_pipelines_init(struct sof *sof)
 {
 	ARG_UNUSED(sof);
+#if defined(CONFIG_PLATFORM_TEENSY41)
+	int ret = sof_static_topology_init(&g_teensy41_static_topology);
+	if (ret < 0)
+		return ret;
+
+#if defined(CONFIG_TEENSY41_I2S_SLAVE)
+	g_status.clock_mode = SOF_CLOCK_SLAVE;
+#else
+	g_status.clock_mode = SOF_CLOCK_MASTER;
+#endif
+	return 0;
+#else
 	int ret = sof_static_topology_init(&g_esp32p4_static_topology);
 	if (ret < 0)
 		return ret;
@@ -378,6 +445,7 @@ int sof_static_pipelines_init(struct sof *sof)
 	}
 
 	return sof_static_pipeline_set_clock_mode(SOF_AUDIO_IF_I2S, g_status.clock_mode);
+#endif
 }
 
 int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_clock_mode mode)
@@ -628,11 +696,16 @@ int sof_static_pipeline_set_capture_active(bool start)
 int sof_static_pipeline_set_bt_stream(bool enable)
 {
 	g_status.bt_stream_enabled = enable;
+#if CONFIG_COMP_BT_AUDIO
 	if (enable) {
 		return bt_service_start_broadcast();
 	} else {
 		return bt_service_stop_broadcast();
 	}
+#else
+	ARG_UNUSED(enable);
+	return -ENOTSUP;
+#endif
 }
 
 int sof_static_pipeline_set_route(enum sof_audio_route route)

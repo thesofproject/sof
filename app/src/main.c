@@ -8,7 +8,7 @@
 #include <sof/boot_test.h>
 #include <zephyr/logging/log.h>
 
-#if defined(CONFIG_PLATFORM_ESP32P4)
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_TEENSY41)
 #include <zephyr/usb/usbd.h>
 #include <zephyr/usb/class/usbd_uac2.h>
 #include <zephyr/device.h>
@@ -16,10 +16,14 @@
 #include <rtos/sof.h>
 #include <sof/init.h>
 #include <sof/audio/pipeline/sof_static_pipeline.h>
+#if defined(CONFIG_COMP_BT_AUDIO)
 #include <sof/audio/bt_service.h>
+#endif
 #endif
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
+
+uint32_t g_diag_debug[8] = {0};
 
 /* define qemu boot tests if any qemu target is defined, add targets to end */
 #if defined(CONFIG_BOARD_QEMU_XTENSA_DC233C) ||\
@@ -52,8 +56,8 @@ static int sof_app_main(void)
 
 	LOG_INF("SOF initialized");
 
-#if defined(CONFIG_PLATFORM_ESP32P4)
-	/* Initialize static audio pipelines (EQ+DRC Playback & TDFB+EQ Capture) */
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_TEENSY41)
+	/* Initialize static audio pipelines (EQ+DRC Playback & EQ Capture) */
 	sof_static_pipelines_init(sof_get());
 
 	/* Register UAC2 class callbacks before initializing USB stack */
@@ -68,7 +72,7 @@ static int sof_app_main(void)
 	struct usbd_context *sample_usbd = sample_usbd_init_device(NULL);
 	if (sample_usbd) {
 		usbd_enable(sample_usbd);
-		LOG_INF("ESP32-P4 USB UAC2 device and SOF pipelines started");
+		LOG_INF("SOF USB UAC2 device and static pipelines started");
 	} else {
 		LOG_ERR("Failed to initialize USB device context");
 	}

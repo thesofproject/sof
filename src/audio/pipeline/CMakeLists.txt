@@ -12,3 +12,9 @@ add_local_sources_ifdef(CONFIG_PLATFORM_ESP32P4 sof
   sof_static_pipeline.c
   static_pipeline_loader.c
 )
+
+add_local_sources_ifdef(CONFIG_PLATFORM_TEENSY41 sof
+  sof_static_pipeline.c
+  static_pipeline_loader.c
+)
+

@@ -53,7 +53,14 @@ static int pipeline_comp_xrun(struct comp_dev *current,
 
 #endif /* CONFIG_IPC_MAJOR_3 */
 
-#if NO_XRUN_RECOVERY
+#if defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_ESP32P4)
+/* Standalone audio bridges: self-heal by clearing xrun_bytes and keep streaming without pipeline reset */
+int pipeline_xrun_recover(struct pipeline *p)
+{
+	p->xrun_bytes = 0;
+	return 0;
+}
+#elif NO_XRUN_RECOVERY
 /* recover the pipeline from a XRUN condition */
 int pipeline_xrun_recover(struct pipeline *p)
 {

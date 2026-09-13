@@ -12,6 +12,10 @@ elseif(CONFIG_PLATFORM_ESP32P4)
 	set(ARCH host)
 	set(PLATFORM "esp32p4")
 	set(PLATFORM_HEADERS "esp32p4")
+elseif(CONFIG_PLATFORM_TEENSY41)
+	set(ARCH host)
+	set(PLATFORM "teensy41")
+	set(PLATFORM_HEADERS "teensy41")
 else()
 	# firmware build supports only xtensa arch for now
 	set(ARCH xtensa)
@@ -472,6 +476,18 @@ if (CONFIG_PLATFORM_ESP32P4)
 
 	set(PLATFORM "esp32p4")
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/esp32p4/include)
+endif()
+
+if (CONFIG_PLATFORM_TEENSY41)
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/teensy41/platform.c
+		${SOF_PLATFORM_PATH}/teensy41/teensy41_pipeline_def.c
+		${SOF_PLATFORM_PATH}/teensy41/lib/clk.c
+		lib/dma.c
+	)
+
+	set(PLATFORM "teensy41")
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/teensy41/include)
 endif()
 
 if (CONFIG_SOC_MIMX9596_M7)

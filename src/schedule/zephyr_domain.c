@@ -174,6 +174,12 @@ static void zephyr_domain_timer_fn(struct k_timer *timer)
 		return;
 	}
 
+#if defined(CONFIG_PLATFORM_TEENSY41)
+	/* When audio stream is active, Audio PLL eDMA interrupts drive the LL domain */
+	if (dai_zephyr_has_active_audio_domain())
+		return;
+#endif
+
 	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
 		struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 
@@ -181,6 +187,29 @@ static void zephyr_domain_timer_fn(struct k_timer *timer)
 			k_sem_give(dt->sem);
 	}
 }
+
+#if defined(CONFIG_PLATFORM_TEENSY41)
+void zephyr_domain_audio_timer_cb(void)
+{
+	struct ll_schedule_domain *domain = zephyr_ll_domain();
+	struct zephyr_domain *zephyr_domain;
+	int core;
+
+	if (!domain)
+		return;
+
+	zephyr_domain = ll_sch_domain_get_pdata(domain);
+	if (!zephyr_domain)
+		return;
+
+	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
+		struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
+
+		if (dt->handler)
+			k_sem_give(dt->sem);
+	}
+}
+#endif
 
 /* The normal kernel-space implementation for register/unregister */
 #ifndef CONFIG_SOF_USERSPACE_LL
