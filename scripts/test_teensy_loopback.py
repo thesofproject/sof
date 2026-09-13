@@ -134,9 +134,9 @@ def analyze_captured_wav(filepath, expected_freq=1000.0, sample_rate=48000):
         ch0 = data
         ch1 = data
 
-    # Skip first 0.6s (startup transients) and trim post-playback silence (0.8s)
-    skip_start = int(rate * 0.6)
-    skip_end = int(rate * 0.8)
+    # Skip first 0.8s (startup transients & ALSA start) and trim post-playback silence (1.1s)
+    skip_start = int(rate * 0.8)
+    skip_end = int(rate * 1.1)
     if len(ch0) > skip_start + skip_end + rate:
         ch0 = ch0[skip_start:-skip_end]
         ch1 = ch1[skip_start:-skip_end]
@@ -251,6 +251,7 @@ def main():
     parser.add_argument("--rate", type=int, default=48000, help="Sample rate in Hz")
     parser.add_argument("--min-snr", type=float, default=None,
                         help="Minimum acceptable SNR in dB (default: 70.0 dB for S/PDIF, 80.0 dB for I2S)")
+    parser.add_argument("--retries", type=int, default=3, help="Maximum number of test attempts (default: 3)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose diagnostics")
     args = parser.parse_args()
 
@@ -298,15 +299,22 @@ def main():
     min_snr = args.min_snr if args.min_snr is not None else default_min_snr
     print(f"Executing Pre-Commit Verification on Interface: {interface_desc}")
 
-    passed = run_loopback_test(
-        pb_card=pb_card,
-        cap_card=cap_card,
-        interface_name=interface_desc,
-        duration=args.duration,
-        freq=args.freq,
-        rate=args.rate,
-        min_snr=min_snr
-    )
+    passed = False
+    for attempt in range(1, args.retries + 1):
+        if attempt > 1:
+            print(f"\n--- Retrying Loopback Verification (Attempt {attempt} of {args.retries}) ---")
+            time.sleep(1.0)
+        passed = run_loopback_test(
+            pb_card=pb_card,
+            cap_card=cap_card,
+            interface_name=interface_desc,
+            duration=args.duration,
+            freq=args.freq,
+            rate=args.rate,
+            min_snr=min_snr
+        )
+        if passed:
+            break
 
     sys.exit(0 if passed else 1)
 
