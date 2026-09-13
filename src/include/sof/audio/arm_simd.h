@@ -229,6 +229,60 @@ static inline uint32_t arm_pkhbt(uint32_t a, uint32_t b, uint32_t lsl_shift)
 }
 
 /*
+ * Dual 16-bit Multiply-Accumulate (SMLAD / SMLALD)
+ */
+static inline int32_t arm_smlad(uint32_t a, uint32_t b, int32_t acc)
+{
+#if defined(__GNUC__)
+	int32_t res;
+	__asm__("smlad %0, %1, %2, %3" : "=r"(res) : "r"(a), "r"(b), "r"(acc));
+	return res;
+#elif defined(__SMLAD)
+	return __SMLAD(a, b, acc);
+#else
+	int16_t a0 = (int16_t)(a & 0xffff);
+	int16_t a1 = (int16_t)(a >> 16);
+	int16_t b0 = (int16_t)(b & 0xffff);
+	int16_t b1 = (int16_t)(b >> 16);
+	return acc + (int32_t)a0 * b0 + (int32_t)a1 * b1;
+#endif
+}
+
+static inline int64_t arm_smlald(uint32_t a, uint32_t b, int64_t acc)
+{
+#if defined(__GNUC__)
+	uint32_t lo = (uint32_t)acc;
+	int32_t hi = (int32_t)(acc >> 32);
+	__asm__("smlald %0, %1, %2, %3" : "+r"(lo), "+r"(hi) : "r"(a), "r"(b));
+	return ((int64_t)hi << 32) | lo;
+#elif defined(__SMLALD)
+	return __SMLALD(a, b, acc);
+#else
+	int16_t a0 = (int16_t)(a & 0xffff);
+	int16_t a1 = (int16_t)(a >> 16);
+	int16_t b0 = (int16_t)(b & 0xffff);
+	int16_t b1 = (int16_t)(b >> 16);
+	return acc + ((int64_t)a0 * b0) + ((int64_t)a1 * b1);
+#endif
+}
+
+/*
+ * Sign Extend Halfword (SXTH)
+ */
+static inline int32_t arm_sxth(int32_t val)
+{
+#if defined(__GNUC__)
+	int32_t res;
+	__asm__("sxth %0, %1" : "=r"(res) : "r"(val));
+	return res;
+#elif defined(__SXTH)
+	return __SXTH(val);
+#else
+	return (int32_t)(int16_t)(val & 0xffff);
+#endif
+}
+
+/*
  * Count Leading Zeros
  */
 static inline uint32_t arm_clz(uint32_t val)
@@ -298,6 +352,29 @@ static inline int64_t arm_smlal(int64_t acc, int32_t a, int32_t b)
 static inline uint32_t arm_pkhbt(uint32_t a, uint32_t b, uint32_t lsl_shift)
 {
 	return (a & 0xffff) | ((b << lsl_shift) & 0xffff0000);
+}
+
+static inline int32_t arm_smlad(uint32_t a, uint32_t b, int32_t acc)
+{
+	int16_t a0 = (int16_t)(a & 0xffff);
+	int16_t a1 = (int16_t)(a >> 16);
+	int16_t b0 = (int16_t)(b & 0xffff);
+	int16_t b1 = (int16_t)(b >> 16);
+	return acc + (int32_t)a0 * b0 + (int32_t)a1 * b1;
+}
+
+static inline int64_t arm_smlald(uint32_t a, uint32_t b, int64_t acc)
+{
+	int16_t a0 = (int16_t)(a & 0xffff);
+	int16_t a1 = (int16_t)(a >> 16);
+	int16_t b0 = (int16_t)(b & 0xffff);
+	int16_t b1 = (int16_t)(b >> 16);
+	return acc + ((int64_t)a0 * b0) + ((int64_t)a1 * b1);
+}
+
+static inline int32_t arm_sxth(int32_t val)
+{
+	return (int32_t)(int16_t)(val & 0xffff);
 }
 
 static inline uint32_t arm_clz(uint32_t val)

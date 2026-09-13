@@ -100,7 +100,7 @@ static inline void set_float_fir(struct comp_data *cd)
 }
 #endif /* CONFIG_FORMAT_FLOAT */
 
-#if SOF_USE_MIN_HIFI(2, FILTER)
+#if SOF_USE_MIN_HIFI(2, FILTER) || SOF_USE_ARM_SIMD(FILTER)
 #if CONFIG_FORMAT_S16LE
 static inline void set_s16_fir(struct comp_data *cd)
 {

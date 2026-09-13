@@ -1,2 +1,2 @@
-add_local_sources(sof mixer.c mixer_generic.c mixer_hifi3.c)
+add_local_sources(sof mixer.c mixer_generic.c mixer_hifi3.c mixer_arm.c)
 

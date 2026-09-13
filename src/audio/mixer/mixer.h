@@ -28,6 +28,8 @@ void sys_comp_module_mixer_interface_init(void);
 #undef MIXER_GENERIC
 #endif
 
+#elif defined(CONFIG_MIXER_ARM_SIMD)
+#undef MIXER_GENERIC
 #endif
 
 #define MIXER_MAX_SOURCES	2

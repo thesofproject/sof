@@ -11,7 +11,16 @@ config COMP_MIXIN_MIXOUT
 choice "MIXIN_MIXOUT_SIMD_LEVEL_SELECT"
 	prompt "choose which SIMD level used for MIXIN_MIXOUT module"
 	depends on COMP_MIXIN_MIXOUT
-	default MIXIN_MIXOUT_HIFI_MAX
+	default MIXIN_MIXOUT_HIFI_MAX if XTENSA
+	default MIXIN_MIXOUT_ARM_SIMD if ARM
+	default MIXIN_MIXOUT_HIFI_NONE
+
+	config MIXIN_MIXOUT_ARM_SIMD
+		prompt "choose ARM SIMD & DSP vector optimized MIXIN_MIXOUT module"
+		bool
+		depends on ARM
+		help
+			This option is used to build ARMv7E-M DSP / SIMD optimized MIXIN_MIXOUT code.
 
 	config MIXIN_MIXOUT_HIFI_MAX
 		prompt "Max HiFi level available in the toolchain"

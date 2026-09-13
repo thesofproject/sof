@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2022 Intel Corporation. All rights reserved.
+// Copyright(c) 2026 Sound Open Firmware. All rights reserved.
 //
-// Author: Andrula Song <xiaoyuan.song@intel.com>
+// Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/common.h>
+#include <sof/audio/arm_simd.h>
 #include <rtos/string.h>
 
 #include "mixin_mixout.h"
 
-#if SOF_USE_HIFI(NONE, MIXIN_MIXOUT) && !SOF_USE_ARM_SIMD(MIXIN_MIXOUT)
+#if SOF_USE_ARM_SIMD(MIXIN_MIXOUT)
 
 #if CONFIG_FORMAT_S16LE
 static void mix_s16(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixed_samples,
@@ -19,7 +20,6 @@ static void mix_s16(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 	int32_t samples_to_mix, samples_to_copy, left_samples;
 	int32_t n, nmax, i;
 
-	/* cir_buf_wrap() is required and is done below in a loop */
 	int16_t *dst = (int16_t *)sink->ptr + start_sample;
 	int16_t *src = source->ptr;
 
@@ -31,20 +31,24 @@ static void mix_s16(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 	for (left_samples = samples_to_mix; left_samples > 0; left_samples -= n) {
 		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
-		/* calculate the remaining samples*/
+
 		nmax = (int16_t *)source->buf_end - src;
 		n = MIN(left_samples, nmax);
 		nmax = (int16_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
+
 		int32_t n4 = n & ~3;
 		for (i = 0; i < n4; i += 4) {
-			dst[i + 0] = sat_int16((int32_t)dst[i + 0] + (int32_t)src[i + 0]);
-			dst[i + 1] = sat_int16((int32_t)dst[i + 1] + (int32_t)src[i + 1]);
-			dst[i + 2] = sat_int16((int32_t)dst[i + 2] + (int32_t)src[i + 2]);
-			dst[i + 3] = sat_int16((int32_t)dst[i + 3] + (int32_t)src[i + 3]);
+			uint32_t d01 = *(uint32_t *)(dst + i);
+			uint32_t s01 = *(const uint32_t *)(src + i);
+			*(uint32_t *)(dst + i) = arm_qadd16(d01, s01);
+
+			uint32_t d23 = *(uint32_t *)(dst + i + 2);
+			uint32_t s23 = *(const uint32_t *)(src + i + 2);
+			*(uint32_t *)(dst + i + 2) = arm_qadd16(d23, s23);
 		}
 		for (; i < n; i++) {
-			dst[i] = sat_int16((int32_t)dst[i] + (int32_t)src[i]);
+			dst[i] = arm_sat_s16((int32_t)dst[i] + (int32_t)src[i]);
 		}
 		dst += n;
 		src += n;
@@ -70,7 +74,6 @@ static void mix_s16_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 	int32_t samples_to_mix, samples_to_copy, left_samples;
 	int32_t n, nmax, i;
 
-	/* cir_buf_wrap() is required and is done below in a loop */
 	int16_t *dst = (int16_t *)sink->ptr + start_sample;
 	int16_t *src = source->ptr;
 
@@ -82,25 +85,27 @@ static void mix_s16_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 	for (left_samples = samples_to_mix; left_samples > 0; left_samples -= n) {
 		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
-		/* calculate the remaining samples*/
+
 		nmax = (int16_t *)source->buf_end - src;
 		n = MIN(left_samples, nmax);
 		nmax = (int16_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
+
 		int32_t n4 = n & ~3;
 		for (i = 0; i < n4; i += 4) {
-			dst[i + 0] = sat_int16((int32_t)dst[i + 0] +
-				q_mults_16x16(src[i + 0], gain, IPC4_MIXIN_GAIN_SHIFT));
-			dst[i + 1] = sat_int16((int32_t)dst[i + 1] +
-				q_mults_16x16(src[i + 1], gain, IPC4_MIXIN_GAIN_SHIFT));
-			dst[i + 2] = sat_int16((int32_t)dst[i + 2] +
-				q_mults_16x16(src[i + 2], gain, IPC4_MIXIN_GAIN_SHIFT));
-			dst[i + 3] = sat_int16((int32_t)dst[i + 3] +
-				q_mults_16x16(src[i + 3], gain, IPC4_MIXIN_GAIN_SHIFT));
+			int32_t g0 = arm_smulbb(src[i + 0], gain) >> IPC4_MIXIN_GAIN_SHIFT;
+			int32_t g1 = arm_smulbb(src[i + 1], gain) >> IPC4_MIXIN_GAIN_SHIFT;
+			int32_t g2 = arm_smulbb(src[i + 2], gain) >> IPC4_MIXIN_GAIN_SHIFT;
+			int32_t g3 = arm_smulbb(src[i + 3], gain) >> IPC4_MIXIN_GAIN_SHIFT;
+
+			dst[i + 0] = arm_sat_s16((int32_t)dst[i + 0] + g0);
+			dst[i + 1] = arm_sat_s16((int32_t)dst[i + 1] + g1);
+			dst[i + 2] = arm_sat_s16((int32_t)dst[i + 2] + g2);
+			dst[i + 3] = arm_sat_s16((int32_t)dst[i + 3] + g3);
 		}
 		for (; i < n; i++) {
-			dst[i] = sat_int16((int32_t)dst[i] +
-				q_mults_16x16(src[i], gain, IPC4_MIXIN_GAIN_SHIFT));
+			int32_t g = arm_smulbb(src[i], gain) >> IPC4_MIXIN_GAIN_SHIFT;
+			dst[i] = arm_sat_s16((int32_t)dst[i] + g);
 		}
 		dst += n;
 		src += n;
@@ -116,19 +121,19 @@ static void mix_s16_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 
 		int32_t n4 = n & ~3;
 		for (i = 0; i < n4; i += 4) {
-			dst[i + 0] = q_mults_16x16(src[i + 0], gain, IPC4_MIXIN_GAIN_SHIFT);
-			dst[i + 1] = q_mults_16x16(src[i + 1], gain, IPC4_MIXIN_GAIN_SHIFT);
-			dst[i + 2] = q_mults_16x16(src[i + 2], gain, IPC4_MIXIN_GAIN_SHIFT);
-			dst[i + 3] = q_mults_16x16(src[i + 3], gain, IPC4_MIXIN_GAIN_SHIFT);
+			dst[i + 0] = arm_sat_s16(arm_smulbb(src[i + 0], gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			dst[i + 1] = arm_sat_s16(arm_smulbb(src[i + 1], gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			dst[i + 2] = arm_sat_s16(arm_smulbb(src[i + 2], gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			dst[i + 3] = arm_sat_s16(arm_smulbb(src[i + 3], gain) >> IPC4_MIXIN_GAIN_SHIFT);
 		}
 		for (; i < n; i++) {
-			dst[i] = q_mults_16x16(src[i], gain, IPC4_MIXIN_GAIN_SHIFT);
+			dst[i] = arm_sat_s16(arm_smulbb(src[i], gain) >> IPC4_MIXIN_GAIN_SHIFT);
 		}
 		dst += n;
 		src += n;
 	}
 }
-#endif	/* CONFIG_FORMAT_S16LE */
+#endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
 static void mix_s24(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixed_samples,
@@ -137,7 +142,7 @@ static void mix_s24(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 {
 	int32_t samples_to_mix, samples_to_copy, left_samples;
 	int32_t n, nmax, i;
-	/* cir_buf_wrap() is required and is done below in a loop */
+
 	int32_t *dst = (int32_t *)sink->ptr + start_sample;
 	int32_t *src = source->ptr;
 
@@ -149,20 +154,21 @@ static void mix_s24(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 	for (left_samples = samples_to_mix; left_samples > 0; left_samples -= n) {
 		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
-		/* calculate the remaining samples*/
+
 		nmax = (int32_t *)source->buf_end - src;
 		n = MIN(left_samples, nmax);
 		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
+
 		int32_t n4 = n & ~3;
 		for (i = 0; i < n4; i += 4) {
-			dst[i + 0] = sat_int24(sign_extend_s24(dst[i + 0]) + sign_extend_s24(src[i + 0]));
-			dst[i + 1] = sat_int24(sign_extend_s24(dst[i + 1]) + sign_extend_s24(src[i + 1]));
-			dst[i + 2] = sat_int24(sign_extend_s24(dst[i + 2]) + sign_extend_s24(src[i + 2]));
-			dst[i + 3] = sat_int24(sign_extend_s24(dst[i + 3]) + sign_extend_s24(src[i + 3]));
+			dst[i + 0] = arm_sat_s24(sign_extend_s24(dst[i + 0]) + sign_extend_s24(src[i + 0]));
+			dst[i + 1] = arm_sat_s24(sign_extend_s24(dst[i + 1]) + sign_extend_s24(src[i + 1]));
+			dst[i + 2] = arm_sat_s24(sign_extend_s24(dst[i + 2]) + sign_extend_s24(src[i + 2]));
+			dst[i + 3] = arm_sat_s24(sign_extend_s24(dst[i + 3]) + sign_extend_s24(src[i + 3]));
 		}
 		for (; i < n; i++) {
-			dst[i] = sat_int24(sign_extend_s24(dst[i]) + sign_extend_s24(src[i]));
+			dst[i] = arm_sat_s24(sign_extend_s24(dst[i]) + sign_extend_s24(src[i]));
 		}
 		dst += n;
 		src += n;
@@ -187,7 +193,7 @@ static void mix_s24_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 {
 	int32_t samples_to_mix, samples_to_copy, left_samples;
 	int32_t n, nmax, i;
-	/* cir_buf_wrap() is required and is done below in a loop */
+
 	int32_t *dst = (int32_t *)sink->ptr + start_sample;
 	int32_t *src = source->ptr;
 
@@ -199,30 +205,27 @@ static void mix_s24_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 	for (left_samples = samples_to_mix; left_samples > 0; left_samples -= n) {
 		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
-		/* calculate the remaining samples*/
+
 		nmax = (int32_t *)source->buf_end - src;
 		n = MIN(left_samples, nmax);
 		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
+
 		int32_t n4 = n & ~3;
 		for (i = 0; i < n4; i += 4) {
-			dst[i + 0] = sat_int24(sign_extend_s24(dst[i + 0]) +
-				(int32_t)q_mults_32x32(sign_extend_s24(src[i + 0]),
-						       gain, IPC4_MIXIN_GAIN_SHIFT));
-			dst[i + 1] = sat_int24(sign_extend_s24(dst[i + 1]) +
-				(int32_t)q_mults_32x32(sign_extend_s24(src[i + 1]),
-						       gain, IPC4_MIXIN_GAIN_SHIFT));
-			dst[i + 2] = sat_int24(sign_extend_s24(dst[i + 2]) +
-				(int32_t)q_mults_32x32(sign_extend_s24(src[i + 2]),
-						       gain, IPC4_MIXIN_GAIN_SHIFT));
-			dst[i + 3] = sat_int24(sign_extend_s24(dst[i + 3]) +
-				(int32_t)q_mults_32x32(sign_extend_s24(src[i + 3]),
-						       gain, IPC4_MIXIN_GAIN_SHIFT));
+			int32_t g0 = (int32_t)(((int64_t)sign_extend_s24(src[i + 0]) * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			int32_t g1 = (int32_t)(((int64_t)sign_extend_s24(src[i + 1]) * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			int32_t g2 = (int32_t)(((int64_t)sign_extend_s24(src[i + 2]) * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			int32_t g3 = (int32_t)(((int64_t)sign_extend_s24(src[i + 3]) * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+
+			dst[i + 0] = arm_sat_s24(sign_extend_s24(dst[i + 0]) + g0);
+			dst[i + 1] = arm_sat_s24(sign_extend_s24(dst[i + 1]) + g1);
+			dst[i + 2] = arm_sat_s24(sign_extend_s24(dst[i + 2]) + g2);
+			dst[i + 3] = arm_sat_s24(sign_extend_s24(dst[i + 3]) + g3);
 		}
 		for (; i < n; i++) {
-			dst[i] = sat_int24(sign_extend_s24(dst[i]) +
-				(int32_t)q_mults_32x32(sign_extend_s24(src[i]),
-						       gain, IPC4_MIXIN_GAIN_SHIFT));
+			int32_t g = (int32_t)(((int64_t)sign_extend_s24(src[i]) * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			dst[i] = arm_sat_s24(sign_extend_s24(dst[i]) + g);
 		}
 		dst += n;
 		src += n;
@@ -235,21 +238,22 @@ static void mix_s24_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		n = MIN(left_samples, nmax);
 		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
+
 		int32_t n4 = n & ~3;
 		for (i = 0; i < n4; i += 4) {
-			dst[i + 0] = q_mults_32x32(sign_extend_s24(src[i + 0]), gain, IPC4_MIXIN_GAIN_SHIFT);
-			dst[i + 1] = q_mults_32x32(sign_extend_s24(src[i + 1]), gain, IPC4_MIXIN_GAIN_SHIFT);
-			dst[i + 2] = q_mults_32x32(sign_extend_s24(src[i + 2]), gain, IPC4_MIXIN_GAIN_SHIFT);
-			dst[i + 3] = q_mults_32x32(sign_extend_s24(src[i + 3]), gain, IPC4_MIXIN_GAIN_SHIFT);
+			dst[i + 0] = (int32_t)(((int64_t)sign_extend_s24(src[i + 0]) * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			dst[i + 1] = (int32_t)(((int64_t)sign_extend_s24(src[i + 1]) * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			dst[i + 2] = (int32_t)(((int64_t)sign_extend_s24(src[i + 2]) * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			dst[i + 3] = (int32_t)(((int64_t)sign_extend_s24(src[i + 3]) * gain) >> IPC4_MIXIN_GAIN_SHIFT);
 		}
 		for (; i < n; i++) {
-			dst[i] = q_mults_32x32(sign_extend_s24(src[i]), gain, IPC4_MIXIN_GAIN_SHIFT);
+			dst[i] = (int32_t)(((int64_t)sign_extend_s24(src[i]) * gain) >> IPC4_MIXIN_GAIN_SHIFT);
 		}
 		dst += n;
 		src += n;
 	}
 }
-#endif	/* CONFIG_FORMAT_S24LE */
+#endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
 static void mix_s32(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixed_samples,
@@ -269,20 +273,21 @@ static void mix_s32(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 	for (left_samples = samples_to_mix; left_samples > 0; left_samples -= n) {
 		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
-		/* calculate the remaining samples*/
+
 		nmax = (int32_t *)source->buf_end - src;
 		n = MIN(left_samples, nmax);
 		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
+
 		int32_t n4 = n & ~3;
 		for (i = 0; i < n4; i += 4) {
-			dst[i + 0] = sat_int32((int64_t)dst[i + 0] + (int64_t)src[i + 0]);
-			dst[i + 1] = sat_int32((int64_t)dst[i + 1] + (int64_t)src[i + 1]);
-			dst[i + 2] = sat_int32((int64_t)dst[i + 2] + (int64_t)src[i + 2]);
-			dst[i + 3] = sat_int32((int64_t)dst[i + 3] + (int64_t)src[i + 3]);
+			dst[i + 0] = arm_qadd(dst[i + 0], src[i + 0]);
+			dst[i + 1] = arm_qadd(dst[i + 1], src[i + 1]);
+			dst[i + 2] = arm_qadd(dst[i + 2], src[i + 2]);
+			dst[i + 3] = arm_qadd(dst[i + 3], src[i + 3]);
 		}
 		for (; i < n; i++) {
-			dst[i] = sat_int32((int64_t)dst[i] + (int64_t)src[i]);
+			dst[i] = arm_qadd(dst[i], src[i]);
 		}
 		dst += n;
 		src += n;
@@ -318,25 +323,27 @@ static void mix_s32_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 	for (left_samples = samples_to_mix; left_samples > 0; left_samples -= n) {
 		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
-		/* calculate the remaining samples*/
+
 		nmax = (int32_t *)source->buf_end - src;
 		n = MIN(left_samples, nmax);
 		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
+
 		int32_t n4 = n & ~3;
 		for (i = 0; i < n4; i += 4) {
-			dst[i + 0] = sat_int32((int64_t)dst[i + 0] +
-				q_mults_32x32(src[i + 0], gain, IPC4_MIXIN_GAIN_SHIFT));
-			dst[i + 1] = sat_int32((int64_t)dst[i + 1] +
-				q_mults_32x32(src[i + 1], gain, IPC4_MIXIN_GAIN_SHIFT));
-			dst[i + 2] = sat_int32((int64_t)dst[i + 2] +
-				q_mults_32x32(src[i + 2], gain, IPC4_MIXIN_GAIN_SHIFT));
-			dst[i + 3] = sat_int32((int64_t)dst[i + 3] +
-				q_mults_32x32(src[i + 3], gain, IPC4_MIXIN_GAIN_SHIFT));
+			int32_t g0 = (int32_t)(((int64_t)src[i + 0] * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			int32_t g1 = (int32_t)(((int64_t)src[i + 1] * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			int32_t g2 = (int32_t)(((int64_t)src[i + 2] * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			int32_t g3 = (int32_t)(((int64_t)src[i + 3] * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+
+			dst[i + 0] = arm_qadd(dst[i + 0], g0);
+			dst[i + 1] = arm_qadd(dst[i + 1], g1);
+			dst[i + 2] = arm_qadd(dst[i + 2], g2);
+			dst[i + 3] = arm_qadd(dst[i + 3], g3);
 		}
 		for (; i < n; i++) {
-			dst[i] = sat_int32((int64_t)dst[i] +
-				q_mults_32x32(src[i], gain, IPC4_MIXIN_GAIN_SHIFT));
+			int32_t g = (int32_t)(((int64_t)src[i] * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			dst[i] = arm_qadd(dst[i], g);
 		}
 		dst += n;
 		src += n;
@@ -349,21 +356,22 @@ static void mix_s32_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		n = MIN(left_samples, nmax);
 		nmax = (int32_t *)sink->buf_end - dst;
 		n = MIN(n, nmax);
+
 		int32_t n4 = n & ~3;
 		for (i = 0; i < n4; i += 4) {
-			dst[i + 0] = q_mults_32x32(src[i + 0], gain, IPC4_MIXIN_GAIN_SHIFT);
-			dst[i + 1] = q_mults_32x32(src[i + 1], gain, IPC4_MIXIN_GAIN_SHIFT);
-			dst[i + 2] = q_mults_32x32(src[i + 2], gain, IPC4_MIXIN_GAIN_SHIFT);
-			dst[i + 3] = q_mults_32x32(src[i + 3], gain, IPC4_MIXIN_GAIN_SHIFT);
+			dst[i + 0] = (int32_t)(((int64_t)src[i + 0] * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			dst[i + 1] = (int32_t)(((int64_t)src[i + 1] * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			dst[i + 2] = (int32_t)(((int64_t)src[i + 2] * gain) >> IPC4_MIXIN_GAIN_SHIFT);
+			dst[i + 3] = (int32_t)(((int64_t)src[i + 3] * gain) >> IPC4_MIXIN_GAIN_SHIFT);
 		}
 		for (; i < n; i++) {
-			dst[i] = q_mults_32x32(src[i], gain, IPC4_MIXIN_GAIN_SHIFT);
+			dst[i] = (int32_t)(((int64_t)src[i] * gain) >> IPC4_MIXIN_GAIN_SHIFT);
 		}
 		dst += n;
 		src += n;
 	}
 }
-#endif	/* CONFIG_FORMAT_S32LE */
+#endif /* CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_FLOAT
 static void mix_float(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixed_samples,
@@ -490,4 +498,4 @@ __cold_rodata const struct mix_func_map mix_func_map[] = {
 
 const size_t mix_count = ARRAY_SIZE(mix_func_map);
 
-#endif
+#endif /* SOF_USE_ARM_SIMD(MIXIN_MIXOUT) */

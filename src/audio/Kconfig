@@ -237,6 +237,13 @@ config FORMAT_CONVERT_HIFI3
 	help
 	  Use HIFI3 extensions for optimized format conversion (experimental).
 
+config FORMAT_CONVERT_ARM_SIMD
+	bool "ARM SIMD optimized conversion"
+	default y
+	depends on ARM
+	help
+	  Use ARMv7E-M DSP and SIMD instructions for optimized format conversion.
+
 config PCM_CONVERTER_FORMAT_U8
 	bool "Support U8"
 	help
