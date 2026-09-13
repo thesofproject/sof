@@ -1,5 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
+config EQ_IIR_ARM_SIMD
+	bool "ARM SIMD and block-accelerated EQ IIR"
+	default y
+	depends on ARM
+	help
+	  Select for ARMv7E-M SIMD and block-accelerated EQ IIR implementation
+
 config EQ_IIR_RISCV_SIMD
 	bool "RISC-V SIMD and block-accelerated EQ IIR"
 	default y

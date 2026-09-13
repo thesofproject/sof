@@ -7,7 +7,17 @@ choice "FILTER_SIMD_LEVEL_SELECT"
 	prompt "choose which SIMD level used for filter module"
 	depends on COMP_FIR
 	depends on COMP_IIR
-	default FILTER_HIFI_MAX
+	default FILTER_HIFI_MAX if XTENSA
+	default FILTER_RISCV_SIMD if SOF_CONFIG_RISCV_SIMD
+	default FILTER_ARM_SIMD if ARM
+	default FILTER_HIFI_NONE
+
+	config FILTER_ARM_SIMD
+		prompt "choose ARM SIMD & DSP optimized FILTER module"
+		bool
+		depends on ARM
+		help
+			This option used to build ARMv7E-M DSP / SIMD optimized FILTER code
 
 	config FILTER_HIFI_MAX
 		prompt "SIMD will selected by toolchain pre-defined header"

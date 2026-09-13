@@ -58,6 +58,8 @@ int32_t iir_df1_4th(struct iir_state_df1 *iir, int32_t x);
 #include "iir_df1_hifi3.h"
 #elif SOF_USE_RISCV_SIMD(FILTER)
 #include "iir_df1_riscv.h"
+#elif SOF_USE_ARM_SIMD(FILTER)
+#include "iir_df1_arm.h"
 #else
 #include "iir_df1_generic.h"
 #endif

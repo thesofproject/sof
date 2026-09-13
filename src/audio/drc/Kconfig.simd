@@ -5,7 +5,17 @@ comment "DRC optimization level select"
 choice "DRC_SIMD_LEVEL_SELECT"
 	prompt "choose which SIMD level used for DRC module"
 	depends on COMP_DRC
-	default DRC_HIFI_MAX
+	default DRC_HIFI_MAX if XTENSA
+	default DRC_RISCV_SIMD if SOF_CONFIG_RISCV_SIMD
+	default DRC_ARM_SIMD if ARM
+	default DRC_HIFI_NONE
+
+	config DRC_ARM_SIMD
+		prompt "choose ARM SIMD & DSP optimized DRC module"
+		bool
+		depends on ARM
+		help
+			This option used to build ARMv7E-M DSP / SIMD optimized DRC code
 
 	config DRC_HIFI_MAX
 		prompt "SIMD will selected by toolchain pre-defined header"

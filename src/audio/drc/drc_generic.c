@@ -523,7 +523,7 @@ void drc_compress_output(struct drc_state *state,
 
 #endif /* DRC_HIFI_NONE */
 
-#if SOF_USE_HIFI(NONE, DRC) || SOF_USE_HIFI(3, DRC) || SOF_USE_RISCV_SIMD(DRC)
+#if SOF_USE_HIFI(NONE, DRC) || SOF_USE_HIFI(3, DRC) || SOF_USE_RISCV_SIMD(DRC) || SOF_USE_ARM_SIMD(DRC)
 /* After one complete division of samples have been received (and one division of
  * samples have been output), we calculate shaped power average
  * (detector_average) from the input division, update envelope parameters from

@@ -47,6 +47,8 @@ int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x);
 #include "iir_df2t_hifi3.h"
 #elif SOF_USE_RISCV_SIMD(FILTER)
 #include "iir_df2t_riscv.h"
+#elif SOF_USE_ARM_SIMD(FILTER)
+#include "iir_df2t_arm.h"
 #else
 #include "iir_df2t_generic.h"
 #endif

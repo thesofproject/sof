@@ -4,7 +4,12 @@ if(CONFIG_COMP_VOLUME STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   add_subdirectory(llext ${PROJECT_BINARY_DIR}/volume_llext)
   add_dependencies(app volume)
 else()
-  if(CONFIG_VOLUME_RISCV_SIMD)
+  if(CONFIG_VOLUME_ARM_SIMD)
+    add_local_sources(sof
+      volume_arm.c
+      volume_arm_with_peakvol.c
+      volume.c)
+  elseif(CONFIG_VOLUME_RISCV_SIMD)
     add_local_sources(sof
       volume_riscv.c
       volume_riscv_with_peakvol.c

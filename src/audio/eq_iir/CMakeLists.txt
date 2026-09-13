@@ -7,7 +7,9 @@ if(CONFIG_COMP_IIR STREQUAL "m" AND DEFINED CONFIG_LLEXT)
 
 else()
 
-  if(CONFIG_EQ_IIR_RISCV_SIMD)
+  if(CONFIG_EQ_IIR_ARM_SIMD)
+    add_local_sources(sof eq_iir.c eq_iir_arm.c)
+  elseif(CONFIG_EQ_IIR_RISCV_SIMD)
     add_local_sources(sof eq_iir.c eq_iir_riscv.c)
   else()
     add_local_sources(sof eq_iir.c eq_iir_generic.c)

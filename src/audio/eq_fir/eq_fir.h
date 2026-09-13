@@ -14,7 +14,7 @@
 #include <sof/math/fir_config.h>
 #include <sof/common.h>
 
-#if SOF_USE_HIFI(NONE, FILTER) || SOF_USE_RISCV_SIMD(FILTER)
+#if SOF_USE_HIFI(NONE, FILTER) || SOF_USE_RISCV_SIMD(FILTER) || SOF_USE_ARM_SIMD(FILTER)
 #include <sof/math/fir_generic.h>
 #endif
 #if SOF_USE_HIFI(2, FILTER)
