@@ -123,9 +123,12 @@ struct teensy_diag_data {
 	uint32_t pin7_pad;
 	uint32_t gpio1_psr;
 	uint32_t gpio2_psr;
-	uint32_t reserved;
+	uint32_t interface_type; /* 1 = SAI1 I2S, 2 = S/PDIF */
 	uint32_t g_dbg[8];
 };
+
+#define TEENSY_INTERFACE_SAI1_I2S 1
+#define TEENSY_INTERFACE_SPDIF    2
 
 extern uint32_t g_diag_debug[8];
 
@@ -138,6 +141,7 @@ static struct net_buf *teensy_diag_to_host(const struct usbd_context *const ctx,
 
 	memset(&diag, 0, sizeof(diag));
 #if defined(CONFIG_TEENSY41_INTERFACE_SPDIF)
+	diag.interface_type = TEENSY_INTERFACE_SPDIF;
 	diag.tcsr = SPDIF->SCR;
 	diag.rcsr = SPDIF->SRPC;
 	diag.tcr2 = SPDIF->STC;
@@ -153,6 +157,7 @@ static struct net_buf *teensy_diag_to_host(const struct usbd_context *const ctx,
 	diag.dma_tx_citer = DMA0->TCD[2].CITER_ELINKNO;
 	diag.dma_rx_citer = DMA0->TCD[3].CITER_ELINKNO;
 #else
+	diag.interface_type = TEENSY_INTERFACE_SAI1_I2S;
 	diag.tcsr = SAI1->TCSR;
 	diag.rcsr = SAI1->RCSR;
 	diag.tcr2 = SAI1->TCR2;
