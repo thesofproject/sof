@@ -122,6 +122,10 @@ static enum llext_mem llext_manager_get_sec_mem_idx(const char *name, const elf_
  * @param elf_buf ELF image buffer.
  * @param vma_base Base virtual address for relocated sections, or zero to measure only.
  * @return Total virtual address space required by the loadable sections.
+ *
+ * Sections are kept grouped by their final memory permissions and each group
+ * starts on a page boundary. When a base address is supplied, the calculated
+ * addresses are written back to the ELF section headers for pre-located loading.
  */
 static size_t llext_manager_layout_sections(uint8_t *elf_buf, uintptr_t vma_base)
 {
@@ -145,11 +149,13 @@ static size_t llext_manager_layout_sections(uint8_t *elf_buf, uintptr_t vma_base
 		if (s_region == LLEXT_MEM_COUNT)
 			continue;
 
+		/* Separate sections with different permissions into page-aligned regions. */
 		if (last_region != LLEXT_MEM_COUNT && last_region != s_region) {
 			current_vma = ALIGN_UP(current_vma, PAGE_SZ);
 		}
 		last_region = s_region;
 
+		/* Preserve the alignment required by the input section. */
 		if (shdr->sh_addralign > 1) {
 			current_vma = ALIGN_UP(current_vma, shdr->sh_addralign);
 		}
@@ -532,6 +538,10 @@ static bool llext_manager_section_detached(const elf_shdr_t *shdr)
  * @param buildinfo Receives the module build information section.
  * @param mod_manifest Receives the module manifest section.
  * @return Zero on success or a negative error code.
+ *
+ * On the first link, this function lays out the ELF image in the shared VMA
+ * allocator and loads it at the pre-located addresses. Later instances reuse
+ * the retained LLEXT context and only acquire the loader reference they need.
  */
 static int llext_manager_link(const char *name,
 			      struct lib_manager_module *mctx, const void **buildinfo,
@@ -556,6 +566,7 @@ static int llext_manager_link(const char *name,
 
 	if (!*llext || mctx->mapped) {
 		if (!*llext) {
+			/* Measure the image before reserving and assigning its final VMA. */
 			uint8_t *elf_buf = (uint8_t *)mctx->ebl->buf;
 			size_t total_size = llext_manager_layout_sections(elf_buf, 0);
 			if (total_size == 0) {
@@ -572,12 +583,13 @@ static int llext_manager_link(const char *name,
 			mctx->vma_base = vma_base;
 			mctx->vma_size = total_size;
 
+			/* Update section addresses so llext_load() can relocate in place. */
 			llext_manager_layout_sections(elf_buf, vma_base);
 		}
 
 		/*
-		 * Either the very first time loading this module, or the module
-		 * is already mapped, we just call llext_load() to refcount it
+		 * The first load performs relocation; a mapped module only increments
+		 * the LLEXT reference count while retaining the pre-located addresses.
 		 */
 		struct llext_load_param ldr_parm = {
 			.relocate_local = !*llext,
