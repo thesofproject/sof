@@ -53,7 +53,7 @@ config HOST_DMA_IPC_POSITION_UPDATES
 
 config COMP_USB_AUDIO
 	bool "USB Audio streaming component"
-	default y if PLATFORM_ESP32P4
+	default y if (PLATFORM_ESP32P4 || PLATFORM_ESP32C6)
 	help
 	  Enable USB Audio Class 2 (UAC2) streaming component for SOF.
 

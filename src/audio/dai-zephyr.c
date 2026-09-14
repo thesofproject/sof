@@ -1659,7 +1659,7 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 	/* limit bytes per copy to one period for the whole pipeline in order to avoid high load
 	 * spike if FAST_MODE is enabled, then one period limitation is omitted.
 	 */
-#if defined(CONFIG_PLATFORM_ESP32P4)
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_ESP32C6)
 	/* On ESP32-P4, allow bursting up to 4 periods to quickly absorb scheduling jitter and drain DMA backlog */
 	frames = MIN(frames, dev->frames ? (dev->frames * 4) : 192);
 #else

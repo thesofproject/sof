@@ -8,14 +8,16 @@
 #include <sof/boot_test.h>
 #include <zephyr/logging/log.h>
 
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_ESP32C6)
+#include <rtos/sof.h>
+#include <sof/init.h>
+#include <sof/audio/pipeline/sof_static_pipeline.h>
+#endif
 #if defined(CONFIG_PLATFORM_ESP32P4)
 #include <zephyr/usb/usbd.h>
 #include <zephyr/usb/class/usbd_uac2.h>
 #include <zephyr/device.h>
 #include <sample_usbd.h>
-#include <rtos/sof.h>
-#include <sof/init.h>
-#include <sof/audio/pipeline/sof_static_pipeline.h>
 #include <sof/audio/bt_service.h>
 #endif
 
@@ -52,10 +54,11 @@ static int sof_app_main(void)
 
 	LOG_INF("SOF initialized");
 
-#if defined(CONFIG_PLATFORM_ESP32P4)
-	/* Initialize static audio pipelines (EQ+DRC Playback & TDFB+EQ Capture) */
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_ESP32C6)
+	/* Initialize static audio pipelines */
 	sof_static_pipelines_init(sof_get());
 
+#if defined(CONFIG_PLATFORM_ESP32P4)
 	/* Register UAC2 class callbacks before initializing USB stack */
 	const struct device *uac2_dev = DEVICE_DT_GET_ONE(zephyr_uac2);
 	if (device_is_ready(uac2_dev)) {
@@ -76,6 +79,9 @@ static int sof_app_main(void)
 #if defined(CONFIG_COMP_BT_AUDIO)
 	/* Initialize Bluetooth Audio Service and power on ESP32-C6 coprocessor */
 	bt_service_init();
+#endif
+#else
+	LOG_INF("ESP32-C6 SOF static pipelines started (I2S loopback ready)");
 #endif
 #endif
 

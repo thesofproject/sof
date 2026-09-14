@@ -20,11 +20,17 @@ target_include_directories(app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../zephyr/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/platform/esp32p4/include
     ${PROJECT_BINARY_DIR}/include/generated
   )
 
+if(CONFIG_PLATFORM_ESP32P4)
+  target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/platform/esp32p4/include)
+elseif(CONFIG_PLATFORM_ESP32C6)
+  target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/platform/esp32c6/include)
+endif()
+
 target_link_libraries(app PRIVATE SOF modules_sof)
+target_link_libraries(modules_sof PRIVATE kernel)
 if(TARGET uuid_reg_h)
   add_dependencies(app uuid_reg_h modules_sof)
 endif()

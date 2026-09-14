@@ -25,11 +25,11 @@
 #endif /* defined(CONFIG_XTENSA) && defined(CONFIG_INTEL) */
 
 /* sanity check - make sure CONFIG_DCACHE_LINE_SIZE is valid */
-#if !defined(CONFIG_DCACHE_LINE_SIZE_DETECT) && (CONFIG_DCACHE_LINE_SIZE > 0)
+#if !defined(CONFIG_DCACHE_LINE_SIZE_DETECT) && defined(CONFIG_DCACHE_LINE_SIZE) && (CONFIG_DCACHE_LINE_SIZE > 0)
 #define DCACHE_LINE_SIZE CONFIG_DCACHE_LINE_SIZE
 #else
-#if defined(CONFIG_LIBRARY) || defined(CONFIG_ZEPHYR_POSIX)
-#define DCACHE_LINE_SIZE 64
+#if defined(CONFIG_LIBRARY) || defined(CONFIG_ZEPHYR_POSIX) || defined(CONFIG_PLATFORM_ESP32C6) || defined(CONFIG_SOC_SERIES_ESP32C6)
+#define DCACHE_LINE_SIZE 32
 #else
 #error "Invalid cache configuration."
 #endif /* defined(CONFIG_LIBRARY) || defined(CONFIG_ZEPHYR_POSIX) */

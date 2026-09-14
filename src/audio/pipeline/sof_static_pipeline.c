@@ -21,11 +21,16 @@
 #include <ipc/dai.h>
 #include <soc/i2s_struct.h>
 #include <soc/gpio_struct.h>
+#if defined(CONFIG_SOC_SERIES_ESP32P4)
 #include <soc/io_mux_struct.h>
 #include <soc/hp_sys_clkrst_struct.h>
+#elif defined(CONFIG_SOC_SERIES_ESP32C6)
+#include <soc/pcr_struct.h>
+#endif
 
 LOG_MODULE_REGISTER(sof_static_pipeline, CONFIG_SOF_LOG_LEVEL);
 
+#if DT_NODE_EXISTS(DT_NODELABEL(i2s_fu))
 #define PLAYBACK_FU_ID       UAC2_ENTITY_ID(DT_NODELABEL(i2s_fu))
 #define PLAYBACK_EQ_FU_ID    UAC2_ENTITY_ID(DT_NODELABEL(pb_eq_fu))
 #define PLAYBACK_DRC_FU_ID   UAC2_ENTITY_ID(DT_NODELABEL(pb_drc_fu))
@@ -34,6 +39,16 @@ LOG_MODULE_REGISTER(sof_static_pipeline, CONFIG_SOF_LOG_LEVEL);
 #define CAPTURE_FU_ID        UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_fu))
 #define PLAYBACK_TERM_ID     UAC2_ENTITY_ID(DT_NODELABEL(i2s_out_terminal))
 #define CAPTURE_TERM_ID      UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_terminal))
+#else
+#define PLAYBACK_FU_ID       1
+#define PLAYBACK_EQ_FU_ID    2
+#define PLAYBACK_DRC_FU_ID   3
+#define CAPTURE_TDFB_FU_ID   4
+#define CAPTURE_EQ_FU_ID     5
+#define CAPTURE_FU_ID        6
+#define PLAYBACK_TERM_ID     1
+#define CAPTURE_TERM_ID      2
+#endif
 
 K_MEM_SLAB_DEFINE_STATIC(uac2_rx_slab, 256, 32, 64);
 K_MEM_SLAB_DEFINE_STATIC(uac2_tx_slab, 256, 64, 64);
@@ -358,20 +373,34 @@ const struct uac2_ops *sof_get_uac2_ops(void)
 	return &g_uac2_ops;
 }
 
+#if defined(CONFIG_PLATFORM_ESP32P4)
 extern const struct sof_static_topology g_esp32p4_static_topology;
+#elif defined(CONFIG_PLATFORM_ESP32C6)
+extern const struct sof_static_topology g_esp32c6_static_topology;
+#endif
 
 int sof_static_pipelines_init(struct sof *sof)
 {
 	ARG_UNUSED(sof);
-	int ret = sof_static_topology_init(&g_esp32p4_static_topology);
+	int ret = 0;
+#if defined(CONFIG_PLATFORM_ESP32P4)
+	ret = sof_static_topology_init(&g_esp32p4_static_topology);
+#elif defined(CONFIG_PLATFORM_ESP32C6)
+	ret = sof_static_topology_init(&g_esp32c6_static_topology);
+#endif
 	if (ret < 0)
 		return ret;
 
 	uint8_t mac[6] = {0};
 	extern int esp_efuse_mac_get_default(uint8_t *mac);
 	esp_efuse_mac_get_default(mac);
+	LOG_INF("SoC MAC: %02x:%02x:%02x:%02x:%02x:%02x",
+		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
-	if (mac[5] == 0x17) {
+	/* Pallas (0x17) on P4 or XIAO (0x20) on C6 defaults to Master Tx;
+	 * Ceres / Waveshare C6-Zero (0x24) defaults to Slave Rx.
+	 */
+	if (mac[5] == 0x17 || mac[0] == 0x10) {
 		g_status.clock_mode = SOF_CLOCK_MASTER;
 	} else {
 		g_status.clock_mode = SOF_CLOCK_SLAVE;
@@ -429,7 +458,11 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 			(SOF_DAI_FMT_PDM | SOF_DAI_FMT_CBC_CFC) :
 			(SOF_DAI_FMT_PDM | SOF_DAI_FMT_CBP_CFP);
 
+#if DT_NODE_EXISTS(DT_NODELABEL(dai_pdm0))
 		const struct device *dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(dai_pdm0));
+#else
+		const struct device *dev = NULL;
+#endif
 		if (dev && device_is_ready(dev)) {
 			uint32_t rate = g_status.sample_rate ? g_status.sample_rate : 48000;
 			uint32_t channels = 2;
@@ -575,54 +608,112 @@ int sof_static_pipeline_set_dmic_injector(bool enable)
 
 int sof_static_pipeline_set_volume(uint32_t pipeline_id, int16_t volume)
 {
+#if DT_NODE_EXISTS(DT_NODELABEL(i2s_fu))
 	if (pipeline_id == 1) {
 		return sof_uac2_set_feature_volume(NULL, PLAYBACK_FU_ID, 0, volume, NULL);
 	} else if (pipeline_id == 2) {
 		return sof_uac2_set_feature_volume(NULL, CAPTURE_FU_ID, 0, volume, NULL);
 	}
 	return -EINVAL;
+#else
+	if (pipeline_id == 1) {
+		g_status.playback_volume = volume;
+		return sof_static_kcontrol_set(1, (int32_t)volume);
+	} else if (pipeline_id == 2) {
+		g_status.capture_volume = volume;
+		return sof_static_kcontrol_set(2, (int32_t)volume);
+	}
+	return -EINVAL;
+#endif
 }
 
 int sof_static_pipeline_set_mute(uint32_t pipeline_id, bool mute)
 {
+#if DT_NODE_EXISTS(DT_NODELABEL(i2s_fu))
 	if (pipeline_id == 1) {
 		return sof_uac2_set_feature_mute(NULL, PLAYBACK_FU_ID, 0, mute, NULL);
 	} else if (pipeline_id == 2) {
 		return sof_uac2_set_feature_mute(NULL, CAPTURE_FU_ID, 0, mute, NULL);
 	}
 	return -EINVAL;
+#else
+	if (pipeline_id == 1) {
+		g_status.playback_mute = mute;
+		return 0;
+	} else if (pipeline_id == 2) {
+		g_status.capture_mute = mute;
+		return 0;
+	}
+	return -EINVAL;
+#endif
 }
 
 int sof_static_pipeline_get_volume(uint32_t pipeline_id, int16_t *volume)
 {
+	if (!volume) {
+		return -EINVAL;
+	}
+#if DT_NODE_EXISTS(DT_NODELABEL(i2s_fu))
 	if (pipeline_id == 1) {
 		return sof_uac2_get_feature_volume(NULL, PLAYBACK_FU_ID, 0, volume, NULL);
 	} else if (pipeline_id == 2) {
 		return sof_uac2_get_feature_volume(NULL, CAPTURE_FU_ID, 0, volume, NULL);
 	}
 	return -EINVAL;
+#else
+	if (pipeline_id == 1) {
+		*volume = g_status.playback_volume;
+		return 0;
+	} else if (pipeline_id == 2) {
+		*volume = g_status.capture_volume;
+		return 0;
+	}
+	return -EINVAL;
+#endif
 }
 
 int sof_static_pipeline_get_mute(uint32_t pipeline_id, bool *mute)
 {
+	if (!mute) {
+		return -EINVAL;
+	}
+#if DT_NODE_EXISTS(DT_NODELABEL(i2s_fu))
 	if (pipeline_id == 1) {
 		return sof_uac2_get_feature_mute(NULL, PLAYBACK_FU_ID, 0, mute, NULL);
 	} else if (pipeline_id == 2) {
 		return sof_uac2_get_feature_mute(NULL, CAPTURE_FU_ID, 0, mute, NULL);
 	}
 	return -EINVAL;
+#else
+	if (pipeline_id == 1) {
+		*mute = g_status.playback_mute;
+		return 0;
+	} else if (pipeline_id == 2) {
+		*mute = g_status.capture_mute;
+		return 0;
+	}
+	return -EINVAL;
+#endif
 }
 
 int sof_static_pipeline_set_playback_active(bool start)
 {
 	g_status.playback_active = start;
+#if DT_NODE_EXISTS(DT_NODELABEL(i2s_out_terminal))
 	return sof_static_pipeline_trigger_by_uac2_term(PLAYBACK_TERM_ID, start);
+#else
+	return sof_static_pipeline_trigger(1, start);
+#endif
 }
 
 int sof_static_pipeline_set_capture_active(bool start)
 {
 	g_status.capture_active = start;
+#if DT_NODE_EXISTS(DT_NODELABEL(i2s_in_terminal))
 	return sof_static_pipeline_trigger_by_uac2_term(CAPTURE_TERM_ID, start);
+#else
+	return sof_static_pipeline_trigger(2, start);
+#endif
 }
 
 int sof_static_pipeline_set_bt_stream(bool enable)

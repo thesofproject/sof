@@ -9,12 +9,18 @@
 #include <sof/audio/pipeline/static_pipeline.h>
 #include <soc/i2s_struct.h>
 #include <soc/gpio_struct.h>
+#if defined(CONFIG_SOC_SERIES_ESP32P4)
 #include <soc/io_mux_struct.h>
 #include <soc/hp_sys_clkrst_struct.h>
+#elif defined(CONFIG_SOC_SERIES_ESP32C6)
+#include <soc/pcr_struct.h>
+#endif
 #include <soc/gpio_sig_map.h>
 #include <sof/audio/usb_audio.h>
+#if defined(CONFIG_COMP_BT_AUDIO)
 #include <sof/audio/bt_service.h>
 #include <sof/audio/bt_audio.h>
+#endif
 #include <string.h>
 #include <stdlib.h>
 
@@ -26,7 +32,13 @@ static int cmd_sof_status(const struct shell *sh, size_t argc, char **argv)
 	struct sof_static_pipeline_status status;
 	sof_static_pipeline_get_status(&status);
 
+	uint8_t mac[6] = {0};
+	extern int esp_efuse_mac_get_default(uint8_t *mac);
+	esp_efuse_mac_get_default(mac);
+
 	shell_print(sh, "=== Sound Open Firmware (SOF) Status ===");
+	shell_print(sh, "  MAC Address:       %02x:%02x:%02x:%02x:%02x:%02x",
+		    mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 	shell_print(sh, "  Playback Pipeline: %s", status.playback_active ? "RUNNING" : "STOPPED");
 	shell_print(sh, "  Capture Pipeline:  %s", status.capture_active ? "RUNNING" : "STOPPED");
 	shell_print(sh, "  Active Interface:  %s", status.active_interface == SOF_AUDIO_IF_I2S ? "I2S0" : "PDM0");
@@ -199,11 +211,96 @@ static int cmd_sof_tone(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
+static inline uint32_t shell_isqrt(uint64_t val)
+{
+	uint64_t root = 0;
+	uint64_t bit = (uint64_t)1 << 62;
+	while (bit > val) bit >>= 2;
+	while (bit != 0) {
+		if (val >= root + bit) {
+			val -= root + bit;
+			root = (root >> 1) + bit;
+		} else {
+			root >>= 1;
+		}
+		bit >>= 2;
+	}
+	return (uint32_t)root;
+}
+
 static int cmd_sof_cap(const struct shell *sh, size_t argc, char **argv)
 {
 	if (argc < 2) {
-		shell_error(sh, "Usage: sof cap <start|stop>");
+		shell_error(sh, "Usage: sof cap <start|stop|stats|dump [count]>");
 		return -EINVAL;
+	}
+
+	if (strcmp(argv[1], "dump") == 0) {
+		int count = 32;
+		if (argc >= 3) {
+			count = atoi(argv[2]);
+			if (count <= 0) count = 32;
+			if (count > 240) count = 240;
+		}
+		int16_t samples[480];
+		bool ok = usb_audio_peek_capture_data(samples, sizeof(samples));
+		if (!ok) {
+			shell_error(sh, "Capture ring buffer empty or not active");
+			return 0;
+		}
+		shell_print(sh, "=== Dump %d Captured Samples (Stereo L/R) ===", count);
+		for (int i = 0; i < count; i++) {
+			shell_print(sh, "[%3d] L: %6d (0x%04hx), R: %6d (0x%04hx)",
+				    i, samples[2 * i], (uint16_t)samples[2 * i],
+				    samples[2 * i + 1], (uint16_t)samples[2 * i + 1]);
+		}
+		return 0;
+	}
+
+	if (strcmp(argv[1], "stats") == 0) {
+		int16_t samples[480]; /* 240 stereo frames = 5ms @ 48kHz */
+		bool ok = usb_audio_peek_capture_data(samples, sizeof(samples));
+		if (!ok) {
+			shell_error(sh, "Capture ring buffer empty or not active");
+			return 0;
+		}
+
+		int32_t min_l = 32767, max_l = -32768;
+		int32_t min_r = 32767, max_r = -32768;
+		int64_t sum_sq_l = 0, sum_sq_r = 0;
+		int zero_cross_l = 0;
+		int prev_l = samples[0];
+
+		for (int i = 0; i < 240; i++) {
+			int16_t l = samples[2 * i];
+			int16_t r = samples[2 * i + 1];
+
+			if (l < min_l) min_l = l;
+			if (l > max_l) max_l = l;
+			if (r < min_r) min_r = r;
+			if (r > max_r) max_r = r;
+
+			sum_sq_l += (int32_t)l * (int32_t)l;
+			sum_sq_r += (int32_t)r * (int32_t)r;
+
+			if ((l >= 0 && prev_l < 0) || (l < 0 && prev_l >= 0)) {
+				zero_cross_l++;
+			}
+			prev_l = l;
+		}
+
+		uint32_t rms_l = shell_isqrt(sum_sq_l / 240);
+		uint32_t rms_r = shell_isqrt(sum_sq_r / 240);
+		uint32_t est_freq = zero_cross_l * 100; /* 5ms window */
+
+		shell_print(sh, "=== Capture Stream Metrics ===");
+		shell_print(sh, "  Left Channel:  min=%d, max=%d, pk-pk=%d, rms=%u, est_freq=%u Hz",
+			    min_l, max_l, max_l - min_l, rms_l, est_freq);
+		shell_print(sh, "  Right Channel: min=%d, max=%d, pk-pk=%d, rms=%u",
+			    min_r, max_r, max_r - min_r, rms_r);
+		shell_print(sh, "  Zero Crossings: %d (in 5ms window)", zero_cross_l);
+		shell_print(sh, "==============================");
+		return 0;
 	}
 
 	bool start = (strcmp(argv[1], "start") == 0);
@@ -293,6 +390,7 @@ static int cmd_sof_regs(const struct shell *sh, size_t argc, char **argv)
 	ARG_UNUSED(argv);
 
 	shell_print(sh, "=== I2S0 / PDM Registers ===");
+#if defined(CONFIG_SOC_SERIES_ESP32P4)
 	shell_print(sh, "  I2S0.tx_conf:         0x%08x (tx_start=%u, tx_pdm_en=%u, tx_tdm_en=%u, tx_slave=%u, bck_div=%u)",
 		(uint32_t)I2S0.tx_conf.val,
 		(uint32_t)I2S0.tx_conf.tx_start,
@@ -300,6 +398,14 @@ static int cmd_sof_regs(const struct shell *sh, size_t argc, char **argv)
 		(uint32_t)I2S0.tx_conf.tx_tdm_en,
 		(uint32_t)I2S0.tx_conf.tx_slave_mod,
 		(uint32_t)I2S0.tx_conf.tx_bck_div_num);
+#elif defined(CONFIG_SOC_SERIES_ESP32C6)
+	shell_print(sh, "  I2S0.tx_conf:         0x%08x (tx_start=%u, tx_pdm_en=%u, tx_tdm_en=%u, tx_slave=%u)",
+		(uint32_t)I2S0.tx_conf.val,
+		(uint32_t)I2S0.tx_conf.tx_start,
+		(uint32_t)I2S0.tx_conf.tx_pdm_en,
+		(uint32_t)I2S0.tx_conf.tx_tdm_en,
+		(uint32_t)I2S0.tx_conf.tx_slave_mod);
+#endif
 	shell_print(sh, "  I2S0.tx_pcm2pdm_conf: 0x%08x (conv_en=%u, osr2=%u, dac_en=%u, dac_2out=%u)",
 		(uint32_t)I2S0.tx_pcm2pdm_conf.val,
 		(uint32_t)I2S0.tx_pcm2pdm_conf.pcm2pdm_conv_en,
@@ -326,11 +432,14 @@ static int cmd_sof_regs(const struct shell *sh, size_t argc, char **argv)
 		(uint32_t)I2S0.rx_conf1.rx_bits_mod,
 		(uint32_t)I2S0.rx_conf1.rx_tdm_chan_bits,
 		(uint32_t)I2S0.rx_conf1.rx_half_sample_bits);
+#if defined(CONFIG_SOC_SERIES_ESP32P4)
 	shell_print(sh, "  I2S0.rx_pdm2pcm_conf: 0x%08x (conv_en=%u, dsr16=%u, amp=%u)",
 		(uint32_t)I2S0.rx_pdm2pcm_conf.val,
 		(uint32_t)I2S0.rx_pdm2pcm_conf.rx_pdm2pcm_en,
 		(uint32_t)I2S0.rx_pdm2pcm_conf.rx_pdm_sinc_dsr_16_en,
 		(uint32_t)I2S0.rx_pdm2pcm_conf.rx_pdm2pcm_amplify_num);
+#endif
+#if defined(CONFIG_SOC_SERIES_ESP32P4)
 	shell_print(sh, "  GPIO Matrix:          G3_out=0x%08x (sel=%u), G4_out=0x%08x (sel=%u), G5_out=0x%08x (sel=%u)",
 		(uint32_t)GPIO.func_out_sel_cfg[3].val,
 		(uint32_t)GPIO.func_out_sel_cfg[3].out_sel,
@@ -353,10 +462,28 @@ static int cmd_sof_regs(const struct shell *sh, size_t argc, char **argv)
 		(uint32_t)HP_SYS_CLKRST.peri_clk_ctrl13.val,
 		(uint32_t)HP_SYS_CLKRST.peri_clk_ctrl13.reg_i2s0_tx_clk_src_sel,
 		(uint32_t)HP_SYS_CLKRST.peri_clk_ctrl13.reg_i2s0_tx_div_n);
+#elif defined(CONFIG_SOC_SERIES_ESP32C6)
+	shell_print(sh, "  GPIO Matrix:          G18_out=0x%08x, G19_out=0x%08x, G20_out=0x%08x, G21_out=0x%08x",
+		(uint32_t)GPIO.func_out_sel_cfg[18].val,
+		(uint32_t)GPIO.func_out_sel_cfg[19].val,
+		(uint32_t)GPIO.func_out_sel_cfg[20].val,
+		(uint32_t)GPIO.func_out_sel_cfg[21].val);
+	shell_print(sh, "  GPIO Level / In:      GPIO_IN=0x%08x, G18_in=%u, G19_in=%u, G20_in=%u, G21_in=%u",
+		(uint32_t)GPIO.in.val,
+		(uint32_t)((GPIO.in.val >> 18) & 1),
+		(uint32_t)((GPIO.in.val >> 19) & 1),
+		(uint32_t)((GPIO.in.val >> 20) & 1),
+		(uint32_t)((GPIO.in.val >> 21) & 1));
+	shell_print(sh, "  PCR I2S Clocks:       conf=0x%08x, tx_clkm=0x%08x, rx_clkm=0x%08x",
+		(uint32_t)PCR.i2s_conf.val,
+		(uint32_t)PCR.i2s_tx_clkm_conf.val,
+		(uint32_t)PCR.i2s_rx_clkm_conf.val);
+#endif
 	shell_print(sh, "============================");
 	return 0;
 }
 
+#if defined(CONFIG_COMP_BT_AUDIO)
 static int cmd_sof_bt_status(const struct shell *sh, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -467,6 +594,16 @@ static int cmd_sof_bt_power(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
+SHELL_STATIC_SUBCMD_SET_CREATE(bt_cmds,
+	SHELL_CMD(status, NULL, "Print Bluetooth LE Audio / C6 coprocessor status", cmd_sof_bt_status),
+	SHELL_CMD(format, NULL, "Get or set BT audio format (sof bt format [name|id])", cmd_sof_bt_format),
+	SHELL_CMD(broadcast, NULL, "Start/stop LE Audio broadcast (sof bt broadcast <start|stop>)", cmd_sof_bt_broadcast),
+	SHELL_CMD(scan, NULL, "Scan for nearby LE Audio devices", cmd_sof_bt_scan),
+	SHELL_CMD(power, NULL, "Control ESP32-C6 power (sof bt power <on|off>)", cmd_sof_bt_power),
+	SHELL_SUBCMD_SET_END
+);
+#endif
+
 static int cmd_sof_route(const struct shell *sh, size_t argc, char **argv)
 {
 	if (argc < 2) {
@@ -498,27 +635,20 @@ static int cmd_sof_route(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
-SHELL_STATIC_SUBCMD_SET_CREATE(bt_cmds,
-	SHELL_CMD(status, NULL, "Print Bluetooth LE Audio / C6 coprocessor status", cmd_sof_bt_status),
-	SHELL_CMD(format, NULL, "Get or set BT audio format (sof bt format [name|id])", cmd_sof_bt_format),
-	SHELL_CMD(broadcast, NULL, "Start/stop LE Audio broadcast (sof bt broadcast <start|stop>)", cmd_sof_bt_broadcast),
-	SHELL_CMD(scan, NULL, "Scan for nearby LE Audio devices", cmd_sof_bt_scan),
-	SHELL_CMD(power, NULL, "Control ESP32-C6 power (sof bt power <on|off>)", cmd_sof_bt_power),
-	SHELL_SUBCMD_SET_END
-);
-
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmds,
 	SHELL_CMD(status, NULL, "Print current SOF pipeline and audio interface status", cmd_sof_status),
 	SHELL_CMD(regs, NULL, "Dump I2S1/PDM hardware registers", cmd_sof_regs),
 	SHELL_CMD(ctl, NULL, "List or set static kcontrols (sof ctl <list|get|set>)", cmd_sof_ctl),
 	SHELL_CMD(play, NULL, "Start/stop playback pipeline (sof play <start|stop>)", cmd_sof_play),
 	SHELL_CMD(tone, NULL, "Generate 1000 Hz test tone (sof tone <on|off>)", cmd_sof_tone),
-	SHELL_CMD(cap, NULL, "Start/stop capture pipeline (sof cap <start|stop>)", cmd_sof_cap),
+	SHELL_CMD(cap, NULL, "Start/stop capture pipeline (sof cap <start|stop|stats|dump>)", cmd_sof_cap),
 	SHELL_CMD(vol, NULL, "Set volume in dB (sof vol <pb|cap> <dB>)", cmd_sof_vol),
 	SHELL_CMD(mute, NULL, "Set pipeline mute (sof mute <pb|cap> <on|off>)", cmd_sof_mute),
 	SHELL_CMD(mode, NULL, "Configure interface clock mode (sof mode <i2s|pdm> <master|slave|dmic>)", cmd_sof_mode),
 	SHELL_CMD(dmic, NULL, "Control PDM DMIC injector mode (sof dmic <enable|bypass>)", cmd_sof_dmic),
+#if defined(CONFIG_COMP_BT_AUDIO)
 	SHELL_CMD(bt, &bt_cmds, "Bluetooth LE Audio commands (sof bt <status|broadcast|scan|power>)", NULL),
+#endif
 	SHELL_CMD(route, NULL, "Audio routing (sof route <usb_dai|bt_dai|usb_bt>)", cmd_sof_route),
 	SHELL_CMD(eq, NULL, "Control Equalizer bypass (sof eq <playback|capture> <enable|bypass>)", cmd_sof_eq),
 	SHELL_CMD(drc, NULL, "Control DRC bypass (sof drc <enable|bypass>)", cmd_sof_drc),

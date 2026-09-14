@@ -5,7 +5,9 @@
 
 #include <sof/audio/pipeline/static_pipeline.h>
 #include <sof/audio/pipeline/sof_static_pipeline.h>
+#if defined(CONFIG_COMP_BT_AUDIO)
 #include <sof/audio/bt_service.h>
+#endif
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/buffer.h>
@@ -14,33 +16,52 @@
 #include <ipc/topology.h>
 #include <ipc/control.h>
 #include <kernel/header.h>
+#if defined(CONFIG_COMP_IIR)
 #include <user/eq.h>
 #include "../eq_iir/eq_iir.h"
+#endif
+#if defined(CONFIG_COMP_DRC)
 #include "../drc/drc_user.h"
 #include "../drc/drc.h"
+#endif
+#if defined(CONFIG_COMP_TDFB)
 #include "../tdfb/tdfb.h"
 #include "../tdfb/tdfb_comp.h"
+#endif
 #include <module/ipc4/base-config.h>
 #include "../volume/peak_volume.h"
 #include <rtos/sof.h>
 #include <rtos/alloc.h>
+#if defined(CONFIG_COMP_LEVEL_MULTIPLIER)
 #include "../level_multiplier/level_multiplier.h"
+#endif
+#if defined(CONFIG_COMP_SEL)
 #include <user/selector.h>
+#endif
 #include <zephyr/logging/log.h>
 #include <string.h>
 
 LOG_MODULE_REGISTER(static_pipeline_loader, CONFIG_SOF_LOG_LEVEL);
 
 extern const struct sof_uuid volume_uuid;
+#if defined(CONFIG_COMP_IIR)
 extern const struct sof_uuid eq_iir_uuid;
+#endif
+#if defined(CONFIG_COMP_DRC)
 extern const struct sof_uuid drc_uuid;
-extern const struct sof_uuid tdfb_uuid;
-extern const struct sof_uuid level_multiplier_uuid;
-extern const struct sof_uuid selector_uuid;
-
 struct drc_state;
 extern void drc_reset_state(struct processing_module *mod, struct drc_state *state);
 void * const g_drc_force __used = (void *)drc_reset_state;
+#endif
+#if defined(CONFIG_COMP_TDFB)
+extern const struct sof_uuid tdfb_uuid;
+#endif
+#if defined(CONFIG_COMP_LEVEL_MULTIPLIER)
+extern const struct sof_uuid level_multiplier_uuid;
+#endif
+#if defined(CONFIG_COMP_SEL)
+extern const struct sof_uuid selector_uuid;
+#endif
 
 #define MAX_STATIC_PIPELINES    16
 #define MAX_STATIC_COMPS        64
@@ -533,6 +554,7 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 		return sof_static_pipeline_set_dmic_injector(val != 0);
 	}
 
+#if defined(CONFIG_COMP_BT_AUDIO)
 	if (ctl->id == 8 || (ctl->name && !strcmp(ctl->name, "BT Audio Stream Switch"))) {
 		s_control_vals[ctl_idx] = val;
 		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
@@ -550,6 +572,7 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
 		return bt_service_set_format((enum bt_audio_format)val);
 	}
+#endif
 
 	struct comp_dev *dev = sof_static_comp_get(ctl->target_comp_id);
 	if (!dev)
@@ -560,6 +583,7 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 	switch (ctl->type) {
 	case SOF_STATIC_CTRL_VOLUME:
 		if (mod) {
+#if defined(CONFIG_COMP_LEVEL_MULTIPLIER)
 			if (dev->drv->uid && !memcmp(dev->drv->uid, &level_multiplier_uuid, UUID_SIZE)) {
 				struct level_multiplier_comp_data *cd = module_get_private_data(mod);
 				if (cd) {
@@ -568,7 +592,9 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 					cd->gain_f = (float)val / 2147483648.0f;
 #endif
 				}
-			} else {
+			} else
+#endif
+			{
 				for (uint32_t ch = 0; ch < ctl->channels; ch++) {
 					volume_set_chan(mod, ch, val, true);
 				}
@@ -578,6 +604,7 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 
 	case SOF_STATIC_CTRL_SWITCH:
 		if (mod) {
+#if defined(CONFIG_COMP_LEVEL_MULTIPLIER)
 			if (dev->drv->uid && !memcmp(dev->drv->uid, &level_multiplier_uuid, UUID_SIZE)) {
 				struct level_multiplier_comp_data *cd = module_get_private_data(mod);
 				if (cd) {
@@ -593,7 +620,9 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 #endif
 					}
 				}
-			} else if (dev->drv->uid && !memcmp(dev->drv->uid, &volume_uuid, UUID_SIZE)) {
+			} else
+#endif
+			if (dev->drv->uid && !memcmp(dev->drv->uid, &volume_uuid, UUID_SIZE)) {
 				for (uint32_t ch = 0; ch < ctl->channels; ch++) {
 					if (val == 0) {
 						volume_set_chan_mute(mod, ch);
@@ -601,7 +630,9 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 						volume_set_chan_unmute(mod, ch);
 					}
 				}
-			} else if (dev->drv->uid && !memcmp(dev->drv->uid, &eq_iir_uuid, UUID_SIZE)) {
+			}
+#if defined(CONFIG_COMP_IIR)
+			else if (dev->drv->uid && !memcmp(dev->drv->uid, &eq_iir_uuid, UUID_SIZE)) {
 				struct comp_data *cd = module_get_private_data(mod);
 				if (cd) {
 					if (val == 0) { /* 0 = bypass */
@@ -619,21 +650,29 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 #endif
 					}
 				}
-			} else if (dev->drv->uid && !memcmp(dev->drv->uid, &drc_uuid, UUID_SIZE)) {
+			}
+#endif
+#if defined(CONFIG_COMP_DRC)
+			else if (dev->drv->uid && !memcmp(dev->drv->uid, &drc_uuid, UUID_SIZE)) {
 				struct drc_comp_data *cd = module_get_private_data(mod);
 				if (cd) {
 					cd->enable_switch = (val != 0);
 				}
-			} else if (dev->drv->uid && !memcmp(dev->drv->uid, &tdfb_uuid, UUID_SIZE)) {
+			}
+#endif
+#if defined(CONFIG_COMP_TDFB)
+			else if (dev->drv->uid && !memcmp(dev->drv->uid, &tdfb_uuid, UUID_SIZE)) {
 				struct tdfb_comp_data *cd = module_get_private_data(mod);
 				if (cd) {
 					cd->beam_on = (val != 0);
 				}
 			}
+#endif
 		}
 		break;
 
 	case SOF_STATIC_CTRL_ENUM:
+#if defined(CONFIG_COMP_SEL)
 		if (dev->drv->uid && !memcmp(dev->drv->uid, &selector_uuid, UUID_SIZE)) {
 			uint8_t cbuf[sizeof(struct sof_ipc_ctrl_data) + sizeof(struct sof_ipc_ctrl_value_chan)] = {0};
 			struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)cbuf;
@@ -644,6 +683,7 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 			cdata->chanv[0].value = val;
 			comp_cmd(dev, COMP_CMD_SET_VALUE, cdata, sizeof(cbuf));
 		}
+#endif
 		break;
 
 	default:
