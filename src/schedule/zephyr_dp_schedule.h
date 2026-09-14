@@ -42,6 +42,7 @@ struct task_dp_pdata {
 	struct processing_module *mod;	/* the module to be scheduled */
 	uint32_t ll_cycles_to_start;    /* current number of LL cycles till delayed start */
 #if CONFIG_SOF_USERSPACE_APPLICATION
+	uint8_t *ipc_config_data;
 	struct ipc4_flat *flat;
 	struct k_mem_partition mpart[SOF_DP_PART_TYPE_COUNT];
 #endif
