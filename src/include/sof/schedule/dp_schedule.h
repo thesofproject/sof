@@ -133,11 +133,11 @@ union scheduler_dp_thread_ipc_param {
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
-			    const union scheduler_dp_thread_ipc_param *param);
+			    union scheduler_dp_thread_ipc_param *param);
 #else
 static inline int scheduler_dp_thread_ipc(struct processing_module *pmod,
 					  unsigned int cmd,
-					  const union scheduler_dp_thread_ipc_param *param)
+					  union scheduler_dp_thread_ipc_param *param)
 {
 	return 0;
 }

@@ -174,7 +174,7 @@ static void ipc_thread_unflatten_run(struct processing_module *pmod, struct ipc4
 
 /* Signal an IPC and wait for processing completion */
 int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
-			    const union scheduler_dp_thread_ipc_param *param)
+			    union scheduler_dp_thread_ipc_param *param)
 {
 	if (!pmod) {
 		tr_err(&dp_tr, "no thread module");
