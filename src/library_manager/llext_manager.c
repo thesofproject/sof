@@ -52,6 +52,11 @@ extern struct tr_ctx lib_manager_tr;
 
 #include <zephyr/llext/elf.h>
 
+/**
+ * @brief Reserve virtual address space for a relocatable LLEXT image.
+ * @param size Total image size in bytes.
+ * @return Base virtual address, or zero when reservation fails.
+ */
 static uintptr_t llext_manager_alloc_vma(size_t size)
 {
 	size_t num_pages = DIV_ROUND_UP(size, PAGE_SZ);
@@ -67,6 +72,11 @@ static uintptr_t llext_manager_alloc_vma(size_t size)
 	return (uintptr_t)vma;
 }
 
+/**
+ * @brief Release virtual address space reserved for a LLEXT image.
+ * @param vma Base virtual address returned by llext_manager_alloc_vma().
+ * @param size Reserved image size in bytes.
+ */
 void llext_manager_free_vma(uintptr_t vma, size_t size)
 {
 	if (!vma || !size)
@@ -75,6 +85,12 @@ void llext_manager_free_vma(uintptr_t vma, size_t size)
 	vpage_release((void *)vma);
 }
 
+/**
+ * @brief Map an ELF section name and flags to a LLEXT memory region.
+ * @param name ELF section name.
+ * @param shdr ELF section header.
+ * @return Corresponding LLEXT memory region, or LLEXT_MEM_COUNT if unsupported.
+ */
 static enum llext_mem llext_manager_get_sec_mem_idx(const char *name, const elf_shdr_t *shdr)
 {
 	if (strcmp(name, ".exported_sym") == 0)
@@ -101,6 +117,12 @@ static enum llext_mem llext_manager_get_sec_mem_idx(const char *name, const elf_
 	}
 }
 
+/**
+ * @brief Calculate and optionally assign addresses for loadable ELF sections.
+ * @param elf_buf ELF image buffer.
+ * @param vma_base Base virtual address for relocated sections, or zero to measure only.
+ * @return Total virtual address space required by the loadable sections.
+ */
 static size_t llext_manager_layout_sections(uint8_t *elf_buf, uintptr_t vma_base)
 {
 	elf_ehdr_t *hdr = (elf_ehdr_t *)elf_buf;
@@ -140,6 +162,13 @@ static size_t llext_manager_layout_sections(uint8_t *elf_buf, uintptr_t vma_base
 	return current_vma - vma_base;
 }
 
+/**
+ * @brief Apply memory permissions to a possibly unaligned virtual range.
+ * @param vma Range start address.
+ * @param size Range size in bytes.
+ * @param flags New system memory permissions.
+ * @return Zero on success or a negative error code.
+ */
 static int llext_manager_update_flags(void __sparse_cache *vma, size_t size, uint32_t flags)
 {
 	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
@@ -149,6 +178,14 @@ static int llext_manager_update_flags(void __sparse_cache *vma, size_t size, uin
 					      ALIGN_UP(pre_pad_size + size, PAGE_SZ), flags);
 }
 
+/**
+ * @brief Map a possibly unaligned virtual range after aligning its page bounds.
+ * @param virtual_region Shared virtual memory region used for the mapping.
+ * @param vma Range start address.
+ * @param size Range size in bytes.
+ * @param flags Mapping permissions.
+ * @return Zero on success or a negative error code.
+ */
 static int llext_manager_align_map(const struct sys_mm_drv_region *virtual_region,
 				   void __sparse_cache *vma, size_t size, uint32_t flags)
 {
@@ -158,6 +195,12 @@ static int llext_manager_align_map(const struct sys_mm_drv_region *virtual_regio
 					  ALIGN_UP(pre_pad_size + size, PAGE_SZ), flags);
 }
 
+/**
+ * @brief Unmap a possibly unaligned virtual range using page-aligned bounds.
+ * @param vma Range start address.
+ * @param size Range size in bytes.
+ * @return Zero on success or a negative error code.
+ */
 static int llext_manager_align_unmap(void __sparse_cache *vma, size_t size)
 {
 	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
@@ -166,6 +209,12 @@ static int llext_manager_align_unmap(void __sparse_cache *vma, size_t size)
 	return sys_mm_drv_unmap_region(aligned_vma, ALIGN_UP(pre_pad_size + size, PAGE_SZ));
 }
 
+/**
+ * @brief Update permissions for sections placed outside the main VMA mapping.
+ * @param vma Detached section address.
+ * @param size Section size in bytes.
+ * @param flags New memory permissions.
+ */
 static void llext_manager_detached_update_flags(void __sparse_cache *vma,
 						size_t size, uint32_t flags)
 {
@@ -184,6 +233,17 @@ static void llext_manager_detached_update_flags(void __sparse_cache *vma,
  * Map the memory range covered by 'vma' and 'size' as writable, copy all
  * sections that belong to the specified 'region' and are contained in the
  * memory range, then remap the same area according to the 'flags' parameter.
+ */
+/**
+ * @brief Map a LLEXT region, copy its sections from storage, and set permissions.
+ * @param virtual_region Shared virtual memory region used for mapping.
+ * @param ldr LLEXT buffer loader.
+ * @param ext Loaded LLEXT object.
+ * @param region LLEXT memory region to load.
+ * @param vma Destination virtual address.
+ * @param size Destination size in bytes.
+ * @param flags Final memory permissions.
+ * @return Zero on success or a negative error code.
  */
 static int llext_manager_load_data_from_storage(const struct sys_mm_drv_region *virtual_region,
 						const struct llext_loader *ldr,
@@ -256,6 +316,14 @@ static int llext_manager_load_data_from_storage(const struct sys_mm_drv_region *
 	return ret;
 }
 
+/**
+ * @brief Remove mappings for sections placed outside a main LLEXT region.
+ * @param ldr LLEXT buffer loader.
+ * @param ext Loaded LLEXT object.
+ * @param region LLEXT memory region being unloaded.
+ * @param vma Main region virtual address.
+ * @param size Main region size in bytes.
+ */
 static void llext_manager_unmap_detached_sections(const struct llext_loader *ldr,
 						  const struct llext *ext,
 						  enum llext_mem region,
@@ -289,6 +357,11 @@ static void llext_manager_unmap_detached_sections(const struct llext_loader *ldr
 #endif
 }
 
+/**
+ * @brief Map a linked LLEXT module into virtual memory and initialize its data.
+ * @param mctx Library module context to load.
+ * @return Zero on success or a negative error code.
+ */
 static int llext_manager_load_module(struct lib_manager_module *mctx)
 {
 	/* Executable code (.text) */
@@ -384,6 +457,11 @@ e_text:
 	return ret;
 }
 
+/**
+ * @brief Unmap a loaded LLEXT module and its detached sections.
+ * @param mctx Library module context to unload.
+ * @return Zero on success or the first unmap error.
+ */
 static int llext_manager_unload_module(struct lib_manager_module *mctx)
 {
 	const struct llext_loader *ldr = &mctx->ebl->loader;
@@ -437,11 +515,24 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	return err;
 }
 
+/**
+ * @brief Determine whether an ELF section must remain outside the relocated VMA.
+ * @param shdr ELF section header.
+ * @return true when the section is detached from the relocated image.
+ */
 static bool llext_manager_section_detached(const elf_shdr_t *shdr)
 {
 	return shdr->sh_addr < SOF_MODULE_DRAM_LINK_END;
 }
 
+/**
+ * @brief Link a LLEXT image, reusing its context when it is already linked.
+ * @param name Module name passed to the LLEXT loader.
+ * @param mctx Library module context.
+ * @param buildinfo Receives the module build information section.
+ * @param mod_manifest Receives the module manifest section.
+ * @return Zero on success or a negative error code.
+ */
 static int llext_manager_link(const char *name,
 			      struct lib_manager_module *mctx, const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
@@ -560,7 +651,12 @@ static int llext_manager_link(const char *name,
 	return *buildinfo && *mod_manifest ? 0 : -EPROTO;
 }
 
-/* Count "module files" in the library, allocate and initialize memory for their descriptors */
+/**
+ * @brief Count module files and initialize their persistent descriptors.
+ * @param ctx Library module context to initialize.
+ * @param desc Firmware library manifest.
+ * @return Zero on success or a negative error code.
+ */
 static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 				  const struct sof_man_fw_desc *desc)
 {
@@ -613,7 +709,12 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 	return 0;
 }
 
-/* Find a module context, containing the driver with the supplied index */
+/**
+ * @brief Find the module context containing a manifest entry.
+ * @param ctx Library module context.
+ * @param idx Global module manifest index.
+ * @return Index of the containing module context.
+ */
 static unsigned int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigned int idx)
 {
 	unsigned int i;
@@ -625,6 +726,15 @@ static unsigned int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx
 	return i - 1;
 }
 
+/**
+ * @brief Link one module driver and return its module-context index.
+ * @param module_id Module identifier from the IPC configuration.
+ * @param desc Firmware library manifest.
+ * @param ctx Library module context.
+ * @param buildinfo Receives the build information section when first linked.
+ * @param mod_manifest Receives the selected module manifest.
+ * @return Module-context index, or a negative error code.
+ */
 static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw_desc *desc,
 				     struct lib_manager_mod_ctx *ctx, const void **buildinfo,
 				     const struct sof_man_module_manifest **mod_manifest)
@@ -730,6 +840,12 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 	return mod_ctx_idx;
 }
 
+/**
+ * @brief Find the library context for a loaded LLEXT dependency.
+ * @param llext LLEXT dependency to find.
+ * @param dep_ctx Receives the dependent module context.
+ * @return Library index, or a negative error code.
+ */
 static int llext_lib_find(const struct llext *llext, struct lib_manager_module **dep_ctx)
 {
 	struct ext_library *_ext_lib = ext_lib_get();
@@ -752,7 +868,11 @@ static int llext_lib_find(const struct llext *llext, struct lib_manager_module *
 	return -ENOENT;
 }
 
-/* n can be -1 */
+/**
+ * @brief Roll back dependency references and unload newly mapped dependencies.
+ * @param dep_ctx Dependency contexts to roll back.
+ * @param n Last dependency index to process; may be -1.
+ */
 static void llext_manager_depend_unlink_rollback(struct lib_manager_module *dep_ctx[], int n)
 {
 	for (; n >= 0; n--)
@@ -762,6 +882,12 @@ static void llext_manager_depend_unlink_rollback(struct lib_manager_module *dep_
 			llext_manager_unload_module(dep_ctx[n]);
 }
 
+/**
+ * @brief Link and map an IPC module, returning its entry point.
+ * @param ipc_config IPC module configuration.
+ * @param ipc_specific_config IPC-specific configuration, reserved for the loader interface.
+ * @return Module entry-point address, or zero on failure.
+ */
 uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 					const void *ipc_specific_config)
 {
@@ -856,6 +982,14 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 }
 
 #ifdef CONFIG_USERSPACE
+/**
+ * @brief Add a page-aligned user memory partition for a module region.
+ * @param domain User memory domain to update.
+ * @param addr Region start address.
+ * @param size Region size in bytes.
+ * @param attr Partition attributes.
+ * @return Zero on success or a negative error code.
+ */
 static int llext_manager_add_partition(struct k_mem_domain *domain,
 				       uintptr_t addr, size_t size,
 				       k_mem_partition_attr_t attr)
@@ -871,6 +1005,14 @@ static int llext_manager_add_partition(struct k_mem_domain *domain,
 	return k_mem_domain_add_partition(domain, &part);
 }
 
+/**
+ * @brief Remove a page-aligned user memory partition for a module region.
+ * @param domain User memory domain to update.
+ * @param addr Region start address.
+ * @param size Region size in bytes.
+ * @param attr Partition attributes.
+ * @return Zero on success or a negative error code.
+ */
 static int llext_manager_rm_partition(struct k_mem_domain *domain,
 				       uintptr_t addr, size_t size,
 				       k_mem_partition_attr_t attr)
@@ -886,6 +1028,12 @@ static int llext_manager_rm_partition(struct k_mem_domain *domain,
 	return k_mem_domain_remove_partition(domain, &part);
 }
 
+/**
+ * @brief Add all mapped LLEXT regions to a component's user memory domain.
+ * @param component_id IPC component identifier.
+ * @param domain User memory domain to update.
+ * @return Zero on success or a negative error code.
+ */
 int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *domain)
 {
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
@@ -1022,6 +1170,12 @@ e_text:
 	return ret;
 }
 
+/**
+ * @brief Remove all mapped LLEXT regions from a component's user memory domain.
+ * @param component_id IPC component identifier.
+ * @param domain User memory domain to update.
+ * @return Zero on success or a negative error code.
+ */
 int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *domain)
 {
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
@@ -1098,6 +1252,11 @@ int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *do
 }
 #endif
 
+/**
+ * @brief Release one module instance and unload it when its last user exits.
+ * @param component_id IPC component identifier.
+ * @return Zero on success or a negative error code.
+ */
 int llext_manager_free_module(const uint32_t component_id)
 {
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
@@ -1165,7 +1324,11 @@ int llext_manager_free_module(const uint32_t component_id)
 	return llext_manager_unload_module(mctx);
 }
 
-/* An auxiliary library has been loaded, need to read in its exported symbols */
+/**
+ * @brief Link all auxiliary LLEXT modules in a library.
+ * @param module_id Library module identifier.
+ * @return Zero on success or a negative error code.
+ */
 int llext_manager_add_library(uint32_t module_id)
 {
 	struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(module_id);
@@ -1202,6 +1365,11 @@ int llext_manager_add_library(uint32_t module_id)
 	return 0;
 }
 
+/**
+ * @brief Determine whether a component belongs to a LLEXT module.
+ * @param comp Component to inspect.
+ * @return true when the component's module manifest identifies a LLEXT module.
+ */
 bool comp_is_llext(struct comp_dev *comp)
 {
 	const uint32_t module_id = IPC4_MOD_ID(comp->ipc_config.id);
