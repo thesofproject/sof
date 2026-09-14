@@ -781,11 +781,23 @@ int module_free(struct processing_module *mod)
 	struct module_data *md = &mod->priv;
 	int ret = 0;
 
-	if (ops->free && (mod->dev->ipc_config.proc_domain != COMP_PROCESSING_DOMAIN_DP ||
-			  !IS_ENABLED(CONFIG_SOF_USERSPACE_APPLICATION))) {
-		ret = ops->free(mod);
-		if (ret)
-			comp_warn(mod->dev, "error: %d", ret);
+	if (ops->free) {
+		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL ||
+		    !IS_ENABLED(CONFIG_SOF_USERSPACE_APPLICATION)) {
+			ret = ops->free(mod);
+			if (ret)
+				comp_warn(mod->dev, "error: %d", ret);
+#if CONFIG_SOF_USERSPACE_APPLICATION
+		} else {
+			/*
+			 * Run DP module's .free() method in its thread context.
+			 * Unlike with other IPCs we first run module's .free()
+			 * in thread context, then cancel the thread, and then
+			 * execute final clean up
+			 */
+			scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_DELETE_INSTANCE, NULL);
+#endif
+		}
 	}
 
 	/* Free all memory shared by module_adapter & module */
