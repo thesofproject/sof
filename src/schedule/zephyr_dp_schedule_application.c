@@ -592,12 +592,12 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	/* Host mailbox partition for additional IPC parameters: read-only */
 	pdata->mpart[SOF_DP_PART_CFG] = (struct k_mem_partition){
 		.start = (uintptr_t)sys_cache_uncached_ptr_get((void *)MAILBOX_HOSTBOX_BASE),
-		.size = 4096,
+		.size = MAILBOX_HOSTBOX_SIZE,
 		.attr = K_MEM_PARTITION_P_RO_U_RO,
 	};
 	pdata->mpart[SOF_DP_PART_CFG_CACHE] = (struct k_mem_partition){
 		.start = (uintptr_t)MAILBOX_HOSTBOX_BASE,
-		.size = 4096,
+		.size = MAILBOX_HOSTBOX_SIZE,
 		.attr = K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB,
 	};
 
