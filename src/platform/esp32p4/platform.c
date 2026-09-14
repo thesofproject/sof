@@ -17,6 +17,9 @@
 #include <kernel/abi.h>
 #include <sof/debug/debug.h>
 #include <zephyr/logging/log.h>
+#if defined(CONFIG_SOC_SERIES_ESP32P4) || defined(CONFIG_ESP32P4_PIE_SIMD)
+#include <sof/math/esp32p4_pie.h>
+#endif
 
 LOG_MODULE_REGISTER(esp32p4_platform, CONFIG_SOF_LOG_LEVEL);
 
@@ -130,6 +133,11 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 int platform_init(struct sof *sof)
 {
 	LOG_INF("Initializing ESP32-P4 SOF Platform...");
+
+#if defined(CONFIG_SOC_SERIES_ESP32P4) || defined(CONFIG_ESP32P4_PIE_SIMD)
+	esp_pie_enable();
+	LOG_INF("ESP32-P4 PIE 128-bit vector SIMD coprocessor enabled");
+#endif
 
 	platform_clock_init(sof);
 

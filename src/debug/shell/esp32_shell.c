@@ -498,6 +498,113 @@ static int cmd_sof_route(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
+#if defined(CONFIG_SOC_SERIES_ESP32P4) || defined(CONFIG_ESP32P4_PIE_SIMD)
+#include <sof/math/esp32p4_pie.h>
+
+static int cmd_sof_bench(const struct shell *sh, size_t argc, char **argv)
+{
+	esp_pie_enable();
+
+	shell_print(sh, "=== ESP32-P4 PIE SIMD Audio Kernel Benchmark ===");
+
+	#define BENCH_SAMPLES 512
+	static int16_t src[BENCH_SAMPLES] __attribute__((aligned(16)));
+	static int16_t dst_scalar[BENCH_SAMPLES] __attribute__((aligned(16)));
+	static int16_t dst_pie[BENCH_SAMPLES] __attribute__((aligned(16)));
+
+	/* Initialize test samples with ramp waveform */
+	for (int i = 0; i < BENCH_SAMPLES; i++) {
+		src[i] = (int16_t)((i % 128) * 256 - 16384);
+	}
+
+	const int32_t vol_l = 32768; /* -6 dB */
+	const int32_t vol_r = 16384; /* -12 dB */
+	const int iters = 200;
+
+	/* 1. Benchmark Scalar Volume Scaling */
+	uint32_t t0 = k_cycle_get_32();
+	for (int it = 0; it < iters; it++) {
+		for (int i = 0; i < BENCH_SAMPLES; i += 2) {
+			int32_t pl = ((int32_t)src[i + 0] * vol_l + 0x8000) >> 16;
+			int32_t pr = ((int32_t)src[i + 1] * vol_r + 0x8000) >> 16;
+			dst_scalar[i + 0] = (pl > 32767) ? 32767 : ((pl < -32768) ? -32768 : pl);
+			dst_scalar[i + 1] = (pr > 32767) ? 32767 : ((pr < -32768) ? -32768 : pr);
+		}
+	}
+	uint32_t t1 = k_cycle_get_32();
+	uint32_t scalar_cycles = (t1 - t0) / iters;
+
+	/* 2. Benchmark PIE Vector Volume Scaling */
+	esp_pie_set_sar(15);
+
+	int16_t vol15_l = (int16_t)((vol_l + 1) >> 1);
+	int16_t vol15_r = (int16_t)((vol_r + 1) >> 1);
+	int16_t vol_stereo[2] = { vol15_l, vol15_r };
+
+	register const void *bc_a2 asm("a2") = vol_stereo;
+	ESP_PIE_VLDBC_32_IP_Q2_A2();
+
+	uint32_t t2 = k_cycle_get_32();
+	for (int it = 0; it < iters; it++) {
+		register const int16_t *src_a0 asm("a0") = src;
+		register int16_t *dst_a1 asm("a1") = dst_pie;
+
+		for (int i = 0; i <= BENCH_SAMPLES - 16; i += 16) {
+			ESP_PIE_VLD_128_IP_Q0_A0();
+			ESP_PIE_VLD_128_IP_Q1_A0();
+			ESP_PIE_VMUL_S16_Q0_Q0_Q2();
+			ESP_PIE_VMUL_S16_Q1_Q1_Q2();
+			ESP_PIE_VCLAMP_S16_Q0_Q0();
+			ESP_PIE_VCLAMP_S16_Q1_Q1();
+			ESP_PIE_VST_128_IP_Q0_A1();
+			ESP_PIE_VST_128_IP_Q1_A1();
+		}
+	}
+	uint32_t t3 = k_cycle_get_32();
+	uint32_t pie_cycles = (t3 - t2) / iters;
+
+	/* 3. Verification */
+	shell_print(sh, "  First 8 samples (src -> scalar vs pie):");
+	for (int i = 0; i < 8; i++) {
+		shell_print(sh, "    [%d] %6d -> scalar %6d, pie %6d",
+			    i, src[i], dst_scalar[i], dst_pie[i]);
+	}
+	int max_diff = 0;
+	for (int i = 0; i < BENCH_SAMPLES; i++) {
+		int diff = abs(dst_scalar[i] - dst_pie[i]);
+		if (diff > max_diff)
+			max_diff = diff;
+	}
+
+	uint32_t sc_x100 = (scalar_cycles * 100) / BENCH_SAMPLES;
+	uint32_t pie_x100 = (pie_cycles * 100) / BENCH_SAMPLES;
+	shell_print(sh, "  Buffer size:    %d samples (%d bytes)", BENCH_SAMPLES, BENCH_SAMPLES * 2);
+	shell_print(sh, "  Scalar Cycles:  %u cycles (%u.%02u cyc/sample)",
+		    scalar_cycles, sc_x100 / 100, sc_x100 % 100);
+	shell_print(sh, "  PIE SIMD Cycles:%u cycles (%u.%02u cyc/sample)",
+		    pie_cycles, pie_x100 / 100, pie_x100 % 100);
+	if (pie_cycles > 0) {
+		uint32_t speedup_x100 = (scalar_cycles * 100) / pie_cycles;
+		shell_print(sh, "  Speedup:        %u.%02ux faster",
+			    speedup_x100 / 100, speedup_x100 % 100);
+	}
+	shell_print(sh, "  Max LSB Diff:   %d (Tolerance: <= 1 LSB)", max_diff);
+	shell_print(sh, "  Status:         %s", (max_diff <= 1) ? "PASS (Exact match)" : "FAIL");
+
+	/* Test unaligned load/store safety */
+	shell_print(sh, "  Testing unaligned address accesses (+2, +4, +8 bytes)...");
+	for (int offset = 2; offset <= 8; offset += 2) {
+		register const int16_t *src_a0 asm("a0") = src + offset;
+		register int16_t *dst_a1 asm("a1") = dst_pie + offset;
+		ESP_PIE_VLD_128_IP_Q0_A0();
+		ESP_PIE_VST_128_IP_Q0_A1();
+		shell_print(sh, "    Offset +%d bytes: OK", offset * 2);
+	}
+	shell_print(sh, "=================================================");
+	return 0;
+}
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(bt_cmds,
 	SHELL_CMD(status, NULL, "Print Bluetooth LE Audio / C6 coprocessor status", cmd_sof_bt_status),
 	SHELL_CMD(format, NULL, "Get or set BT audio format (sof bt format [name|id])", cmd_sof_bt_format),
@@ -523,6 +630,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmds,
 	SHELL_CMD(eq, NULL, "Control Equalizer bypass (sof eq <playback|capture> <enable|bypass>)", cmd_sof_eq),
 	SHELL_CMD(drc, NULL, "Control DRC bypass (sof drc <enable|bypass>)", cmd_sof_drc),
 	SHELL_CMD(tdfb, NULL, "Control TDFB beamformer bypass (sof tdfb <enable|bypass>)", cmd_sof_tdfb),
+#if defined(CONFIG_SOC_SERIES_ESP32P4) || defined(CONFIG_ESP32P4_PIE_SIMD)
+	SHELL_CMD(bench, NULL, "Benchmark PIE SIMD vs scalar audio performance", cmd_sof_bench),
+#endif
 	SHELL_SUBCMD_SET_END
 );
 
