@@ -1091,10 +1091,11 @@ __cold static int ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 	return IPC4_SUCCESS;
 }
 
-__cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
-					uint32_t *reply_ext,
-					uint32_t *reply_tx_size,
-					void **reply_tx_data)
+#ifdef CONFIG_SOF_USERSPACE_LL
+__cold static int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
+						uint32_t *reply_ext,
+						uint32_t *reply_tx_size,
+						void **reply_tx_data)
 {
 	struct ipc4_module_large_config_reply reply;
 	const struct ipc4_module_large_config *config =
@@ -1189,6 +1190,7 @@ __cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
 	*reply_tx_data = data;
 	return ret;
 }
+#endif
 
 __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
