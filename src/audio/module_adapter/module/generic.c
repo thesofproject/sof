@@ -580,7 +580,7 @@ int module_prepare(struct processing_module *mod,
 
 #if CONFIG_SOF_USERSPACE_APPLICATION
 		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
-			const union scheduler_dp_thread_ipc_param param = {
+			union scheduler_dp_thread_ipc_param param = {
 				.pipeline_state = {
 					.trigger_cmd = COMP_TRIGGER_PREPARE,
 					.state = SOF_IPC4_PIPELINE_STATE_RUNNING,
@@ -722,7 +722,7 @@ int module_reset(struct processing_module *mod)
 	if (ops->reset) {
 #if CONFIG_SOF_USERSPACE_APPLICATION
 		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
-			const union scheduler_dp_thread_ipc_param param = {
+			union scheduler_dp_thread_ipc_param param = {
 				.pipeline_state.trigger_cmd = COMP_TRIGGER_STOP,
 			};
 			ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_GLB_SET_PIPELINE_STATE, &param);
@@ -939,7 +939,7 @@ int module_bind(struct processing_module *mod, const struct bind_info *bind_data
 	if (ops->bind) {
 #if CONFIG_SOF_USERSPACE_APPLICATION
 		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
-			const union scheduler_dp_thread_ipc_param param = {
+			union scheduler_dp_thread_ipc_param param = {
 				.bind_data = bind_data,
 			};
 			ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_BIND, &param);
@@ -972,7 +972,7 @@ int module_unbind(struct processing_module *mod, const struct bind_info *unbind_
 	if (ops->unbind) {
 #if CONFIG_SOF_USERSPACE_APPLICATION
 		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
-			const union scheduler_dp_thread_ipc_param param = {
+			union scheduler_dp_thread_ipc_param param = {
 				.bind_data = unbind_data,
 			};
 			ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_UNBIND, &param);

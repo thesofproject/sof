@@ -1413,7 +1413,7 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 #if CONFIG_SOF_USERSPACE_APPLICATION
 		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
 			/* Process DP module's trigger */
-			const union scheduler_dp_thread_ipc_param param = {
+			union scheduler_dp_thread_ipc_param param = {
 				.pipeline_state.trigger_cmd = cmd,
 			};
 			return scheduler_dp_thread_ipc(mod, SOF_IPC4_GLB_SET_PIPELINE_STATE,
