@@ -14,7 +14,7 @@
 #define LEVEL_MULTIPLIER_S24_SHIFT	Q_SHIFT_BITS_64(23, LEVEL_MULTIPLIER_QXY_Y, 23)
 #define LEVEL_MULTIPLIER_S32_SHIFT	Q_SHIFT_BITS_64(31, LEVEL_MULTIPLIER_QXY_Y, 31)
 
-#if SOF_USE_HIFI(NONE, VOLUME)
+#if SOF_USE_HIFI(NONE, VOLUME) || SOF_USE_RISCV_SIMD(VOLUME)
 
 #if CONFIG_FORMAT_S16LE
 /**
@@ -364,4 +364,4 @@ level_multiplier_func level_multiplier_find_proc_func(enum sof_ipc_frame src_fmt
 	return NULL;
 }
 
-#endif /* SOF_USE_HIFI(NONE, VOLUME) */
+#endif /* SOF_USE_HIFI(NONE, VOLUME) || SOF_USE_RISCV_SIMD(VOLUME) */

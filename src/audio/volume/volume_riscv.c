@@ -15,6 +15,10 @@ LOG_MODULE_DECLARE(volume_riscv, CONFIG_SOF_LOG_LEVEL);
 
 #include "volume.h"
 
+#if defined(CONFIG_ESP32P4_PIE_SIMD)
+#include <sof/math/esp32p4_pie.h>
+#endif
+
 #if (!CONFIG_COMP_PEAK_VOL)
 
 /* Branchless fast saturation helpers */
@@ -67,6 +71,54 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 		const int32_t vol_l = cd->volume[0];
 		const int32_t vol_r = cd->volume[1];
 
+#if defined(CONFIG_ESP32P4_PIE_SIMD)
+		if (vol_l <= 65536 && vol_r <= 65536) {
+			esp_pie_set_sar(15);
+			int16_t vol15_l = (int16_t)MIN(32767, (vol_l + 1) >> 1);
+			int16_t vol15_r = (int16_t)MIN(32767, (vol_r + 1) >> 1);
+			int16_t vol_stereo[2] = { vol15_l, vol15_r };
+			register const void *bc_a2 asm("a2") = vol_stereo;
+			ESP_PIE_VLDBC_32_IP_Q2_A2();
+
+			while (remaining_samples) {
+				const int nmax_src = cir_buf_samples_without_wrap_s16(x, source->buf_end);
+				const int nmax_snk = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
+				int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+
+				int i = 0;
+				for (; i <= n - 16; i += 16) {
+					register const int16_t *src_a0 asm("a0") = &x[i];
+					register int16_t *dst_a1 asm("a1") = &y[i];
+					ESP_PIE_VLD_128_IP_Q0_A0();
+					ESP_PIE_VLD_128_IP_Q1_A0();
+					ESP_PIE_VMUL_S16_Q0_Q0_Q2();
+					ESP_PIE_VMUL_S16_Q1_Q1_Q2();
+					ESP_PIE_VCLAMP_S16_Q0_Q0();
+					ESP_PIE_VCLAMP_S16_Q1_Q1();
+					ESP_PIE_VST_128_IP_Q0_A1();
+					ESP_PIE_VST_128_IP_Q1_A1();
+				}
+				for (; i <= n - 8; i += 8) {
+					register const int16_t *src_a0 asm("a0") = &x[i];
+					register int16_t *dst_a1 asm("a1") = &y[i];
+					ESP_PIE_VLD_128_IP_Q0_A0();
+					ESP_PIE_VMUL_S16_Q0_Q0_Q2();
+					ESP_PIE_VCLAMP_S16_Q0_Q0();
+					ESP_PIE_VST_128_IP_Q0_A1();
+				}
+				for (; i < n; i += 2) {
+					y[i + 0] = vol_mult_s16(x[i + 0], vol_l);
+					y[i + 1] = vol_mult_s16(x[i + 1], vol_r);
+				}
+
+				remaining_samples -= n;
+				x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+				y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+			}
+			return;
+		}
+#endif
+
 		while (remaining_samples) {
 			const int nmax_src = cir_buf_samples_without_wrap_s16(x, source->buf_end);
 			const int nmax_snk = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
@@ -90,6 +142,51 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 		}
 	} else if (nch == 1) {
 		const int32_t vol = cd->volume[0];
+
+#if defined(CONFIG_ESP32P4_PIE_SIMD)
+		if (vol <= 65536) {
+			esp_pie_set_sar(15);
+			int16_t vol15 = (int16_t)MIN(32767, (vol + 1) >> 1);
+			register const void *bc_a2 asm("a2") = &vol15;
+			ESP_PIE_VLDBC_16_IP_Q2_A2();
+
+			while (remaining_samples) {
+				const int nmax_src = cir_buf_samples_without_wrap_s16(x, source->buf_end);
+				const int nmax_snk = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
+				int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+
+				int i = 0;
+				for (; i <= n - 16; i += 16) {
+					register const int16_t *src_a0 asm("a0") = &x[i];
+					register int16_t *dst_a1 asm("a1") = &y[i];
+					ESP_PIE_VLD_128_IP_Q0_A0();
+					ESP_PIE_VLD_128_IP_Q1_A0();
+					ESP_PIE_VMUL_S16_Q0_Q0_Q2();
+					ESP_PIE_VMUL_S16_Q1_Q1_Q2();
+					ESP_PIE_VCLAMP_S16_Q0_Q0();
+					ESP_PIE_VCLAMP_S16_Q1_Q1();
+					ESP_PIE_VST_128_IP_Q0_A1();
+					ESP_PIE_VST_128_IP_Q1_A1();
+				}
+				for (; i <= n - 8; i += 8) {
+					register const int16_t *src_a0 asm("a0") = &x[i];
+					register int16_t *dst_a1 asm("a1") = &y[i];
+					ESP_PIE_VLD_128_IP_Q0_A0();
+					ESP_PIE_VMUL_S16_Q0_Q0_Q2();
+					ESP_PIE_VCLAMP_S16_Q0_Q0();
+					ESP_PIE_VST_128_IP_Q0_A1();
+				}
+				for (; i < n; i++) {
+					y[i] = vol_mult_s16(x[i], vol);
+				}
+
+				remaining_samples -= n;
+				x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+				y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+			}
+			return;
+		}
+#endif
 
 		while (remaining_samples) {
 			const int nmax_src = cir_buf_samples_without_wrap_s16(x, source->buf_end);
