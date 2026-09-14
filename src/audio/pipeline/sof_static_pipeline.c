@@ -496,37 +496,30 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 		}
 	}
 
-	/* Update static pipeline DAI components (comp 5 = PB DAI, comp 6 = CAP DAI) */
+	/* Update static pipeline DAI components dynamically from topology */
 	uint32_t target_dai_type = (iface == SOF_AUDIO_IF_PDM) ? SOF_DAI_ESP32_PDM : SOF_DAI_ESP32_I2S;
 	uint32_t target_dai_index = (iface == SOF_AUDIO_IF_PDM) ? 1 : 0;
 
-	struct comp_dev *dev_pb = sof_static_comp_get(5);
-	if (dev_pb) {
-		struct dai_data *dd = comp_get_drvdata(dev_pb);
-		if (dd) {
-			if (dd->dai) {
-				dai_put(dd->dai);
+	const struct sof_static_topology *topo = sof_static_topology_get();
+	if (topo) {
+		for (size_t i = 0; i < topo->num_comps; i++) {
+			const struct sof_static_comp *c = &topo->comps[i];
+			if (c->type == SOF_STATIC_COMP_DAI) {
+				struct comp_dev *dev = sof_static_comp_get(c->id);
+				if (!dev)
+					continue;
+				struct dai_data *dd = comp_get_drvdata(dev);
+				if (!dd)
+					continue;
+				if (dd->dai) {
+					dai_put(dd->dai);
+				}
+				dd->dai = dai_get(target_dai_type, target_dai_index, DAI_CREAT);
+				dd->ipc_config.type = target_dai_type;
+				dd->ipc_config.dai_index = target_dai_index;
+				dd->ipc_config.format = sof_format;
+				dev->state = COMP_STATE_READY;
 			}
-			dd->dai = dai_get(target_dai_type, target_dai_index, DAI_CREAT);
-			dd->ipc_config.type = target_dai_type;
-			dd->ipc_config.dai_index = target_dai_index;
-			dd->ipc_config.format = sof_format;
-			dev_pb->state = COMP_STATE_READY;
-		}
-	}
-
-	struct comp_dev *dev_cap = sof_static_comp_get(6);
-	if (dev_cap) {
-		struct dai_data *dd = comp_get_drvdata(dev_cap);
-		if (dd) {
-			if (dd->dai) {
-				dai_put(dd->dai);
-			}
-			dd->dai = dai_get(target_dai_type, target_dai_index, DAI_CREAT);
-			dd->ipc_config.type = target_dai_type;
-			dd->ipc_config.dai_index = target_dai_index;
-			dd->ipc_config.format = sof_format;
-			dev_cap->state = COMP_STATE_READY;
 		}
 	}
 
