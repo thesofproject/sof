@@ -648,6 +648,13 @@ void asrc_fir_filter32(struct asrc_farrow *src_obj,
 		       int index_output_frame);
 
 /*
+ * Filter float ring buffer values with impulse_response
+ */
+void asrc_fir_filter_float(struct asrc_farrow *src_obj,
+			   float **output_buffers,
+			   int index_output_frame);
+
+/*
  * Calculates the impulse response. This impulse response is then
  * applied to the buffered signal, in order to generate the output.
  * There are four versions, from whom one is pointed to by the

@@ -5,7 +5,16 @@ comment "volume optimization level select"
 choice "VOLUME_SIMD_LEVEL_SELECT"
 	prompt "choose which SIMD level used for volume module"
 	depends on COMP_VOLUME
-	default VOLUME_HIFI_MAX
+	default VOLUME_HIFI_MAX if XTENSA
+	default VOLUME_RISCV_SIMD if SOF_CONFIG_RISCV_SIMD
+	default VOLUME_HIFI_NONE
+
+	config VOLUME_RISCV_SIMD
+		prompt "choose RISC-V SIMD vector optimized volume module"
+		bool
+		depends on SOF_CONFIG_RISCV_SIMD
+		help
+			This option used to build RISC-V SIMD vector optimized volume code.
 
 	config VOLUME_HIFI_MAX
 		prompt "SIMD will selected by toolchain pre-defined header"

@@ -197,6 +197,12 @@ choice "FILTER_SIMD_LEVEL_SELECT"
 		bool
 		help
 			This option used to build FILTER generic code.
+
+	config FILTER_RISCV_SIMD
+		prompt "choose RISC-V SIMD optimized FILTER module"
+		bool
+		help
+			This option used to build RISC-V SIMD optimized FILTER code
 endchoice
 
 config MATH_FIR

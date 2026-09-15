@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config EQ_IIR_RISCV_SIMD
+	bool "RISC-V SIMD and block-accelerated EQ IIR"
+	default y
+	depends on SOF_CONFIG_RISCV_SIMD
+	help
+	  Select for RISC-V SIMD and block-accelerated EQ IIR implementation

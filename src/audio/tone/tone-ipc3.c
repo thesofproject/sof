@@ -101,9 +101,15 @@ static int tone_params(struct comp_dev *dev,
 	comp_info(dev, "config->frame_fmt = %u",
 		  dev->ipc_config.frame_fmt);
 
-	/* Tone supports only S32_LE PCM format atm */
-	if (dev->ipc_config.frame_fmt != SOF_IPC_FRAME_S32_LE)
+	/* Tone supports S32_LE and FLOAT format */
+	if (dev->ipc_config.frame_fmt != SOF_IPC_FRAME_S32_LE &&
+	    dev->ipc_config.frame_fmt != SOF_IPC_FRAME_FLOAT)
 		return -EINVAL;
+
+	if (dev->ipc_config.frame_fmt == SOF_IPC_FRAME_FLOAT)
+		cd->tone_func = tone_float_default;
+	else
+		cd->tone_func = tone_s32_default;
 
 	audio_stream_set_frm_fmt(&sourceb->stream, dev->ipc_config.frame_fmt);
 	audio_stream_set_frm_fmt(&sinkb->stream, dev->ipc_config.frame_fmt);

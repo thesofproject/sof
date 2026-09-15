@@ -277,6 +277,76 @@ int tone_s32_default(struct processing_module *mod, struct sof_sink *sink,
 	return sink_commit_buffer(sink, bytes);
 }
 
+int tone_float_default(struct processing_module *mod, struct sof_sink *sink,
+		       struct sof_source *source)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	size_t output_frame_bytes, output_frames;
+	float *output_pos, *output_start;
+	int output_cirbuf_size;
+	float *output_end;
+	uint32_t frames, bytes;
+	int nch = cd->channels;
+	int i;
+	int n;
+	int n_wrap_dest;
+	int n_min;
+	int ret;
+
+	if (cd->mode == TONE_MODE_PASSTHROUGH)
+		return tone_s32_passthrough(mod, sink, source);
+
+	output_frames = sink_get_free_frames(sink);
+	output_frame_bytes = sink_get_frame_bytes(sink);
+	output_frames = mod->period_bytes / output_frame_bytes;
+
+	ret = sink_get_buffer_s32(sink, output_frames * output_frame_bytes,
+				  (int32_t **)&output_pos, (int32_t **)&output_start,
+				  &output_cirbuf_size);
+	if (ret)
+		return -ENODATA;
+
+	frames = output_frames;
+
+	if (frames * output_frame_bytes >= mod->period_bytes)
+		frames = mod->period_bytes / output_frame_bytes;
+	bytes = frames * output_frame_bytes;
+
+	output_end = output_start + output_cirbuf_size;
+
+	n = frames * nch;
+	if (!source) {
+		const float norm = 1.0f / 2147483648.0f;
+		while (n > 0) {
+			n_wrap_dest = output_end - output_pos;
+
+			n_min = (n < n_wrap_dest) ? n : n_wrap_dest;
+			while (n_min > 0) {
+				n -= nch;
+				n_min -= nch;
+				for (i = 0; i < nch; i++) {
+					switch (cd->mode) {
+					case TONE_MODE_TONEGEN:
+						tonegen_control(&cd->sg[i]);
+						*output_pos = (float)tonegen(&cd->sg[i]) * norm;
+						break;
+					case TONE_MODE_SILENCE:
+						*output_pos = 0.0f;
+						break;
+					default:
+						break;
+					}
+					output_pos++;
+				}
+			}
+
+			output_pos = output_start;
+		}
+	}
+
+	return sink_commit_buffer(sink, bytes);
+}
+
 void tonegen_update_f(struct tone_state *sg, int32_t f)
 {
 	int64_t w_tmp;

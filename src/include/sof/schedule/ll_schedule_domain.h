@@ -332,7 +332,7 @@ struct k_thread *zephyr_domain_thread_tid_for_core(int core);
 struct k_mem_domain *zephyr_ll_mem_domain(void);
 struct k_thread *zephyr_ll_domain_thread(void);
 #endif /* CONFIG_SOF_USERSPACE_LL */
-#ifdef CONFIG_SOF_FULL_ZEPHYR_APPLICATION
+#if defined(CONFIG_USERSPACE) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall int zephyr_ll_task_sem_alloc(struct task *task);
 __syscall int zephyr_ll_task_sem_free(struct task *task);
 #include <zephyr/syscalls/ll_schedule_domain.h>
