@@ -13,5 +13,6 @@ add_subdirectory(debug_stream)
 add_subdirectory(telemetry)
 
 zephyr_library_sources_ifdef(CONFIG_COLD_STORE_EXECUTE_DEBUG dram.c)
+zephyr_library_sources_ifdef(CONFIG_SHELL shell/esp32_shell.c)
 
 endif() # Zephyr

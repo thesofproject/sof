@@ -25,8 +25,7 @@ static int cmd_sof_test_inject_sched_gap(const struct shell *sh,
 
 #ifndef CONFIG_CROSS_CORE_STREAM
 	shell_fprintf(sh, SHELL_NORMAL, "Domain blocking not supported, not reliable on SMP\n");
-#endif
-
+#else
 	domain_block(sof_get()->platform_timer_domain);
 
 	if (argc > 1) {
@@ -38,6 +37,7 @@ static int cmd_sof_test_inject_sched_gap(const struct shell *sh,
 	k_busy_wait(block_time);
 
 	domain_unblock(sof_get()->platform_timer_domain);
+#endif
 
 	return 0;
 }

@@ -61,7 +61,10 @@ typedef void (*crossover_process)(struct comp_data *cd,
 /* Crossover component private data */
 struct comp_data {
 	/**< filter state */
-	struct crossover_state state[PLATFORM_MAX_CHANNELS];
+	union {
+		struct crossover_state state[PLATFORM_MAX_CHANNELS];
+		struct crossover_state_float state_f[PLATFORM_MAX_CHANNELS];
+	};
 #if CONFIG_IPC_MAJOR_4
 	uint32_t output_pin_index[SOF_CROSSOVER_MAX_STREAMS];
 	uint32_t num_output_pins;
@@ -71,6 +74,7 @@ struct comp_data {
 	enum sof_ipc_frame source_format;         /**< source frame format */
 	crossover_process crossover_process;      /**< processing function */
 	crossover_split crossover_split;          /**< split function */
+	crossover_split_float crossover_split_f;  /**< float split function */
 };
 
 struct crossover_proc_fnmap {
@@ -125,6 +129,12 @@ static inline int32_t crossover_generic_process_lr4(int32_t in,
 {
 	/* Cascade two biquads with same coefficients in series. */
 	return iir_df1_4th(lr4, in);
+}
+
+static inline float crossover_generic_process_lr4_float(float in,
+							struct iir_state_df1_float *lr4)
+{
+	return iir_df1_float(lr4, in);
 }
 
 static inline void crossover_free_config(struct sof_crossover_config **config)

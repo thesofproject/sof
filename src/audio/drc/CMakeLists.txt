@@ -9,8 +9,10 @@ else()
     drc_generic.c
     drc_hifi3.c
     drc_hifi4.c
+    drc_riscv.c
     drc_math_generic.c
     drc_math_hifi3.c
+    drc_math_riscv.c
     )
 endif()
 

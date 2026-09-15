@@ -45,6 +45,8 @@ int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x);
 /* Inline functions with or without HiFi3 intrinsics */
 #if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
 #include "iir_df2t_hifi3.h"
+#elif SOF_USE_RISCV_SIMD(FILTER)
+#include "iir_df2t_riscv.h"
 #else
 #include "iir_df2t_generic.h"
 #endif

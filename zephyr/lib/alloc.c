@@ -139,6 +139,11 @@ extern char _mtk_adsp_sram_end;
 #define HEAPMEM_SIZE ((uint8_t *)SRAM_END - heapmem)
 #endif /* CONFIG_SYS_HEAP_SMALL_ONLY */
 
+#elif defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_SOC_SERIES_ESP32P4)
+
+#define HEAPMEM_SIZE (HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE)
+static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[HEAPMEM_SIZE];
+
 #else
 
 extern char _end[], _heap_sentry[];

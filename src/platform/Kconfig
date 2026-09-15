@@ -187,6 +187,13 @@ config IMX95
 	help
 	  Select if your target platform is imx95-compatible.
 
+config PLATFORM_ESP32P4
+	bool "Build for Espressif ESP32-P4 RISC-V SoC (Zephyr-only)"
+	select ZEPHYR_LOG
+	select ZEPHYR_NATIVE_DRIVERS
+	help
+	  Select if your target platform is Espressif ESP32-P4 RISC-V SoC.
+
 config RENOIR
 	bool "Build for Renoir"
 	select XT_INTERRUPT_LEVEL_5
@@ -352,6 +359,14 @@ config MT8196
           Select this option if your target platform is MT8196-compatible.
 
 endchoice
+
+config ESP32P4_PIE_SIMD
+	bool "Enable ESP32-P4 PIE (Xespv2p2) 128-bit vector SIMD acceleration"
+	default y
+	depends on PLATFORM_ESP32P4 || SOC_SERIES_ESP32P4
+	help
+	  Enable ESP32-P4 custom Processor Instruction Extensions (PIE / Xespv2p2)
+	  128-bit vector SIMD engine for audio processing kernels (volume, mixer, etc.).
 
 #
 # For non-Zephyr builds like testbench, cmocka and SOF ALSA plugin,
