@@ -173,8 +173,8 @@ void steamaudio_dsp_scene_init_box_room(struct dsp_scene *scene, float width, fl
 	scene->num_nodes = 1;
 	scene->nodes[0].bounds.min = (struct dsp_vec3){ x0, y0, z0 };
 	scene->nodes[0].bounds.max = (struct dsp_vec3){ x1, y1, z1 };
-	scene->nodes[0].left_child = 0;
-	scene->nodes[0].right_child = 11;
+	scene->nodes[0].left_child = -1;
+	scene->nodes[0].right_child = -1;
 }
 
 bool steamaudio_dsp_trace_closest_hit(const struct dsp_scene *scene, const struct dsp_ray *ray, struct dsp_hit *hit)
