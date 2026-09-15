@@ -7,7 +7,7 @@
 
 tests:
   sof.unit.fast_get:
-    tags: fast_get memory cache
+    tags: [fast_get, memory, cache]
     platform_allow: native_sim
     integration_platforms:
       - native_sim
