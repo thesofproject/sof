@@ -50,9 +50,7 @@ index = __COUNTER__
 #include <audio/copier/copier.toml>
 #endif
 
-#if defined(CONFIG_COMP_VOLUME) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/volume/volume.toml>
-#endif
 
 #if defined(CONFIG_COMP_ASRC) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/asrc/asrc.toml>
@@ -86,9 +84,7 @@ index = __COUNTER__
 #include <samples/audio/detect_test.toml>
 #endif
 
-#if defined(CONFIG_COMP_KPB) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/kpb.toml>
-#endif
 
 #if defined(CONFIG_SAMPLE_SMART_AMP) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <samples/audio/smart_amp_test.toml>
@@ -150,9 +146,7 @@ index = __COUNTER__
 #include <audio/igo_nr/igo_nr.toml>
 #endif
 
-#if defined(CONFIG_COMP_MFCC) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/mfcc/mfcc.toml>
-#endif
 
 #if defined(CONFIG_COMP_TEMPLATE) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/template/template.toml>
@@ -177,6 +171,8 @@ index = __COUNTER__
 #if defined(CONFIG_COMP_PHASE_VOCODER) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/phase_vocoder/phase_vocoder.toml>
 #endif
+
+#include <audio/tensorflow/tflmcly.toml>
 
 [module]
 count = __COUNTER__

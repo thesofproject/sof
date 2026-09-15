@@ -50,9 +50,16 @@ int RegisterOps(MicroSpeechOpResolver *op_resolver) {
 	return 0;
 }
 
+static int Init_Interpreter(struct tf_classify *tfc);
+
 int TF_InitOps(struct tf_classify *tfc)
 {
 	op_resolver = new MicroSpeechOpResolver();
+	if (!op_resolver) {
+		tfc->error = "op_resolver alloc failed (OOM)";
+		return -ENOMEM;
+	}
+
 	if (RegisterOps(op_resolver) != 0) {
 		tfc->error = "register ops failed";
 		return -EINVAL;
@@ -61,6 +68,12 @@ int TF_InitOps(struct tf_classify *tfc)
 	// create the interpreter
 	interpreter = new tflite::MicroInterpreter(model, *op_resolver,
 						   g_arena, kArenaSize);
+	if (!interpreter) {
+		tfc->error = "interpreter alloc failed (OOM)";
+		delete op_resolver;
+		op_resolver = nullptr;
+		return -ENOMEM;
+	}
 
 	// and allocate the tensors
 	if (interpreter->AllocateTensors() != kTfLiteOk) {
@@ -72,7 +85,9 @@ int TF_InitOps(struct tf_classify *tfc)
 		return -EINVAL;
 	}
 
-	return 0;
+	// fetch input/output tensors + quantization params once; the
+	// interpreter/tensors are stable for the lifetime of this instance
+	return Init_Interpreter(tfc);
 }
 
 static int Init_Interpreter(struct tf_classify *tfc)
@@ -101,6 +116,12 @@ static int Init_Interpreter(struct tf_classify *tfc)
 		return -EINVAL;
 	}
 
+	// expose the model's real input quantization params so callers can
+	// requantize their features correctly instead of assuming a fixed
+	// scale/zero_point.
+	tfc->input_scale = input->params.scale;
+	tfc->input_zero_point = input->params.zero_point;
+
 	return 0;
 }
 
@@ -122,12 +143,6 @@ int TF_SetModel(struct tf_classify *tfc, unsigned char *model_tflite)
 int TF_ProcessClassify(struct tf_classify *tfc)
 {
 	Features *features = reinterpret_cast<Features *>(tfc->audio_features);
-	int ret;
-
-	// initialise the interpreter for current feature block
-	ret = Init_Interpreter(tfc);
-	if (!ret)
-		return ret;
 
 	float output_scale = output->params.scale;
 	int output_zero_point = output->params.zero_point;
@@ -144,9 +159,9 @@ int TF_ProcessClassify(struct tf_classify *tfc)
 
 	// Dequantize output values
 	for (int i = 0; i < tfc->categories; i++) {
-		tfc->predictions[i] =
-		(tflite::GetTensorData<int8_t>(output)[i] - output_zero_point) *
-			output_scale;
+		int8_t raw = tflite::GetTensorData<int8_t>(output)[i];
+		tfc->raw_output[i] = raw;
+		tfc->predictions[i] = (raw - output_zero_point) * output_scale;
 	}
 
 return 0;
