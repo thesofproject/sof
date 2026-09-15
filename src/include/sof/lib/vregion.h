@@ -148,7 +148,9 @@ void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start);
 
 bool vregion_verify(struct vregion *vr);
 
+#if defined(CONFIG_USERSPACE)
 #include <zephyr/syscalls/vregion.h>
+#endif
 
 #else /* CONFIG_SOF_VREGIONS */
 

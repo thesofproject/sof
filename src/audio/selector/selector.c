@@ -172,11 +172,18 @@ static struct comp_dev *selector_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, cd);
 
-	ret = memcpy_s(&cd->config, sizeof(cd->config), ipc_process->data, bs);
-	if (ret) {
-		rfree(cd);
-		comp_free_device(dev);
-		return NULL;
+	if (ipc_process && ipc_process->data && bs > 0) {
+		ret = memcpy_s(&cd->config, sizeof(cd->config), ipc_process->data, bs);
+		if (ret) {
+			rfree(cd);
+			comp_free_device(dev);
+			return NULL;
+		}
+	} else {
+		/* Defaults: 2 channels in/out, channel 0 selected */
+		cd->config.in_channels_count = 2;
+		cd->config.out_channels_count = 2;
+		cd->config.sel_channel = 0;
 	}
 
 	dev->state = COMP_STATE_READY;
@@ -387,12 +394,24 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 	case COMP_CMD_GET_DATA:
 		ret = selector_ctrl_get_data(dev, cdata, max_data_size);
 		break;
-	case COMP_CMD_SET_VALUE:
-		comp_dbg(dev, "COMP_CMD_SET_VALUE");
+	case COMP_CMD_SET_VALUE: {
+		struct comp_data *cd = comp_get_drvdata(dev);
+		if (cd && cdata->cmd == SOF_CTRL_CMD_ENUM) {
+			for (int j = 0; j < cdata->num_elems; j++) {
+				cd->config.sel_channel = cdata->chanv[j].value;
+			}
+		}
 		break;
-	case COMP_CMD_GET_VALUE:
-		comp_dbg(dev, "COMP_CMD_GET_VALUE");
+	}
+	case COMP_CMD_GET_VALUE: {
+		struct comp_data *cd = comp_get_drvdata(dev);
+		if (cd && cdata->cmd == SOF_CTRL_CMD_ENUM) {
+			cdata->num_elems = 1;
+			cdata->chanv[0].channel = 0;
+			cdata->chanv[0].value = cd->config.sel_channel;
+		}
 		break;
+	}
 	default:
 		comp_err(dev, "invalid command");
 		ret = -EINVAL;

@@ -6,3 +6,11 @@ config COMP_MIXER
 	default y
 	help
 	  Select for Mixer component
+
+config MIXER_ARM_SIMD
+	bool "ARM SIMD optimized Mixer component"
+	default y
+	depends on ARM && COMP_MIXER
+	help
+	  Select for ARMv7E-M SIMD optimized Mixer processing functions.
+

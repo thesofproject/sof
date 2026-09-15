@@ -97,6 +97,8 @@ int tonegen_init(struct tone_state *sg, int32_t fs, int32_t f, int32_t a);
 void tonegen_update_f(struct tone_state *sg, int32_t f);
 int tone_s32_default(struct processing_module *mod, struct sof_sink *sink,
 		     struct sof_source *source);
+int tone_float_default(struct processing_module *mod, struct sof_sink *sink,
+		       struct sof_source *source);
 
 /* Set sine amplitude */
 static inline void tonegen_set_a(struct tone_state *sg, int32_t a)

@@ -402,6 +402,9 @@ static int drc_prepare(struct processing_module *mod,
 		return -ENOTCONN;
 	}
 
+	audio_stream_set_align(SOF_FRAME_BYTE_ALIGN, 2, &sourceb->stream);
+	audio_stream_set_align(SOF_FRAME_BYTE_ALIGN, 2, &sinkb->stream);
+
 #if CONFIG_IPC_MAJOR_4
 	drc_params(mod);
 #endif
@@ -435,11 +438,16 @@ static int drc_prepare(struct processing_module *mod,
 		 * non-enabled blob can be used when same pipeline is used for both
 		 * headphone and speaker where DRC should be off for headphone mode.
 		 */
-		if (!cd->config->params.enabled)
+	if (!cd->config->params.enabled)
 			cd->drc_func = drc_default_pass;
+
+		comp_info(dev, "DRC mode: %s (master enabled=%d)",
+			  cd->drc_func != drc_default_pass ? "ACTIVE COMPRESSOR" : "PASSTHROUGH",
+			  cd->config->params.enabled);
 	} else {
 		/* Generic function for all formats */
 		cd->drc_func = drc_default_pass;
+		comp_info(dev, "DRC mode: PASSTHROUGH (no config blob)");
 	}
 
 	comp_info(dev, "DRC is configured.");

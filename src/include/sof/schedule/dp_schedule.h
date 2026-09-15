@@ -80,10 +80,15 @@ int scheduler_dp_task_init(struct task **task,
 			   size_t stack_size,
 			   uint32_t options);
 
-#if defined(__ZEPHYR__) && CONFIG_SOF_FULL_ZEPHYR_APPLICATION
+#if defined(CONFIG_USERSPACE) && defined(__ZEPHYR__) && CONFIG_SOF_FULL_ZEPHYR_APPLICATION
 __syscall void scheduler_dp_internal_free(struct task *task);
 __syscall void scheduler_dp_ll_tick(void);
 #include <zephyr/syscalls/dp_schedule.h>
+#else
+void z_impl_scheduler_dp_internal_free(struct task *task);
+void z_impl_scheduler_dp_ll_tick(void);
+#define scheduler_dp_internal_free z_impl_scheduler_dp_internal_free
+#define scheduler_dp_ll_tick z_impl_scheduler_dp_ll_tick
 #endif
 
 /**

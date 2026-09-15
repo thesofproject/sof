@@ -186,6 +186,9 @@ const struct device *zephyr_dev[] = {
 #if CONFIG_DAI_NXP_MICFIL
 	DT_FOREACH_STATUS_OKAY(nxp_dai_micfil, GET_DEVICE_LIST)
 #endif
+#if CONFIG_DAI_NXP_SPDIF
+	DT_FOREACH_STATUS_OKAY(nxp_dai_spdif, GET_DEVICE_LIST)
+#endif
 #if CONFIG_DAI_AMD_SDW
 	DT_FOREACH_STATUS_OKAY(amd_acp_sdw_dai, GET_DEVICE_LIST)
 #endif
@@ -197,6 +200,12 @@ const struct device *zephyr_dev[] = {
 #endif
 #if DT_HAS_COMPAT_STATUS_OKAY(mediatek_afe)
 	DT_FOREACH_STATUS_OKAY(mediatek_afe, GET_DEVICE_LIST)
+#endif
+#if CONFIG_DAI_ESPRESSIF_I2S
+	DT_FOREACH_STATUS_OKAY(espressif_esp32_dai_i2s, GET_DEVICE_LIST)
+#endif
+#if CONFIG_DAI_ESPRESSIF_PDM
+	DT_FOREACH_STATUS_OKAY(espressif_esp32_dai_pdm, GET_DEVICE_LIST)
 #endif
 };
 
@@ -226,6 +235,8 @@ static int sof_dai_type_to_zephyr(uint32_t type)
 		return DAI_IMX_SAI;
 	case SOF_DAI_IMX_ESAI:
 		return DAI_IMX_ESAI;
+	case SOF_DAI_IMX_SPDIF:
+		return DAI_IMX_SPDIF;
 	case SOF_DAI_AMD_DMIC:
 		return DAI_AMD_DMIC;
 	case SOF_DAI_MEDIATEK_AFE:
@@ -241,6 +252,10 @@ static int sof_dai_type_to_zephyr(uint32_t type)
 	case SOF_DAI_AMD_BT:
 	case SOF_DAI_AMD_TDM:
 		return DAI_AMD_TDM;
+	case SOF_DAI_ESP32_I2S:
+		return DAI_ESP32_I2S;
+	case SOF_DAI_ESP32_PDM:
+		return DAI_ESP32_PDM;
 	default:
 		return -EINVAL;
 	}
@@ -323,6 +338,19 @@ static void dai_set_device_params(struct dai *d)
 		break;
 	case SOF_DAI_MEDIATEK_AFE:
 		d->dma_dev = SOF_DMA_DEV_AFE_MEMIF;
+		break;
+	case SOF_DAI_ESP32_I2S:
+	case SOF_DAI_ESP32_PDM:
+		d->dma_dev = SOF_DMA_DEV_I2S;
+		d->dma_caps = SOF_DMA_CAP_GP_LP | SOF_DMA_CAP_GP_HP;
+		break;
+	case SOF_DAI_IMX_SAI:
+		d->dma_dev = SOF_DMA_DEV_SAI;
+		d->dma_caps = SOF_DMA_CAP_GP_LP | SOF_DMA_CAP_GP_HP;
+		break;
+	case SOF_DAI_IMX_SPDIF:
+		d->dma_dev = SOF_DMA_DEV_SPDIF;
+		d->dma_caps = SOF_DMA_CAP_GP_LP | SOF_DMA_CAP_GP_HP;
 		break;
 	default:
 		break;

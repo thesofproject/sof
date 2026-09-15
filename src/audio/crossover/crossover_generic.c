@@ -249,6 +249,103 @@ static void crossover_s32_default(struct comp_data *cd,
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_FLOAT
+static inline void crossover_generic_lr4_split_float(struct iir_state_df1_float *lp,
+						     struct iir_state_df1_float *hp,
+						     float x, float *y1, float *y2)
+{
+	*y1 = crossover_generic_process_lr4_float(x, lp);
+	*y2 = crossover_generic_process_lr4_float(x, hp);
+}
+
+static inline void crossover_generic_lr4_merge_float(struct iir_state_df1_float *lp,
+						     struct iir_state_df1_float *hp,
+						     float x, float *y)
+{
+	float z1 = crossover_generic_process_lr4_float(x, lp);
+	float z2 = crossover_generic_process_lr4_float(x, hp);
+
+	*y = z1 + z2;
+}
+
+static void crossover_generic_split_2way_float(float in,
+					       float out[],
+					       struct crossover_state_float *state)
+{
+	crossover_generic_lr4_split_float(&state->lowpass[0], &state->highpass[0],
+					  in, &out[0], &out[1]);
+}
+
+static void crossover_generic_split_3way_float(float in,
+					       float out[],
+					       struct crossover_state_float *state)
+{
+	float z1, z2;
+
+	crossover_generic_lr4_split_float(&state->lowpass[0], &state->highpass[0],
+					  in, &z1, &z2);
+	crossover_generic_lr4_merge_float(&state->lowpass[1], &state->highpass[1],
+					  z1, &out[0]);
+	crossover_generic_lr4_split_float(&state->lowpass[2], &state->highpass[2],
+					  z2, &out[1], &out[2]);
+}
+
+static void crossover_generic_split_4way_float(float in,
+					       float out[],
+					       struct crossover_state_float *state)
+{
+	float z1, z2;
+
+	crossover_generic_lr4_split_float(&state->lowpass[1], &state->highpass[1],
+					  in, &z1, &z2);
+	crossover_generic_lr4_split_float(&state->lowpass[0], &state->highpass[0],
+					  z1, &out[0], &out[1]);
+	crossover_generic_lr4_split_float(&state->lowpass[2], &state->highpass[2],
+					  z2, &out[2], &out[3]);
+}
+
+const crossover_split_float crossover_split_float_fnmap[] = {
+	crossover_generic_split_2way_float,
+	crossover_generic_split_3way_float,
+	crossover_generic_split_4way_float,
+};
+
+static void crossover_float_default(struct comp_data *cd,
+				    struct input_stream_buffer *bsource,
+				    struct output_stream_buffer **bsinks,
+				    int32_t num_sinks,
+				    uint32_t frames)
+{
+	struct audio_stream *sink_stream[SOF_CROSSOVER_MAX_STREAMS] = { NULL };
+	struct crossover_state_float *state;
+	const struct audio_stream *source_stream = bsource->data;
+	float *x, *y;
+	int ch, i, j;
+	int idx;
+	int active_sinks = 0;
+	int nch = audio_stream_get_channels(source_stream);
+	float out[num_sinks];
+
+	for (j = 0; j < num_sinks; j++) {
+		if (bsinks[j])
+			sink_stream[active_sinks++] = bsinks[j]->data;
+	}
+
+	for (ch = 0; ch < nch; ch++) {
+		state = &cd->state_f[ch];
+		for (i = 0, idx = ch; i < frames; i++, idx += nch) {
+			x = (float *)audio_stream_read_frag_s32(source_stream, idx);
+			cd->crossover_split_f(*x, out, state);
+
+			for (j = 0; j < active_sinks; j++) {
+				y = (float *)audio_stream_write_frag_s32(sink_stream[j], idx);
+				*y = out[j];
+			}
+		}
+	}
+}
+#endif /* CONFIG_FORMAT_FLOAT */
+
 const struct crossover_proc_fnmap crossover_proc_fnmap[] = {
 /* { SOURCE_FORMAT , PROCESSING FUNCTION } */
 #if CONFIG_FORMAT_S16LE
@@ -262,6 +359,10 @@ const struct crossover_proc_fnmap crossover_proc_fnmap[] = {
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, crossover_s32_default },
 #endif /* CONFIG_FORMAT_S32LE */
+
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, crossover_float_default },
+#endif /* CONFIG_FORMAT_FLOAT */
 };
 
 const struct crossover_proc_fnmap crossover_proc_fnmap_pass[] = {
@@ -277,6 +378,10 @@ const struct crossover_proc_fnmap crossover_proc_fnmap_pass[] = {
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, crossover_default_pass },
 #endif /* CONFIG_FORMAT_S32LE */
+
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, crossover_default_pass },
+#endif /* CONFIG_FORMAT_FLOAT */
 };
 
 const size_t crossover_proc_fncount = ARRAY_SIZE(crossover_proc_fnmap);

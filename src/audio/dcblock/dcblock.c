@@ -51,8 +51,10 @@ static void dcblock_set_passthrough(struct processing_module *mod)
 	comp_info(mod->dev, "entry");
 	int i;
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
 		cd->R_coeffs[i] = ONE_Q2_30;
+		cd->R_coeffs_f[i] = 1.0f;
+	}
 }
 
 /**
@@ -62,8 +64,11 @@ static void dcblock_set_passthrough(struct processing_module *mod)
 static void dcblock_copy_coefficients(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
+	int i;
 
 	memcpy_s(cd->R_coeffs, sizeof(cd->R_coeffs), cd->config, sizeof(cd->R_coeffs));
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		cd->R_coeffs_f[i] = (float)cd->R_coeffs[i] / (float)ONE_Q2_30;
 }
 
 /**

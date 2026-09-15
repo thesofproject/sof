@@ -9,3 +9,5 @@ config COMP_IIR
 	select MATH_IIR_DF1
 	help
 	  Select for IIR component
+
+rsource "Kconfig.simd"

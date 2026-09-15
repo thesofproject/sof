@@ -36,6 +36,9 @@ __cold int level_multiplier_set_config(struct processing_module *mod,
 	}
 
 	memcpy_s(&cd->gain, sizeof(int32_t), fragment, sizeof(int32_t));
+#if CONFIG_FORMAT_FLOAT
+	cd->gain_f = (float)cd->gain * (1.0f / (float)LEVEL_MULTIPLIER_GAIN_ONE);
+#endif
 	comp_dbg(mod->dev, "Gain set to %d", cd->gain);
 	return 0;
 }

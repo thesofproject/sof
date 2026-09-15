@@ -67,8 +67,15 @@ static void eq_fir_free_delaylines(struct processing_module *mod)
 	mod_free(mod, cd->fir_delay);
 	cd->fir_delay = NULL;
 	cd->fir_delay_size = 0;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+
+	mod_free(mod, cd->fir_coef_f);
+	cd->fir_coef_f = NULL;
+	cd->fir_coef_f_size = 0;
+
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
 		fir[i].delay = NULL;
+		fir[i].coef = NULL;
+	}
 }
 
 static int eq_fir_init_coef(struct comp_dev *dev, struct sof_eq_fir_config *config,
@@ -240,11 +247,138 @@ static void eq_fir_init_delay(struct fir_state_32x16 *fir,
 	}
 }
 
+#if CONFIG_FORMAT_FLOAT
+static int eq_fir_setup_float(struct processing_module *mod, int nch)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	struct sof_fir_coef_data *lookup[SOF_EQ_FIR_MAX_RESPONSES];
+	float *lookup_f[SOF_EQ_FIR_MAX_RESPONSES] = {0};
+	struct sof_fir_coef_data *eq;
+	int16_t *assign_response;
+	int16_t *coef_data;
+	size_t coef_words_max;
+	size_t delay_size_sum = 0;
+	size_t coef_size_sum = 0;
+	int resp = 0;
+	int i, j, s;
+	float *coef_storage;
+	float *delay_ptr;
+
+	/* Free existing FIR channels data if it was allocated */
+	eq_fir_free_delaylines(mod);
+
+	/* Update number of channels */
+	cd->nch = nch;
+
+	assign_response = ASSUME_ALIGNED(&cd->config->data[0], 4);
+	coef_data = ASSUME_ALIGNED(&cd->config->data[cd->config->channels_in_config], 4);
+	coef_words_max = (cd->config->size - sizeof(*cd->config)) / sizeof(int16_t) -
+		cd->config->channels_in_config;
+
+	j = 0;
+	for (i = 0; i < SOF_EQ_FIR_MAX_RESPONSES; i++) {
+		if (i < cd->config->number_of_responses) {
+			if (j + SOF_FIR_COEF_NHEADER > coef_words_max)
+				return -EINVAL;
+			eq = (struct sof_fir_coef_data *)&coef_data[j];
+			if (eq->length <= 0 || eq->length > SOF_FIR_MAX_LENGTH ||
+			    (eq->length & 0x3) ||
+			    j + SOF_FIR_COEF_NHEADER + eq->length > coef_words_max)
+				return -EINVAL;
+			lookup[i] = eq;
+			coef_size_sum += fir_coef_size_float(eq);
+			j += SOF_FIR_COEF_NHEADER + eq->length;
+		} else {
+			lookup[i] = NULL;
+		}
+	}
+
+	/* Calculate delay line requirements */
+	for (i = 0; i < nch; i++) {
+		if (i < cd->config->channels_in_config)
+			resp = assign_response[i];
+		if (resp < 0) {
+			fir_reset_float(&cd->fir_f[i]);
+			continue;
+		}
+		if (resp >= cd->config->number_of_responses)
+			return -EINVAL;
+
+		eq = lookup[resp];
+		s = fir_delay_size_float(eq);
+		if (s <= 0)
+			return -EINVAL;
+		delay_size_sum += s;
+	}
+
+	if (!delay_size_sum)
+		return 0;
+
+	/* Allocate float coefficients */
+	if (coef_size_sum) {
+		cd->fir_coef_f = mod_alloc(mod, coef_size_sum);
+		if (!cd->fir_coef_f) {
+			comp_err(dev, "coef allocation failed for size %zu", coef_size_sum);
+			return -ENOMEM;
+		}
+		cd->fir_coef_f_size = coef_size_sum;
+	}
+
+	/* Allocate delay lines */
+	cd->fir_delay = mod_alloc(mod, delay_size_sum);
+	if (!cd->fir_delay) {
+		comp_err(dev, "delay allocation failed for size %zu", delay_size_sum);
+		mod_free(mod, cd->fir_coef_f);
+		cd->fir_coef_f = NULL;
+		cd->fir_coef_f_size = 0;
+		return -ENOMEM;
+	}
+	memset(cd->fir_delay, 0, delay_size_sum);
+	cd->fir_delay_size = delay_size_sum;
+
+	/* Initialize float coefficients and delay pointers */
+	coef_storage = cd->fir_coef_f;
+	delay_ptr = (float *)cd->fir_delay;
+
+	for (i = 0; i < nch; i++) {
+		if (i < cd->config->channels_in_config)
+			resp = assign_response[i];
+		if (resp < 0) {
+			fir_reset_float(&cd->fir_f[i]);
+			continue;
+		}
+		eq = lookup[resp];
+		if (!lookup_f[resp]) {
+			fir_init_coef_float(&cd->fir_f[i], eq, &coef_storage);
+			lookup_f[resp] = cd->fir_f[i].coef;
+		} else {
+			cd->fir_f[i].rwi = 0;
+			cd->fir_f[i].taps = (int)eq->length;
+			cd->fir_f[i].length = cd->fir_f[i].taps + 2;
+			cd->fir_f[i].out_shift = 0;
+			cd->fir_f[i].coef = lookup_f[resp];
+		}
+		fir_init_delay_float(&cd->fir_f[i], &delay_ptr);
+	}
+
+	return 0;
+}
+#endif
+
 static int eq_fir_setup(struct processing_module *mod, int nch)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+	struct comp_buffer *sourceb = comp_dev_get_first_data_producer(dev);
+	enum sof_ipc_frame fmt = sourceb ? audio_stream_get_frm_fmt(&sourceb->stream) :
+					   SOF_IPC_FRAME_S32_LE;
 	int delay_size;
+
+#if CONFIG_FORMAT_FLOAT
+	if (fmt == SOF_IPC_FRAME_FLOAT)
+		return eq_fir_setup_float(mod, nch);
+#endif
 
 	/* Free existing FIR channels data if it was allocated */
 	eq_fir_free_delaylines(mod);
@@ -319,6 +453,8 @@ static int eq_fir_init(struct processing_module *mod)
 	cd->eq_fir_func = NULL;
 	cd->fir_delay = NULL;
 	cd->fir_delay_size = 0;
+	cd->fir_coef_f = NULL;
+	cd->fir_coef_f_size = 0;
 	cd->nch = -1;
 
 	/* component model data handler */
@@ -331,8 +467,12 @@ static int eq_fir_init(struct processing_module *mod)
 
 	md->private = cd;
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
 		fir_reset(&cd->fir[i]);
+#if CONFIG_FORMAT_FLOAT
+		fir_reset_float(&cd->fir_f[i]);
+#endif
+	}
 
 	return 0;
 }
@@ -503,8 +643,12 @@ static int eq_fir_reset(struct processing_module *mod)
 	eq_fir_free_delaylines(mod);
 
 	cd->eq_fir_func = NULL;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
 		fir_reset(&cd->fir[i]);
+#if CONFIG_FORMAT_FLOAT
+		fir_reset_float(&cd->fir_f[i]);
+#endif
+	}
 
 	return 0;
 }

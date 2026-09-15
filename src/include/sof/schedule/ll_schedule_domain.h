@@ -326,13 +326,17 @@ struct ll_schedule_domain *zephyr_dma_domain_init(struct dma *dma_array,
 struct ll_schedule_domain *zephyr_ll_domain(void);
 struct ll_schedule_domain *zephyr_domain_init(int clk);
 #define timer_domain_init(timer, clk) zephyr_domain_init(clk)
+#if defined(CONFIG_PLATFORM_TEENSY41)
+void zephyr_domain_audio_timer_cb(void);
+bool dai_zephyr_has_active_audio_domain(void);
+#endif
 #ifdef CONFIG_SOF_USERSPACE_LL
 struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain);
 struct k_thread *zephyr_domain_thread_tid_for_core(int core);
 struct k_mem_domain *zephyr_ll_mem_domain(void);
 struct k_thread *zephyr_ll_domain_thread(void);
 #endif /* CONFIG_SOF_USERSPACE_LL */
-#ifdef CONFIG_SOF_FULL_ZEPHYR_APPLICATION
+#if defined(CONFIG_USERSPACE) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall int zephyr_ll_task_sem_alloc(struct task *task);
 __syscall int zephyr_ll_task_sem_free(struct task *task);
 #include <zephyr/syscalls/ll_schedule_domain.h>

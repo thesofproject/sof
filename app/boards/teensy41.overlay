@@ -1,0 +1,173 @@
+#include <zephyr/dt-bindings/usb/audio.h>
+
+/ {
+	chosen {
+		zephyr,console = &lpuart6;
+		zephyr,shell-uart = &lpuart6;
+	};
+
+	uac2_card: usb_audio2 {
+		compatible = "zephyr,uac2";
+		status = "okay";
+		full-speed;
+		high-speed;
+		audio-function = <AUDIO_FUNCTION_IO_BOX>;
+
+		uac_aclk: aclk {
+			compatible = "zephyr,uac2-clock-source";
+			clock-type = "internal-programmable";
+			frequency-control = "host-programmable";
+			sampling-frequencies = <48000>;
+			sof-synchronized;
+		};
+
+		/* ===== Playback from Host (ISO OUT) ===== */
+		i2s_out_terminal: i2s_out_terminal {
+			compatible = "zephyr,uac2-input-terminal";
+			clock-source = <&uac_aclk>;
+			terminal-type = <USB_TERMINAL_STREAMING>;
+			front-left;
+			front-right;
+		};
+
+		i2s_fu: i2s_fu {
+			compatible = "zephyr,uac2-feature-unit";
+			data-source = <&i2s_out_terminal>;
+			mute-control = "host-programmable";
+			volume-control = "host-programmable";
+		};
+
+		pb_eq_fu: pb_eq_fu {
+			compatible = "zephyr,uac2-feature-unit";
+			data-source = <&i2s_fu>;
+			mute-control = "host-programmable";
+		};
+
+		pb_drc_fu: pb_drc_fu {
+			compatible = "zephyr,uac2-feature-unit";
+			data-source = <&pb_eq_fu>;
+			mute-control = "host-programmable";
+		};
+
+		i2s_speaker: i2s_speaker {
+			compatible = "zephyr,uac2-output-terminal";
+			data-source = <&pb_drc_fu>;
+			clock-source = <&uac_aclk>;
+			terminal-type = <OUTPUT_TERMINAL_SPEAKER>;
+			assoc-terminal = <&i2s_mic>;
+		};
+
+		/* ===== Capture to Host (ISO IN) ===== */
+		i2s_mic: i2s_mic {
+			compatible = "zephyr,uac2-input-terminal";
+			clock-source = <&uac_aclk>;
+			terminal-type = <INPUT_TERMINAL_MICROPHONE>;
+			front-left;
+			front-right;
+		};
+
+		cap_eq_fu: cap_eq_fu {
+			compatible = "zephyr,uac2-feature-unit";
+			data-source = <&i2s_mic>;
+			mute-control = "host-programmable";
+		};
+
+		i2s_in_fu: i2s_in_fu {
+			compatible = "zephyr,uac2-feature-unit";
+			data-source = <&cap_eq_fu>;
+			mute-control = "host-programmable";
+			volume-control = "host-programmable";
+		};
+
+		i2s_in_terminal: i2s_in_terminal {
+			compatible = "zephyr,uac2-output-terminal";
+			data-source = <&i2s_in_fu>;
+			clock-source = <&uac_aclk>;
+			terminal-type = <USB_TERMINAL_STREAMING>;
+		};
+
+		/* Audio Streaming Interfaces */
+		as_i2s_out: as_i2s_out {
+			compatible = "zephyr,uac2-audio-streaming";
+			linked-terminal = <&i2s_out_terminal>;
+			subslot-size = <2>;
+			bit-resolution = <16>;
+		};
+
+		as_i2s_in: as_i2s_in {
+			compatible = "zephyr,uac2-audio-streaming";
+			linked-terminal = <&i2s_in_terminal>;
+			subslot-size = <2>;
+			bit-resolution = <16>;
+		};
+	};
+};
+
+&pinctrl {
+	pinmux_sai1: pinmux_sai1 {
+		group0 {
+			pinmux = <&iomuxc_gpio_b1_01_sai1_tx_data0>,
+				 <&iomuxc_gpio_b0_11_sai1_tx_data2>,
+				 <&iomuxc_gpio_b1_00_sai1_rx_data0>,
+				 <&iomuxc_gpio_ad_b1_10_sai1_rx_sync>,
+				 <&iomuxc_gpio_ad_b1_11_sai1_rx_bclk>,
+				 <&iomuxc_gpio_ad_b1_09_sai1_mclk>;
+			drive-strength = "r0-6";
+			slew-rate = "slow";
+			nxp,speed = "100-mhz";
+			input-enable;
+		};
+	};
+
+	pinmux_spdif: pinmux_spdif {
+		group0 {
+			pinmux = <&iomuxc_gpio_ad_b1_02_spdif_out>,
+				 <&iomuxc_gpio_ad_b1_03_spdif_in>;
+			drive-strength = "r0-6";
+			slew-rate = "fast";
+			nxp,speed = "100-mhz";
+			input-enable;
+		};
+	};
+};
+
+/delete-node/ &sai1;
+
+/ {
+	soc {
+		sai1: dai@40384000 {
+			compatible = "nxp,dai-sai";
+			reg = <0x40384000 0x4000>;
+			interrupts = <56 0>;
+			clocks = <&ccm IMX_CCM_SAI1_CLK 0x7c 18>;
+			clock-names = "bus";
+			pinctrl-0 = <&pinmux_sai1>;
+			pinctrl-names = "default";
+			dai-index = <1>;
+			dmas = <&edma0 0 20>, <&edma0 1 19>;
+			dma-names = "tx", "rx";
+			tx-fifo-watermark = <16>;
+			rx-fifo-watermark = <16>;
+			fifo-depth = <32>;
+			tx-sync-mode = <1>;
+			rx-sync-mode = <0>;
+			tx-dataline = <2>;
+			status = "okay";
+		};
+
+		spdif: dai@40380000 {
+			compatible = "nxp,dai-spdif";
+			reg = <0x40380000 0x1000>;
+			interrupts = <60 0>;
+			clocks = <&ccm IMX_CCM_SPDIF0_CLK 0x7c 14>;
+			clock-names = "bus";
+			pinctrl-0 = <&pinmux_spdif>;
+			pinctrl-names = "default";
+			dai-index = <0>;
+			dmas = <&edma0 2 86>, <&edma0 3 85>;
+			dma-names = "tx", "rx";
+			status = "okay";
+		};
+	};
+};
+

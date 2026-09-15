@@ -51,6 +51,18 @@ config HOST_DMA_IPC_POSITION_UPDATES
 	  by sending an IPC message whenever one period of audio is transferred.
 	  Most platforms provide more efficient ways to query the DMA status.
 
+config COMP_USB_AUDIO
+	bool "USB Audio streaming component"
+	default y if PLATFORM_ESP32P4
+	help
+	  Enable USB Audio Class 2 (UAC2) streaming component for SOF.
+
+config COMP_BT_AUDIO
+	bool "Bluetooth Audio streaming component"
+	default y if PLATFORM_ESP32P4
+	help
+	  Enable Bluetooth Audio streaming component for SOF.
+
 config COMP_CHAIN_DMA
 	  bool "Chain DMA component"
 	  depends on IPC_MAJOR_4
@@ -224,6 +236,13 @@ config FORMAT_CONVERT_HIFI3
 	default y
 	help
 	  Use HIFI3 extensions for optimized format conversion (experimental).
+
+config FORMAT_CONVERT_ARM_SIMD
+	bool "ARM SIMD optimized conversion"
+	default y
+	depends on ARM
+	help
+	  Use ARMv7E-M DSP and SIMD instructions for optimized format conversion.
 
 config PCM_CONVERTER_FORMAT_U8
 	bool "Support U8"

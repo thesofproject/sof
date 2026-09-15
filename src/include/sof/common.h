@@ -196,6 +196,14 @@
 #define SOF_USE_MIN_HIFI(minlevel, component) (SOF_CONFIG_HIFI(minlevel, component) || \
 	(SOF_CONFIG_HIFI(MAX, component) && minlevel <= SOF_MAX_XCHAL_HIFI))
 
+#define SOF_CONFIG_RISCV_SIMD(component) (CONFIG_ ## component ## _RISCV_SIMD)
+#define SOF_USE_RISCV_SIMD(component) (IS_ENABLED(CONFIG_ ## component ## _RISCV_SIMD))
+
+#define SOF_CONFIG_ARM_SIMD(component) (CONFIG_ ## component ## _ARM_SIMD)
+#define SOF_USE_ARM_SIMD(component) (IS_ENABLED(CONFIG_ ## component ## _ARM_SIMD))
+#define SOF_CONFIG_ARM_FPU(component) (CONFIG_ ## component ## _ARM_FPU)
+#define SOF_USE_ARM_FPU(component) (IS_ENABLED(CONFIG_ ## component ## _ARM_FPU))
+
 #ifndef __XCC__ // Cadence toolchains: either xt-xcc or xt-clang.
 #  define SOF_MAX_XCHAL_HIFI NONE
 #else

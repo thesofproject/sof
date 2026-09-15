@@ -375,6 +375,9 @@ int src_copy_sxx(struct comp_data *cd, struct sof_source *source,
 	case SOF_IPC_FRAME_S16_LE:
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
+#if CONFIG_FORMAT_FLOAT
+	case SOF_IPC_FRAME_FLOAT:
+#endif
 		return source_to_sink_copy(source, sink, true,
 					   frames * source_get_frame_bytes(source));
 	default:

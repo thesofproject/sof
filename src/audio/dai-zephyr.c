@@ -48,15 +48,41 @@
 
 #include <sof/debug/telemetry/performance_monitor.h>
 
-/* note: if this macro is not defined
- * then that means the HOST and the DSP
- * have the same view of the address space.
- */
 #ifndef local_to_host
 #define local_to_host(addr) (addr)
 #endif /* local_to_host */
 
+#if defined(CONFIG_PLATFORM_TEENSY41)
+extern uint32_t g_diag_debug[8];
+#endif
+
 static const struct comp_driver comp_dai;
+
+#if defined(CONFIG_PLATFORM_TEENSY41)
+#include <sof/schedule/ll_schedule_domain.h>
+
+static struct comp_dev *s_active_sched_dai = NULL;
+
+bool dai_zephyr_has_active_audio_domain(void)
+{
+	return (s_active_sched_dai != NULL);
+}
+
+static void dai_zephyr_dma_period_cb(const struct device *dma_dev, void *user_data,
+				     uint32_t channel, int status)
+{
+	struct comp_dev *dev = user_data;
+
+	ARG_UNUSED(dma_dev);
+	ARG_UNUSED(channel);
+	ARG_UNUSED(status);
+
+	if (dev != s_active_sched_dai)
+		return;
+
+	zephyr_domain_audio_timer_cb();
+}
+#endif
 
 LOG_MODULE_REGISTER(dai_comp, CONFIG_SOF_LOG_LEVEL);
 
@@ -191,6 +217,10 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg.type = DAI_IMX_MICFIL;
 		cfg_params = &sof_cfg->micfil;
 		break;
+	case SOF_DAI_IMX_SPDIF:
+		cfg.type = DAI_IMX_SPDIF;
+		cfg_params = &sof_cfg->spdif;
+		break;
 	case SOF_DAI_AMD_SDW:
 		cfg.type = DAI_AMD_SDW;
 		cfg_params = &sof_cfg->acpsdw;
@@ -219,6 +249,14 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	case SOF_DAI_MEDIATEK_AFE:
 		cfg.type = DAI_MEDIATEK_AFE;
 		cfg_params = &sof_cfg->afe;
+		break;
+	case SOF_DAI_ESP32_I2S:
+		cfg.type = DAI_ESP32_I2S;
+		cfg_params = NULL;
+		break;
+	case SOF_DAI_ESP32_PDM:
+		cfg.type = DAI_ESP32_PDM;
+		cfg_params = NULL;
 		break;
 	default:
 		return -EINVAL;
@@ -716,6 +754,10 @@ __cold static void dai_free(struct comp_dev *dev)
 
 	/* heap is NULL to match what is passed in dai_new() */
 	sof_heap_free(NULL, dd);
+#if defined(CONFIG_PLATFORM_TEENSY41)
+	if (s_active_sched_dai == dev)
+		s_active_sched_dai = NULL;
+#endif
 	comp_free_device(dev);
 }
 
@@ -817,7 +859,11 @@ static int dai_get_dma_slot(struct dai_data *dd, struct comp_dev *dev, uint32_t 
 	case DAI_IMX_SAI:
 	case DAI_IMX_ESAI:
 	case DAI_IMX_MICFIL:
-		*slot = (hs & GENMASK(15, 8)) >> 8;
+	case DAI_IMX_SPDIF:
+		if (hs & GENMASK(15, 8))
+			*slot = (hs & GENMASK(15, 8)) >> 8;
+		else
+			*slot = hs;
 		break;
 	default:
 		*slot = hs;
@@ -943,6 +989,7 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 		comp_err(dev, "dma_cfg allocation failed");
 		return -ENOMEM;
 	}
+	memset(dma_cfg, 0, sizeof(*dma_cfg));
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		dma_cfg->channel_direction = MEMORY_TO_PERIPHERAL;
@@ -952,15 +999,30 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 	dma_cfg->source_data_size = config->src_width;
 	dma_cfg->dest_data_size = config->dest_width;
 
-	if (config->burst_elems)
-		dma_cfg->source_burst_length = config->burst_elems;
-	else
+	if (dd->dai->type == SOF_DAI_IMX_SAI) {
+		/* SAI FIFO has 32 entries with 16-word watermark.
+		 * Minor loop burst size in bytes must match the 16-word watermark:
+		 * 16 words * sample_bytes (32 bytes for 16-bit audio).
+		 */
+		dma_cfg->source_burst_length = 16 * config->src_width;
+	} else if (dd->dai->type == SOF_DAI_IMX_SPDIF) {
+		/* S/PDIF: 8 bytes per minor loop (interleaved L + R) */
 		dma_cfg->source_burst_length = 8;
+	} else if (config->burst_elems) {
+		dma_cfg->source_burst_length = config->burst_elems;
+	} else {
+		dma_cfg->source_burst_length = 8;
+	}
 
 	dma_cfg->dest_burst_length = dma_cfg->source_burst_length;
 	dma_cfg->cyclic = config->cyclic;
+#if defined(CONFIG_PLATFORM_TEENSY41)
+	dma_cfg->user_data = dev;
+	dma_cfg->dma_callback = dai_zephyr_dma_period_cb;
+#else
 	dma_cfg->user_data = NULL;
 	dma_cfg->dma_callback = NULL;
+#endif
 	dma_cfg->block_count = config->elem_array.count;
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		dma_cfg->dma_slot = config->dest_dev;
@@ -975,6 +1037,7 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 		comp_err(dev, "dma_block_config allocation failed");
 		return -ENOMEM;
 	}
+	memset(dma_block_cfg, 0, sizeof(struct dma_block_config) * dma_cfg->block_count);
 
 	dma_cfg->head_block = dma_block_cfg;
 	for (i = 0; i < dma_cfg->block_count; i++) {
@@ -985,15 +1048,21 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 				local_to_host(config->elem_array.elems[i].src);
 			dma_block_cfg->dest_address =
 				config->elem_array.elems[i].dest;
-			dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_DECREMENT;
-			dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_INCREMENT;
+			dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_INCREMENT;
+			dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_NO_CHANGE;
+			if (dma_cfg->block_count > 1) {
+				dma_block_cfg->source_gather_en = 1;
+			}
 		} else {
 			dma_block_cfg->source_address =
 				config->elem_array.elems[i].src;
 			dma_block_cfg->dest_address =
 				local_to_host(config->elem_array.elems[i].dest);
-			dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_INCREMENT;
-			dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_DECREMENT;
+			dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_NO_CHANGE;
+			dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_INCREMENT;
+			if (dma_cfg->block_count > 1) {
+				dma_block_cfg->dest_scatter_en = 1;
+			}
 		}
 		prev = dma_block_cfg;
 		prev->next_block = ++dma_block_cfg;
@@ -1271,6 +1340,12 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 		return -EINVAL;
 	}
 
+	if (!dd->z_config) {
+		comp_err(dev, "Missing dd->z_config.");
+		comp_set_state(dev, COMP_TRIGGER_RESET);
+		return -EINVAL;
+	}
+
 	/* clear dma buffer to avoid pop noise */
 	buffer_zero(dd->dma_buffer);
 
@@ -1311,8 +1386,8 @@ static int dai_prepare(struct comp_dev *dev)
 
 void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 {
+#if !defined(CONFIG_PLATFORM_TEENSY41) && !defined(CONFIG_PLATFORM_ESP32P4)
 	struct dma_sg_config *config = &dd->config;
-
 	/*
 	 * DMA channel release should be skipped now for DAI's that support the two-step stop
 	 * option. It will be done when the host sends the DAI_CONFIG IPC during hw_free.
@@ -1331,6 +1406,7 @@ void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 		buffer_free(dd->dma_buffer);
 		dd->dma_buffer = NULL;
 	}
+#endif
 
 	dd->wallclock = 0;
 	dd->total_data_processed = 0;
@@ -1368,9 +1444,16 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
+			if (dd->z_config)
+				sof_dma_config(dd->dma, dd->chan_index, dd->z_config);
 			ret = sof_dma_start(dd->dma, dd->chan_index);
 			if (ret < 0)
 				return ret;
+
+#if defined(CONFIG_PLATFORM_TEENSY41)
+			if (!s_active_sched_dai)
+				s_active_sched_dai = dev;
+#endif
 
 			/* start the DAI */
 			dai_trigger_op(dd->dai, cmd, dev->direction);
@@ -1403,6 +1486,9 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		if (!(dd->dai->dma_caps & SOF_DMA_CAP_HDA))
 			audio_stream_reset(&dd->dma_buffer->stream);
 
+#if defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_ESP32P4)
+		dd->xrun = 0;
+#endif
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* recover valid start position */
@@ -1419,6 +1505,11 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 			if (ret < 0)
 				return ret;
 
+#if defined(CONFIG_PLATFORM_TEENSY41)
+			if (!s_active_sched_dai)
+				s_active_sched_dai = dev;
+#endif
+
 			/* start the DAI */
 			dai_trigger_op(dd->dai, cmd, dev->direction);
 		} else {
@@ -1434,6 +1525,10 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		COMPILER_FALLTHROUGH;
 	case COMP_TRIGGER_STOP:
 		comp_dbg(dev, "STOP");
+#if defined(CONFIG_PLATFORM_TEENSY41)
+		if (s_active_sched_dai == dev)
+			s_active_sched_dai = NULL;
+#endif
 /*
  * Some platforms cannot just simple disable
  * DMA channel during the transfer,
@@ -1456,6 +1551,10 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		break;
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "PAUSE");
+#if defined(CONFIG_PLATFORM_TEENSY41)
+		if (s_active_sched_dai == dev)
+			s_active_sched_dai = NULL;
+#endif
 #if CONFIG_COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
 		ret = sof_dma_suspend(dd->dma, dd->chan_index);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
@@ -1467,6 +1566,9 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 	case COMP_TRIGGER_PRE_START:
 	case COMP_TRIGGER_PRE_RELEASE:
 		/* only start the DAI if we are not XRUN handling */
+#if defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_ESP32P4)
+		dd->xrun = 0;
+#endif
 		if (dd->xrun)
 			dd->xrun = 0;
 		else
@@ -1474,16 +1576,11 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		break;
 	}
 
-#ifdef CONFIG_IPC_MAJOR_3
-	/* TODO: investigate why making this IPC version-agnostic
-	 * breaks some Intel tests and check if doing so would be
-	 * possible (or even make sense) on Intel platforms.
-	 *
-	 * See issue #8920 for details.
-	 */
+#if defined(CONFIG_IPC_MAJOR_3) || defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_ESP32P4)
+	/* On static topology platforms (Teensy 4.1, ESP32-P4), DAI state must transition cleanly */
 	if (!ret)
 		return comp_set_state(dev, cmd);
-#endif /* CONFIG_IPC_MAJOR_3 */
+#endif /* CONFIG_IPC_MAJOR_3 || CONFIG_PLATFORM_TEENSY41 || CONFIG_PLATFORM_ESP32P4 */
 
 	return ret;
 }
@@ -1651,8 +1748,13 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 	/* limit bytes per copy to one period for the whole pipeline in order to avoid high load
 	 * spike if FAST_MODE is enabled, then one period limitation is omitted.
 	 */
+#if defined(CONFIG_PLATFORM_ESP32P4)
+	/* On ESP32-P4, allow bursting up to 4 periods to quickly absorb scheduling jitter and drain DMA backlog */
+	frames = MIN(frames, dev->frames ? (dev->frames * 4) : 192);
+#else
 	if (!(dd[0]->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
 		frames = MIN(frames, dev->frames);
+#endif
 	comp_dbg(dev, "dir: %d copy frames= 0x%x",
 		 dev->direction, frames);
 
@@ -1685,8 +1787,8 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 
 		/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
 		ret = dai_trigger(dd[i]->dai->dev, direction, DAI_TRIGGER_COPY);
-		if (ret < 0)
-			comp_warn(dev, "dai trigger copy failed");
+		if (ret < 0 && ret != -ENOTSUP && ret != -EOPNOTSUPP && ret != -EINVAL)
+			comp_warn(dev, "dai trigger copy failed: %d", ret);
 
 		status = dai_dma_multi_endpoint_cb(dd[i], dev, frames, multi_endpoint_buffer);
 		if (status == SOF_DMA_CB_STATUS_END)
@@ -1718,14 +1820,15 @@ static void set_new_local_buffer(struct dai_data *dd, struct comp_dev *dev)
 	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dd->dma_buffer->stream);
 	uint32_t local_fmt;
 
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dd->local_buffer = comp_dev_get_first_data_producer(dev);
-	else
+		local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
+		dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
+	} else {
 		dd->local_buffer = comp_dev_get_first_data_consumer(dev);
-
-	local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
-
-	dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
+		local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
+		dd->process = pcm_get_conversion_function(dma_fmt, local_fmt);
+	}
 
 	if (!dd->process) {
 		comp_err(dev, "converter function NULL: local fmt %d dma fmt %d\n",
@@ -1878,6 +1981,12 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 
 	/* return if nothing to copy */
 	if (!copy_bytes) {
+#if defined(CONFIG_PLATFORM_TEENSY41)
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			g_diag_debug[1] = 0xE0000000 | (src_frames & 0xFFFF);
+		else
+			g_diag_debug[5] = 0xE0000000 | (src_frames & 0xFFFF);
+#endif
 #if CONFIG_DAI_VERBOSE_GLITCH_WARNINGS
 		comp_warn(dev, "nothing to copy, src_frames: %u, sink_frames: %u",
 			  src_frames, sink_frames);
@@ -1888,8 +1997,8 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 
 	/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
 	ret = dai_trigger(dd->dai->dev, dev->direction, DAI_TRIGGER_COPY);
-	if (ret < 0)
-		comp_warn(dev, "dai trigger copy failed");
+	if (ret < 0 && ret != -ENOTSUP && ret != -EOPNOTSUPP && ret != -EINVAL)
+		comp_warn(dev, "dai trigger copy failed: %d", ret);
 
 	if (dai_dma_cb(dd, dev, copy_bytes, converter) == SOF_DMA_CB_STATUS_END)
 		sof_dma_stop(dd->dma, dd->chan_index);
@@ -1901,6 +2010,26 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	}
 
 	dai_dma_position_update(dd, dev);
+
+#if defined(CONFIG_PLATFORM_TEENSY41)
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		g_diag_debug[0]++;
+		g_diag_debug[1] = (copy_bytes << 16) | (src_frames & 0xFFFF);
+		if (dd->dma_buffer) {
+			uint32_t *p = (uint32_t *)audio_stream_get_addr(&dd->dma_buffer->stream);
+			g_diag_debug[2] = p[0];
+			g_diag_debug[3] = p[1];
+		}
+	} else {
+		g_diag_debug[4]++;
+		g_diag_debug[5] = (copy_bytes << 16) | (src_frames & 0xFFFF);
+		if (dd->dma_buffer) {
+			uint32_t *p = (uint32_t *)audio_stream_get_addr(&dd->dma_buffer->stream);
+			g_diag_debug[6] = p[0];
+			g_diag_debug[7] = p[1];
+		}
+	}
+#endif
 
 	return ret;
 }

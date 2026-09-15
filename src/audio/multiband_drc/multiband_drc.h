@@ -28,6 +28,13 @@ struct multiband_drc_state {
 	struct iir_state_df1 deemphasis[PLATFORM_MAX_CHANNELS];
 };
 
+struct multiband_drc_state_float {
+	struct iir_state_df1_float emphasis[PLATFORM_MAX_CHANNELS];
+	struct crossover_state_float crossover[PLATFORM_MAX_CHANNELS];
+	struct drc_state drc[SOF_MULTIBAND_DRC_MAX_BANDS];
+	struct iir_state_df1_float deemphasis[PLATFORM_MAX_CHANNELS];
+};
+
 typedef int (*multiband_drc_func)(const struct processing_module *mod,
 				  struct sof_source *source,
 				  struct sof_sink *sink,
@@ -35,7 +42,10 @@ typedef int (*multiband_drc_func)(const struct processing_module *mod,
 
 /* Multiband DRC component private data */
 struct multiband_drc_comp_data {
-	struct multiband_drc_state state;        /**< compressor state */
+	union {
+		struct multiband_drc_state state;        /**< compressor state */
+		struct multiband_drc_state_float state_f;  /**< float compressor state */
+	};
 	struct comp_data_blob_handler *model_handler;
 	struct sof_multiband_drc_config *config; /**< pointer to setup blob */
 	bool config_ready;                       /**< set when fully received */
@@ -43,6 +53,7 @@ struct multiband_drc_comp_data {
 	bool process_enabled;                    /**< true if component is enabled */
 	multiband_drc_func multiband_drc_func;   /**< processing function */
 	crossover_split crossover_split;         /**< crossover n-way split func */
+	crossover_split_float crossover_split_f; /**< crossover float split func */
 };
 
 struct multiband_drc_proc_fnmap {
@@ -91,6 +102,16 @@ static inline multiband_drc_func multiband_drc_find_proc_func_pass(enum sof_ipc_
 
 static inline void multiband_drc_iir_reset_state_ch(struct processing_module *mod,
 						    struct iir_state_df1 *iir)
+{
+	mod_free(mod, iir->coef);
+	mod_free(mod, iir->delay);
+
+	iir->coef = NULL;
+	iir->delay = NULL;
+}
+
+static inline void multiband_drc_iir_reset_state_ch_float(struct processing_module *mod,
+							  struct iir_state_df1_float *iir)
 {
 	mod_free(mod, iir->coef);
 	mod_free(mod, iir->delay);

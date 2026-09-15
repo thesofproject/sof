@@ -7,7 +7,7 @@ if(CONFIG_COMP_FIR STREQUAL "m" AND DEFINED CONFIG_LLEXT)
 
 else()
 
-  add_local_sources(sof eq_fir.c eq_fir_generic.c eq_fir_hifi2ep.c eq_fir_hifi3.c)
+  add_local_sources(sof eq_fir.c eq_fir_generic.c eq_fir_hifi2ep.c eq_fir_hifi3.c eq_fir_arm.c)
 
   if(CONFIG_IPC_MAJOR_3)
     add_local_sources(sof eq_fir_ipc3.c)
