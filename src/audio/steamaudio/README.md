@@ -139,3 +139,50 @@ Measured on **Intel Panther Lake (Aphid DUT)** using the isolated DSP unit test 
 
 - **End-to-End DSP Latency**: **5.33 ms** (vs 12.50 ms standard host audio buffer latency, **-57.3% reduction**).
 - **Anti-Click Crossfading**: Verified smooth voice stealing ($\Delta g = 0.010 < 0.02$).
+
+---
+
+## Extended DSP Sub-Engines & API Features
+
+In addition to binaural HRTF spatialization and FDN reverberation, the component implements full support for Valve Steam Audio's extended DSP rendering pipelines:
+
+### 1. Multi-Channel Surround Panning (`steamaudio_panning`)
+- **Equivalent**: Valve Steam Audio `iplPanningEffect` (`core/src/core/panning_effect.cpp`).
+- **Layouts Supported**:
+  - **Stereo (2.0)**: Front-Left (FL), Front-Right (FR).
+  - **Quadraphonic (4.0)**: FL, FR, Rear-Left (RL), Rear-Right (RR).
+  - **5.1 Surround (5.1)**: FL, FR, Center (FC), Subwoofer (LFE), RL, RR.
+  - **7.1 Surround (7.1)**: FL, FR, FC, LFE, RL, RR, Side-Left (SL), Side-Right (SR).
+- **Acoustic Law**: 2D pairwise constant-power vector base panning ($w_0^2 + w_1^2 \equiv 1.0$), ensuring uniform acoustic loudness across 360° azimuth sweeps without volume dips. Frame-level linear crossfading prevents zipper noise.
+
+### 2. Virtual Surround Sound (`steamaudio_virtual_surround`)
+- **Equivalent**: Valve Steam Audio `iplVirtualSurroundEffect` (`core/src/core/virtual_surround_effect.cpp`).
+- **Function**: Converts multi-channel 5.1 or 7.1 game audio streams into immersive 3D binaural headphone audio for games lacking native spatial audio APIs.
+- **Processing**: Each discrete speaker feed (excluding subwoofer) is mapped to its exact physical 3D coordinate vector and spatialized using Woodworth ITD delay lines and ILD head-shadow filters. The LFE channel is low-pass summed equally into both ears.
+
+### 3. Higher-Order Ambisonics (`steamaudio_ambisonics`)
+- **Equivalent**: Valve Steam Audio `iplAmbisonicsDecodeEffect` / `iplAmbisonicsEncodeEffect`.
+- **Supported Orders**:
+  - **Order 1 (4 channels)**: Monopole $W$, Dipoles $Y, Z, X$.
+  - **Order 2 (9 channels)**: Quadrupoles $V, T, R, S, U$.
+  - **Order 3 (16 channels)**: Octupoles $Q, O, M, K, L, N, P$.
+- **Capabilities**: Real-time spherical harmonic basis evaluation $Y_l^m$, 3D soundfield listener rotation matrices, and binaural decoding via virtual spherical loudspeaker arrays.
+
+### 4. IPC4 Parameter Control Map
+
+| Parameter ID | Name | Description | Payload Struct |
+| :---: | :--- | :--- | :--- |
+| `0x1001` | `STEAMAUDIO_PARAM_DIRECT_CONFIG` | Distance attenuation, 3-band air absorption, occlusion | `sof_steamaudio_direct_config` |
+| `0x1002` | `STEAMAUDIO_PARAM_BINAURAL_CONFIG` | 3D emitter direction vector, HRTF blend | `sof_steamaudio_binaural_config` |
+| `0x1003` | `STEAMAUDIO_PARAM_AMBISONICS_CONFIG` | Ambisonics order (1-3), listener rotation matrix | `sof_steamaudio_ambisonics_config` |
+| `0x1004` | `STEAMAUDIO_PARAM_REVERB_CONFIG` | FDN wet gain, T60 reverberation times, biquad EQ | `sof_steamaudio_reverb_config` |
+| `0x1005` | `STEAMAUDIO_PARAM_BVH_QUERY` | On-chip DSP ray tracing occlusion query | `sof_steamaudio_bvh_query` |
+| `0x1006` | `STEAMAUDIO_PARAM_BITSTREAM_MODE` | Enable/disable in-band synchronized metadata frames | `uint32_t` (0 or 1) |
+| `0x1007` | `STEAMAUDIO_PARAM_PANNING_CONFIG` | Speaker layout type & 3D panning direction | `sof_steamaudio_panning_config` |
+| `0x1008` | `STEAMAUDIO_PARAM_VIRTUAL_SURROUND_CONFIG`| Virtual surround layout (5.1/7.1) & HRTF blend | `sof_steamaudio_virtual_surround_config` |
+| `0x1009` | `STEAMAUDIO_PARAM_OUTPUT_MODE` | Active output mode (Binaural, Panning, Virtual, HOA) | `sof_steamaudio_output_mode_config` |
+
+### 5. Bit-Exact Format Handling
+- **S16_LE**: Standard 16-bit PCM.
+- **S24_4LE**: Bit-exact 24-bit PCM in 32-bit container with sign-extended Q1.23 normalization (`(val << 8) >> 8 * (1 / 8388608.0)`).
+- **S32_LE**: Full 32-bit Q1.31 audio path.

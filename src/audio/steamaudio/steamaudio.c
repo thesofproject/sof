@@ -57,8 +57,7 @@ static int steamaudio_process(struct processing_module *mod,
 		return cd->proc_func(mod, source, sink, frames);
 
 	/* Passthrough if disabled */
-	source_to_sink_copy(source, sink, true, frames * cd->frame_bytes);
-	return 0;
+	return source_to_sink_copy(source, sink, true, frames * cd->frame_bytes);
 }
 
 static int steamaudio_prepare(struct processing_module *mod,
@@ -99,8 +98,19 @@ static int steamaudio_reset(struct processing_module *mod)
 	struct steamaudio_comp_data *cd = module_get_private_data(mod);
 
 	comp_dbg(mod->dev, "steamaudio: reset entry");
-	if (cd)
+	if (cd) {
 		steamaudio_dsp_init(cd, cd->sample_rate);
+		memset(cd->direct.states, 0, sizeof(cd->direct.states));
+		memset(cd->binaural.delay_line, 0, sizeof(cd->binaural.delay_line));
+		memset(cd->reverb.delay_buffers, 0, sizeof(cd->reverb.delay_buffers));
+		memset(cd->reverb.damp_states, 0, sizeof(cd->reverb.damp_states));
+		memset(cd->virtual_surround.delay_lines, 0, sizeof(cd->virtual_surround.delay_lines));
+		memset(cd->in_scratch, 0, sizeof(cd->in_scratch));
+		memset(cd->in_channels, 0, sizeof(cd->in_channels));
+		memset(cd->out_channels, 0, sizeof(cd->out_channels));
+		memset(cd->out_left, 0, sizeof(cd->out_left));
+		memset(cd->out_right, 0, sizeof(cd->out_right));
+	}
 
 	return 0;
 }

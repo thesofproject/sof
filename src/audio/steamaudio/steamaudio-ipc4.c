@@ -86,9 +86,57 @@ __cold int steamaudio_set_config(struct processing_module *mod,
 		const struct sof_steamaudio_ambisonics_config *cfg =
 			(const struct sof_steamaudio_ambisonics_config *)fragment;
 
-		cd->ambisonics.order = cfg->order;
+		cd->ambisonics.order = (cfg->order >= 1 && cfg->order <= 3) ? cfg->order : 1;
+		cd->ambisonics.num_channels = (cd->ambisonics.order + 1) * (cd->ambisonics.order + 1);
+		cd->ambisonics.direction[0] = cfg->direction[0];
+		cd->ambisonics.direction[1] = cfg->direction[1];
+		cd->ambisonics.direction[2] = cfg->direction[2];
 		memcpy(cd->ambisonics.rotation, cfg->listener_rotation, sizeof(cd->ambisonics.rotation));
-		comp_dbg(dev, "steamaudio: ambisonics order=%d", cfg->order);
+		comp_dbg(dev, "steamaudio: ambisonics order=%d ch=%d", cd->ambisonics.order, cd->ambisonics.num_channels);
+		return 0;
+	}
+
+	case STEAMAUDIO_PARAM_PANNING_CONFIG: {
+		if (fragment_size < sizeof(struct sof_steamaudio_panning_config))
+			return -EINVAL;
+
+		const struct sof_steamaudio_panning_config *cfg =
+			(const struct sof_steamaudio_panning_config *)fragment;
+
+		if (cfg->layout_type != cd->panning.layout_type)
+			steamaudio_dsp_panning_init(&cd->panning, cfg->layout_type);
+		float dir[3] = { cfg->direction[0], cfg->direction[1], cfg->direction[2] };
+		steamaudio_dsp_panning_set_direction(&cd->panning, dir);
+		comp_dbg(dev, "steamaudio: panning layout=%u dir=(%f, %f, %f)",
+			 cfg->layout_type, (double)cfg->direction[0],
+			 (double)cfg->direction[1], (double)cfg->direction[2]);
+		return 0;
+	}
+
+	case STEAMAUDIO_PARAM_VIRTUAL_SURROUND_CONFIG: {
+		if (fragment_size < sizeof(struct sof_steamaudio_virtual_surround_config))
+			return -EINVAL;
+
+		const struct sof_steamaudio_virtual_surround_config *cfg =
+			(const struct sof_steamaudio_virtual_surround_config *)fragment;
+
+		if (cfg->layout_type != cd->virtual_surround.layout_type)
+			steamaudio_dsp_virtual_surround_init(&cd->virtual_surround, cfg->layout_type, cd->sample_rate);
+		cd->virtual_surround.hrtf_blend = cfg->hrtf_blend;
+		comp_dbg(dev, "steamaudio: virtual surround layout=%u blend=%f",
+			 cfg->layout_type, (double)cfg->hrtf_blend);
+		return 0;
+	}
+
+	case STEAMAUDIO_PARAM_OUTPUT_MODE: {
+		if (fragment_size < sizeof(struct sof_steamaudio_output_mode_config))
+			return -EINVAL;
+
+		const struct sof_steamaudio_output_mode_config *cfg =
+			(const struct sof_steamaudio_output_mode_config *)fragment;
+
+		cd->output_mode = cfg->mode;
+		comp_info(dev, "steamaudio: output mode set to %u", cd->output_mode);
 		return 0;
 	}
 
@@ -120,9 +168,15 @@ __cold int steamaudio_get_config(struct processing_module *mod,
 			return -EINVAL;
 
 		struct sof_steamaudio_direct_config *cfg = (struct sof_steamaudio_direct_config *)fragment;
+		memset(cfg, 0, sizeof(*cfg));
 		cfg->comp_type = STEAMAUDIO_PARAM_DIRECT_CONFIG;
 		cfg->distance_attenuation = cd->direct.current_gain;
+		cfg->directivity = 1.0f;
 		cfg->occlusion = 0.0f;
+		for (int i = 0; i < STEAMAUDIO_NUM_EQ_BANDS; i++) {
+			cfg->air_absorption[i] = 1.0f;
+			cfg->transmission[i] = 1.0f;
+		}
 		return 0;
 	}
 
@@ -131,11 +185,94 @@ __cold int steamaudio_get_config(struct processing_module *mod,
 			return -EINVAL;
 
 		struct sof_steamaudio_binaural_config *cfg = (struct sof_steamaudio_binaural_config *)fragment;
+		memset(cfg, 0, sizeof(*cfg));
 		cfg->comp_type = STEAMAUDIO_PARAM_BINAURAL_CONFIG;
 		cfg->direction[0] = cd->binaural.direction[0];
 		cfg->direction[1] = cd->binaural.direction[1];
 		cfg->direction[2] = cd->binaural.direction[2];
 		cfg->spatial_blend = cd->binaural.spatial_blend;
+		return 0;
+	}
+
+	case STEAMAUDIO_PARAM_REVERB_CONFIG: {
+		if (fragment_size < sizeof(struct sof_steamaudio_reverb_config))
+			return -EINVAL;
+
+		struct sof_steamaudio_reverb_config *cfg = (struct sof_steamaudio_reverb_config *)fragment;
+		memset(cfg, 0, sizeof(*cfg));
+		cfg->comp_type = STEAMAUDIO_PARAM_REVERB_CONFIG;
+		for (int i = 0; i < STEAMAUDIO_NUM_EQ_BANDS; i++) {
+			cfg->reverb_times[i] = 1.0f;
+			cfg->eq_gains[i] = 1.0f;
+		}
+		cfg->delay_samples = cd->reverb.delay_lengths[0];
+		cfg->wet_gain = cd->reverb.wet_gain;
+		return 0;
+	}
+
+	case STEAMAUDIO_PARAM_AMBISONICS_CONFIG: {
+		if (fragment_size < sizeof(struct sof_steamaudio_ambisonics_config))
+			return -EINVAL;
+
+		struct sof_steamaudio_ambisonics_config *cfg = (struct sof_steamaudio_ambisonics_config *)fragment;
+		memset(cfg, 0, sizeof(*cfg));
+		cfg->comp_type = STEAMAUDIO_PARAM_AMBISONICS_CONFIG;
+		cfg->order = cd->ambisonics.order;
+		cfg->direction[0] = cd->ambisonics.direction[0];
+		cfg->direction[1] = cd->ambisonics.direction[1];
+		cfg->direction[2] = cd->ambisonics.direction[2];
+		memcpy(cfg->listener_rotation, cd->ambisonics.rotation, sizeof(cfg->listener_rotation));
+		return 0;
+	}
+
+	case STEAMAUDIO_PARAM_PANNING_CONFIG: {
+		if (fragment_size < sizeof(struct sof_steamaudio_panning_config))
+			return -EINVAL;
+
+		struct sof_steamaudio_panning_config *cfg = (struct sof_steamaudio_panning_config *)fragment;
+		memset(cfg, 0, sizeof(*cfg));
+		cfg->comp_type = STEAMAUDIO_PARAM_PANNING_CONFIG;
+		cfg->layout_type = cd->panning.layout_type;
+		cfg->direction[0] = cd->panning.direction[0];
+		cfg->direction[1] = cd->panning.direction[1];
+		cfg->direction[2] = cd->panning.direction[2];
+		return 0;
+	}
+
+	case STEAMAUDIO_PARAM_VIRTUAL_SURROUND_CONFIG: {
+		if (fragment_size < sizeof(struct sof_steamaudio_virtual_surround_config))
+			return -EINVAL;
+
+		struct sof_steamaudio_virtual_surround_config *cfg = (struct sof_steamaudio_virtual_surround_config *)fragment;
+		memset(cfg, 0, sizeof(*cfg));
+		cfg->comp_type = STEAMAUDIO_PARAM_VIRTUAL_SURROUND_CONFIG;
+		cfg->layout_type = cd->virtual_surround.layout_type;
+		cfg->hrtf_blend = cd->virtual_surround.hrtf_blend;
+		return 0;
+	}
+
+	case STEAMAUDIO_PARAM_OUTPUT_MODE: {
+		if (fragment_size < sizeof(struct sof_steamaudio_output_mode_config))
+			return -EINVAL;
+
+		struct sof_steamaudio_output_mode_config *cfg = (struct sof_steamaudio_output_mode_config *)fragment;
+		memset(cfg, 0, sizeof(*cfg));
+		cfg->comp_type = STEAMAUDIO_PARAM_OUTPUT_MODE;
+		cfg->mode = cd->output_mode;
+		return 0;
+	}
+
+	case STEAMAUDIO_PARAM_BVH_QUERY: {
+		if (fragment_size < sizeof(struct sof_steamaudio_bvh_query))
+			return -EINVAL;
+
+		struct sof_steamaudio_bvh_query *query = (struct sof_steamaudio_bvh_query *)fragment;
+		struct dsp_vec3 src = { query->source[0], query->source[1], query->source[2] };
+		struct dsp_vec3 lis = { query->listener[0], query->listener[1], query->listener[2] };
+		float occ = steamaudio_dsp_test_occlusion(&cd->scene, src, lis);
+		query->comp_type = STEAMAUDIO_PARAM_BVH_QUERY;
+		query->occlusion_result = occ;
+		query->has_line_of_sight = (occ < 0.5f) ? 1 : 0;
 		return 0;
 	}
 
