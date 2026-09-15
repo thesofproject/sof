@@ -138,7 +138,7 @@ static int smart_amp_get_config(struct comp_dev *dev,
 	comp_dbg(dev, "smart_amp_set_config(), actual blob size = %zu, expected blob size = %zu",
 		 bs, sizeof(struct sof_smart_amp_config));
 
-	if (bs == 0 || bs > size)
+	if (bs == 0 || bs > size || bs > sizeof(struct sof_smart_amp_config))
 		return -EINVAL;
 
 	ret = memcpy_s(cdata->data->data, size, &sad->config, bs);
