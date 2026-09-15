@@ -87,22 +87,22 @@ static inline float fast_acos(float x)
 }
 
 /* 3-Band Biquad Filter Computation */
-static void calc_biquad_coeffs(float gain_db, float freq, float sample_rate, int type, float coeffs[5])
+static void calc_biquad_coeffs(float linear_gain, float freq, float sample_rate, int type, float coeffs[5])
 {
 	float w0 = 2.0f * PI * freq / sample_rate;
 	float cos_w0 = fast_cos(w0);
 	float sin_w0 = fast_sin(w0);
 	float a = 1.0f; /* Q = 1.0 */
 	float alpha = sin_w0 / (2.0f * a);
-	float A = 1.0f;
-	if (gain_db != 0.0f)
-		A = 1.0f + gain_db * 0.115129f; /* 10^(dB/20) approx */
+
+	float g = sat_clamp(linear_gain, 0.0001f, 1.0f);
+	float A = fast_sqrt(g);
+	float sqrt_A = fast_sqrt(A);
 
 	float b0 = 1.0f, b1 = 0.0f, b2 = 0.0f, a0 = 1.0f, a1 = 0.0f, a2 = 0.0f;
 
 	if (type == 0) {
-		/* Low shelf (400 Hz) */
-		float sqrt_A = (A > 0.0f) ? (1.0f + 0.5f * (A - 1.0f)) : 1.0f;
+		/* Low shelf (800 Hz) */
 		b0 = A * ((A + 1.0f) - (A - 1.0f) * cos_w0 + 2.0f * sqrt_A * alpha);
 		b1 = 2.0f * A * ((A - 1.0f) - (A + 1.0f) * cos_w0);
 		b2 = A * ((A + 1.0f) - (A - 1.0f) * cos_w0 - 2.0f * sqrt_A * alpha);
@@ -118,8 +118,7 @@ static void calc_biquad_coeffs(float gain_db, float freq, float sample_rate, int
 		a1 = -2.0f * cos_w0;
 		a2 = 1.0f - alpha / A;
 	} else {
-		/* High shelf (15 kHz) */
-		float sqrt_A = (A > 0.0f) ? (1.0f + 0.5f * (A - 1.0f)) : 1.0f;
+		/* High shelf (8000 Hz) */
 		b0 = A * ((A + 1.0f) + (A - 1.0f) * cos_w0 + 2.0f * sqrt_A * alpha);
 		b1 = -2.0f * A * ((A - 1.0f) + (A + 1.0f) * cos_w0);
 		b2 = A * ((A + 1.0f) - (A - 1.0f) * cos_w0 - 2.0f * sqrt_A * alpha);
@@ -128,12 +127,20 @@ static void calc_biquad_coeffs(float gain_db, float freq, float sample_rate, int
 		a2 = (A + 1.0f) - (A - 1.0f) * cos_w0 - 2.0f * sqrt_A * alpha;
 	}
 
-	float inv_a0 = 1.0f / a0;
+	float inv_a0 = (a0 > 0.0001f) ? (1.0f / a0) : 1.0f;
 	coeffs[0] = b0 * inv_a0;
 	coeffs[1] = b1 * inv_a0;
 	coeffs[2] = b2 * inv_a0;
 	coeffs[3] = a1 * inv_a0;
 	coeffs[4] = a2 * inv_a0;
+}
+
+static inline float apply_biquad(float in, const float coeffs[5], float state[2])
+{
+	float out = coeffs[0] * in + state[0];
+	state[0] = coeffs[1] * in - coeffs[3] * out + state[1];
+	state[1] = coeffs[2] * in - coeffs[4] * out;
+	return out;
 }
 
 void steamaudio_dsp_init(struct steamaudio_comp_data *cd, uint32_t sample_rate)
@@ -151,9 +158,9 @@ void steamaudio_dsp_init(struct steamaudio_comp_data *cd, uint32_t sample_rate)
 	cd->direct.crossfade_remaining = 0;
 
 	for (int b = 0; b < STEAMAUDIO_NUM_EQ_BANDS; b++) {
-		float freq = (b == 0) ? 400.0f : ((b == 1) ? 2500.0f : 15000.0f);
-		calc_biquad_coeffs(0.0f, freq, (float)cd->sample_rate, b, cd->direct.coeffs[0][b]);
-		calc_biquad_coeffs(0.0f, freq, (float)cd->sample_rate, b, cd->direct.coeffs[1][b]);
+		float freq = (b == 0) ? 800.0f : ((b == 1) ? 2500.0f : 8000.0f);
+		calc_biquad_coeffs(1.0f, freq, (float)cd->sample_rate, b, cd->direct.coeffs[0][b]);
+		calc_biquad_coeffs(1.0f, freq, (float)cd->sample_rate, b, cd->direct.coeffs[1][b]);
 	}
 
 	/* Initialize Binaural */
@@ -188,6 +195,9 @@ void steamaudio_dsp_init(struct steamaudio_comp_data *cd, uint32_t sample_rate)
 
 	/* Initialize Virtual Surround Sound */
 	steamaudio_dsp_virtual_surround_init(&cd->virtual_surround, STEAMAUDIO_SPEAKER_LAYOUT_5_1, cd->sample_rate);
+
+	/* Initialize Acoustic Pathing */
+	steamaudio_dsp_pathing_init(&cd->pathing, 1, cd->sample_rate);
 
 	cd->output_mode = STEAMAUDIO_OUTPUT_BINAURAL;
 	memset(cd->in_channels, 0, sizeof(cd->in_channels));
@@ -721,7 +731,7 @@ void steamaudio_dsp_ambisonics_decode_binaural(struct steamaudio_ambisonics_stat
 		float sh[16];
 		eval_sh_basis(rx, ry, rz, (int)ambi->order, sh);
 
-		float az = fast_atan2(rx, rz);
+		float az = fast_atan2(vx, vz);
 		float sin_az = fast_sin(az);
 		float ild_l = (sin_az > 0.0f) ? (1.0f - 0.4f * sin_az) : 1.0f;
 		float ild_r = (sin_az < 0.0f) ? (1.0f + 0.4f * sin_az) : 1.0f;
@@ -735,6 +745,105 @@ void steamaudio_dsp_ambisonics_decode_binaural(struct steamaudio_ambisonics_stat
 			out_l[i] += feed * ild_l;
 			out_r[i] += feed * ild_r;
 		}
+	}
+}
+
+void steamaudio_dsp_pathing_init(struct steamaudio_pathing_state *pathing, uint32_t order, uint32_t sample_rate)
+{
+	memset(pathing, 0, sizeof(*pathing));
+	pathing->order = (order <= 3) ? order : 1;
+	pathing->num_channels = (pathing->order + 1) * (pathing->order + 1);
+	pathing->binaural = true;
+	pathing->eq_coeffs[0] = 1.0f;
+	pathing->eq_coeffs[1] = 1.0f;
+	pathing->eq_coeffs[2] = 1.0f;
+	pathing->sh_coeffs[0] = 1.0f;
+	pathing->rotation[0][0] = 1.0f;
+	pathing->rotation[1][1] = 1.0f;
+	pathing->rotation[2][2] = 1.0f;
+
+	calc_biquad_coeffs(1.0f, 800.0f, (float)sample_rate, 0, pathing->filter_coeffs[0]);
+	calc_biquad_coeffs(1.0f, 2500.0f, (float)sample_rate, 1, pathing->filter_coeffs[1]);
+	calc_biquad_coeffs(1.0f, 8000.0f, (float)sample_rate, 2, pathing->filter_coeffs[2]);
+}
+
+void steamaudio_dsp_pathing_set_params(struct steamaudio_pathing_state *pathing,
+				       const float eq[STEAMAUDIO_NUM_EQ_BANDS],
+				       const float sh[STEAMAUDIO_MAX_HOA_CHANNELS],
+				       uint32_t order, bool binaural,
+				       const float rot[3][3],
+				       uint32_t sample_rate)
+{
+	pathing->order = (order <= 3) ? order : 1;
+	pathing->num_channels = (pathing->order + 1) * (pathing->order + 1);
+	pathing->binaural = binaural;
+
+	for (int b = 0; b < STEAMAUDIO_NUM_EQ_BANDS; b++) {
+		pathing->eq_coeffs[b] = sat_clamp(eq[b], 0.0f, 1.0f);
+		int type = (b == 0) ? 0 : ((b == 1) ? 1 : 2);
+		float freq = (b == 0) ? 800.0f : ((b == 1) ? 2500.0f : 8000.0f);
+		calc_biquad_coeffs(pathing->eq_coeffs[b], freq, (float)sample_rate, type, pathing->filter_coeffs[b]);
+	}
+
+	for (int i = 0; i < pathing->num_channels; i++)
+		pathing->sh_coeffs[i] = sh[i];
+
+	if (rot) {
+		for (int r = 0; r < 3; r++)
+			for (int c = 0; c < 3; c++)
+				pathing->rotation[r][c] = rot[r][c];
+	}
+}
+
+void steamaudio_dsp_pathing_process(struct steamaudio_pathing_state *pathing,
+				    struct steamaudio_ambisonics_state *ambi,
+				    struct steamaudio_panning_state *panning,
+				    const float *in, float *out_l, float *out_r,
+				    float out_ch[STEAMAUDIO_MAX_SPEAKERS][256],
+				    uint32_t frames)
+{
+	float eq_buffer[256];
+	for (uint32_t i = 0; i < frames; i++) {
+		float s = in[i];
+		s = apply_biquad(s, pathing->filter_coeffs[0], pathing->filter_states[0]);
+		s = apply_biquad(s, pathing->filter_coeffs[1], pathing->filter_states[1]);
+		s = apply_biquad(s, pathing->filter_coeffs[2], pathing->filter_states[2]);
+		eq_buffer[i] = s;
+	}
+
+	float hoa_channels[STEAMAUDIO_MAX_HOA_CHANNELS][256];
+	int num_ch = pathing->num_channels;
+	for (int ch = 0; ch < num_ch; ch++) {
+		float coeff = pathing->sh_coeffs[ch];
+		for (uint32_t i = 0; i < frames; i++)
+			hoa_channels[ch][i] = eq_buffer[i] * coeff;
+	}
+
+	if (pathing->binaural) {
+		for (int r = 0; r < 3; r++)
+			for (int c = 0; c < 3; c++)
+				ambi->rotation[r][c] = pathing->rotation[r][c];
+		ambi->order = pathing->order;
+
+		steamaudio_dsp_ambisonics_decode_binaural(ambi,
+							  (const float (*)[256])hoa_channels,
+							  out_l, out_r, frames);
+	} else {
+		float dir[3] = { 0.0f, 0.0f, 1.0f };
+		if (num_ch >= 4) {
+			dir[0] = pathing->sh_coeffs[3];
+			dir[1] = pathing->sh_coeffs[1];
+			dir[2] = pathing->sh_coeffs[2];
+			float len = fast_sqrt(dir[0]*dir[0] + dir[1]*dir[1] + dir[2]*dir[2]);
+			if (len > 0.0001f) {
+				float inv_len = 1.0f / len;
+				dir[0] *= inv_len; dir[1] *= inv_len; dir[2] *= inv_len;
+			}
+		}
+		steamaudio_dsp_panning_set_direction(panning, dir);
+		steamaudio_dsp_panning_process(panning, eq_buffer, out_ch, frames);
+		memcpy(out_l, out_ch[0], frames * sizeof(float));
+		memcpy(out_r, out_ch[1], frames * sizeof(float));
 	}
 }
 
@@ -764,6 +873,11 @@ static inline void steamaudio_dsp_render(struct steamaudio_comp_data *cd, uint32
 								  (const float (*)[256])cd->in_channels,
 								  cd->out_left, cd->out_right, frames);
 		}
+		process_reverb(cd, cd->in_scratch, cd->out_left, cd->out_right, frames);
+	} else if (cd->output_mode == STEAMAUDIO_OUTPUT_PATHING) {
+		steamaudio_dsp_pathing_process(&cd->pathing, &cd->ambisonics, &cd->panning,
+					       cd->in_scratch, cd->out_left, cd->out_right,
+					       cd->out_channels, frames);
 		process_reverb(cd, cd->in_scratch, cd->out_left, cd->out_right, frames);
 	} else {
 		process_direct_path(cd, cd->in_scratch, cd->out_left, frames);

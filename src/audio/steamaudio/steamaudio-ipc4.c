@@ -140,6 +140,34 @@ __cold int steamaudio_set_config(struct processing_module *mod,
 		return 0;
 	}
 
+	case STEAMAUDIO_PARAM_PATHING_CONFIG: {
+		if (fragment_size < sizeof(struct sof_steamaudio_pathing_config))
+			return -EINVAL;
+
+		const struct sof_steamaudio_pathing_config *cfg =
+			(const struct sof_steamaudio_pathing_config *)fragment;
+
+		float eq[STEAMAUDIO_NUM_EQ_BANDS];
+		for (int b = 0; b < STEAMAUDIO_NUM_EQ_BANDS; b++)
+			eq[b] = cfg->eq_coeffs[b];
+
+		float sh[STEAMAUDIO_MAX_HOA_CHANNELS];
+		for (int i = 0; i < STEAMAUDIO_MAX_HOA_CHANNELS; i++)
+			sh[i] = cfg->sh_coeffs[i];
+
+		float rot[3][3];
+		for (int r = 0; r < 3; r++)
+			for (int c = 0; c < 3; c++)
+				rot[r][c] = cfg->listener_rotation[r][c];
+
+		steamaudio_dsp_pathing_set_params(&cd->pathing, eq, sh,
+						  cfg->order, (cfg->binaural != 0),
+						  rot, cd->sample_rate);
+		comp_dbg(dev, "steamaudio: pathing order=%u binaural=%u",
+			 cfg->order, cfg->binaural);
+		return 0;
+	}
+
 	case STEAMAUDIO_PARAM_BITSTREAM_MODE: {
 		if (fragment_size < sizeof(uint32_t))
 			return -EINVAL;
@@ -259,6 +287,25 @@ __cold int steamaudio_get_config(struct processing_module *mod,
 		memset(cfg, 0, sizeof(*cfg));
 		cfg->comp_type = STEAMAUDIO_PARAM_OUTPUT_MODE;
 		cfg->mode = cd->output_mode;
+		return 0;
+	}
+
+	case STEAMAUDIO_PARAM_PATHING_CONFIG: {
+		if (fragment_size < sizeof(struct sof_steamaudio_pathing_config))
+			return -EINVAL;
+
+		struct sof_steamaudio_pathing_config *cfg = (struct sof_steamaudio_pathing_config *)fragment;
+		memset(cfg, 0, sizeof(*cfg));
+		cfg->comp_type = STEAMAUDIO_PARAM_PATHING_CONFIG;
+		for (int b = 0; b < STEAMAUDIO_NUM_EQ_BANDS; b++)
+			cfg->eq_coeffs[b] = cd->pathing.eq_coeffs[b];
+		for (int i = 0; i < STEAMAUDIO_MAX_HOA_CHANNELS; i++)
+			cfg->sh_coeffs[i] = cd->pathing.sh_coeffs[i];
+		cfg->order = cd->pathing.order;
+		cfg->binaural = cd->pathing.binaural ? 1 : 0;
+		for (int r = 0; r < 3; r++)
+			for (int c = 0; c < 3; c++)
+				cfg->listener_rotation[r][c] = cd->pathing.rotation[r][c];
 		return 0;
 	}
 

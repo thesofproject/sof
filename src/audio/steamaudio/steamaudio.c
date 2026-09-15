@@ -105,6 +105,7 @@ static int steamaudio_reset(struct processing_module *mod)
 		memset(cd->reverb.delay_buffers, 0, sizeof(cd->reverb.delay_buffers));
 		memset(cd->reverb.damp_states, 0, sizeof(cd->reverb.damp_states));
 		memset(cd->virtual_surround.delay_lines, 0, sizeof(cd->virtual_surround.delay_lines));
+		memset(cd->pathing.filter_states, 0, sizeof(cd->pathing.filter_states));
 		memset(cd->in_scratch, 0, sizeof(cd->in_scratch));
 		memset(cd->in_channels, 0, sizeof(cd->in_channels));
 		memset(cd->out_channels, 0, sizeof(cd->out_channels));

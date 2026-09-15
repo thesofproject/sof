@@ -35,6 +35,7 @@
 #define STEAMAUDIO_PARAM_PANNING_CONFIG     0x1007
 #define STEAMAUDIO_PARAM_VIRTUAL_SURROUND_CONFIG 0x1008
 #define STEAMAUDIO_PARAM_OUTPUT_MODE        0x1009
+#define STEAMAUDIO_PARAM_PATHING_CONFIG     0x100A
 
 enum steamaudio_speaker_layout {
 	STEAMAUDIO_SPEAKER_LAYOUT_STEREO = 0,
@@ -48,6 +49,7 @@ enum steamaudio_output_mode {
 	STEAMAUDIO_OUTPUT_SURROUND_PANNING = 1,
 	STEAMAUDIO_OUTPUT_VIRTUAL_SURROUND = 2,
 	STEAMAUDIO_OUTPUT_AMBISONICS = 3,
+	STEAMAUDIO_OUTPUT_PATHING = 4,
 };
 
 /* Bitstream Encapsulation Header */
@@ -140,6 +142,15 @@ struct __attribute__((packed)) sof_steamaudio_bvh_query {
 	uint32_t has_line_of_sight;
 };
 
+struct __attribute__((packed)) sof_steamaudio_pathing_config {
+	uint32_t comp_type;
+	float eq_coeffs[STEAMAUDIO_NUM_EQ_BANDS]; /* 3-band diffraction transmission EQ */
+	float sh_coeffs[STEAMAUDIO_MAX_HOA_CHANNELS]; /* Ambisonics SH arrival soundfield */
+	uint32_t order; /* Ambisonics order (0, 1, 2, or 3) */
+	uint32_t binaural; /* 1: Binaural headphone decode, 0: Panning decode */
+	float listener_rotation[3][3]; /* Listener coordinate space rotation */
+};
+
 /* Internal DSP Sub-Engine States */
 struct steamaudio_direct_state {
 	float coeffs[2][STEAMAUDIO_NUM_EQ_BANDS][5]; /* b0, b1, b2, a1, a2 */
@@ -197,6 +208,17 @@ struct steamaudio_virtual_surround_state {
 	int write_idx[STEAMAUDIO_MAX_SPEAKERS];
 	float itd_samples[STEAMAUDIO_MAX_SPEAKERS][2];
 	float ild_gains[STEAMAUDIO_MAX_SPEAKERS][2];
+};
+
+struct steamaudio_pathing_state {
+	float eq_coeffs[STEAMAUDIO_NUM_EQ_BANDS];
+	float sh_coeffs[STEAMAUDIO_MAX_HOA_CHANNELS];
+	uint32_t order;
+	int num_channels;
+	bool binaural;
+	float rotation[3][3];
+	float filter_coeffs[STEAMAUDIO_NUM_EQ_BANDS][5];
+	float filter_states[STEAMAUDIO_NUM_EQ_BANDS][2];
 };
 
 /* BVH scene forward declaration */
@@ -269,6 +291,7 @@ struct steamaudio_comp_data {
 	struct steamaudio_ambisonics_state ambisonics;
 	struct steamaudio_panning_state panning;
 	struct steamaudio_virtual_surround_state virtual_surround;
+	struct steamaudio_pathing_state pathing;
 	struct dsp_scene scene;
 
 	/* Temporary scratch buffers for processing frames */
@@ -301,6 +324,20 @@ void steamaudio_dsp_ambisonics_encode(uint32_t order, const float dir[3], const 
 void steamaudio_dsp_ambisonics_decode_binaural(struct steamaudio_ambisonics_state *ambi,
 					       const float in_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
 					       float *out_l, float *out_r, uint32_t frames);
+
+void steamaudio_dsp_pathing_init(struct steamaudio_pathing_state *pathing, uint32_t order, uint32_t sample_rate);
+void steamaudio_dsp_pathing_set_params(struct steamaudio_pathing_state *pathing,
+				       const float eq[STEAMAUDIO_NUM_EQ_BANDS],
+				       const float sh[STEAMAUDIO_MAX_HOA_CHANNELS],
+				       uint32_t order, bool binaural,
+				       const float rot[3][3],
+				       uint32_t sample_rate);
+void steamaudio_dsp_pathing_process(struct steamaudio_pathing_state *pathing,
+				    struct steamaudio_ambisonics_state *ambi,
+				    struct steamaudio_panning_state *panning,
+				    const float *in, float *out_l, float *out_r,
+				    float out_ch[STEAMAUDIO_MAX_SPEAKERS][256],
+				    uint32_t frames);
 
 /* IPC4 control callbacks */
 int steamaudio_set_config(struct processing_module *mod,
