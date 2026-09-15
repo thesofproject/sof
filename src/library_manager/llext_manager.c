@@ -631,7 +631,7 @@ static int llext_manager_link(const char *name,
 		};
 
 		ret = llext_load(ldr, name, llext, &ldr_parm);
-		if (ret) {
+		if (ret < 0) {
 			tr_err(&lib_manager_tr, "llext_load failed: ret=%d", ret);
 			if (mctx->vma_base) {
 				llext_manager_free_vma(mctx->vma_base, mctx->vma_size);
