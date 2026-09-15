@@ -10,7 +10,7 @@
 
 tests:
   sof.unit.math.basic.arithmetic:
-    tags: math arithmetic numbers
+    tags: [math, arithmetic, numbers]
     platform_allow: native_sim
     integration_platforms:
       - native_sim
