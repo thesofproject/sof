@@ -99,10 +99,20 @@ function(sof_llext_build module)
 			-o rimage_config.toml
 	)
 
+	if(DEFINED XTENSA_CROSS_PREFIX AND EXISTS "${XTENSA_CROSS_PREFIX}gcc")
+		set(SOF_LLEXT_LINK_COMPILER "${XTENSA_CROSS_PREFIX}gcc")
+	else()
+		set(SOF_LLEXT_LINK_COMPILER "${CMAKE_C_COMPILER}")
+	endif()
+
 	if(CONFIG_LLEXT_TYPE_ELF_RELOCATABLE)
 		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -r)
 	else()
 		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -shared)
+	endif()
+
+	if(NOT DEFINED XTENSA_CROSS_PREFIX AND CMAKE_C_COMPILER_TARGET)
+		list(APPEND EXTRA_LINKER_PARAMS --target=${CMAKE_C_COMPILER_TARGET})
 	endif()
 
 	foreach(path ${SOF_LLEXT_LIBS_PATH})
@@ -132,7 +142,7 @@ function(sof_llext_build module)
 		COMMAND ${PYTHON_EXECUTABLE} ${SOF_BASE}scripts/llext_link_helper.py -s ${size_file}
 			--text-addr=${CONFIG_LIBRARY_BASE_ADDRESS}
 			-c $<TARGET_PROPERTY:bintools,elfconvert_command>
-			-f ${proc_in_file} -o ${proc_out_file} ${CMAKE_C_COMPILER} --
+			-f ${proc_in_file} -o ${proc_out_file} ${SOF_LLEXT_LINK_COMPILER} --
 			${EXTRA_LINKER_PARAMS} $<TARGET_OBJECTS:${module}_llext_lib> ${EXTRA_LIBS}
 	)
 

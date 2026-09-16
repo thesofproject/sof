@@ -207,6 +207,8 @@ target_compile_options(mww_tflm_lib PRIVATE
 	-Wno-shadow
 	-fno-tree-vectorize
 	-fno-tree-slp-vectorize
+	-ffunction-sections
+	-fdata-sections
 )
 
 add_local_sources(sof mww.c)
