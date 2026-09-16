@@ -405,7 +405,7 @@ static inline void *audio_stream_wrap(const struct audio_stream *buffer, void *p
 		ptr = (char *)buffer->addr +
 			((char *)ptr - (char *)buffer->end_addr);
 
-	assert((intptr_t)ptr <= (intptr_t)buffer->end_addr);
+	assert((uintptr_t)ptr <= (uintptr_t)buffer->end_addr);
 
 	return ptr;
 }
@@ -422,7 +422,7 @@ static inline void *audio_stream_rewind_wrap(const struct audio_stream *buffer, 
 	if (ptr < buffer->addr)
 		ptr = (char *)buffer->end_addr - ((char *)buffer->addr - (char *)ptr);
 
-	assert((intptr_t)ptr >= (intptr_t)buffer->addr);
+	assert((uintptr_t)ptr >= (uintptr_t)buffer->addr);
 
 	return ptr;
 }
@@ -804,8 +804,8 @@ static inline void audio_stream_writeback(struct audio_stream *buffer, uint32_t 
 static inline int
 audio_stream_bytes_without_wrap(const struct audio_stream *source, const void *ptr)
 {
-	assert((intptr_t)source->end_addr >= (intptr_t)ptr);
-	return (intptr_t)source->end_addr - (intptr_t)ptr;
+	assert((uintptr_t)source->end_addr >= (uintptr_t)ptr);
+	return (uintptr_t)source->end_addr - (uintptr_t)ptr;
 }
 
 /**
@@ -819,8 +819,8 @@ audio_stream_bytes_without_wrap(const struct audio_stream *source, const void *p
 static inline int
 audio_stream_rewind_bytes_without_wrap(const struct audio_stream *source, const void *ptr)
 {
-	assert((intptr_t)ptr >= (intptr_t)source->addr);
-	int to_begin = (intptr_t)ptr - (intptr_t)source->addr;
+	assert((uintptr_t)ptr >= (uintptr_t)source->addr);
+	size_t to_begin = (uintptr_t)ptr - (uintptr_t)source->addr;
 	return to_begin;
 }
 
@@ -837,8 +837,8 @@ static inline uint32_t
 	void *wptr = audio_stream_get_wptr(source);
 	int to_begin = audio_stream_rewind_bytes_without_wrap(source, wptr);
 
-	assert((intptr_t)wptr >= (intptr_t)source->addr);
-	assert((intptr_t)source->end_addr > (intptr_t)wptr);
+	assert((uintptr_t)wptr >= (uintptr_t)source->addr);
+	assert((uintptr_t)source->end_addr > (uintptr_t)wptr);
 
 	if (to_begin > bytes)
 		return (uint32_t *)((intptr_t)wptr - bytes);
@@ -858,7 +858,7 @@ audio_stream_samples_without_wrap_s16(const struct audio_stream *source, const v
 {
 	int to_end = (int16_t *)source->end_addr - (int16_t *)ptr;
 
-	assert((intptr_t)source->end_addr >= (intptr_t)ptr);
+	assert((uintptr_t)source->end_addr >= (uintptr_t)ptr);
 	return to_end;
 }
 
@@ -874,7 +874,7 @@ audio_stream_samples_without_wrap_s24(const struct audio_stream *source, const v
 {
 	int to_end = (int32_t *)source->end_addr - (int32_t *)ptr;
 
-	assert((intptr_t)source->end_addr >= (intptr_t)ptr);
+	assert((uintptr_t)source->end_addr >= (uintptr_t)ptr);
 	return to_end;
 }
 
@@ -890,7 +890,7 @@ audio_stream_samples_without_wrap_s32(const struct audio_stream *source, const v
 {
 	int to_end = (int32_t *)source->end_addr - (int32_t *)ptr;
 
-	assert((intptr_t)source->end_addr >= (intptr_t)ptr);
+	assert((uintptr_t)source->end_addr >= (uintptr_t)ptr);
 	return to_end;
 }
 

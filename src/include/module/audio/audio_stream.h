@@ -167,7 +167,7 @@ static inline int cir_buf_samples_without_wrap_s16(const void *ptr, const void *
 {
 	int to_end = (const int16_t *)buf_end - (const int16_t *)ptr;
 
-	assert((intptr_t)buf_end >= (intptr_t)ptr);
+	assert((uintptr_t)buf_end >= (uintptr_t)ptr);
 	return to_end;
 }
 
@@ -183,7 +183,7 @@ static inline int cir_buf_samples_without_wrap_s32(const void *ptr, const void *
 {
 	int to_end = (const int32_t *)buf_end - (const int32_t *)ptr;
 
-	assert((intptr_t)buf_end >= (intptr_t)ptr);
+	assert((uintptr_t)buf_end >= (uintptr_t)ptr);
 	return to_end;
 }
 
@@ -213,7 +213,7 @@ static inline void *cir_buf_wrap(const void *ptr, const void *buf_addr, const vo
 		ptr = (const char *)buf_addr +
 			((const char *)ptr - (const char *)buf_end);
 
-	assert((intptr_t)ptr <= (intptr_t)buf_end);
+	assert((uintptr_t)ptr <= (uintptr_t)buf_end);
 
 	return (void *)ptr;
 }
@@ -232,7 +232,7 @@ static inline const void *source_cir_buf_wrap(const void *ptr, const void *buf_a
 		ptr = (const char *)buf_addr +
 			((const char *)ptr - (const char *)buf_end);
 
-	assert((intptr_t)ptr <= (intptr_t)buf_end);
+	assert((uintptr_t)ptr <= (uintptr_t)buf_end);
 
 	return ptr;
 }
@@ -265,7 +265,7 @@ static inline const void *source_cir_buf_rewind_wrap(const void *ptr, const void
 	if (ptr < buf_start)
 		ptr = (const char *)buf_end - ((const char *)buf_start - (const char *)ptr);
 
-	assert((intptr_t)ptr >= (intptr_t)buf_start);
+	assert((uintptr_t)ptr >= (uintptr_t)buf_start);
 
 	return ptr;
 }
