@@ -57,16 +57,15 @@ LOG_MODULE_REGISTER(volume, CONFIG_SOF_LOG_LEVEL);
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s16(struct cir_buf_source *source, const int channels,
-			       uint32_t frames, int64_t *prev_sum)
+static size_t vol_zc_get_s16(struct cir_buf_source *source, const unsigned int channels,
+			     size_t frames, int64_t *prev_sum)
 {
-	uint32_t curr_frames = frames;
+	size_t curr_frames = frames;
 	int32_t sum;
 	const int16_t *x = source->ptr;
-	int bytes;
-	int nmax;
-	int i, j, n;
-	int remaining_samples = frames * channels;
+	size_t bytes, nmax, i, n;
+	unsigned int j;
+	size_t remaining_samples = frames * channels;
 
 	/* Go to last channel */
 	x = source_cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
@@ -106,16 +105,15 @@ static uint32_t vol_zc_get_s16(struct cir_buf_source *source, const int channels
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s24(struct cir_buf_source *source, const int channels,
-			       uint32_t frames, int64_t *prev_sum)
+static size_t vol_zc_get_s24(struct cir_buf_source *source, const unsigned int channels,
+			     size_t frames, int64_t *prev_sum)
 {
 	int64_t sum;
-	uint32_t curr_frames = frames;
+	size_t curr_frames = frames;
 	const int32_t *x = source->ptr;
-	int bytes;
-	int nmax;
-	int i, j, n;
-	int remaining_samples = frames * channels;
+	size_t bytes, nmax, i, n;
+	unsigned int j;
+	size_t remaining_samples = frames * channels;
 
 	/* Go to last channel */
 	x = source_cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
@@ -155,16 +153,15 @@ static uint32_t vol_zc_get_s24(struct cir_buf_source *source, const int channels
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s32(struct cir_buf_source *source, const int channels,
-			       uint32_t frames, int64_t *prev_sum)
+static size_t vol_zc_get_s32(struct cir_buf_source *source, const unsigned int channels,
+			     size_t frames, int64_t *prev_sum)
 {
 	int64_t sum;
-	uint32_t curr_frames = frames;
+	size_t curr_frames = frames;
 	const int32_t *x = source->ptr;
-	int bytes;
-	int nmax;
-	int i, j, n;
-	int remaining_samples = frames * channels;
+	size_t bytes, nmax, i, n;
+	unsigned int j;
+	size_t remaining_samples = frames * channels;
 
 	/* Go to last channel */
 	x = source_cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
@@ -564,12 +561,11 @@ static int volume_process(struct processing_module *mod,
 	struct sof_sink *sink = sinks[0];
 	struct cir_buf_source source_buf;
 	struct cir_buf_sink sink_buf;
-	const int nch = cd->channels;
+	const unsigned int nch = cd->channels;
 	size_t source_frame_bytes = source_get_frame_bytes(source);
 	size_t sink_frame_bytes = sink_get_frame_bytes(sink);
 	size_t source_bytes, sink_bytes, bytes;
-	uint32_t avail_frames;
-	uint32_t frames;
+	size_t avail_frames, frames;
 	int64_t prev_sum = 0;
 	int ret;
 
