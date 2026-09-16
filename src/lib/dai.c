@@ -192,7 +192,7 @@ const struct device *zephyr_dev[] = {
 #if CONFIG_DAI_AMD_TDM
 	DT_FOREACH_STATUS_OKAY(amd_tdm_dai, GET_DEVICE_LIST)
 #endif
-#if CONFIG_DAI_INTEL_UAOL
+#if CONFIG_UAOL_INTEL_ADSP
 	DT_FOREACH_STATUS_OKAY(intel_uaol_dai, GET_DEVICE_LIST)
 #endif
 #if DT_HAS_COMPAT_STATUS_OKAY(mediatek_afe)
