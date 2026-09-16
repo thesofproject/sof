@@ -8,7 +8,7 @@
 #include <sof/boot_test.h>
 #include <zephyr/logging/log.h>
 
-#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_ESP32C6)
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_ESP32C6) || defined(CONFIG_PLATFORM_ESP32S3)
 #include <rtos/sof.h>
 #include <sof/init.h>
 #include <sof/audio/pipeline/sof_static_pipeline.h>
@@ -54,7 +54,7 @@ static int sof_app_main(void)
 
 	LOG_INF("SOF initialized");
 
-#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_ESP32C6)
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_ESP32C6) || defined(CONFIG_PLATFORM_ESP32S3)
 	/* Initialize static audio pipelines */
 	sof_static_pipelines_init(sof_get());
 

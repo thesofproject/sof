@@ -280,7 +280,7 @@ APP_SYSUSER_DATA struct sof_dma dma[] = {
 	.z_dev		= DEVICE_DT_GET(DT_NODELABEL(host_dma)),
 },
 #endif
-#if DT_NODE_HAS_STATUS(DT_NODELABEL(dma), okay) && (defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_ESP32C6))
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(dma), okay) && (defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_ESP32C6) || defined(CONFIG_PLATFORM_ESP32S3))
 {
 	.plat_data = {
 		.dir		= SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,

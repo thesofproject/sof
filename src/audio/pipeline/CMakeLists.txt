@@ -22,3 +22,6 @@ add_local_sources_ifdef(CONFIG_PLATFORM_ESP32C6 sof
   sof_static_pipeline.c
 )
 
+add_local_sources_ifdef(CONFIG_PLATFORM_ESP32S3 sof
+  sof_static_pipeline.c
+)

@@ -103,7 +103,7 @@ config STATIC_PIPELINE_MAX_ROUTES
 
 config COMP_USB_AUDIO
 	bool "USB Audio streaming component"
-	default y if (PLATFORM_ESP32P4 || PLATFORM_ESP32C6)
+	default y if (PLATFORM_ESP32P4 || PLATFORM_ESP32C6 || PLATFORM_ESP32S3)
 	help
 	  Enable USB Audio Class 2 (UAC2) streaming component for SOF.
 
