@@ -91,14 +91,19 @@ void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 				(unsigned int)I2S0.rx_conf1.val,
 				(unsigned int)I2S0.rx_tdm_ctrl.val,
 				(unsigned int)I2S0.rx_eof_num.rx_eof_num);
+#if defined(CONFIG_SOC_SERIES_ESP32S3)
+			uint32_t in_lo = (uint32_t)GPIO.in;
+#else
+			uint32_t in_lo = (uint32_t)GPIO.in.val;
+#endif
 			LOG_INF("[DIAG GPIOS] lo=0x%08x, hi=0x%08x (G2 lvl=%u, G3 lvl=%u, G20(DIN)=%u, G21(BCK)=%u, G22(WS)=%u, G23(DOUT)=%u)",
-				(uint32_t)GPIO.in.val, (uint32_t)GPIO.in1.val,
-				(uint32_t)((GPIO.in.val >> 2) & 1),
-				(uint32_t)((GPIO.in.val >> 3) & 1),
-				(uint32_t)((GPIO.in.val >> 20) & 1),
-				(uint32_t)((GPIO.in.val >> 21) & 1),
-				(uint32_t)((GPIO.in.val >> 22) & 1),
-				(uint32_t)((GPIO.in.val >> 23) & 1));
+				in_lo, (uint32_t)GPIO.in1.val,
+				(uint32_t)((in_lo >> 2) & 1),
+				(uint32_t)((in_lo >> 3) & 1),
+				(uint32_t)((in_lo >> 20) & 1),
+				(uint32_t)((in_lo >> 21) & 1),
+				(uint32_t)((in_lo >> 22) & 1),
+				(uint32_t)((in_lo >> 23) & 1));
 		}
 	} else {
 		s_sof_diag_cnt = 0;
@@ -377,6 +382,8 @@ const struct uac2_ops *sof_get_uac2_ops(void)
 extern const struct sof_static_topology g_esp32p4_static_topology;
 #elif defined(CONFIG_PLATFORM_ESP32C6)
 extern const struct sof_static_topology g_esp32c6_static_topology;
+#elif defined(CONFIG_PLATFORM_ESP32S3)
+extern const struct sof_static_topology g_esp32s3_static_topology;
 #endif
 
 int sof_static_pipelines_init(struct sof *sof)
@@ -387,6 +394,8 @@ int sof_static_pipelines_init(struct sof *sof)
 	ret = sof_static_topology_init(&g_esp32p4_static_topology);
 #elif defined(CONFIG_PLATFORM_ESP32C6)
 	ret = sof_static_topology_init(&g_esp32c6_static_topology);
+#elif defined(CONFIG_PLATFORM_ESP32S3)
+	ret = sof_static_topology_init(&g_esp32s3_static_topology);
 #endif
 	if (ret < 0)
 		return ret;
@@ -397,10 +406,10 @@ int sof_static_pipelines_init(struct sof *sof)
 	LOG_INF("SoC MAC: %02x:%02x:%02x:%02x:%02x:%02x",
 		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
-	/* Pallas (0x17) on P4 or XIAO (0x20) on C6 defaults to Master Tx;
-	 * Ceres / Waveshare C6-Zero (0x24) defaults to Slave Rx.
+	/* Pallas (0x17) on P4, XIAO (0x20) on C6, or Board A (0x6c) on S3 defaults to Master Tx;
+	 * Ceres / Waveshare C6-Zero (0x24) / Board B (0x84) defaults to Slave Rx.
 	 */
-	if (mac[5] == 0x17 || mac[0] == 0x10) {
+	if (mac[5] == 0x17 || mac[0] == 0x10 || mac[5] == 0x6c) {
 		g_status.clock_mode = SOF_CLOCK_MASTER;
 	} else {
 		g_status.clock_mode = SOF_CLOCK_SLAVE;

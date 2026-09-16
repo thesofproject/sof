@@ -1,0 +1,36 @@
+/ {
+	chosen {
+		zephyr,console = &usb_serial;
+		zephyr,shell-uart = &usb_serial;
+	};
+
+	dai_i2s0: dai@6000f000 {
+		compatible = "espressif,esp32-dai-i2s";
+		status = "okay";
+		reg = <0x6000f000 0x1000>;
+		interrupt-parent = <&intc>;
+		interrupts = <I2S0_INTR_SOURCE IRQ_DEFAULT_PRIORITY 0>;
+		dai-index = <0>;
+		fifo-depth = <32>;
+	};
+};
+
+&dma {
+	status = "okay";
+};
+
+&usb_serial {
+	status = "okay";
+};
+
+&i2c0 {
+	status = "disabled";
+};
+
+&spi2 {
+	status = "disabled";
+};
+
+&uart0 {
+	status = "disabled";
+};

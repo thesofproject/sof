@@ -16,6 +16,10 @@ elseif(CONFIG_PLATFORM_ESP32C6)
 	set(ARCH host)
 	set(PLATFORM "esp32c6")
 	set(PLATFORM_HEADERS "esp32c6")
+elseif(CONFIG_PLATFORM_ESP32S3)
+	set(ARCH host)
+	set(PLATFORM "esp32s3")
+	set(PLATFORM_HEADERS "esp32s3")
 else()
 	# firmware build supports only xtensa arch for now
 	set(ARCH xtensa)
@@ -490,6 +494,18 @@ if (CONFIG_PLATFORM_ESP32C6)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/esp32c6/include)
 endif()
 
+if (CONFIG_PLATFORM_ESP32S3)
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/esp32s3/platform.c
+		${SOF_PLATFORM_PATH}/esp32s3/esp32s3_pipeline_def.c
+		${SOF_PLATFORM_PATH}/esp32s3/lib/clk.c
+		lib/dma.c
+	)
+
+	set(PLATFORM "esp32s3")
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/esp32s3/include)
+endif()
+
 if (CONFIG_SOC_MIMX9596_M7)
 
 	zephyr_library_sources(
@@ -684,7 +700,7 @@ zephyr_library_sources_ifdef(CONFIG_SOF_BOOT_TEST
        boot_test.c
 )
 
-if (CONFIG_SHELL AND NOT CONFIG_PLATFORM_ESP32P4 AND NOT CONFIG_PLATFORM_ESP32C6)
+if (CONFIG_SHELL AND NOT CONFIG_PLATFORM_ESP32P4 AND NOT CONFIG_PLATFORM_ESP32C6 AND NOT CONFIG_PLATFORM_ESP32S3)
        zephyr_library_sources(sof_shell.c)
 endif()
 

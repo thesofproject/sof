@@ -201,6 +201,13 @@ config PLATFORM_ESP32C6
 	help
 	  Select if your target platform is Espressif ESP32-C6 RISC-V SoC.
 
+config PLATFORM_ESP32S3
+	bool "Build for Espressif ESP32-S3 Xtensa SoC (Zephyr-only)"
+	select ZEPHYR_LOG
+	select ZEPHYR_NATIVE_DRIVERS
+	help
+	  Select if your target platform is Espressif ESP32-S3 Xtensa SoC.
+
 config RENOIR
 	bool "Build for Renoir"
 	select XT_INTERRUPT_LEVEL_5
