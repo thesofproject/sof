@@ -188,9 +188,21 @@ static inline int cir_buf_samples_without_wrap_s32(const void *ptr, const void *
 }
 
 /**
- * Verifies the pointer and performs rollover when reached the end of
- * the circular buffer.
- * @param ptr Pointer
+ * @brief Calculates number of bytes to buffer wrap when reading a circular
+ *	  buffer forward from current pointer towards the buffer end.
+ * @param ptr Read or write pointer of circular buffer.
+ * @param buf_end End address of circular buffer.
+ * @return Number of bytes between the pointer and the buffer end.
+ */
+static inline size_t cir_buf_bytes_without_wrap(const void *ptr, const void *buf_end)
+{
+	assert((uintptr_t)buf_end >= (uintptr_t)ptr);
+	return (uintptr_t)buf_end - (uintptr_t)ptr;
+}
+
+/**
+ * Verifies the pointer and performs rollover when reaching the end of the circular buffer.
+ * @param ptr Read pointer that may have moved past the buffer end.
  * @param buf_addr Start address of the circular buffer.
  * @param buf_end End address of the circular buffer.
  * @return Pointer, adjusted if necessary.
@@ -207,13 +219,12 @@ static inline void *cir_buf_wrap(const void *ptr, const void *buf_addr, const vo
 }
 
 /**
- * Verifies a read pointer and performs rollover when reached the end of the circular buffer.
- * @param ptr Pointer
+ * Verifies a read pointer and performs rollover when reaching the end of the circular buffer.
+ * @param ptr Read pointer that may have moved past the buffer end.
  * @param buf_addr Start address of the circular buffer.
  * @param buf_end End address of the circular buffer.
  * @return Pointer, adjusted if necessary.
  */
-
 static inline const void *source_cir_buf_wrap(const void *ptr, const void *buf_addr,
 					      const void *buf_end)
 {
@@ -233,11 +244,11 @@ static inline const void *source_cir_buf_wrap(const void *ptr, const void *buf_a
  * @param buf_start Start address of circular buffer.
  * @return Number of bytes between the buffer start and the pointer.
  */
-static inline int cir_buf_bytes_without_wrap_rewind(const void *ptr, const void *buf_start)
+static inline size_t cir_buf_bytes_without_wrap_rewind(const void *ptr, const void *buf_start)
 {
-	assert((intptr_t)ptr >= (intptr_t)buf_start);
+	assert((uintptr_t)ptr >= (uintptr_t)buf_start);
 
-	return (intptr_t)ptr - (intptr_t)buf_start;
+	return (uintptr_t)ptr - (uintptr_t)buf_start;
 }
 
 /**

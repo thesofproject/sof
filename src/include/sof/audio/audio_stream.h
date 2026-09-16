@@ -895,20 +895,6 @@ audio_stream_samples_without_wrap_s32(const struct audio_stream *source, const v
 }
 
 /**
- * @brief Calculates numbers of bytes to buffer wrap when reading stream
- *	  backwards from current sample pointed by ptr towards begin.
- * @param ptr Read or write pointer og circular buffer.
- * @param buf_end End address of circular buffer.
- * @return Number of bytes to buffer wrap. For number of samples calculate
- *	   need to add size of sample to returned bytes count.
- */
-static inline int cir_buf_bytes_without_wrap(const void *ptr, const void *buf_end)
-{
-	assert((intptr_t)buf_end >= (intptr_t)ptr);
-	return (intptr_t)buf_end - (intptr_t)ptr;
-}
-
-/**
  * @brief Calculates numbers of frames to buffer wrap and return
  *	  minimum of calculated value.
  * @param source Stream to get information from.
