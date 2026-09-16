@@ -21,8 +21,73 @@ set(FLATBUFFERS_PATH ${sof_top_dir}/../flatbuffers)
 set(GEMMLOWP_PATH ${sof_top_dir}/../gemmlowp)
 set(RUY_PATH ${sof_top_dir}/../ruy)
 
-set(MWW_TOOLCHAIN_INCLUDE_ROOT
-	${ZEPHYR_SDK_INSTALL_DIR}/gnu/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf/include)
+set(MWW_TOOLCHAIN_LIBC_ARCHIVE "")
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+	execute_process(
+		COMMAND ${CMAKE_C_COMPILER} -print-file-name=libc.a
+		OUTPUT_VARIABLE MWW_RAW_LIBC_PATH
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	if(EXISTS "${MWW_RAW_LIBC_PATH}")
+		get_filename_component(MWW_TOOLCHAIN_LIBC_ARCHIVE "${MWW_RAW_LIBC_PATH}" REALPATH)
+	endif()
+endif()
+
+if(NOT EXISTS "${MWW_TOOLCHAIN_LIBC_ARCHIVE}")
+	if(DEFINED CMAKE_SYSROOT AND EXISTS "${CMAKE_SYSROOT}/lib/libc.a")
+		set(MWW_TOOLCHAIN_LIBC_ARCHIVE "${CMAKE_SYSROOT}/lib/libc.a")
+	else()
+		set(MWW_SDK_DIR "${ZEPHYR_SDK_INSTALL_DIR}")
+		if("${MWW_SDK_DIR}" STREQUAL "" AND NOT "$ENV{ZEPHYR_SDK_INSTALL_DIR}" STREQUAL "")
+			set(MWW_SDK_DIR "$ENV{ZEPHYR_SDK_INSTALL_DIR}")
+		endif()
+		if("${MWW_SDK_DIR}" STREQUAL "")
+			file(GLOB MWW_POSSIBLE_SDKS "$ENV{HOME}/zephyr-sdk*")
+			if(MWW_POSSIBLE_SDKS)
+				list(REVERSE MWW_POSSIBLE_SDKS)
+				list(GET MWW_POSSIBLE_SDKS 0 MWW_SDK_DIR)
+			endif()
+		endif()
+
+		if(NOT "${MWW_SDK_DIR}" STREQUAL "")
+			file(GLOB MWW_SDK_LIBC
+				"${MWW_SDK_DIR}/gnu/*${SOC_TOOLCHAIN_NAME}*/*${SOC_TOOLCHAIN_NAME}*/lib/libc.a")
+			if(MWW_SDK_LIBC)
+				list(GET MWW_SDK_LIBC 0 MWW_TOOLCHAIN_LIBC_ARCHIVE)
+			endif()
+		endif()
+	endif()
+endif()
+
+set(MWW_TOOLCHAIN_INCLUDE_ROOT "")
+if(EXISTS "${MWW_TOOLCHAIN_LIBC_ARCHIVE}")
+	get_filename_component(MWW_TOOLCHAIN_LIB_DIR "${MWW_TOOLCHAIN_LIBC_ARCHIVE}" DIRECTORY)
+	get_filename_component(MWW_TOOLCHAIN_SYSROOT "${MWW_TOOLCHAIN_LIB_DIR}" DIRECTORY)
+	set(MWW_TOOLCHAIN_INCLUDE_ROOT "${MWW_TOOLCHAIN_SYSROOT}/include")
+endif()
+
+# Discover C++ standard library directories dynamically
+set(MWW_CXX_INCLUDE_DIRS "")
+if(NOT "${MWW_TOOLCHAIN_INCLUDE_ROOT}" STREQUAL "" AND EXISTS "${MWW_TOOLCHAIN_INCLUDE_ROOT}")
+	file(GLOB MWW_CXX_VERSION_DIRS LIST_DIRECTORIES true
+		"${MWW_TOOLCHAIN_INCLUDE_ROOT}/c++/*")
+	foreach(ver_dir ${MWW_CXX_VERSION_DIRS})
+		get_filename_component(ver_name "${ver_dir}" NAME)
+		if(IS_DIRECTORY "${ver_dir}" AND NOT "${ver_name}" MATCHES "^(backward|tr1|tr2|bits|ext|debug|decimal|parallel|pstl)$")
+			list(APPEND MWW_CXX_INCLUDE_DIRS "${ver_dir}")
+			file(GLOB MWW_ARCH_SUBDIRS LIST_DIRECTORIES true
+				"${ver_dir}/xtensa*"
+				"${ver_dir}/*${SOC_TOOLCHAIN_NAME}*")
+			foreach(dir ${MWW_ARCH_SUBDIRS})
+				if(IS_DIRECTORY "${dir}")
+					list(APPEND MWW_CXX_INCLUDE_DIRS "${dir}")
+				endif()
+			endforeach()
+		endif()
+	endforeach()
+	list(APPEND MWW_CXX_INCLUDE_DIRS "${MWW_TOOLCHAIN_INCLUDE_ROOT}")
+endif()
+
 set(MWW_HAL_SOC_PATH ${sof_top_dir}/../modules/hal/xtensa/zephyr/soc/${SOC_TOOLCHAIN_NAME})
 
 # TFLM kernel sources beyond what tensorflow/CMakeLists.txt currently builds:
@@ -153,8 +218,9 @@ zephyr_link_libraries(mww_tflm_lib)
 # statically-linked (non-LLEXT) image; extract just those archive members
 # from the toolchain's libc.a into a small private archive.
 if(NOT CONFIG_COMP_MWW STREQUAL "m")
-  set(MWW_TOOLCHAIN_LIBC_ARCHIVE
-    ${ZEPHYR_SDK_INSTALL_DIR}/gnu/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf/lib/libc.a)
+  if(NOT EXISTS "${MWW_TOOLCHAIN_LIBC_ARCHIVE}")
+    message(FATAL_ERROR "Microwakeword libc shim: libc.a not found for ${SOC_TOOLCHAIN_NAME}")
+  endif()
   set(MWW_LIBC_SHIM_MEMBERS
     libc_stdlib_abs.c.o
     libm_math_s_floor.c.o
@@ -196,8 +262,9 @@ zephyr_include_directories(${TFLM_PATH})
 zephyr_include_directories(${FLATBUFFERS_PATH}/include)
 zephyr_include_directories(${GEMMLOWP_PATH})
 zephyr_include_directories(${RUY_PATH})
-target_include_directories(modules_sof SYSTEM PRIVATE
-	${MWW_TOOLCHAIN_INCLUDE_ROOT}/c++/14.3.0
-	${MWW_TOOLCHAIN_INCLUDE_ROOT}/c++/14.3.0/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf
-	${MWW_TOOLCHAIN_INCLUDE_ROOT}
-)
+if(MWW_CXX_INCLUDE_DIRS)
+	target_include_directories(modules_sof SYSTEM PRIVATE ${MWW_CXX_INCLUDE_DIRS})
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		target_include_directories(mww_tflm_lib SYSTEM PRIVATE ${MWW_CXX_INCLUDE_DIRS})
+	endif()
+endif()

@@ -565,14 +565,14 @@ Follow this step-by-step checklist to integrate your own algorithms:
 ### Step 4: Compile Topology & Firmware
 1. Build topologies with `alsatplg -p`:
    ```bash
-   /home/lrg/work/sof-tgl/tools/bin/alsatplg \
+   alsatplg \
        -I tools/topology/topology2 \
        -p -c tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf \
        -o /tmp/sof-ptl-dmic-wov-multi-4ch.tplg
    ```
 2. Build firmware with Zephyr SDK GCC:
    ```bash
-   export ZEPHYR_SDK_INSTALL_DIR=/home/lrg/zephyr-sdk-1.0.1
+   export ZEPHYR_SDK_INSTALL_DIR=${ZEPHYR_SDK_INSTALL_DIR:-/path/to/zephyr-sdk}
    ./sof/scripts/xtensa-build-zephyr.py -z ptl
    ```
 

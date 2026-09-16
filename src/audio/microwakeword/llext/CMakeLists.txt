@@ -17,9 +17,65 @@ set(RUY_PATH ${sof_top_dir}/../ruy)
 set(NN_HIFI_PATH ${sof_top_dir}/../nnlib-hifi4/xa_nnlib)
 
 set(MWW_TOOLCHAIN_ROOT "")
-if(DEFINED ZEPHYR_SDK_INSTALL_DIR AND NOT "${ZEPHYR_SDK_INSTALL_DIR}" STREQUAL "")
-	set(MWW_TOOLCHAIN_ROOT
-		${ZEPHYR_SDK_INSTALL_DIR}/gnu/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf)
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+	execute_process(
+		COMMAND ${CMAKE_C_COMPILER} -print-file-name=libc.a
+		OUTPUT_VARIABLE MWW_RAW_LIBC_PATH
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	if(EXISTS "${MWW_RAW_LIBC_PATH}")
+		get_filename_component(MWW_RESOLVED_LIBC "${MWW_RAW_LIBC_PATH}" REALPATH)
+		get_filename_component(MWW_TOOLCHAIN_LIB_DIR "${MWW_RESOLVED_LIBC}" DIRECTORY)
+		get_filename_component(MWW_TOOLCHAIN_ROOT "${MWW_TOOLCHAIN_LIB_DIR}" DIRECTORY)
+	endif()
+endif()
+
+if(NOT EXISTS "${MWW_TOOLCHAIN_ROOT}")
+	if(DEFINED CMAKE_SYSROOT AND EXISTS "${CMAKE_SYSROOT}/lib")
+		set(MWW_TOOLCHAIN_ROOT "${CMAKE_SYSROOT}")
+	else()
+		set(MWW_SDK_DIR "${ZEPHYR_SDK_INSTALL_DIR}")
+		if("${MWW_SDK_DIR}" STREQUAL "" AND NOT "$ENV{ZEPHYR_SDK_INSTALL_DIR}" STREQUAL "")
+			set(MWW_SDK_DIR "$ENV{ZEPHYR_SDK_INSTALL_DIR}")
+		endif()
+		if("${MWW_SDK_DIR}" STREQUAL "")
+			file(GLOB MWW_POSSIBLE_SDKS "$ENV{HOME}/zephyr-sdk*")
+			if(MWW_POSSIBLE_SDKS)
+				list(REVERSE MWW_POSSIBLE_SDKS)
+				list(GET MWW_POSSIBLE_SDKS 0 MWW_SDK_DIR)
+			endif()
+		endif()
+
+		if(NOT "${MWW_SDK_DIR}" STREQUAL "")
+			file(GLOB MWW_SDK_SYSROOT
+				"${MWW_SDK_DIR}/gnu/*${SOC_TOOLCHAIN_NAME}*/*${SOC_TOOLCHAIN_NAME}*")
+			if(MWW_SDK_SYSROOT)
+				list(GET MWW_SDK_SYSROOT 0 MWW_TOOLCHAIN_ROOT)
+			endif()
+		endif()
+	endif()
+endif()
+
+# Discover C++ standard library version dynamically
+set(MWW_CXX_INCLUDE_DIRS "")
+if(NOT "${MWW_TOOLCHAIN_ROOT}" STREQUAL "" AND EXISTS "${MWW_TOOLCHAIN_ROOT}/include")
+	set(MWW_INC_ROOT "${MWW_TOOLCHAIN_ROOT}/include")
+	file(GLOB MWW_CXX_VERSION_DIRS LIST_DIRECTORIES true "${MWW_INC_ROOT}/c++/*")
+	foreach(ver_dir ${MWW_CXX_VERSION_DIRS})
+		get_filename_component(ver_name "${ver_dir}" NAME)
+		if(IS_DIRECTORY "${ver_dir}" AND NOT "${ver_name}" MATCHES "^(backward|tr1|tr2|bits|ext|debug|decimal|parallel|pstl)$")
+			list(APPEND MWW_CXX_INCLUDE_DIRS "${ver_dir}")
+			file(GLOB MWW_ARCH_SUBDIRS LIST_DIRECTORIES true
+				"${ver_dir}/xtensa*"
+				"${ver_dir}/*${SOC_TOOLCHAIN_NAME}*")
+			foreach(dir ${MWW_ARCH_SUBDIRS})
+				if(IS_DIRECTORY "${dir}")
+					list(APPEND MWW_CXX_INCLUDE_DIRS "${dir}")
+				endif()
+			endforeach()
+		endif()
+	endforeach()
+	list(APPEND MWW_CXX_INCLUDE_DIRS "${MWW_INC_ROOT}")
 endif()
 set(MWW_HAL_SOC_PATH ${sof_top_dir}/../modules/hal/xtensa/zephyr/soc/${SOC_TOOLCHAIN_NAME})
 
@@ -147,12 +203,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|Xtensa" OR CMAKE_C_COMPILER MATCHES "xt-
 		target_compile_options(mww_tflm_lib PRIVATE
 			-mcpu=${SOC_TOOLCHAIN_NAME}
 		)
-		if(NOT "${MWW_TOOLCHAIN_ROOT}" STREQUAL "")
-			target_include_directories(mww_tflm_lib SYSTEM PRIVATE
-				${MWW_TOOLCHAIN_ROOT}/include/c++/14.3.0
-				${MWW_TOOLCHAIN_ROOT}/include/c++/14.3.0/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf
-				${MWW_TOOLCHAIN_ROOT}/include
-			)
+		if(MWW_CXX_INCLUDE_DIRS)
+			target_include_directories(mww_tflm_lib SYSTEM PRIVATE ${MWW_CXX_INCLUDE_DIRS})
 		endif()
 	endif()
 endif()
@@ -178,9 +230,27 @@ sof_llext_build("mww"
 		${MWW_LIBS_PATHS}
 )
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT CMAKE_C_COMPILER MATCHES "xt-clang" AND NOT "${MWW_TOOLCHAIN_ROOT}" STREQUAL "")
-	llext_link_options(mww
-		--target=xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf
-		--ld-path=${MWW_TOOLCHAIN_ROOT}-ld
-	)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT CMAKE_C_COMPILER MATCHES "xt-clang")
+	set(MWW_LD_PATH "")
+	if(DEFINED CMAKE_LINKER AND EXISTS "${CMAKE_LINKER}")
+		set(MWW_LD_PATH "${CMAKE_LINKER}")
+	else()
+		execute_process(
+			COMMAND ${CMAKE_C_COMPILER} -print-prog-name=ld
+			OUTPUT_VARIABLE MWW_PROG_LD
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+		)
+		if(EXISTS "${MWW_PROG_LD}")
+			set(MWW_LD_PATH "${MWW_PROG_LD}")
+		elseif(EXISTS "${MWW_TOOLCHAIN_ROOT}-ld")
+			set(MWW_LD_PATH "${MWW_TOOLCHAIN_ROOT}-ld")
+		endif()
+	endif()
+
+	if(NOT "${MWW_LD_PATH}" STREQUAL "")
+		llext_link_options(mww
+			--target=xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf
+			--ld-path=${MWW_LD_PATH}
+		)
+	endif()
 endif()
