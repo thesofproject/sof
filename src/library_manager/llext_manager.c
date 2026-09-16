@@ -303,10 +303,15 @@ static int llext_manager_load_data_from_storage(const struct sys_mm_drv_region *
 			continue;
 		}
 
-		ret = memcpy_s((__sparse_force void *)shdr->sh_addr, size - s_offset,
+		/* s_offset is a file offset, so bound the copy by the mapped VMA instead */
+		ret = memcpy_s((__sparse_force void *)shdr->sh_addr,
+			       (uintptr_t)vma + size - (uintptr_t)shdr->sh_addr,
 			       (const uint8_t *)region_addr + s_offset, shdr->sh_size);
-		if (ret < 0)
+		if (ret < 0) {
+			tr_err(&lib_manager_tr, "cannot copy section %u to %#lx: %d",
+			       i, (uintptr_t)shdr->sh_addr, ret);
 			return ret;
+		}
 	}
 
 	/*
@@ -391,30 +396,21 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 	size_t bss_size = mctx->segment[LIB_MANAGER_BSS].size;
 	int ret;
 
-	/* Check, that .bss is within .data */
-	if (bss_size &&
-	    ((uintptr_t)bss_addr + bss_size <= (uintptr_t)va_base_data ||
-	     (uintptr_t)bss_addr >= (uintptr_t)va_base_data + data_size)) {
-		size_t bss_align = MIN(PAGE_SZ, BIT(__builtin_ctz((uintptr_t)bss_addr)));
+	/*
+	 * .bss is page-aligned into its own page by the layout, so it is usually
+	 * not adjacent to .data. Map the range spanning both, gap included.
+	 */
+	if (bss_size) {
+		uintptr_t start = (uintptr_t)bss_addr;
+		uintptr_t end = start + bss_size;
 
-		if ((!data_size || (uintptr_t)bss_addr + bss_size == (uintptr_t)va_base_data) &&
-		    bss_align >= PAGE_SZ) {
-			/*
-			 * .bss is properly aligned and either there's no writable data,
-			 * or .bss is directly in front of writable data, prepend .bss
-			 */
-			va_base_data = bss_addr;
-			data_size += bss_size;
-		} else if ((uintptr_t)bss_addr == (uintptr_t)va_base_data +
-			   ALIGN_UP(data_size, bss_align)) {
-			/* .bss directly behind writable data, append */
-			data_size += bss_size;
-		} else {
-			tr_err(&lib_manager_tr, ".bss %#x @%p isn't within writable data %#x @%p!",
-			       bss_size, (__sparse_force void *)bss_addr,
-			       data_size, (__sparse_force void *)va_base_data);
-			return -EPROTO;
+		if (data_size) {
+			start = MIN(start, (uintptr_t)va_base_data);
+			end = MAX(end, (uintptr_t)va_base_data + data_size);
 		}
+
+		va_base_data = (void __sparse_cache *)start;
+		data_size = end - start;
 	}
 
 	const struct llext_loader *ldr = &mctx->ebl->loader;
@@ -532,6 +528,42 @@ static bool llext_manager_section_detached(const elf_shdr_t *shdr)
 }
 
 /**
+ * @brief Measure the virtual address range occupied by one LLEXT memory region.
+ * @param ldr LLEXT buffer loader.
+ * @param ext Loaded LLEXT object.
+ * @param region LLEXT memory region to measure.
+ * @param seg Receives the region start address and size.
+ *
+ * llext sizes its region descriptors by ELF file offsets, which say nothing
+ * about the addresses a pre-located image is relocated to. Measuring the
+ * mapped sections keeps the regions from overlapping each other or reaching
+ * past the module's own virtual memory reservation.
+ */
+static void llext_manager_region_extent(const struct llext_loader *ldr, const struct llext *ext,
+				       enum llext_mem region,
+				       struct lib_manager_segment_desc *seg)
+{
+	uintptr_t start = UINTPTR_MAX, end = 0;
+	unsigned int i;
+
+	for (i = 0; i < llext_section_count(ext); i++) {
+		const elf_shdr_t *shdr;
+		enum llext_mem s_region = LLEXT_MEM_COUNT;
+
+		if (llext_get_section_info(ldr, ext, i, &shdr, &s_region, NULL) < 0 ||
+		    s_region != region || !shdr->sh_size ||
+		    llext_manager_section_detached(shdr))
+			continue;
+
+		start = MIN(start, (uintptr_t)shdr->sh_addr);
+		end = MAX(end, (uintptr_t)shdr->sh_addr + shdr->sh_size);
+	}
+
+	seg->addr = end ? start : 0;
+	seg->size = end ? end - start : 0;
+}
+
+/**
  * @brief Link a LLEXT image, reusing its context when it is already linked.
  * @param name Module name passed to the LLEXT loader.
  * @param mctx Library module context.
@@ -611,36 +643,32 @@ static int llext_manager_link(const char *name,
 	}
 
 	/* All code sections */
-	llext_get_region_info(ldr, *llext, LLEXT_MEM_TEXT, &hdr, NULL, NULL);
-	mctx->segment[LIB_MANAGER_TEXT].addr = hdr->sh_addr;
-	mctx->segment[LIB_MANAGER_TEXT].size = hdr->sh_size;
+	llext_manager_region_extent(ldr, *llext, LLEXT_MEM_TEXT,
+				   &mctx->segment[LIB_MANAGER_TEXT]);
 
 	tr_dbg(&lib_manager_tr, ".text: start: %#lx size %#x",
 	       mctx->segment[LIB_MANAGER_TEXT].addr,
 	       mctx->segment[LIB_MANAGER_TEXT].size);
 
 	/* All read-only data sections */
-	llext_get_region_info(ldr, *llext, LLEXT_MEM_RODATA, &hdr, NULL, NULL);
-	mctx->segment[LIB_MANAGER_RODATA].addr = hdr->sh_addr;
-	mctx->segment[LIB_MANAGER_RODATA].size = hdr->sh_size;
+	llext_manager_region_extent(ldr, *llext, LLEXT_MEM_RODATA,
+				   &mctx->segment[LIB_MANAGER_RODATA]);
 
 	tr_dbg(&lib_manager_tr, ".rodata: start: %#lx size %#x",
 	       mctx->segment[LIB_MANAGER_RODATA].addr,
 	       mctx->segment[LIB_MANAGER_RODATA].size);
 
 	/* All writable data sections */
-	llext_get_region_info(ldr, *llext, LLEXT_MEM_DATA, &hdr, NULL, NULL);
-	mctx->segment[LIB_MANAGER_DATA].addr = hdr->sh_addr;
-	mctx->segment[LIB_MANAGER_DATA].size = hdr->sh_size;
+	llext_manager_region_extent(ldr, *llext, LLEXT_MEM_DATA,
+				   &mctx->segment[LIB_MANAGER_DATA]);
 
 	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x",
 	       mctx->segment[LIB_MANAGER_DATA].addr,
 	       mctx->segment[LIB_MANAGER_DATA].size);
 
 	/* Writable uninitialized data section */
-	llext_get_region_info(ldr, *llext, LLEXT_MEM_BSS, &hdr, NULL, NULL);
-	mctx->segment[LIB_MANAGER_BSS].addr = hdr->sh_addr;
-	mctx->segment[LIB_MANAGER_BSS].size = hdr->sh_size;
+	llext_manager_region_extent(ldr, *llext, LLEXT_MEM_BSS,
+				   &mctx->segment[LIB_MANAGER_BSS]);
 
 	tr_dbg(&lib_manager_tr, ".bss: start: %#lx size %#x",
 	       mctx->segment[LIB_MANAGER_BSS].addr,
