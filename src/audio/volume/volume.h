@@ -157,8 +157,8 @@ typedef void (*vol_scale_func)(struct processing_module *mod, struct cir_buf_sou
 /**
  * \brief volume interface for function getting nearest zero crossing frame
  */
-typedef uint32_t (*vol_zc_func)(struct cir_buf_source *source, const int channels,
-				uint32_t frames, int64_t *prev_sum);
+typedef size_t (*vol_zc_func)(struct cir_buf_source *source, const unsigned int channels,
+			      size_t frames, int64_t *prev_sum);
 
 /**
  * \brief Function for volume ramp shape function
