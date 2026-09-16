@@ -141,9 +141,9 @@ const struct xthal_MPU_entry __xt_mpu_init_table[] __section(".ResetVector.text"
 	XTHAL_MPU_ENTRY(0x1a110000, 1, XTHAL_AR_RWXrwx, XTHAL_MEM_DEVICE),		// audio
 	XTHAL_MPU_ENTRY(0x4e100000, 1, XTHAL_AR_RWXrwx, XTHAL_MEM_WRITEBACK),		// sram
 	XTHAL_MPU_ENTRY(0x4e180000, 1, XTHAL_AR_NONE, XTHAL_MEM_DEVICE),		// unused
-	XTHAL_MPU_ENTRY(0x90000000, 1, XTHAL_AR_RWXrwx, XTHAL_MEM_WRITEBACK),	// dram
-	XTHAL_MPU_ENTRY(0x90500000, 1, XTHAL_AR_RWXrwx, XTHAL_MEM_NON_CACHEABLE),	// dram
-	XTHAL_MPU_ENTRY(0x90900000, 1, XTHAL_AR_NONE, XTHAL_MEM_DEVICE),		// unused
+	XTHAL_MPU_ENTRY(0x92200000, 1, XTHAL_AR_RWXrwx, XTHAL_MEM_WRITEBACK),	// dram
+	XTHAL_MPU_ENTRY(0x92700000, 1, XTHAL_AR_RWXrwx, XTHAL_MEM_NON_CACHEABLE),	// dram
+	XTHAL_MPU_ENTRY(0x92b00000, 1, XTHAL_AR_NONE, XTHAL_MEM_DEVICE),		// unused
 };
 
 const unsigned int __xt_mpu_init_table_size __section(".ResetVector.text") =
@@ -214,4 +214,3 @@ void platform_wait_for_interrupt(int level)
 {
 	arch_wait_for_interrupt(level);
 }
-
