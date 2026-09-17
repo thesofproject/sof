@@ -5,6 +5,7 @@
 #include <rtos/alloc.h>
 
 #include <sof/lib_manager.h>
+#include <sof/lib/vpage.h>
 #include <ipc/topology.h>
 
 #include <zephyr/llext/buf_loader.h>
@@ -233,6 +234,24 @@ int llext_manager_restore_from_dram(void)
 			if (!mod[k].llext)
 				/* Not instantiated - nothing to restore */
 				continue;
+
+			/*
+			 * The virtual page allocator is re-initialised empty on every
+			 * boot, but these modules stay mapped at the addresses they
+			 * were given before power gating, so claim them again.
+			 */
+			if (mod[k].vma_base) {
+				int ret = vpage_reserve_at((void *)mod[k].vma_base,
+							   DIV_ROUND_UP(mod[k].vma_size,
+									CONFIG_MM_DRV_PAGE_SIZE));
+
+				if (ret < 0) {
+					tr_err(&lib_manager_tr,
+					       "failed to re-reserve VMA %#lx size %#zx: %d",
+					       mod[k].vma_base, mod[k].vma_size, ret);
+					goto nomem;
+				}
+			}
 
 			/* Loaders are supplied by the caller */
 			struct llext_buf_loader *bldr = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,

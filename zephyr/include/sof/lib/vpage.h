@@ -46,6 +46,20 @@ void vpage_free(void *ptr);
 void *vpage_reserve(unsigned int pages);
 
 /**
+ * @brief Reserve a specific range of virtual pages
+ * Reserves an already occupied range of virtual memory pages, without mapping
+ * any physical memory to them. Intended for callers whose address was assigned
+ * by someone other than this allocator, e.g. modules that stay resident over a
+ * power gating cycle and are restored with their previous addresses.
+ *
+ * @param[in] ptr Page aligned base address of the range to reserve.
+ * @param[in] pages Number of pages (usually 4kB large) to reserve.
+ *
+ * @return 0 on success, negative error code otherwise.
+ */
+int vpage_reserve_at(void *ptr, unsigned int pages);
+
+/**
  * @brief Release reserved virtual pages
  * Releases virtual memory pages previously reserved with vpage_reserve().
  * Does not unmap any physical memory - callers that mapped the pages

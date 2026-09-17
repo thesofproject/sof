@@ -126,6 +126,65 @@ static int vpages_reserve(unsigned int pages, void **ptr)
 }
 
 /**
+ * @brief Reserve a specific range of virtual memory pages
+ *
+ * Marks an already occupied range as allocated, for users that were given
+ * their address by someone other than this allocator.
+ *
+ * @param ptr Page aligned base address of the range.
+ * @param pages Number of pages to reserve.
+ * @retval 0 if successful.
+ */
+static int vpages_reserve_at(void *ptr, unsigned int pages)
+{
+	uintptr_t region_base = POINTER_TO_UINT(vpage_ctx.virtual_region->addr);
+	unsigned int vpage, elem_idx;
+	int ret;
+
+	if (!pages)
+		return 0;
+
+	CHECKIF(!IS_ALIGNED(ptr, CONFIG_MM_DRV_PAGE_SIZE)) {
+		LOG_ERR("error: invalid non aligned page pointer %p", ptr);
+		return -EINVAL;
+	}
+
+	if (POINTER_TO_UINT(ptr) < region_base ||
+	    POINTER_TO_UINT(ptr) + (size_t)pages * CONFIG_MM_DRV_PAGE_SIZE >
+	    region_base + vpage_ctx.virtual_region->size) {
+		LOG_ERR("error: range %p pages %u outside the virtual region", ptr, pages);
+		return -EINVAL;
+	}
+
+	vpage = (POINTER_TO_UINT(ptr) - region_base) / CONFIG_MM_DRV_PAGE_SIZE;
+
+	/* Several modules can share one image, so one range can be reserved repeatedly */
+	for (elem_idx = 0; elem_idx < vpage_ctx.num_elems_in_use; elem_idx++)
+		if (vpage_ctx.velems[elem_idx].vpage == vpage)
+			return vpage_ctx.velems[elem_idx].pages == pages ? 0 : -EEXIST;
+
+	if (vpage_ctx.num_elems_in_use >= VPAGE_MAX_ALLOCS) {
+		LOG_ERR("error: max allocation elements reached");
+		return -ENOMEM;
+	}
+
+	ret = sys_mem_blocks_get(&vpage_ctx.vpage_blocks, ptr, pages);
+	if (ret < 0) {
+		LOG_ERR("error: failed to reserve %u virtual pages at %p, error %d",
+			pages, ptr, ret);
+		return ret;
+	}
+
+	vpage_ctx.free_pages -= pages;
+
+	vpage_ctx.velems[vpage_ctx.num_elems_in_use].pages = pages;
+	vpage_ctx.velems[vpage_ctx.num_elems_in_use].vpage = vpage;
+	vpage_ctx.num_elems_in_use++;
+
+	return 0;
+}
+
+/**
  * @brief Release reserved virtual memory pages
  *
  * @param ptr Pointer to the reserved memory pages to release.
@@ -339,6 +398,31 @@ void *vpage_reserve(unsigned int pages)
 		LOG_INF("vpage_reserve ptr %p pages %u free %u/%u", ptr, pages,
 			vpage_ctx.free_pages, vpage_ctx.total_pages);
 	return ptr;
+}
+
+/**
+ * @brief Reserve a specific range of virtual pages
+ * Reserves an already occupied range of virtual memory pages, for users that
+ * were given their address by someone other than this allocator.
+ *
+ * @param ptr Page aligned base address of the range to reserve.
+ * @param pages Number of pages (usually 4kB large) to reserve.
+ * @retval 0 if successful.
+ */
+int vpage_reserve_at(void *ptr, unsigned int pages)
+{
+	int ret;
+
+	k_mutex_lock(&vpage_ctx.lock, K_FOREVER);
+	ret = vpages_reserve_at(ptr, pages);
+	k_mutex_unlock(&vpage_ctx.lock);
+	if (ret < 0)
+		LOG_ERR("vpage_reserve_at failed %d for %u pages at %p, total %d free %d",
+			ret, pages, ptr, vpage_ctx.total_pages, vpage_ctx.free_pages);
+	else
+		LOG_INF("vpage_reserve_at ptr %p pages %u free %u/%u", ptr, pages,
+			vpage_ctx.free_pages, vpage_ctx.total_pages);
+	return ret;
 }
 
 /**
