@@ -14,6 +14,9 @@
 #include <soc/hp_sys_clkrst_struct.h>
 #elif defined(CONFIG_SOC_SERIES_ESP32C6)
 #include <soc/pcr_struct.h>
+#elif defined(CONFIG_SOC_SERIES_ESP32S3)
+#include <soc/rtc_cntl_reg.h>
+#include <esp_system.h>
 #endif
 #include <soc/gpio_sig_map.h>
 #include <sof/audio/usb_audio.h>
@@ -644,6 +647,19 @@ static int cmd_sof_route(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
+static int cmd_sof_bootloader(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+	shell_print(sh, "Rebooting to ROM download bootloader...");
+	k_msleep(100);
+#if defined(CONFIG_SOC_SERIES_ESP32S3)
+	REG_WRITE(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
+	esp_restart();
+#endif
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmds,
 	SHELL_CMD(status, NULL, "Print current SOF pipeline and audio interface status", cmd_sof_status),
 	SHELL_CMD(regs, NULL, "Dump I2S1/PDM hardware registers", cmd_sof_regs),
@@ -662,6 +678,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmds,
 	SHELL_CMD(eq, NULL, "Control Equalizer bypass (sof eq <playback|capture> <enable|bypass>)", cmd_sof_eq),
 	SHELL_CMD(drc, NULL, "Control DRC bypass (sof drc <enable|bypass>)", cmd_sof_drc),
 	SHELL_CMD(tdfb, NULL, "Control TDFB beamformer bypass (sof tdfb <enable|bypass>)", cmd_sof_tdfb),
+	SHELL_CMD(bootloader, NULL, "Reboot to ROM bootloader for flashing (sof bootloader)", cmd_sof_bootloader),
 	SHELL_SUBCMD_SET_END
 );
 

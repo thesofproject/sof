@@ -13,12 +13,14 @@
 #include <sof/init.h>
 #include <sof/audio/pipeline/sof_static_pipeline.h>
 #endif
-#if defined(CONFIG_PLATFORM_ESP32P4)
+#if defined(CONFIG_USBD_AUDIO2_CLASS)
 #include <zephyr/usb/usbd.h>
 #include <zephyr/usb/class/usbd_uac2.h>
 #include <zephyr/device.h>
 #include <sample_usbd.h>
+#if defined(CONFIG_COMP_BT_AUDIO)
 #include <sof/audio/bt_service.h>
+#endif
 #endif
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
@@ -58,7 +60,7 @@ static int sof_app_main(void)
 	/* Initialize static audio pipelines */
 	sof_static_pipelines_init(sof_get());
 
-#if defined(CONFIG_PLATFORM_ESP32P4)
+#if defined(CONFIG_USBD_AUDIO2_CLASS)
 	/* Register UAC2 class callbacks before initializing USB stack */
 	const struct device *uac2_dev = DEVICE_DT_GET_ONE(zephyr_uac2);
 	if (device_is_ready(uac2_dev)) {
@@ -71,7 +73,7 @@ static int sof_app_main(void)
 	struct usbd_context *sample_usbd = sample_usbd_init_device(NULL);
 	if (sample_usbd) {
 		usbd_enable(sample_usbd);
-		LOG_INF("ESP32-P4 USB UAC2 device and SOF pipelines started");
+		LOG_INF("USB UAC2 device and SOF pipelines started");
 	} else {
 		LOG_ERR("Failed to initialize USB device context");
 	}
@@ -81,7 +83,7 @@ static int sof_app_main(void)
 	bt_service_init();
 #endif
 #else
-	LOG_INF("ESP32-C6 SOF static pipelines started (I2S loopback ready)");
+	LOG_INF("SOF static pipelines started (I2S loopback ready)");
 #endif
 #endif
 
