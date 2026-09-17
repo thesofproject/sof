@@ -528,7 +528,6 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	ptask->ops.get_deadline = ops->get_deadline;
 	ptask->priv_data = pdata;
 	list_init(&ptask->list);
-	*task = ptask;
 
 	/* create a zephyr thread for the task */
 	pdata->thread_id = k_thread_create(pdata->thread, p_stack,
@@ -628,6 +627,9 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	/* start the thread, it should immediately stop at the semaphore */
 	k_event_init(pdata->event);
 	k_thread_start(pdata->thread_id);
+
+	/* ptask points into task_memory, so only publish it once it cannot be freed */
+	*task = ptask;
 
 	return 0;
 
