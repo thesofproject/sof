@@ -57,6 +57,16 @@ int DebugVsnprintf(char *buffer, size_t buf_size, const char *format,
 	return vsnprintk(buffer, buf_size, format, vlist);
 }
 
+void __assert_func(const char *file, int line, const char *func,
+		   const char *failedexpr)
+{
+	(void)file;
+	(void)line;
+	(void)func;
+	(void)failedexpr;
+	sof_panic(0);
+}
+
 #include <sof/lib/notifier.h>
 #include <sof/audio/wov_arbiter.h>
 
