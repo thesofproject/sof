@@ -1,7 +1,86 @@
+#include <zephyr/dt-bindings/usb/audio.h>
+
 / {
 	chosen {
-		zephyr,console = &usb_serial;
-		zephyr,shell-uart = &usb_serial;
+		zephyr,console = &cdc_acm_uart0;
+		zephyr,shell-uart = &cdc_acm_uart0;
+	};
+
+	uac2_card: usb_audio2 {
+		compatible = "zephyr,uac2";
+		status = "okay";
+		full-speed;
+		audio-function = <AUDIO_FUNCTION_IO_BOX>;
+
+		uac_aclk: aclk {
+			compatible = "zephyr,uac2-clock-source";
+			clock-type = "internal-programmable";
+			frequency-control = "host-programmable";
+			sampling-frequencies = <48000>;
+			sof-synchronized;
+		};
+
+		/* ===== Playback from Host (ISO OUT) ===== */
+		i2s_out_terminal: i2s_out_terminal {
+			compatible = "zephyr,uac2-input-terminal";
+			clock-source = <&uac_aclk>;
+			terminal-type = <USB_TERMINAL_STREAMING>;
+			front-left;
+			front-right;
+		};
+
+		i2s_fu: i2s_fu {
+			compatible = "zephyr,uac2-feature-unit";
+			data-source = <&i2s_out_terminal>;
+			mute-control = "host-programmable";
+			volume-control = "host-programmable";
+		};
+
+		i2s_speaker: i2s_speaker {
+			compatible = "zephyr,uac2-output-terminal";
+			data-source = <&i2s_fu>;
+			clock-source = <&uac_aclk>;
+			terminal-type = <OUTPUT_TERMINAL_SPEAKER>;
+			assoc-terminal = <&i2s_mic>;
+		};
+
+		/* ===== Capture to Host (ISO IN) ===== */
+		i2s_mic: i2s_mic {
+			compatible = "zephyr,uac2-input-terminal";
+			clock-source = <&uac_aclk>;
+			terminal-type = <INPUT_TERMINAL_MICROPHONE>;
+			front-left;
+			front-right;
+		};
+
+		i2s_in_fu: i2s_in_fu {
+			compatible = "zephyr,uac2-feature-unit";
+			data-source = <&i2s_mic>;
+			mute-control = "host-programmable";
+			volume-control = "host-programmable";
+		};
+
+		i2s_in_terminal: i2s_in_terminal {
+			compatible = "zephyr,uac2-output-terminal";
+			data-source = <&i2s_in_fu>;
+			clock-source = <&uac_aclk>;
+			terminal-type = <USB_TERMINAL_STREAMING>;
+		};
+
+		/* Audio Streaming Interfaces */
+		as_i2s_out: as_i2s_out {
+			compatible = "zephyr,uac2-audio-streaming";
+			linked-terminal = <&i2s_out_terminal>;
+			subslot-size = <2>;
+			bit-resolution = <16>;
+		};
+
+		as_i2s_in: as_i2s_in {
+			compatible = "zephyr,uac2-audio-streaming";
+			linked-terminal = <&i2s_in_terminal>;
+			subslot-size = <2>;
+			bit-resolution = <16>;
+		};
 	};
 
 	dai_i2s0: dai@6000f000 {
@@ -20,7 +99,16 @@
 };
 
 &usb_serial {
+	status = "disabled";
+};
+
+zephyr_udc0: &usb_otg {
 	status = "okay";
+
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+		label = "CDC_ACM_0";
+	};
 };
 
 &i2c0 {

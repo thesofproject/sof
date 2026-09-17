@@ -13,6 +13,20 @@ extern const struct sof_uuid usb_audio_uuid;
 extern const struct sof_uuid volume_uuid;
 extern const struct sof_uuid dai_uuid;
 
+/* UAC2 Device Tree Entity IDs */
+#if DT_NODE_EXISTS(DT_NODELABEL(i2s_fu))
+#define UAC2_STATIC_ENTITY_ID(node) (DT_NODE_CHILD_IDX(node) + 1)
+#define PLAYBACK_FU_ID       UAC2_STATIC_ENTITY_ID(DT_NODELABEL(i2s_fu))
+#define CAPTURE_FU_ID        UAC2_STATIC_ENTITY_ID(DT_NODELABEL(i2s_in_fu))
+#define PLAYBACK_TERM_ID     UAC2_STATIC_ENTITY_ID(DT_NODELABEL(i2s_out_terminal))
+#define CAPTURE_TERM_ID      UAC2_STATIC_ENTITY_ID(DT_NODELABEL(i2s_in_terminal))
+#else
+#define PLAYBACK_FU_ID       1
+#define CAPTURE_FU_ID        2
+#define PLAYBACK_TERM_ID     1
+#define CAPTURE_TERM_ID      2
+#endif
+
 /* -------------------------------------------------------------------------
  * 1. Component / Module Declarations
  * ------------------------------------------------------------------------- */
@@ -22,7 +36,7 @@ static const struct sof_static_comp esp32s3_comps[] = {
 		.id = 1, .pipeline_id = 1, .name = "USB_PB",
 		.uuid = &usb_audio_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
 		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_S16_LE, 48000, 2),
-		.ep.usb.terminal_id = 1
+		.ep.usb.terminal_id = PLAYBACK_TERM_ID
 	),
 	SOF_STATIC_COMP_MODULE(
 		.id = 2, .pipeline_id = 1, .name = "VOL_PB",
@@ -56,7 +70,7 @@ static const struct sof_static_comp esp32s3_comps[] = {
 		.id = 6, .pipeline_id = 2, .name = "USB_CAP",
 		.uuid = &usb_audio_uuid, .direction = SOF_IPC_STREAM_CAPTURE,
 		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_S16_LE, 48000, 2),
-		.ep.usb.terminal_id = 2
+		.ep.usb.terminal_id = CAPTURE_TERM_ID
 	),
 };
 
@@ -116,13 +130,13 @@ static const struct sof_static_kcontrol esp32s3_controls[] = {
 		.id = 1, .name = "Master Playback Volume",
 		.target_comp_id = 2,
 		.min = 0, .max = 65536, .def = 65536, .channels = 2,
-		.uac2_entity_id = 0
+		.uac2_entity_id = PLAYBACK_FU_ID
 	),
 	SOF_STATIC_KCONTROL_VOLUME(
 		.id = 2, .name = "Master Capture Volume",
 		.target_comp_id = 5,
 		.min = 0, .max = 65536, .def = 65536, .channels = 2,
-		.uac2_entity_id = 0
+		.uac2_entity_id = CAPTURE_FU_ID
 	),
 };
 

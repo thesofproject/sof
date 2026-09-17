@@ -10,8 +10,16 @@
 #include <zephyr/device.h>
 #include <zephyr/usb/usbd.h>
 #include <zephyr/usb/bos.h>
+#include <zephyr/usb/usbd_msg.h>
 #include <zephyr/logging/log.h>
 #include <sample_usbd.h>
+
+#if defined(CONFIG_SOC_SERIES_ESP32S3)
+#include <soc/rtc_cntl_reg.h>
+#include <esp_system.h>
+#include <esp_rom_sys.h>
+#include <zephyr/drivers/uart.h>
+#endif
 
 LOG_MODULE_REGISTER(usbd_sample_config, LOG_LEVEL_INF);
 
@@ -36,7 +44,10 @@ USBD_DESC_PRODUCT_DEFINE(spider_product, "SOF ESP32P4 USB Spider");
 USBD_DESC_PRODUCT_DEFINE(aphid_product, "SOF ESP32P4 USB Aphid");
 USBD_DESC_PRODUCT_DEFINE(pallas_product, "SOF ESP32P4 USB Pallas");
 USBD_DESC_PRODUCT_DEFINE(ceres_product, "SOF ESP32P4 USB Ceres");
-USBD_DESC_PRODUCT_DEFINE(default_product, "SOF ESP32P4 USB");
+USBD_DESC_PRODUCT_DEFINE(s3_a_product, "SOF ESP32S3 Master");
+USBD_DESC_PRODUCT_DEFINE(s3_b_product, "SOF ESP32S3 Slave");
+USBD_DESC_PRODUCT_DEFINE(s3_default_product, "SOF ESP32S3 Audio");
+USBD_DESC_PRODUCT_DEFINE(default_product, "SOF USB Audio");
 
 USBD_DESC_STRING_DEFINE(clock_master_str, "Clock Master", USBD_DUT_STRING_INTERFACE);
 
@@ -74,6 +85,27 @@ static void sample_fix_code_triple(struct usbd_context *uds_ctx,
 	}
 }
 
+#if defined(CONFIG_SOC_SERIES_ESP32S3)
+static void usbd_internal_msg_cb(struct usbd_context *const ctx,
+				 const struct usbd_msg *const msg)
+{
+	ARG_UNUSED(ctx);
+#if defined(CONFIG_USBD_CDC_ACM_CLASS)
+	if (msg->type == USBD_MSG_CDC_ACM_LINE_CODING) {
+		uint32_t baud = 0;
+		if (uart_line_ctrl_get(msg->dev, UART_LINE_CTRL_BAUD_RATE, &baud) == 0) {
+			if (baud == 1200) {
+				printk("[USB CDC-ACM] 1200 baud touch detected! Rebooting into ROM download mode...\n");
+				k_msleep(50);
+				REG_WRITE(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
+				esp_restart();
+			}
+		}
+	}
+#endif
+}
+#endif
+
 struct usbd_context *sample_usbd_setup_device(usbd_msg_cb_t msg_cb)
 {
 	int err;
@@ -85,6 +117,21 @@ struct usbd_context *sample_usbd_setup_device(usbd_msg_cb_t msg_cb)
 	       mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
 	struct usbd_desc_node *product_desc = &default_product;
+#if defined(CONFIG_PLATFORM_ESP32S3)
+	if (mac[0] == 0x34 && (mac[5] == 0x6C || mac[5] == 0x6c)) {
+		LOG_INF("Board Identity: ESP32-S3 BOARD A MASTER (MAC %02X:%02X:%02X:%02X:%02X:%02X)",
+		        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		product_desc = &s3_a_product;
+	} else if (mac[0] == 0x20 && mac[5] == 0x84) {
+		LOG_INF("Board Identity: ESP32-S3 BOARD B SLAVE (MAC %02X:%02X:%02X:%02X:%02X:%02X)",
+		        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		product_desc = &s3_b_product;
+	} else {
+		LOG_INF("Board Identity: Generic ESP32-S3 (MAC %02X:%02X:%02X:%02X:%02X:%02X)",
+		        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		product_desc = &s3_default_product;
+	}
+#else
 	if (mac[5] == 0xC7 || mac[5] == 0xc7) {
 		LOG_INF("Board Identity: SPIDER PDM DUT (MAC %02X:%02X:%02X:%02X:%02X:%02X)",
 		        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
@@ -97,7 +144,7 @@ struct usbd_context *sample_usbd_setup_device(usbd_msg_cb_t msg_cb)
 		LOG_INF("Board Identity: PALLAS TX MASTER (MAC %02X:%02X:%02X:%02X:%02X:%02X)",
 		        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 		product_desc = &pallas_product;
-	} else if (mac[5] == 0x6C || mac[5] == 0x6c) {
+	} else if (mac[0] == 0xe8 && (mac[5] == 0x6C || mac[5] == 0x6c)) {
 		LOG_INF("Board Identity: CERES RX SLAVE (MAC %02X:%02X:%02X:%02X:%02X:%02X)",
 		        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 		product_desc = &ceres_product;
@@ -106,6 +153,7 @@ struct usbd_context *sample_usbd_setup_device(usbd_msg_cb_t msg_cb)
 		        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 		product_desc = &default_product;
 	}
+#endif
 
 	err = usbd_add_descriptor(&sample_usbd, &sample_lang);
 	if (err) {
@@ -174,6 +222,12 @@ struct usbd_context *sample_usbd_setup_device(usbd_msg_cb_t msg_cb)
 
 	sample_fix_code_triple(&sample_usbd, USBD_SPEED_FS);
 	usbd_self_powered(&sample_usbd, attributes & USB_SCD_SELF_POWERED);
+
+#if defined(CONFIG_SOC_SERIES_ESP32S3)
+	if (msg_cb == NULL) {
+		msg_cb = usbd_internal_msg_cb;
+	}
+#endif
 
 	if (msg_cb != NULL) {
 		err = usbd_msg_register_cb(&sample_usbd, msg_cb);
