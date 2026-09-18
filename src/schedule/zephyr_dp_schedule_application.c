@@ -478,6 +478,8 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 	memset(task_memory, 0, sizeof(*task_memory));
 
+	const struct comp_driver *drv = mod->dev->drv;
+
 	task_memory->drv = *mod->dev->drv;
 	mod->dev->drv = &task_memory->drv;
 
@@ -643,6 +645,8 @@ e_kobj:
 e_stack:
 	user_stack_free(p_stack);
 e_tmem:
+	/* the copy lives in task_memory, so stop pointing at it before freeing */
+	mod->dev->drv = drv;
 	mod_free(mod, task_memory);
 	return ret;
 }
