@@ -245,6 +245,21 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *config,
 		   const void *spec_config, size_t size);
 
 /**
+ * \brief Get a copy of DAI properties
+ *
+ * Uses dai_get_properties_copy() when implemented by the driver, falling
+ * back to a locked dai_get_properties() in kernel LL builds.
+ *
+ * \param[in] dai DAI instance
+ * \param[in] direction Stream direction
+ * \param[in] stream_id Stream ID
+ * \param[out] props Destination for the copied properties
+ * \return 0 on success, negative error code otherwise
+ */
+int dai_get_properties_safe(struct dai *dai, int direction,
+			    int stream_id, struct dai_properties *props);
+
+/**
  * \brief Get Digital Audio interface DMA Handshake
  */
 int dai_get_handshake(struct dai *dai, int direction, int stream_id);

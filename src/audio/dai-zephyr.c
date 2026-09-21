@@ -234,8 +234,8 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	return dai_config_set(dev, &cfg, cfg_params, dai_cfg_size);
 }
 
-static int dai_get_properties_safe(struct dai *dai, int direction,
-				   int stream_id, struct dai_properties *props)
+int dai_get_properties_safe(struct dai *dai, int direction,
+			    int stream_id, struct dai_properties *props)
 {
 	const struct dai_properties *props_p;
 	int ret;
