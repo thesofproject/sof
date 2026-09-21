@@ -30,65 +30,69 @@ LOG_MODULE_DECLARE(eq_fir, CONFIG_SOF_LOG_LEVEL);
 void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct cir_buf_source *source,
 		   struct cir_buf_sink *sink, int frames, int channels)
 {
-	struct fir_state_32x16 *f;
+	struct fir_state_32x16 *filter;
 	const int32_t *src = source->ptr;
-	int32_t *snk = sink->ptr;
-	const int32_t *x0;
-	int32_t *y0;
-	const int32_t *x1;
-	int32_t *y1;
-	int ch;
-	int i;
+	int32_t *dst = sink->ptr;
+	const int32_t *src_first;
+	int32_t *dst_first;
+	const int32_t *src_second;
+	int32_t *dst_second;
+	int channel;
+	int pair_index;
 	int rshift;
 	int lshift;
-	int nch = channels;
+	int channel_count = channels;
 	int remaining_frames = frames;
 
 	while (remaining_frames) {
-		int source_frames = cir_buf_samples_without_wrap_s32(src, source->buf_end) / nch;
-		int sink_frames = cir_buf_samples_without_wrap_s32(snk, sink->buf_end) / nch;
+		int source_frames =
+			cir_buf_samples_without_wrap_s32(src, source->buf_end) / channel_count;
+		int sink_frames =
+			cir_buf_samples_without_wrap_s32(dst, sink->buf_end) / channel_count;
 		int chunk_frames = MIN(remaining_frames, MIN(source_frames, sink_frames));
 
 		chunk_frames &= ~0x1;
 		if (!chunk_frames) {
-			for (ch = 0; ch < nch; ch++) {
-				f = &fir[ch];
-				fir_get_lrshifts(f, &lshift, &rshift);
-				fir_hifiep_setup_circular(f);
-				y0 = snk + ch;
-				fir_32x16(f, src[ch], y0, lshift, rshift);
+			for (channel = 0; channel < channel_count; channel++) {
+				filter = &fir[channel];
+				fir_get_lrshifts(filter, &lshift, &rshift);
+				fir_hifiep_setup_circular(filter);
+				dst_first = dst + channel;
+				fir_32x16(filter, src[channel], dst_first, lshift, rshift);
 			}
-			src = source_cir_buf_wrap(src + nch, source->buf_start, source->buf_end);
-			snk = cir_buf_wrap(snk + nch, sink->buf_start, sink->buf_end);
+			src = source_cir_buf_wrap(src + channel_count, source->buf_start,
+						  source->buf_end);
+			dst = cir_buf_wrap(dst + channel_count, sink->buf_start, sink->buf_end);
 			remaining_frames--;
 			continue;
 		}
 
-		for (ch = 0; ch < nch; ch++) {
+		for (channel = 0; channel < channel_count; channel++) {
 			/* Get FIR instance and get shifts to e.g. apply mute
 			 * without overhead.
 			 */
-			f = &fir[ch];
-			fir_get_lrshifts(f, &lshift, &rshift);
+			filter = &fir[channel];
+			fir_get_lrshifts(filter, &lshift, &rshift);
 
 			/* Setup circular buffer for FIR input data delay */
-			fir_hifiep_setup_circular(f);
+			fir_hifiep_setup_circular(filter);
 
-			x0 = src + ch;
-			y0 = snk + ch;
-			for (i = 0; i < (chunk_frames >> 1); i++) {
-				x1 = x0 + nch;
-				y1 = y0 + nch;
-				fir_32x16_2x(f, *x0, *x1, y0, y1, lshift, rshift);
-				x0 += 2 * nch;
-				y0 += 2 * nch;
+			src_first = src + channel;
+			dst_first = dst + channel;
+			for (pair_index = 0; pair_index < (chunk_frames >> 1); pair_index++) {
+				src_second = src_first + channel_count;
+				dst_second = dst_first + channel_count;
+				fir_32x16_2x(filter, *src_first, *src_second, dst_first, dst_second,
+					     lshift, rshift);
+				src_first += 2 * channel_count;
+				dst_first += 2 * channel_count;
 			}
 		}
 
-		src = source_cir_buf_wrap(src + chunk_frames * nch,
-					  source->buf_start, source->buf_end);
-		snk = cir_buf_wrap(snk + chunk_frames * nch,
-				   sink->buf_start, sink->buf_end);
+		src = source_cir_buf_wrap(src + chunk_frames * channel_count, source->buf_start,
+					  source->buf_end);
+		dst = cir_buf_wrap(dst + chunk_frames * channel_count, sink->buf_start,
+				   sink->buf_end);
 		remaining_frames -= chunk_frames;
 	}
 }
@@ -98,71 +102,77 @@ void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct cir_buf_source *source,
 void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct cir_buf_source *source,
 		   struct cir_buf_sink *sink, int frames, int channels)
 {
-	struct fir_state_32x16 *f;
+	struct fir_state_32x16 *filter;
 	const int32_t *src = source->ptr;
-	int32_t *snk = sink->ptr;
-	const int32_t *x0;
-	int32_t *y0;
-	const int32_t *x1;
-	int32_t *y1;
-	int32_t z0;
-	int32_t z1;
-	int ch;
-	int i;
+	int32_t *dst = sink->ptr;
+	const int32_t *src_first;
+	int32_t *dst_first;
+	const int32_t *src_second;
+	int32_t *dst_second;
+	int32_t filtered_sample_0;
+	int32_t filtered_sample_1;
+	int channel;
+	int pair_index;
 	int rshift;
 	int lshift;
-	int nch = channels;
+	int channel_count = channels;
 	int remaining_frames = frames;
 
 	while (remaining_frames) {
-		int source_frames = cir_buf_samples_without_wrap_s32(src, source->buf_end) / nch;
-		int sink_frames = cir_buf_samples_without_wrap_s32(snk, sink->buf_end) / nch;
+		int source_frames =
+			cir_buf_samples_without_wrap_s32(src, source->buf_end) / channel_count;
+		int sink_frames =
+			cir_buf_samples_without_wrap_s32(dst, sink->buf_end) / channel_count;
 		int chunk_frames = MIN(remaining_frames, MIN(source_frames, sink_frames));
 
 		chunk_frames &= ~0x1;
 		if (!chunk_frames) {
-			for (ch = 0; ch < nch; ch++) {
-				int32_t z;
+			for (channel = 0; channel < channel_count; channel++) {
+				int32_t filtered_sample;
 
-				f = &fir[ch];
-				fir_get_lrshifts(f, &lshift, &rshift);
-				fir_hifiep_setup_circular(f);
-				fir_32x16(f, src[ch] << 8, &z, lshift, rshift);
-				snk[ch] = sat_int24(Q_SHIFT_RND(z, 31, 23));
+				filter = &fir[channel];
+				fir_get_lrshifts(filter, &lshift, &rshift);
+				fir_hifiep_setup_circular(filter);
+				fir_32x16(filter, src[channel] << 8, &filtered_sample, lshift,
+					  rshift);
+				dst[channel] = sat_int24(Q_SHIFT_RND(filtered_sample, 31, 23));
 			}
-			src = source_cir_buf_wrap(src + nch, source->buf_start, source->buf_end);
-			snk = cir_buf_wrap(snk + nch, sink->buf_start, sink->buf_end);
+			src = source_cir_buf_wrap(src + channel_count, source->buf_start,
+						  source->buf_end);
+			dst = cir_buf_wrap(dst + channel_count, sink->buf_start, sink->buf_end);
 			remaining_frames--;
 			continue;
 		}
 
-		for (ch = 0; ch < nch; ch++) {
+		for (channel = 0; channel < channel_count; channel++) {
 			/* Get FIR instance and get shifts to e.g. apply mute
 			 * without overhead.
 			 */
-			f = &fir[ch];
-			fir_get_lrshifts(f, &lshift, &rshift);
+			filter = &fir[channel];
+			fir_get_lrshifts(filter, &lshift, &rshift);
 
 			/* Setup circular buffer for FIR input data delay */
-			fir_hifiep_setup_circular(f);
+			fir_hifiep_setup_circular(filter);
 
-			x0 = src + ch;
-			y0 = snk + ch;
-			for (i = 0; i < (chunk_frames >> 1); i++) {
-				x1 = x0 + nch;
-				y1 = y0 + nch;
-				fir_32x16_2x(f, *x0 << 8, *x1 << 8, &z0, &z1, lshift, rshift);
-				*y0 = sat_int24(Q_SHIFT_RND(z0, 31, 23));
-				*y1 = sat_int24(Q_SHIFT_RND(z1, 31, 23));
-				x0 += 2 * nch;
-				y0 += 2 * nch;
+			src_first = src + channel;
+			dst_first = dst + channel;
+			for (pair_index = 0; pair_index < (chunk_frames >> 1); pair_index++) {
+				src_second = src_first + channel_count;
+				dst_second = dst_first + channel_count;
+				fir_32x16_2x(filter, *src_first << 8, *src_second << 8,
+					     &filtered_sample_0, &filtered_sample_1, lshift,
+					     rshift);
+				*dst_first = sat_int24(Q_SHIFT_RND(filtered_sample_0, 31, 23));
+				*dst_second = sat_int24(Q_SHIFT_RND(filtered_sample_1, 31, 23));
+				src_first += 2 * channel_count;
+				dst_first += 2 * channel_count;
 			}
 		}
 
-		src = source_cir_buf_wrap(src + chunk_frames * nch,
-					  source->buf_start, source->buf_end);
-		snk = cir_buf_wrap(snk + chunk_frames * nch,
-				   sink->buf_start, sink->buf_end);
+		src = source_cir_buf_wrap(src + chunk_frames * channel_count, source->buf_start,
+					  source->buf_end);
+		dst = cir_buf_wrap(dst + chunk_frames * channel_count, sink->buf_start,
+				   sink->buf_end);
 		remaining_frames -= chunk_frames;
 	}
 }
@@ -172,71 +182,77 @@ void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct cir_buf_source *source,
 void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct cir_buf_source *source,
 		   struct cir_buf_sink *sink, int frames, int channels)
 {
-	struct fir_state_32x16 *f;
+	struct fir_state_32x16 *filter;
 	const int16_t *src = source->ptr;
-	int16_t *snk = sink->ptr;
-	const int16_t *x0;
-	int16_t *y0;
-	const int16_t *x1;
-	int16_t *y1;
-	int32_t z0;
-	int32_t z1;
-	int ch;
-	int i;
+	int16_t *dst = sink->ptr;
+	const int16_t *src_first;
+	int16_t *dst_first;
+	const int16_t *src_second;
+	int16_t *dst_second;
+	int32_t filtered_sample_0;
+	int32_t filtered_sample_1;
+	int channel;
+	int pair_index;
 	int rshift;
 	int lshift;
-	int nch = channels;
+	int channel_count = channels;
 	int remaining_frames = frames;
 
 	while (remaining_frames) {
-		int source_frames = cir_buf_samples_without_wrap_s16(src, source->buf_end) / nch;
-		int sink_frames = cir_buf_samples_without_wrap_s16(snk, sink->buf_end) / nch;
+		int source_frames =
+			cir_buf_samples_without_wrap_s16(src, source->buf_end) / channel_count;
+		int sink_frames =
+			cir_buf_samples_without_wrap_s16(dst, sink->buf_end) / channel_count;
 		int chunk_frames = MIN(remaining_frames, MIN(source_frames, sink_frames));
 
 		chunk_frames &= ~0x1;
 		if (!chunk_frames) {
-			for (ch = 0; ch < nch; ch++) {
-				int32_t z;
+			for (channel = 0; channel < channel_count; channel++) {
+				int32_t filtered_sample;
 
-				f = &fir[ch];
-				fir_get_lrshifts(f, &lshift, &rshift);
-				fir_hifiep_setup_circular(f);
-				fir_32x16(f, src[ch] << 16, &z, lshift, rshift);
-				snk[ch] = sat_int16(Q_SHIFT_RND(z, 31, 15));
+				filter = &fir[channel];
+				fir_get_lrshifts(filter, &lshift, &rshift);
+				fir_hifiep_setup_circular(filter);
+				fir_32x16(filter, src[channel] << 16, &filtered_sample, lshift,
+					  rshift);
+				dst[channel] = sat_int16(Q_SHIFT_RND(filtered_sample, 31, 15));
 			}
-			src = source_cir_buf_wrap(src + nch, source->buf_start, source->buf_end);
-			snk = cir_buf_wrap(snk + nch, sink->buf_start, sink->buf_end);
+			src = source_cir_buf_wrap(src + channel_count, source->buf_start,
+						  source->buf_end);
+			dst = cir_buf_wrap(dst + channel_count, sink->buf_start, sink->buf_end);
 			remaining_frames--;
 			continue;
 		}
 
-		for (ch = 0; ch < nch; ch++) {
+		for (channel = 0; channel < channel_count; channel++) {
 			/* Get FIR instance and get shifts to e.g. apply mute
 			 * without overhead.
 			 */
-			f = &fir[ch];
-			fir_get_lrshifts(f, &lshift, &rshift);
+			filter = &fir[channel];
+			fir_get_lrshifts(filter, &lshift, &rshift);
 
 			/* Setup circular buffer for FIR input data delay */
-			fir_hifiep_setup_circular(f);
+			fir_hifiep_setup_circular(filter);
 
-			x0 = src + ch;
-			y0 = snk + ch;
-			for (i = 0; i < (chunk_frames >> 1); i++) {
-				x1 = x0 + nch;
-				y1 = y0 + nch;
-				fir_32x16_2x(f, *x0 << 16, *x1 << 16, &z0, &z1, lshift, rshift);
-				*y0 = sat_int16(Q_SHIFT_RND(z0, 31, 15));
-				*y1 = sat_int16(Q_SHIFT_RND(z1, 31, 15));
-				x0 += 2 * nch;
-				y0 += 2 * nch;
+			src_first = src + channel;
+			dst_first = dst + channel;
+			for (pair_index = 0; pair_index < (chunk_frames >> 1); pair_index++) {
+				src_second = src_first + channel_count;
+				dst_second = dst_first + channel_count;
+				fir_32x16_2x(filter, *src_first << 16, *src_second << 16,
+					     &filtered_sample_0, &filtered_sample_1, lshift,
+					     rshift);
+				*dst_first = sat_int16(Q_SHIFT_RND(filtered_sample_0, 31, 15));
+				*dst_second = sat_int16(Q_SHIFT_RND(filtered_sample_1, 31, 15));
+				src_first += 2 * channel_count;
+				dst_first += 2 * channel_count;
 			}
 		}
 
-		src = source_cir_buf_wrap(src + chunk_frames * nch,
-					  source->buf_start, source->buf_end);
-		snk = cir_buf_wrap(snk + chunk_frames * nch,
-				   sink->buf_start, sink->buf_end);
+		src = source_cir_buf_wrap(src + chunk_frames * channel_count, source->buf_start,
+					  source->buf_end);
+		dst = cir_buf_wrap(dst + chunk_frames * channel_count, sink->buf_start,
+				   sink->buf_end);
 		remaining_frames -= chunk_frames;
 	}
 }

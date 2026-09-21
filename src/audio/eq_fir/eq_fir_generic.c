@@ -26,33 +26,37 @@ void eq_fir_s16(struct fir_state_32x16 fir[], struct cir_buf_source *source,
 		struct cir_buf_sink *sink, int frames, int channels)
 {
 	struct fir_state_32x16 *filter;
-	int32_t z;
-	const int16_t *x0;
-	int16_t *y0;
-	const int16_t *x = source->ptr;
-	int16_t *y = sink->ptr;
-	int nmax, n, i, j;
+	int32_t filtered_sample;
+	const int16_t *src_channel;
+	int16_t *dst_channel;
+	const int16_t *src = source->ptr;
+	int16_t *dst = sink->ptr;
+	int max_samples;
+	int chunk_samples;
+	int sample_index;
+	int channel;
 	int remaining_samples = frames * channels;
 
 	while (remaining_samples) {
-		nmax = cir_buf_samples_without_wrap_s16(x, source->buf_end);
-		n = MIN(remaining_samples, nmax);
-		nmax = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
-		n = MIN(n, nmax);
-		for (j = 0; j < channels; j++) {
-			x0 = x + j;
-			y0 = y + j;
-			filter = &fir[j];
-			for (i = 0; i < n; i += channels) {
-				z = fir_32x16(filter, *x0 << 16);
-				*y0 = sat_int16(Q_SHIFT_RND(z, 31, 15));
-				x0 += channels;
-				y0 += channels;
+		max_samples = cir_buf_samples_without_wrap_s16(src, source->buf_end);
+		chunk_samples = MIN(remaining_samples, max_samples);
+		max_samples = cir_buf_samples_without_wrap_s16(dst, sink->buf_end);
+		chunk_samples = MIN(chunk_samples, max_samples);
+		for (channel = 0; channel < channels; channel++) {
+			src_channel = src + channel;
+			dst_channel = dst + channel;
+			filter = &fir[channel];
+			for (sample_index = 0; sample_index < chunk_samples;
+			     sample_index += channels) {
+				filtered_sample = fir_32x16(filter, *src_channel << 16);
+				*dst_channel = sat_int16(Q_SHIFT_RND(filtered_sample, 31, 15));
+				src_channel += channels;
+				dst_channel += channels;
 			}
 		}
-		remaining_samples -= n;
-		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
-		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+		remaining_samples -= chunk_samples;
+		src = source_cir_buf_wrap(src + chunk_samples, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst + chunk_samples, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
@@ -62,33 +66,37 @@ void eq_fir_s24(struct fir_state_32x16 fir[], struct cir_buf_source *source,
 		struct cir_buf_sink *sink, int frames, int channels)
 {
 	struct fir_state_32x16 *filter;
-	int32_t z;
-	const int32_t *x0;
-	int32_t *y0;
-	const int32_t *x = source->ptr;
-	int32_t *y = sink->ptr;
-	int nmax, n, i, j;
+	int32_t filtered_sample;
+	const int32_t *src_channel;
+	int32_t *dst_channel;
+	const int32_t *src = source->ptr;
+	int32_t *dst = sink->ptr;
+	int max_samples;
+	int chunk_samples;
+	int sample_index;
+	int channel;
 	int remaining_samples = frames * channels;
 
 	while (remaining_samples) {
-		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
-		n = MIN(remaining_samples, nmax);
-		nmax = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
-		n = MIN(n, nmax);
-		for (j = 0; j < channels; j++) {
-			x0 = x + j;
-			y0 = y + j;
-			filter = &fir[j];
-			for (i = 0; i < n; i += channels) {
-				z = fir_32x16(filter, *x0 << 8);
-				*y0 = sat_int24(Q_SHIFT_RND(z, 31, 23));
-				x0 += channels;
-				y0 += channels;
+		max_samples = cir_buf_samples_without_wrap_s32(src, source->buf_end);
+		chunk_samples = MIN(remaining_samples, max_samples);
+		max_samples = cir_buf_samples_without_wrap_s32(dst, sink->buf_end);
+		chunk_samples = MIN(chunk_samples, max_samples);
+		for (channel = 0; channel < channels; channel++) {
+			src_channel = src + channel;
+			dst_channel = dst + channel;
+			filter = &fir[channel];
+			for (sample_index = 0; sample_index < chunk_samples;
+			     sample_index += channels) {
+				filtered_sample = fir_32x16(filter, *src_channel << 8);
+				*dst_channel = sat_int24(Q_SHIFT_RND(filtered_sample, 31, 23));
+				src_channel += channels;
+				dst_channel += channels;
 			}
 		}
-		remaining_samples -= n;
-		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
-		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+		remaining_samples -= chunk_samples;
+		src = source_cir_buf_wrap(src + chunk_samples, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst + chunk_samples, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
@@ -98,31 +106,35 @@ void eq_fir_s32(struct fir_state_32x16 fir[], struct cir_buf_source *source,
 		struct cir_buf_sink *sink, int frames, int channels)
 {
 	struct fir_state_32x16 *filter;
-	const int32_t *x0;
-	int32_t *y0;
-	const int32_t *x = source->ptr;
-	int32_t *y = sink->ptr;
-	int nmax, n, i, j;
+	const int32_t *src_channel;
+	int32_t *dst_channel;
+	const int32_t *src = source->ptr;
+	int32_t *dst = sink->ptr;
+	int max_samples;
+	int chunk_samples;
+	int sample_index;
+	int channel;
 	int remaining_samples = frames * channels;
 
 	while (remaining_samples) {
-		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
-		n = MIN(remaining_samples, nmax);
-		nmax = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
-		n = MIN(n, nmax);
-		for (j = 0; j < channels; j++) {
-			x0 = x + j;
-			y0 = y + j;
-			filter = &fir[j];
-			for (i = 0; i < n; i += channels) {
-				*y0 = fir_32x16(filter, *x0);
-				x0 += channels;
-				y0 += channels;
+		max_samples = cir_buf_samples_without_wrap_s32(src, source->buf_end);
+		chunk_samples = MIN(remaining_samples, max_samples);
+		max_samples = cir_buf_samples_without_wrap_s32(dst, sink->buf_end);
+		chunk_samples = MIN(chunk_samples, max_samples);
+		for (channel = 0; channel < channels; channel++) {
+			src_channel = src + channel;
+			dst_channel = dst + channel;
+			filter = &fir[channel];
+			for (sample_index = 0; sample_index < chunk_samples;
+			     sample_index += channels) {
+				*dst_channel = fir_32x16(filter, *src_channel);
+				src_channel += channels;
+				dst_channel += channels;
 			}
 		}
-		remaining_samples -= n;
-		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
-		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+		remaining_samples -= chunk_samples;
+		src = source_cir_buf_wrap(src + chunk_samples, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst + chunk_samples, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
