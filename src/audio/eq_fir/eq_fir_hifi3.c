@@ -26,34 +26,47 @@ LOG_MODULE_DECLARE(eq_fir, CONFIG_SOF_LOG_LEVEL);
 /* For even frame lengths use FIR filter that processes two sequential
  * sample per call.
  */
-void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
-		   struct output_stream_buffer *bsink, int frames)
+void eq_fir_2x_s32(struct fir_state_32x16 fir[], const struct cir_buf_source *source,
+		   struct cir_buf_sink *sink, size_t frames, unsigned int channels)
 {
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct fir_state_32x16 *f;
 	ae_int32x2 d0 = 0;
 	ae_int32x2 d1 = 0;
-	ae_int32 *src = audio_stream_get_rptr(source);
-	ae_int32 *dst = audio_stream_get_wptr(sink);
-	ae_int32 *x;
+	const ae_int32 *src = source->ptr;
+	ae_int32 *dst = (ae_int32 *)sink->ptr;
+	const ae_int32 *x;
 	ae_int32 *y0;
 	ae_int32 *y1;
-	int ch;
-	int i, n, nmax;
+	size_t i;
+	size_t inc_nch_s = channels * sizeof(int32_t);
+	size_t inc_2nch_s = 2 * inc_nch_s;
+	size_t remaining_frames = frames;
+	unsigned int ch;
+	unsigned int nch = channels;
 	int rshift;
 	int lshift;
 	int shift;
-	int nch = audio_stream_get_channels(source);
-	int inc_nch_s = nch * sizeof(int32_t);
-	int inc_2nch_s = 2 * inc_nch_s;
-	int samples = nch * frames;
 
-	while (samples) {
-		nmax = audio_stream_samples_without_wrap_s32(sink, dst);
-		n = MIN(nmax, samples);
-		nmax = audio_stream_samples_without_wrap_s32(source, src);
-		n = MIN(n, nmax);
+	while (remaining_frames) {
+		size_t source_frames = cir_buf_samples_without_wrap_s32(src, source->buf_end) / nch;
+		size_t sink_frames = cir_buf_samples_without_wrap_s32(dst, sink->buf_end) / nch;
+		size_t chunk_frames = MIN(remaining_frames, MIN(source_frames, sink_frames));
+
+		chunk_frames &= ~0x1;
+		if (!chunk_frames) {
+			for (ch = 0; ch < nch; ch++) {
+				f = &fir[ch];
+				fir_get_lrshifts(f, &lshift, &rshift);
+				shift = lshift - rshift;
+				fir_core_setup_circular(f);
+				fir_32x16(f, src[ch], dst + ch, shift);
+			}
+			src = source_cir_buf_wrap(src + nch, source->buf_start, source->buf_end);
+			dst = cir_buf_wrap(dst + nch, sink->buf_start, sink->buf_end);
+			remaining_frames--;
+			continue;
+		}
+
 		for (ch = 0; ch < nch; ch++) {
 			/* Get FIR instance and get shifts.*/
 			f = &fir[ch];
@@ -66,7 +79,7 @@ void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 			y0 = dst + ch;
 			y1 = y0 + nch;
 
-			for (i = 0; i < (n >> 1); i += nch) {
+			for (i = 0; i < (chunk_frames >> 1); i++) {
 				/* Load two input samples via input pointer x */
 				AE_L32_XP(d0, x, inc_nch_s);
 				AE_L32_XP(d1, x, inc_nch_s);
@@ -75,42 +88,63 @@ void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 				AE_L32_XC(d1, y1, inc_2nch_s);
 			}
 		}
-		samples -= n;
-		dst = audio_stream_wrap(sink, dst + n);
-		src = audio_stream_wrap(source, src + n);
+		dst = cir_buf_wrap(dst + chunk_frames * nch,
+				   sink->buf_start, sink->buf_end);
+		src = source_cir_buf_wrap(src + chunk_frames * nch, source->buf_start,
+					  source->buf_end);
+		remaining_frames -= chunk_frames;
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S24LE
-void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
-		   struct output_stream_buffer *bsink, int frames)
+void eq_fir_2x_s24(struct fir_state_32x16 fir[], const struct cir_buf_source *source,
+		   struct cir_buf_sink *sink, size_t frames, unsigned int channels)
 {
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct fir_state_32x16 *f;
 	ae_int32x2 d0 = 0;
 	ae_int32x2 d1 = 0;
 	ae_int32 z0;
 	ae_int32 z1;
-	ae_int32 *src = audio_stream_get_rptr(source);
-	ae_int32 *dst = audio_stream_get_wptr(sink);
-	ae_int32 *x;
+	const ae_int32 *src = source->ptr;
+	ae_int32 *dst = (ae_int32 *)sink->ptr;
+	const ae_int32 *x;
 	ae_int32 *y;
-	int ch;
-	int i, n, nmax;
+	size_t i;
+	size_t inc_nch_s = channels * sizeof(int32_t);
+	size_t remaining_frames = frames;
+	unsigned int ch;
+	unsigned int nch = channels;
 	int rshift;
 	int lshift;
 	int shift;
-	int nch = audio_stream_get_channels(source);
-	int inc_nch_s = nch * sizeof(int32_t);
-	int samples = nch * frames;
 
-	while (samples) {
-		nmax = audio_stream_samples_without_wrap_s24(sink, dst);
-		n = MIN(nmax, samples);
-		nmax = audio_stream_samples_without_wrap_s24(source, src);
-		n = MIN(n, nmax);
+	while (remaining_frames) {
+		size_t source_frames = cir_buf_samples_without_wrap_s32(src, source->buf_end) / nch;
+		size_t sink_frames = cir_buf_samples_without_wrap_s32(dst, sink->buf_end) / nch;
+		size_t chunk_frames = MIN(remaining_frames, MIN(source_frames, sink_frames));
+
+		chunk_frames &= ~0x1;
+		if (!chunk_frames) {
+			for (ch = 0; ch < nch; ch++) {
+				ae_int32 input = src[ch] << 8;
+				ae_int32 output;
+				int32_t output_sample;
+
+				f = &fir[ch];
+				fir_get_lrshifts(f, &lshift, &rshift);
+				shift = lshift - rshift;
+				fir_core_setup_circular(f);
+				fir_32x16(f, input, &output, shift);
+				output_sample = AE_MOVAD32_L(output);
+				dst[ch] = sat_int24(Q_SHIFT_RND(output_sample, 31, 23));
+			}
+			src = source_cir_buf_wrap(src + nch, source->buf_start, source->buf_end);
+			dst = cir_buf_wrap(dst + nch, sink->buf_start, sink->buf_end);
+			remaining_frames--;
+			continue;
+		}
+
 		for (ch = 0; ch < nch; ch++) {
 			/* Get FIR instance and get shifts.*/
 			f = &fir[ch];
@@ -122,7 +156,7 @@ void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 			x = src + ch;
 			y = dst + ch;
 
-			for (i = 0; i < (n >> 1); i += nch) {
+			for (i = 0; i < (chunk_frames >> 1); i++) {
 				/* Load two input samples via input pointer x */
 				AE_L32_XP(d0, x, inc_nch_s);
 				AE_L32_XP(d1, x, inc_nch_s);
@@ -147,19 +181,19 @@ void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 				AE_S32_L_XC(d1, y, inc_nch_s);
 			}
 		}
-		samples -= n;
-		dst = audio_stream_wrap(sink, dst + n);
-		src = audio_stream_wrap(source, src + n);
+		dst = cir_buf_wrap(dst + chunk_frames * nch,
+				   sink->buf_start, sink->buf_end);
+		src = source_cir_buf_wrap(src + chunk_frames * nch, source->buf_start,
+					  source->buf_end);
+		remaining_frames -= chunk_frames;
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S16LE
-void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bsource,
-		   struct output_stream_buffer *bsink, int frames)
+void eq_fir_2x_s16(struct fir_state_32x16 fir[], const struct cir_buf_source *source,
+		   struct cir_buf_sink *sink, size_t frames, unsigned int channels)
 {
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct fir_state_32x16 *f;
 	ae_int16x4 d0 = AE_ZERO16();
 	ae_int16x4 d1 = AE_ZERO16();
@@ -167,24 +201,45 @@ void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 	ae_int32 z1;
 	ae_int32 x0;
 	ae_int32 x1;
-	ae_int16 *src = audio_stream_get_rptr(source);
-	ae_int16 *dst = audio_stream_get_wptr(sink);
-	ae_int16 *x;
+	const ae_int16 *src = source->ptr;
+	ae_int16 *dst = (ae_int16 *)sink->ptr;
+	const ae_int16 *x;
 	ae_int16 *y;
-	int ch;
-	int i, n, nmax;
+	size_t i;
+	size_t inc_nch_s = channels * sizeof(int16_t);
+	size_t remaining_frames = frames;
+	unsigned int ch;
+	unsigned int nch = channels;
 	int rshift;
 	int lshift;
 	int shift;
-	int nch = audio_stream_get_channels(source);
-	int inc_nch_s = nch * sizeof(int16_t);
-	int samples = nch * frames;
 
-	while (samples) {
-		nmax = audio_stream_samples_without_wrap_s16(sink, dst);
-		n = MIN(nmax, samples);
-		nmax = audio_stream_samples_without_wrap_s16(source, src);
-		n = MIN(n, nmax);
+	while (remaining_frames) {
+		size_t source_frames = cir_buf_samples_without_wrap_s16(src, source->buf_end) / nch;
+		size_t sink_frames = cir_buf_samples_without_wrap_s16(dst, sink->buf_end) / nch;
+		size_t chunk_frames = MIN(remaining_frames, MIN(source_frames, sink_frames));
+
+		chunk_frames &= ~0x1;
+		if (!chunk_frames) {
+			for (ch = 0; ch < nch; ch++) {
+				ae_int32 input = ((const int16_t *)src)[ch] << 16;
+				ae_int32 output;
+				int32_t output_sample;
+
+				f = &fir[ch];
+				fir_get_lrshifts(f, &lshift, &rshift);
+				shift = lshift - rshift;
+				fir_core_setup_circular(f);
+				fir_32x16(f, input, &output, shift);
+				output_sample = AE_MOVAD32_L(output);
+				dst[ch] = sat_int16(Q_SHIFT_RND(output_sample, 31, 15));
+			}
+			src = source_cir_buf_wrap(src + nch, source->buf_start, source->buf_end);
+			dst = cir_buf_wrap(dst + nch, sink->buf_start, sink->buf_end);
+			remaining_frames--;
+			continue;
+		}
+
 		for (ch = 0; ch < nch; ch++) {
 			/* Get FIR instance and get shifts.*/
 			f = &fir[ch];
@@ -196,7 +251,7 @@ void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 			x = src + ch;
 			y = dst + ch;
 
-			for (i = 0; i < (n >> 1); i += nch) {
+			for (i = 0; i < (chunk_frames >> 1); i++) {
 				/* Load two input samples via input pointer x */
 				AE_L16_XP(d0, x, inc_nch_s);
 				AE_L16_XP(d1, x, inc_nch_s);
@@ -216,9 +271,11 @@ void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 				AE_S16_0_XC(d1, y, inc_nch_s);
 			}
 		}
-		samples -= n;
-		dst = audio_stream_wrap(sink, dst + n);
-		src = audio_stream_wrap(source, src + n);
+		dst = cir_buf_wrap(dst + chunk_frames * nch,
+				   sink->buf_start, sink->buf_end);
+		src = source_cir_buf_wrap(src + chunk_frames * nch, source->buf_start,
+					  source->buf_end);
+		remaining_frames -= chunk_frames;
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
