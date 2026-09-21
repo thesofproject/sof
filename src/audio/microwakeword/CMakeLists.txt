@@ -218,6 +218,16 @@ target_compile_options(mww_tflm_lib PRIVATE
 	-fdata-sections
 )
 
+# tflite-micro trees differ here: upstream (the commit pinned by
+# scripts/tensorflow-clone.sh) declares IBufferAllocator's methods pure virtual in
+# the header only, while trees carrying the Xtensa ICF vtable-folding fix move them
+# out of line into ibuffer_allocator.cc. Compile the file when it is present so both
+# layouts link.
+if(EXISTS "${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/ibuffer_allocator.cc")
+	target_sources(mww_tflm_lib PRIVATE
+		${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/ibuffer_allocator.cc)
+endif()
+
 add_local_sources(sof mww.c)
 
 zephyr_link_libraries(mww_tflm_lib)
