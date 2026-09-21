@@ -205,6 +205,26 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 		return -ENODEV;
 	}
 
+#if CONFIG_AMD_ACP_HOST_DMA_PROBE
+	{
+		struct acp_dma_dev_data *dev_data = dma->dc.dmac->z_dev->data;
+		struct acp_host_probe_data *probe_data;
+
+		/* Match kernel acp_dsp_stream indexing: phy_off[stream_tag - 1]. */
+		channel = dma->stream_tag - 1;
+		if (!dev_data->probe_ctx) {
+			probe_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					     sizeof(*probe_data));
+			if (!probe_data)
+				return -ENOMEM;
+			dev_data->probe_ctx = probe_data;
+		} else {
+			probe_data = dev_data->probe_ctx;
+		}
+		probe_data->channel = channel;
+	}
+#endif
+
 	/* get required address alignment for dma buffer */
 	err = dma_get_attribute(dma->dc.dmac->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
 				&addr_align);
@@ -266,6 +286,16 @@ static int probe_dma_deinit(struct probe_dma_ext *dma)
 		return err;
 	}
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
+#if CONFIG_AMD_ACP_HOST_DMA_PROBE
+	{
+		struct acp_dma_dev_data *dev_data = dma->dc.dmac->z_dev->data;
+
+		if (dev_data->probe_ctx) {
+			rfree(dev_data->probe_ctx);
+			dev_data->probe_ctx = NULL;
+		}
+	}
+#endif
 	dma_release_channel(dma->dc.dmac->z_dev, dma->dc.chan->index);
 	sof_dma_put(dma->dc.dmac);
 #else
@@ -1192,6 +1222,8 @@ int probe_point_add(uint32_t count, const struct probe_point *probe)
 			dev = ipc_get_comp_by_id(ipc_get(),
 						 IPC4_COMP_ID(buf_id->fields.module_id,
 							      buf_id->fields.instance_id));
+#elif CONFIG_AMD_ACP_HOST_DMA_PROBE
+			dev = ipc_get_buffer_by_id(ipc_get(), buf_id->full_id);
 #else
 			dev = ipc_get_comp_by_id(ipc_get(), buf_id->full_id);
 #endif
@@ -1447,7 +1479,11 @@ int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
 					}
 				}
 #else
+#if CONFIG_AMD_ACP_HOST_DMA_PROBE
+				dev = ipc_get_buffer_by_id(ipc_get(), buffer_id[i]);
+#else
 				dev = ipc_get_comp_by_id(ipc_get(), buffer_id[i]);
+#endif
 				if (dev) {
 					struct comp_buffer *probe_buf =
 						(struct comp_buffer *)dev->cb;
