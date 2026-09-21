@@ -59,6 +59,14 @@ if(NOT EXISTS "${MWW_TOOLCHAIN_LIBC_ARCHIVE}")
 	endif()
 endif()
 
+if(NOT EXISTS "${MWW_TOOLCHAIN_LIBC_ARCHIVE}" AND NOT "$ENV{XTENSA_SYSTEM}" STREQUAL "")
+       get_filename_component(MWW_XTENSA_CORE_DIR "$ENV{XTENSA_SYSTEM}/.." REALPATH)
+       set(MWW_XTENSA_LIBC_ARCHIVE "${MWW_XTENSA_CORE_DIR}/xtensa-elf/lib/libc.a")
+       if(EXISTS "${MWW_XTENSA_LIBC_ARCHIVE}")
+               set(MWW_TOOLCHAIN_LIBC_ARCHIVE "${MWW_XTENSA_LIBC_ARCHIVE}")
+       endif()
+endif()
+
 set(MWW_TOOLCHAIN_INCLUDE_ROOT "")
 if(EXISTS "${MWW_TOOLCHAIN_LIBC_ARCHIVE}")
 	get_filename_component(MWW_TOOLCHAIN_LIB_DIR "${MWW_TOOLCHAIN_LIBC_ARCHIVE}" DIRECTORY)
@@ -138,7 +146,6 @@ add_library(mww_tflm_lib STATIC
 	${TFLM_PATH}/tensorflow/lite/micro/micro_resource_variable.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter_context.cc
 	${TFLM_PATH}/tensorflow/lite/micro/fake_micro_context.cc
-	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/ibuffer_allocator.cc
 	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/persistent_arena_buffer_allocator.cc
 	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/recording_single_arena_buffer_allocator.cc
 	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/non_persistent_arena_buffer_allocator.cc
@@ -223,35 +230,83 @@ if(NOT CONFIG_COMP_MWW STREQUAL "m")
   if(NOT EXISTS "${MWW_TOOLCHAIN_LIBC_ARCHIVE}")
     message(FATAL_ERROR "Microwakeword libc shim: libc.a not found for ${SOC_TOOLCHAIN_NAME}")
   endif()
-  set(MWW_LIBC_SHIM_MEMBERS
-    libc_stdlib_abs.c.o
-    libm_math_s_floor.c.o
-    libm_math_sf_exp.c.o
-    libm_math_sf_log.c.o
-    libm_math_sf_ceil.c.o
-    libm_math_s_frexp.c.o
-    libm_common_s_round.c.o
-    libm_common_sf_fmax.c.o
-    libm_common_sf_fmin.c.o
-    libm_common_sf_round.c.o
-    libm_common_sf_isnan.c.o
-    libm_common_sf_issignaling.c.o
-    libm_common_math_errf_uflowf.c.o
-    libm_common_math_errf_oflowf.c.o
-    libm_common_math_errf_divzerof.c.o
-    libm_common_math_errf_invalidf.c.o
-  )
+	execute_process(
+		COMMAND ${CMAKE_AR} t ${MWW_TOOLCHAIN_LIBC_ARCHIVE}
+		OUTPUT_VARIABLE MWW_LIBC_ARCHIVE_MEMBERS
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	set(MWW_TOOLCHAIN_LIBM_ARCHIVE "")
+	set(MWW_LIBM_SHIM_MEMBERS "")
+	if(MWW_LIBC_ARCHIVE_MEMBERS MATCHES "(^|\n)lib_a-abs\\.o(\n|$)")
+		set(MWW_LIBC_SHIM_MEMBERS
+			lib_a-abs.o
+			lib_a-errno.o
+			lib_a-impure.o
+			lib_a-s_nan.o
+			lib_a-sf_finite.o
+			lib_a-sf_fpclassify.o
+		)
+		set(MWW_TOOLCHAIN_LIBM_ARCHIVE "${MWW_TOOLCHAIN_LIB_DIR}/libm.a")
+		set(MWW_LIBM_SHIM_MEMBERS
+			lib_a-ef_exp.o
+			lib_a-ef_log.o
+			lib_a-s_ceil.o
+			lib_a-s_floor.o
+			lib_a-s_frexp.o
+			lib_a-s_lib_ver.o
+			lib_a-s_matherr.o
+			lib_a-s_round.o
+			lib_a-s_signbit.o
+			lib_a-sf_fmax.o
+			lib_a-sf_fmin.o
+			lib_a-sf_isnan.o
+			lib_a-sf_round.o
+			lib_a-wf_exp.o
+			lib_a-wf_log.o
+		)
+	else()
+		set(MWW_LIBC_SHIM_MEMBERS
+			libc_stdlib_abs.c.o
+			libm_math_s_floor.c.o
+			libm_math_sf_exp.c.o
+			libm_math_sf_log.c.o
+			libm_math_sf_ceil.c.o
+			libm_math_s_frexp.c.o
+			libm_common_s_round.c.o
+			libm_common_sf_fmax.c.o
+			libm_common_sf_fmin.c.o
+			libm_common_sf_round.c.o
+			libm_common_sf_isnan.c.o
+			libm_common_sf_issignaling.c.o
+			libm_common_math_errf_uflowf.c.o
+			libm_common_math_errf_oflowf.c.o
+			libm_common_math_errf_divzerof.c.o
+			libm_common_math_errf_invalidf.c.o
+		)
+	endif()
   set(MWW_LIBC_SHIM_DIR ${CMAKE_CURRENT_BINARY_DIR}/mww_libc_shim)
   set(MWW_LIBC_SHIM_ARCHIVE ${CMAKE_CURRENT_BINARY_DIR}/libmww_libc_shim.a)
   file(MAKE_DIRECTORY ${MWW_LIBC_SHIM_DIR})
-  add_custom_command(
-    OUTPUT ${MWW_LIBC_SHIM_ARCHIVE}
-    COMMAND ${CMAKE_AR} x ${MWW_TOOLCHAIN_LIBC_ARCHIVE} ${MWW_LIBC_SHIM_MEMBERS}
-    COMMAND ${CMAKE_AR} rcs ${MWW_LIBC_SHIM_ARCHIVE} ${MWW_LIBC_SHIM_MEMBERS}
-    WORKING_DIRECTORY ${MWW_LIBC_SHIM_DIR}
-    DEPENDS ${MWW_TOOLCHAIN_LIBC_ARCHIVE}
-    COMMENT "Extracting abs()/libm members TFLM needs from the toolchain libc.a"
-  )
+	if(MWW_LIBM_SHIM_MEMBERS)
+		add_custom_command(
+			OUTPUT ${MWW_LIBC_SHIM_ARCHIVE}
+			COMMAND ${CMAKE_AR} x ${MWW_TOOLCHAIN_LIBC_ARCHIVE} ${MWW_LIBC_SHIM_MEMBERS}
+			COMMAND ${CMAKE_AR} x ${MWW_TOOLCHAIN_LIBM_ARCHIVE} ${MWW_LIBM_SHIM_MEMBERS}
+			COMMAND ${CMAKE_AR} rcs ${MWW_LIBC_SHIM_ARCHIVE} ${MWW_LIBC_SHIM_MEMBERS} ${MWW_LIBM_SHIM_MEMBERS}
+			WORKING_DIRECTORY ${MWW_LIBC_SHIM_DIR}
+			DEPENDS ${MWW_TOOLCHAIN_LIBC_ARCHIVE} ${MWW_TOOLCHAIN_LIBM_ARCHIVE}
+			COMMENT "Extracting abs()/libm members TFLM needs from the toolchain archives"
+		)
+	else()
+		add_custom_command(
+			OUTPUT ${MWW_LIBC_SHIM_ARCHIVE}
+			COMMAND ${CMAKE_AR} x ${MWW_TOOLCHAIN_LIBC_ARCHIVE} ${MWW_LIBC_SHIM_MEMBERS}
+			COMMAND ${CMAKE_AR} rcs ${MWW_LIBC_SHIM_ARCHIVE} ${MWW_LIBC_SHIM_MEMBERS}
+			WORKING_DIRECTORY ${MWW_LIBC_SHIM_DIR}
+			DEPENDS ${MWW_TOOLCHAIN_LIBC_ARCHIVE}
+			COMMENT "Extracting abs()/libm members TFLM needs from the toolchain libc.a"
+		)
+	endif()
   add_custom_target(mww_libc_shim_gen DEPENDS ${MWW_LIBC_SHIM_ARCHIVE})
   add_library(mww_libc_shim STATIC IMPORTED GLOBAL)
   set_target_properties(mww_libc_shim PROPERTIES IMPORTED_LOCATION ${MWW_LIBC_SHIM_ARCHIVE})
