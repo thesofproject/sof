@@ -18,6 +18,7 @@ extern const struct sof_uuid level_multiplier_uuid;
 extern const struct sof_uuid selector_uuid;
 extern const struct sof_uuid mixer_uuid;
 extern const struct sof_uuid usb_audio_uuid;
+extern const struct sof_uuid bt_audio_uuid;
 
 /* Default 2-channel 4-band Parametric IIR EQ Coefficients */
 static const uint32_t nrf54l_default_iir_coef_2ch[51] = {
@@ -54,9 +55,9 @@ static const uint32_t nrf54l_default_drc_coef[35] = {
  * ------------------------------------------------------------------------- */
 static const struct sof_static_comp nrf54l15_comps[] = {
 	/* --- Audio Processing Pipeline (Pipeline 1) --- */
-	SOF_STATIC_COMP_MODULE(
-		.id = 1, .pipeline_id = 1, .name = "TONE_PB",
-		.uuid = &tone_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
+	SOF_STATIC_COMP_HOST(
+		.id = 1, .pipeline_id = 1, .name = "BT_RX",
+		.uuid = &bt_audio_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
 		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
 	),
 	SOF_STATIC_COMP_MODULE(

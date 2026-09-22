@@ -40,6 +40,8 @@ USBD_DESC_PRODUCT_DEFINE(teensya_product, "SOF Teensy 4.1 Audio A");
 #else
 USBD_DESC_PRODUCT_DEFINE(default_product, "SOF Teensy 4.1 Audio");
 #endif
+#elif defined(CONFIG_PLATFORM_NORDIC)
+USBD_DESC_PRODUCT_DEFINE(default_product, "Nordic nRF54LM20 SOF UAC2");
 #else
 USBD_DESC_PRODUCT_DEFINE(spider_product, "SOF ESP32P4 USB Spider");
 USBD_DESC_PRODUCT_DEFINE(aphid_product, "SOF ESP32P4 USB Aphid");
@@ -296,6 +298,9 @@ struct usbd_context *sample_usbd_setup_device(usbd_msg_cb_t msg_cb)
 	product_desc = &default_product;
 	LOG_INF("Board Identity: Generic Teensy 4.1 Audio");
 #endif
+#elif defined(CONFIG_PLATFORM_NORDIC)
+	struct usbd_desc_node *product_desc = &default_product;
+	LOG_INF("Board Identity: Nordic nRF54LM20 SOF UAC2 Audio");
 #elif defined(CONFIG_PLATFORM_ESP32P4)
 	uint8_t mac[6] = {0};
 	extern int esp_efuse_mac_get_default(uint8_t *mac);

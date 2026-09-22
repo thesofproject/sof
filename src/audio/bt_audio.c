@@ -69,11 +69,17 @@ bool bt_audio_is_capture_active(void)
 
 void bt_audio_feed_playback_data(const void *src, size_t bytes)
 {
-	if (!g_bt_playback_data || !g_bt_playback_data->active) {
+	struct bt_audio_data *bad = g_bt_playback_data;
+	if (!bad || !bad->active) {
+		if (g_bt_capture_data && g_bt_capture_data->active) {
+			bad = g_bt_capture_data;
+		}
+	}
+	if (!bad || !bad->active) {
 		return;
 	}
 
-	struct bt_audio_ring_buffer *ring = &g_bt_playback_data->ring;
+	struct bt_audio_ring_buffer *ring = &bad->ring;
 	k_spinlock_key_t key = k_spin_lock(&ring->lock);
 
 	uint32_t avail = BT_AUDIO_RING_BUFFER_SIZE - ring->count;
@@ -93,22 +99,28 @@ void bt_audio_feed_playback_data(const void *src, size_t bytes)
 
 size_t bt_audio_fetch_capture_data(void *dst, size_t bytes)
 {
-	if (!g_bt_capture_data || !g_bt_capture_data->active) {
+	struct bt_audio_data *bad = g_bt_capture_data;
+	if (!bad || !bad->active || bad->ring.count == 0) {
+		if (g_bt_playback_data && g_bt_playback_data->active && g_bt_playback_data->ring.count > 0) {
+			bad = g_bt_playback_data;
+		}
+	}
+	if (!bad || !bad->active) {
 		memset(dst, 0, bytes);
 		return bytes;
 	}
 
-	struct bt_audio_ring_buffer *ring = &g_bt_capture_data->ring;
+	struct bt_audio_ring_buffer *ring = &bad->ring;
 	k_spinlock_key_t key = k_spin_lock(&ring->lock);
 
 	/* Prebuffer at stream start to provide a stable jitter margin */
-	if (!g_bt_capture_data->started) {
+	if (!bad->started) {
 		if (ring->count < BT_AUDIO_PREBUFFER_BYTES) {
 			k_spin_unlock(&ring->lock, key);
 			memset(dst, 0, bytes);
 			return bytes;
 		}
-		g_bt_capture_data->started = true;
+		bad->started = true;
 	}
 
 	uint32_t to_read = (bytes > ring->count) ? ring->count : bytes;
@@ -404,6 +416,10 @@ static int bt_audio_copy(struct comp_dev *dev)
 #if defined(__riscv) && defined(__riscv_flen)
 						int32_t r;
 						__asm__ ("fcvt.w.s %0, %1, rne" : "=r"(r) : "f"(val));
+						s16_buf[i] = (int16_t)r;
+#elif defined(__ARM_ARCH) && defined(__VFP_FP__) && !defined(__SOFTFP__)
+						int32_t r;
+						__asm__ ("vcvt.s32.f32 %0, %1" : "=t"(r) : "t"(val));
 						s16_buf[i] = (int16_t)r;
 #else
 						s16_buf[i] = (int16_t)(val >= 0.0f ? (val + 0.5f) : (val - 0.5f));
