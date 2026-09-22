@@ -28,11 +28,11 @@
 #if !defined(CONFIG_DCACHE_LINE_SIZE_DETECT) && (CONFIG_DCACHE_LINE_SIZE > 0)
 #define DCACHE_LINE_SIZE CONFIG_DCACHE_LINE_SIZE
 #else
-#if defined(CONFIG_LIBRARY) || defined(CONFIG_ZEPHYR_POSIX)
-#define DCACHE_LINE_SIZE 64
+#if defined(CONFIG_LIBRARY) || defined(CONFIG_ZEPHYR_POSIX) || defined(CONFIG_PLATFORM_NORDIC)
+#define DCACHE_LINE_SIZE 32
 #else
 #error "Invalid cache configuration."
-#endif /* defined(CONFIG_LIBRARY) || defined(CONFIG_ZEPHYR_POSIX) */
+#endif /* defined(CONFIG_LIBRARY) || defined(CONFIG_ZEPHYR_POSIX) || defined(CONFIG_PLATFORM_NORDIC) */
 #endif /* !defined(CONFIG_DCACHE_LINE_SIZE_DETECT) && (CONFIG_DCACHE_LINE_SIZE > 0) */
 
 static inline void dcache_writeback_region(void __sparse_cache *addr, size_t size)

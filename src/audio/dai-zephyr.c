@@ -1386,7 +1386,7 @@ static int dai_prepare(struct comp_dev *dev)
 
 void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 {
-#if !defined(CONFIG_PLATFORM_TEENSY41) && !defined(CONFIG_PLATFORM_ESP32P4)
+#if !defined(CONFIG_PLATFORM_TEENSY41) && !defined(CONFIG_PLATFORM_ESP32P4) && !defined(CONFIG_PLATFORM_NORDIC)
 	struct dma_sg_config *config = &dd->config;
 	/*
 	 * DMA channel release should be skipped now for DAI's that support the two-step stop
@@ -1486,7 +1486,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		if (!(dd->dai->dma_caps & SOF_DMA_CAP_HDA))
 			audio_stream_reset(&dd->dma_buffer->stream);
 
-#if defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_ESP32P4)
+#if defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_NORDIC)
 		dd->xrun = 0;
 #endif
 		/* only start the DAI if we are not XRUN handling */
@@ -1566,7 +1566,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 	case COMP_TRIGGER_PRE_START:
 	case COMP_TRIGGER_PRE_RELEASE:
 		/* only start the DAI if we are not XRUN handling */
-#if defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_ESP32P4)
+#if defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_NORDIC)
 		dd->xrun = 0;
 #endif
 		if (dd->xrun)
@@ -1576,11 +1576,11 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		break;
 	}
 
-#if defined(CONFIG_IPC_MAJOR_3) || defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_ESP32P4)
-	/* On static topology platforms (Teensy 4.1, ESP32-P4), DAI state must transition cleanly */
+#if defined(CONFIG_IPC_MAJOR_3) || defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_NORDIC)
+	/* On static topology platforms (Teensy 4.1, ESP32-P4, Nordic), DAI state must transition cleanly */
 	if (!ret)
 		return comp_set_state(dev, cmd);
-#endif /* CONFIG_IPC_MAJOR_3 || CONFIG_PLATFORM_TEENSY41 || CONFIG_PLATFORM_ESP32P4 */
+#endif /* CONFIG_IPC_MAJOR_3 || CONFIG_PLATFORM_TEENSY41 || CONFIG_PLATFORM_ESP32P4 || CONFIG_PLATFORM_NORDIC */
 
 	return ret;
 }

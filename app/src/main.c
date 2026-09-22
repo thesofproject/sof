@@ -8,11 +8,13 @@
 #include <sof/boot_test.h>
 #include <zephyr/logging/log.h>
 
-#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_TEENSY41)
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_NORDIC)
+#if defined(CONFIG_USB_DEVICE_STACK_NEXT)
 #include <zephyr/usb/usbd.h>
 #include <zephyr/usb/class/usbd_uac2.h>
-#include <zephyr/device.h>
 #include <sample_usbd.h>
+#endif
+#include <zephyr/device.h>
 #include <rtos/sof.h>
 #include <sof/init.h>
 #include <sof/audio/pipeline/sof_static_pipeline.h>
@@ -56,10 +58,11 @@ static int sof_app_main(void)
 
 	LOG_INF("SOF initialized");
 
-#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_TEENSY41)
-	/* Initialize static audio pipelines (EQ+DRC Playback & EQ Capture) */
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_NORDIC)
+	/* Initialize static audio pipelines (EQ+DRC Playback & EQ Capture / Synth) */
 	sof_static_pipelines_init(sof_get());
 
+#if defined(CONFIG_USB_DEVICE_STACK_NEXT)
 	/* Register UAC2 class callbacks before initializing USB stack */
 	const struct device *uac2_dev = DEVICE_DT_GET_ONE(zephyr_uac2);
 	if (device_is_ready(uac2_dev)) {
@@ -76,6 +79,9 @@ static int sof_app_main(void)
 	} else {
 		LOG_ERR("Failed to initialize USB device context");
 	}
+#else
+	LOG_INF("SOF static audio pipelines started (standalone)");
+#endif
 
 #if defined(CONFIG_COMP_BT_AUDIO)
 	/* Initialize Bluetooth Audio Service and power on ESP32-C6 coprocessor */

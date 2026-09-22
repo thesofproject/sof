@@ -18,3 +18,9 @@ add_local_sources_ifdef(CONFIG_PLATFORM_TEENSY41 sof
   static_pipeline_loader.c
 )
 
+add_local_sources_ifdef(CONFIG_PLATFORM_NORDIC sof
+  sof_static_pipeline.c
+  static_pipeline_loader.c
+)
+
+

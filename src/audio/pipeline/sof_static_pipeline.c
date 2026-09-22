@@ -30,6 +30,7 @@
 
 LOG_MODULE_REGISTER(sof_static_pipeline, CONFIG_SOF_LOG_LEVEL);
 
+#if defined(CONFIG_USBD_AUDIO2_CLASS)
 #define PLAYBACK_FU_ID       UAC2_ENTITY_ID(DT_NODELABEL(i2s_fu))
 #define PLAYBACK_EQ_FU_ID    UAC2_ENTITY_ID(DT_NODELABEL(pb_eq_fu))
 #define PLAYBACK_DRC_FU_ID   UAC2_ENTITY_ID(DT_NODELABEL(pb_drc_fu))
@@ -42,6 +43,16 @@ LOG_MODULE_REGISTER(sof_static_pipeline, CONFIG_SOF_LOG_LEVEL);
 #define CAPTURE_FU_ID        UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_fu))
 #define PLAYBACK_TERM_ID     UAC2_ENTITY_ID(DT_NODELABEL(i2s_out_terminal))
 #define CAPTURE_TERM_ID      UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_terminal))
+#else
+#define PLAYBACK_FU_ID       1
+#define PLAYBACK_EQ_FU_ID    2
+#define PLAYBACK_DRC_FU_ID   3
+#define CAPTURE_TDFB_FU_ID   0xFF
+#define CAPTURE_EQ_FU_ID     4
+#define CAPTURE_FU_ID        5
+#define PLAYBACK_TERM_ID     6
+#define CAPTURE_TERM_ID      7
+#endif
 
 #if defined(CONFIG_NOCACHE_MEMORY)
 K_MEM_SLAB_DEFINE_IN_SECT_STATIC(uac2_rx_slab, __nocache, 256, 32, 64);
@@ -416,6 +427,10 @@ const struct uac2_ops *sof_get_uac2_ops(void)
 
 #if defined(CONFIG_PLATFORM_TEENSY41)
 extern const struct sof_static_topology g_teensy41_static_topology;
+#elif defined(CONFIG_PLATFORM_NRF54L15)
+extern const struct sof_static_topology g_nrf54l15_static_topology;
+#elif defined(CONFIG_PLATFORM_NRF54LM20)
+extern const struct sof_static_topology g_nrf54lm20_static_topology;
 #else
 extern const struct sof_static_topology g_esp32p4_static_topology;
 #endif
@@ -433,6 +448,22 @@ int sof_static_pipelines_init(struct sof *sof)
 #else
 	g_status.clock_mode = SOF_CLOCK_MASTER;
 #endif
+	return 0;
+#elif defined(CONFIG_PLATFORM_NRF54L15)
+	int ret = sof_static_topology_init(&g_nrf54l15_static_topology);
+	if (ret < 0)
+		return ret;
+
+	g_status.clock_mode = SOF_CLOCK_MASTER;
+	sof_static_pipeline_trigger(1, true);
+	return 0;
+#elif defined(CONFIG_PLATFORM_NRF54LM20)
+	int ret = sof_static_topology_init(&g_nrf54lm20_static_topology);
+	if (ret < 0)
+		return ret;
+
+	g_status.clock_mode = SOF_CLOCK_MASTER;
+	sof_static_pipeline_trigger(1, true);
 	return 0;
 #else
 	int ret = sof_static_topology_init(&g_esp32p4_static_topology);
@@ -668,34 +699,46 @@ int sof_static_pipeline_set_mute(uint32_t pipeline_id, bool mute)
 
 int sof_static_pipeline_get_volume(uint32_t pipeline_id, int16_t *volume)
 {
+#if defined(CONFIG_USBD_AUDIO2_CLASS)
 	if (pipeline_id == 1) {
 		return sof_uac2_get_feature_volume(NULL, PLAYBACK_FU_ID, 0, volume, NULL);
 	} else if (pipeline_id == 2) {
 		return sof_uac2_get_feature_volume(NULL, CAPTURE_FU_ID, 0, volume, NULL);
 	}
+#endif
 	return -EINVAL;
 }
 
 int sof_static_pipeline_get_mute(uint32_t pipeline_id, bool *mute)
 {
+#if defined(CONFIG_USBD_AUDIO2_CLASS)
 	if (pipeline_id == 1) {
 		return sof_uac2_get_feature_mute(NULL, PLAYBACK_FU_ID, 0, mute, NULL);
 	} else if (pipeline_id == 2) {
 		return sof_uac2_get_feature_mute(NULL, CAPTURE_FU_ID, 0, mute, NULL);
 	}
+#endif
 	return -EINVAL;
 }
 
 int sof_static_pipeline_set_playback_active(bool start)
 {
 	g_status.playback_active = start;
+#if defined(CONFIG_USBD_AUDIO2_CLASS)
 	return sof_static_pipeline_trigger_by_uac2_term(PLAYBACK_TERM_ID, start);
+#else
+	return sof_static_pipeline_trigger(1, start);
+#endif
 }
 
 int sof_static_pipeline_set_capture_active(bool start)
 {
 	g_status.capture_active = start;
+#if defined(CONFIG_USBD_AUDIO2_CLASS)
 	return sof_static_pipeline_trigger_by_uac2_term(CAPTURE_TERM_ID, start);
+#else
+	return sof_static_pipeline_trigger(2, start);
+#endif
 }
 
 int sof_static_pipeline_set_bt_stream(bool enable)
