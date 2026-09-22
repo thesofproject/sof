@@ -63,6 +63,12 @@ config COMP_BT_AUDIO
 	help
 	  Enable Bluetooth Audio streaming component for SOF.
 
+config COMP_I2S_AUDIO
+	bool "I2S Hardware Audio streaming component"
+	default y if PLATFORM_NORDIC
+	help
+	  Enable physical I2S/TDM Hardware Audio streaming component for SOF.
+
 config COMP_CHAIN_DMA
 	  bool "Chain DMA component"
 	  depends on IPC_MAJOR_4

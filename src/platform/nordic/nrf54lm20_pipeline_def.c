@@ -19,6 +19,7 @@ extern const struct sof_uuid selector_uuid;
 extern const struct sof_uuid mixer_uuid;
 extern const struct sof_uuid usb_audio_uuid;
 extern const struct sof_uuid bt_audio_uuid;
+extern const struct sof_uuid i2s_audio_uuid;
 
 /* Default 2-channel 4-band Parametric IIR EQ Coefficients */
 static const uint32_t nrf54lm20_default_iir_coef_2ch[51] = {
@@ -81,35 +82,25 @@ static const struct sof_static_comp nrf54lm20_comps[] = {
 		.init_blob_size = sizeof(nrf54lm20_default_drc_coef)
 	),
 	SOF_STATIC_COMP_HOST(
-		.id = 5, .pipeline_id = 1, .name = "BT_PB",
-		.uuid = &bt_audio_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
+		.id = 5, .pipeline_id = 1, .name = "I2S_TX",
+		.uuid = &i2s_audio_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
 		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
 	),
 
-	/* --- Synth & Routing Test Pipeline (Pipeline 2) --- */
-	SOF_STATIC_COMP_MODULE(
-		.id = 6, .pipeline_id = 2, .name = "TONE_SYNTH",
-		.uuid = &tone_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
+	/* --- Physical Loopback Capture Pipeline (Pipeline 2) --- */
+	SOF_STATIC_COMP_HOST(
+		.id = 6, .pipeline_id = 2, .name = "I2S_RX",
+		.uuid = &i2s_audio_uuid, .direction = SOF_IPC_STREAM_CAPTURE,
 		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
 	),
 	SOF_STATIC_COMP_MODULE(
-		.id = 7, .pipeline_id = 2, .name = "LEVEL_SYNTH",
-		.uuid = &level_multiplier_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
-		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
-	),
-	SOF_STATIC_COMP_MODULE(
-		.id = 8, .pipeline_id = 2, .name = "SEL_SYNTH",
-		.uuid = &selector_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
-		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
-	),
-	SOF_STATIC_COMP_MODULE(
-		.id = 9, .pipeline_id = 2, .name = "MIXER_SYNTH",
-		.uuid = &mixer_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
+		.id = 7, .pipeline_id = 2, .name = "LEVEL_RX",
+		.uuid = &level_multiplier_uuid, .direction = SOF_IPC_STREAM_CAPTURE,
 		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
 	),
 	SOF_STATIC_COMP_HOST(
-		.id = 10, .pipeline_id = 2, .name = "SINK_SYNTH",
-		.uuid = &usb_audio_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
+		.id = 8, .pipeline_id = 2, .name = "USB_CAP",
+		.uuid = &usb_audio_uuid, .direction = SOF_IPC_STREAM_CAPTURE,
 		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2),
 		.ep.usb.terminal_id = 2
 	),
@@ -128,25 +119,21 @@ static const struct sof_static_buffer nrf54lm20_buffers[] = {
 	/* Pipeline 2 Buffers */
 	SOF_STATIC_BUFFER(.id = 5, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
 	SOF_STATIC_BUFFER(.id = 6, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
-	SOF_STATIC_BUFFER(.id = 7, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
-	SOF_STATIC_BUFFER(.id = 8, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
 };
 
 /* -------------------------------------------------------------------------
  * 3. Static Audio Routes
  * ------------------------------------------------------------------------- */
 static const struct sof_static_route nrf54lm20_routes[] = {
-	/* Pipeline 1: Tone (1) -> [1] -> Vol (2) -> [2] -> EQ (3) -> [3] -> DRC (4) -> [4] -> Sink (5) */
+	/* Pipeline 1: USB_PB (1) -> [1] -> Vol (2) -> [2] -> EQ (3) -> [3] -> DRC (4) -> [4] -> I2S_TX (5) */
 	SOF_STATIC_ROUTE(.src_comp_id = 1, .buffer_id = 1, .sink_comp_id = 2),
 	SOF_STATIC_ROUTE(.src_comp_id = 2, .buffer_id = 2, .sink_comp_id = 3),
 	SOF_STATIC_ROUTE(.src_comp_id = 3, .buffer_id = 3, .sink_comp_id = 4),
 	SOF_STATIC_ROUTE(.src_comp_id = 4, .buffer_id = 4, .sink_comp_id = 5),
 
-	/* Pipeline 2: Tone (6) -> [5] -> Level (7) -> [6] -> Sel (8) -> [7] -> Mixer (9) -> [8] -> Sink (10) */
+	/* Pipeline 2: I2S_RX (6) -> [5] -> Level (7) -> [6] -> USB_CAP (8) */
 	SOF_STATIC_ROUTE(.src_comp_id = 6, .buffer_id = 5, .sink_comp_id = 7),
 	SOF_STATIC_ROUTE(.src_comp_id = 7, .buffer_id = 6, .sink_comp_id = 8),
-	SOF_STATIC_ROUTE(.src_comp_id = 8, .buffer_id = 7, .sink_comp_id = 9),
-	SOF_STATIC_ROUTE(.src_comp_id = 9, .buffer_id = 8, .sink_comp_id = 10),
 };
 
 /* -------------------------------------------------------------------------
@@ -173,7 +160,7 @@ static const struct sof_static_kcontrol nrf54lm20_controls[] = {
 	),
 	SOF_STATIC_KCONTROL_VOLUME(
 		.id = 3,
-		.name = "Synth Level Multiplier",
+		.name = "Loopback Level Multiplier",
 		.target_comp_id = 7,
 		.channels = 2,
 		.min = 0,
@@ -182,7 +169,7 @@ static const struct sof_static_kcontrol nrf54lm20_controls[] = {
 	),
 	SOF_STATIC_KCONTROL_SWITCH(
 		.id = 4,
-		.name = "Synth Switch",
+		.name = "Loopback Switch",
 		.target_comp_id = 7,
 		.channels = 2,
 		.min = 0,
@@ -197,7 +184,7 @@ static const struct sof_static_kcontrol nrf54lm20_controls[] = {
 static const struct sof_static_pipeline_desc nrf54lm20_pipelines[] = {
 	{
 		.pipeline_id = 1,
-		.name = "Nordic Audio Processing Pipeline",
+		.name = "Nordic I2S Transmit Pipeline",
 		.direction = SOF_IPC_STREAM_PLAYBACK,
 		.priority = 0,
 		.core = 0,
@@ -210,16 +197,16 @@ static const struct sof_static_pipeline_desc nrf54lm20_pipelines[] = {
 	},
 	{
 		.pipeline_id = 2,
-		.name = "Nordic Synth & Mix Pipeline",
-		.direction = SOF_IPC_STREAM_PLAYBACK,
+		.name = "Nordic I2S Loopback Capture Pipeline",
+		.direction = SOF_IPC_STREAM_CAPTURE,
 		.priority = 0,
 		.core = 0,
 		.period = 1000, /* 1ms */
 		.frames_per_sched = 48,
 		.time_domain = SOF_TIME_DOMAIN_TIMER,
-		.sched_comp_id = 6,
+		.sched_comp_id = 8,
 		.source_comp_id = 6,
-		.sink_comp_id = 10,
+		.sink_comp_id = 8,
 	},
 };
 

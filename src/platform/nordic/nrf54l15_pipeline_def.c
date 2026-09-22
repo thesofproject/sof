@@ -19,6 +19,7 @@ extern const struct sof_uuid selector_uuid;
 extern const struct sof_uuid mixer_uuid;
 extern const struct sof_uuid usb_audio_uuid;
 extern const struct sof_uuid bt_audio_uuid;
+extern const struct sof_uuid i2s_audio_uuid;
 
 /* Default 2-channel 4-band Parametric IIR EQ Coefficients */
 static const uint32_t nrf54l_default_iir_coef_2ch[51] = {
@@ -56,8 +57,8 @@ static const uint32_t nrf54l_default_drc_coef[35] = {
 static const struct sof_static_comp nrf54l15_comps[] = {
 	/* --- Audio Processing Pipeline (Pipeline 1) --- */
 	SOF_STATIC_COMP_HOST(
-		.id = 1, .pipeline_id = 1, .name = "BT_RX",
-		.uuid = &bt_audio_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
+		.id = 1, .pipeline_id = 1, .name = "I2S_RX",
+		.uuid = &i2s_audio_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
 		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
 	),
 	SOF_STATIC_COMP_MODULE(
@@ -80,10 +81,9 @@ static const struct sof_static_comp nrf54l15_comps[] = {
 		.init_blob_size = sizeof(nrf54l_default_drc_coef)
 	),
 	SOF_STATIC_COMP_HOST(
-		.id = 5, .pipeline_id = 1, .name = "SINK_PB",
-		.uuid = &usb_audio_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
-		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2),
-		.ep.usb.terminal_id = 1
+		.id = 5, .pipeline_id = 1, .name = "I2S_TX",
+		.uuid = &i2s_audio_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
+		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
 	),
 
 	/* --- Synth & Routing Test Pipeline (Pipeline 2) --- */
@@ -197,7 +197,7 @@ static const struct sof_static_kcontrol nrf54l15_controls[] = {
 static const struct sof_static_pipeline_desc nrf54l15_pipelines[] = {
 	{
 		.pipeline_id = 1,
-		.name = "Nordic Audio Processing Pipeline",
+		.name = "Nordic I2S Echo Pipeline",
 		.direction = SOF_IPC_STREAM_PLAYBACK,
 		.priority = 0,
 		.core = 0,

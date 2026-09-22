@@ -101,4 +101,36 @@
 			bit-resolution = <16>;
 		};
 	};
+
+	aliases {
+		i2s-node0 = &tdm;
+	};
+};
+
+&pinctrl {
+	tdm_default: tdm_default {
+		group1 {
+			psels = <NRF_PSEL(TDM_SCK_M, 1, 23)>,
+				<NRF_PSEL(TDM_FSYNC_M, 1, 24)>,
+				<NRF_PSEL(TDM_SDOUT, 1, 30)>,
+				<NRF_PSEL(TDM_SDIN, 1, 31)>;
+		};
+	};
+
+	tdm_sleep: tdm_sleep {
+		group1 {
+			psels = <NRF_PSEL(TDM_SCK_M, 1, 23)>,
+				<NRF_PSEL(TDM_FSYNC_M, 1, 24)>,
+				<NRF_PSEL(TDM_SDOUT, 1, 30)>,
+				<NRF_PSEL(TDM_SDIN, 1, 31)>;
+			low-power-enable;
+		};
+	};
+};
+
+&tdm {
+	status = "okay";
+	pinctrl-0 = <&tdm_default>;
+	pinctrl-1 = <&tdm_sleep>;
+	pinctrl-names = "default", "sleep";
 };

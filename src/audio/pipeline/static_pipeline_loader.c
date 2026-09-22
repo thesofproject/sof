@@ -857,7 +857,14 @@ int sof_static_pipeline_trigger(uint32_t pipeline_id, bool start)
 	if (!pipe)
 		return -ENOENT;
 
-	struct comp_dev *dev = pipe->sched_comp ? pipe->sched_comp : pipe->source_comp;
+	struct comp_dev *dev = pipe->sched_comp;
+	if (!dev || (pipe->source_comp && pipe->source_comp->direction == SOF_IPC_STREAM_CAPTURE && dev == pipe->source_comp)) {
+		if (pipe->source_comp && pipe->source_comp->direction == SOF_IPC_STREAM_CAPTURE) {
+			dev = pipe->sink_comp;
+		} else {
+			dev = pipe->source_comp;
+		}
+	}
 	if (!dev)
 		return -ENODEV;
 

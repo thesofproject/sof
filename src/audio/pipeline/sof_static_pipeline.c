@@ -454,7 +454,7 @@ int sof_static_pipelines_init(struct sof *sof)
 	if (ret < 0)
 		return ret;
 
-	g_status.clock_mode = SOF_CLOCK_MASTER;
+	g_status.clock_mode = SOF_CLOCK_SLAVE;
 	sof_static_pipeline_trigger(1, true);
 	return 0;
 #elif defined(CONFIG_PLATFORM_NRF54LM20)
@@ -464,6 +464,7 @@ int sof_static_pipelines_init(struct sof *sof)
 
 	g_status.clock_mode = SOF_CLOCK_MASTER;
 	sof_static_pipeline_trigger(1, true);
+	sof_static_pipeline_trigger(2, true);
 	return 0;
 #else
 	int ret = sof_static_topology_init(&g_esp32p4_static_topology);
