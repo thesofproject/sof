@@ -26,6 +26,7 @@
 #include <rtos/alloc.h>
 #include <rtos/clk.h>
 #include <rtos/init.h>
+#include <rtos/symbol.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -107,13 +108,19 @@ struct comp_data {
 	struct kpb_fmt_dev_list fmt_device_list;
 	struct fast_mode_task fmt;
 
-#if CONFIG_AMS
+#if CONFIG_AMS && !CONFIG_KPB_CLI_Q
 	uint32_t kpd_uuid_id;
 #endif
 };
 
 /*! KPB private functions */
-#ifndef CONFIG_AMS
+#if CONFIG_KPB_CLI_Q
+#include <zephyr/kernel.h>
+
+static struct k_queue *kpb_q;
+static struct k_thread kpb_thread;
+K_KERNEL_STACK_DEFINE(kpb_stack, 4096);
+#elif !CONFIG_AMS
 static void kpb_event_handler(void *arg, enum notify_id type, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 #endif
@@ -176,7 +183,7 @@ static uint64_t kpb_task_deadline(void *data)
 #endif
 }
 
-#if CONFIG_AMS
+#if CONFIG_AMS && !CONFIG_KPB_CLI_Q
 
 /* Key-phrase detected message*/
 static const ams_uuid_t ams_kpd_msg_uuid = AMS_KPD_MSG_UUID;
@@ -456,6 +463,42 @@ static void kpb_set_params(struct comp_dev *dev,
 
 static int kpb_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
 
+#if CONFIG_KPB_CLI_Q
+static void kpb_thread_fn(void *p1, void *p2, void *p3)
+{
+	struct k_queue *q = p1;
+
+	for (;;) {
+		struct kpb_client *cli = k_queue_get(q, K_FOREVER);
+
+		kpb_init_draining(cli->dev, cli);
+	}
+}
+
+void kpb_notifier_schedule(struct kpb_client *cli)
+{
+	k_queue_alloc_append(cli->queue, cli);
+}
+EXPORT_SYMBOL(kpb_notifier_schedule);
+
+void z_impl_kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli)
+{
+	comp_dbg(dev, "adding new client to %p", kpb_q);
+	k_thread_access_grant(k_current_get(), kpb_q);
+	cli->queue = kpb_q;
+	cli->dev = dev;
+}
+
+#include <zephyr/internal/syscall_handler.h>
+void z_vrfy_kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli)
+{
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(dev, sizeof(*dev)));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(cli, sizeof(*cli)));
+	z_impl_kpb_notifier_init(dev, cli);
+}
+#include <zephyr/syscalls/kpb_notifier_init_mrsh.c>
+#endif
+
 /*
  * \brief Create a key phrase buffer component.
  * \param[in] config - generic ipc component pointer.
@@ -484,7 +527,7 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 	struct comp_data *kpb;
 	int ret;
 
-	comp_cl_info(&comp_kpb, "kpb_new()");
+	comp_cl_info(&comp_kpb, "entry");
 
 	/* make sure data size is not bigger than config space */
 	if (ipc_config_size > kpb_config_size) {
@@ -546,6 +589,21 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 		comp_free_device(dev);
 		return NULL;
 	}
+#endif
+
+#if CONFIG_KPB_CLI_Q
+	kpb_q = k_object_alloc(K_OBJ_QUEUE);
+	if (!kpb_q) {
+		comp_free_device(dev);
+		return NULL;
+	}
+
+	k_queue_init(kpb_q);
+	k_thread_create(&kpb_thread, kpb_stack, 4096, kpb_thread_fn, kpb_q, NULL, NULL,
+			1, 0, K_FOREVER);
+
+	k_thread_cpu_pin(&kpb_thread, cpu_get_id());
+	k_thread_start(&kpb_thread);
 #endif
 
 	return dev;
@@ -693,7 +751,10 @@ static void kpb_free(struct comp_dev *dev)
 
 	comp_info(dev, "entry");
 
-#if CONFIG_AMS
+#if CONFIG_KPB_CLI_Q
+	k_thread_abort(&kpb_thread);
+	k_object_free(kpb_q);
+#elif CONFIG_AMS
 	/* Unregister KPB as AMS consumer */
 	int ret;
 
@@ -704,7 +765,7 @@ static void kpb_free(struct comp_dev *dev)
 #else
 	/* Unregister KPB from notifications */
 	notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
-#endif/* CONFIG_AMS */
+#endif/* CONFIG_KPB_CLI_Q */
 
 	/* Reclaim memory occupied by history buffer */
 	kpb_free_history_buffer(kpb->hd.c_hb);
@@ -780,7 +841,7 @@ static int kpb_params(struct comp_dev *dev,
 	kpb->host_period_size = params->host_period_bytes;
 	kpb->config.sampling_width = params->sample_container_bytes * 8;
 
-#if CONFIG_AMS
+#if !CONFIG_KPB_CLI_Q && CONFIG_AMS
 	kpb->kpd_uuid_id = AMS_INVALID_MSG_TYPE;
 #endif
 
@@ -869,16 +930,18 @@ static int kpb_prepare(struct comp_dev *dev)
 		kpb->clients[i].r_ptr = NULL;
 	}
 
+#if !CONFIG_KPB_CLI_Q
 #if CONFIG_AMS
 	/* AMS Register KPB for notification */
 	ret = ams_helper_register_consumer(dev, &kpb->kpd_uuid_id,
 					   ams_kpd_msg_uuid,
 					   kpb_ams_kpd_notification);
 #else
-	/* Register KPB for notification */
+	/* Register KPB for notification *on the current core* */
 	ret = notifier_register(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT,
 				kpb_event_handler, 0);
 #endif /* CONFIG_AMS */
+#endif
 
 	if (ret < 0) {
 		kpb_free_history_buffer(kpb->hd.c_hb);
@@ -1010,7 +1073,7 @@ static int kpb_reset(struct comp_dev *dev)
 			kpb_reset_history_buffer(kpb->hd.c_hb);
 		}
 
-#ifndef CONFIG_AMS
+#if !CONFIG_KPB_CLI_Q && !CONFIG_AMS
 		/* Unregister KPB from notifications */
 		notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
 #endif

@@ -107,7 +107,13 @@ config COMP_KPB
 	default y
 	help
 	  Select for KPB component
+
 if COMP_KPB
+
+config KPB_CLI_Q
+	bool "Use a client queue for KPB"
+	help
+	  Use a Zephyr queue instead of SOF notifiers
 
 config KPB_FORCE_COPY_TYPE_NORMAL
 	bool "KPB force copy type normal"
