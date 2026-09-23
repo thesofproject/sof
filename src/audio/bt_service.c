@@ -9,12 +9,16 @@
 #include <sof/audio/pipeline/sof_static_pipeline.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#if defined(CONFIG_PLATFORM_ESP32P4)
 #include <soc/gpio_reg.h>
 #include <soc/soc.h>
+#endif
 
 LOG_MODULE_REGISTER(bt_service, CONFIG_SOF_LOG_LEVEL);
 
+#if defined(CONFIG_PLATFORM_ESP32P4)
 #define ESP32P4_GPIO_C6_EN_BIT    (1U << 22) /* GPIO 54 = 32 + 22 */
+#endif
 
 static const struct bt_audio_format_desc s_formats[BT_AUDIO_FMT_COUNT] = {
 	[BT_AUDIO_FMT_48K_STD] = {
@@ -130,9 +134,10 @@ static K_THREAD_STACK_DEFINE(s_bt_stack, 2048);
 static struct k_thread s_bt_thread;
 static volatile bool s_thread_running = true;
 
-/* Hardware control for ESP32-C6 co-processor via GPIO 54 */
+/* Hardware control for Bluetooth controller / coprocessor */
 void bt_service_power_c6(bool enable)
 {
+#if defined(CONFIG_PLATFORM_ESP32P4)
 	/* Ensure GPIO 54 is enabled as output */
 	sys_write32(ESP32P4_GPIO_C6_EN_BIT, GPIO_ENABLE1_W1TS_REG);
 
@@ -147,6 +152,11 @@ void bt_service_power_c6(bool enable)
 		s_status.state = BT_STATE_DISABLED;
 		LOG_INF("ESP32-C6 co-processor powered OFF (GPIO 54 driven LOW in reset)");
 	}
+#else
+	s_status.c6_powered = enable;
+	s_status.state = enable ? BT_STATE_READY : BT_STATE_DISABLED;
+	LOG_INF("Bluetooth controller %s", enable ? "READY" : "DISABLED");
+#endif
 }
 
 int bt_service_start_broadcast(void)
@@ -301,12 +311,18 @@ static void bt_audio_stream_task(void *p1, void *p2, void *p3)
 
 int bt_service_init(void)
 {
+#if defined(CONFIG_PLATFORM_ESP32P4)
 	LOG_INF("Initializing ESP32-P4 Bluetooth Audio Service...");
+#elif defined(CONFIG_PLATFORM_ESP32S3)
+	LOG_INF("Initializing ESP32-S3 Bluetooth Audio Service...");
+#else
+	LOG_INF("Initializing Bluetooth Audio Service...");
+#endif
 
 	/* Initialize static BT audio ring buffers */
 	bt_audio_init();
 
-	/* Power up onboard ESP32-C6 coprocessor */
+	/* Power up Bluetooth coprocessor / controller */
 	bt_service_power_c6(true);
 	k_msleep(100);
 
@@ -316,6 +332,12 @@ int bt_service_init(void)
 			K_PRIO_PREEMPT(5), 0, K_NO_WAIT);
 	k_thread_name_set(&s_bt_thread, "bt_audio_svc");
 
+#if defined(CONFIG_PLATFORM_ESP32P4)
 	LOG_INF("ESP32-P4 Bluetooth Audio Service initialized successfully");
+#elif defined(CONFIG_PLATFORM_ESP32S3)
+	LOG_INF("ESP32-S3 Bluetooth Audio Service initialized successfully");
+#else
+	LOG_INF("Bluetooth Audio Service initialized successfully");
+#endif
 	return 0;
 }

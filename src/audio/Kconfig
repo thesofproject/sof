@@ -59,7 +59,7 @@ config COMP_USB_AUDIO
 
 config COMP_BT_AUDIO
 	bool "Bluetooth Audio streaming component"
-	default y if PLATFORM_ESP32P4
+	default y if (PLATFORM_ESP32P4 || PLATFORM_ESP32S3)
 	help
 	  Enable Bluetooth Audio streaming component for SOF.
 
