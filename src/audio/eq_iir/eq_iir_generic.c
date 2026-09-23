@@ -38,16 +38,14 @@
 LOG_MODULE_DECLARE(eq_iir, CONFIG_SOF_LOG_LEVEL);
 
 #if CONFIG_FORMAT_S16LE
-void eq_iir_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-			struct output_stream_buffer *bsink, uint32_t frames)
+void eq_iir_s16_default(struct processing_module *mod, struct cir_buf_source *source,
+			struct cir_buf_sink *sink, uint32_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct iir_state_df1 *filter;
-	int16_t *x0;
+	const int16_t *x0;
 	int16_t *y0;
-	int16_t *x;
+	const int16_t *x;
 	int16_t *y;
 	int nmax;
 	int n1;
@@ -55,16 +53,16 @@ void eq_iir_s16_default(struct processing_module *mod, struct input_stream_buffe
 	int i;
 	int j;
 	int n;
-	const int nch = audio_stream_get_channels(source);
+	const int nch = cd->channels;
 	const int samples = frames * nch;
 	int processed = 0;
 
-	x = audio_stream_get_rptr(source);
-	y = audio_stream_get_wptr(sink);
+	x = source->ptr;
+	y = sink->ptr;
 	while (processed < samples) {
 		nmax = samples - processed;
-		n1 = audio_stream_bytes_without_wrap(source, x) >> 1;
-		n2 = audio_stream_bytes_without_wrap(sink, y) >> 1;
+		n1 = cir_buf_samples_without_wrap_s16(x, source->buf_end);
+		n2 = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
 		n = MIN(n1, n2);
 		n = MIN(n, nmax);
 		for (i = 0; i < nch; i++) {
@@ -78,24 +76,22 @@ void eq_iir_s16_default(struct processing_module *mod, struct input_stream_buffe
 			}
 		}
 		processed += n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
 
-void eq_iir_s24_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-			struct output_stream_buffer *bsink, uint32_t frames)
+void eq_iir_s24_default(struct processing_module *mod, struct cir_buf_source *source,
+			struct cir_buf_sink *sink, uint32_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct iir_state_df1 *filter;
-	int32_t *x0;
+	const int32_t *x0;
 	int32_t *y0;
-	int32_t *x;
+	const int32_t *x;
 	int32_t *y;
 	int nmax;
 	int n1;
@@ -103,16 +99,16 @@ void eq_iir_s24_default(struct processing_module *mod, struct input_stream_buffe
 	int i;
 	int j;
 	int n;
-	const int nch = audio_stream_get_channels(source);
+	const int nch = cd->channels;
 	const int samples = frames * nch;
 	int processed = 0;
 
-	x = audio_stream_get_rptr(source);
-	y = audio_stream_get_wptr(sink);
+	x = source->ptr;
+	y = sink->ptr;
 	while (processed < samples) {
 		nmax = samples - processed;
-		n1 = audio_stream_bytes_without_wrap(source, x) >> 2;
-		n2 = audio_stream_bytes_without_wrap(sink, y) >> 2;
+		n1 = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n2 = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
 		n = MIN(n1, n2);
 		n = MIN(n, nmax);
 		for (i = 0; i < nch; i++) {
@@ -126,24 +122,22 @@ void eq_iir_s24_default(struct processing_module *mod, struct input_stream_buffe
 			}
 		}
 		processed += n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
 
-void eq_iir_s32_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-			struct output_stream_buffer *bsink, uint32_t frames)
+void eq_iir_s32_default(struct processing_module *mod, struct cir_buf_source *source,
+			struct cir_buf_sink *sink, uint32_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct iir_state_df1 *filter;
-	int32_t *x0;
+	const int32_t *x0;
 	int32_t *y0;
-	int32_t *x;
+	const int32_t *x;
 	int32_t *y;
 	int nmax;
 	int n1;
@@ -151,16 +145,16 @@ void eq_iir_s32_default(struct processing_module *mod, struct input_stream_buffe
 	int i;
 	int j;
 	int n;
-	const int nch = audio_stream_get_channels(source);
+	const int nch = cd->channels;
 	const int samples = frames * nch;
 	int processed = 0;
 
-	x = audio_stream_get_rptr(source);
-	y = audio_stream_get_wptr(sink);
+	x = source->ptr;
+	y = sink->ptr;
 	while (processed < samples) {
 		nmax = samples - processed;
-		n1 = audio_stream_bytes_without_wrap(source, x) >> 2;
-		n2 = audio_stream_bytes_without_wrap(sink, y) >> 2;
+		n1 = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n2 = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
 		n = MIN(n1, n2);
 		n = MIN(n, nmax);
 		for (i = 0; i < nch; i++) {
@@ -174,8 +168,8 @@ void eq_iir_s32_default(struct processing_module *mod, struct input_stream_buffe
 			}
 		}
 		processed += n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
@@ -447,19 +441,38 @@ void eq_iir_free_delaylines(struct processing_module *mod)
 		iir[i].delay = NULL;
 }
 
-void eq_iir_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
-		 struct output_stream_buffer *bsink, uint32_t frames)
+void eq_iir_pass(struct processing_module *mod, struct cir_buf_source *source,
+		 struct cir_buf_sink *sink, uint32_t frames)
 {
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
+	struct comp_data *cd = module_get_private_data(mod);
+	const uint8_t *src = source->ptr;
+	uint8_t *dst = sink->ptr;
+	size_t bytes = (size_t)frames * cd->frame_bytes;
 
-	audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
+	while (bytes) {
+		size_t src_contiguous = (const uint8_t *)source->buf_end - src;
+		size_t dst_contiguous = (uint8_t *)sink->buf_end - dst;
+		size_t copy = MIN(bytes, MIN(src_contiguous, dst_contiguous));
+
+		if (!copy) {
+			src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
+			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
+			continue;
+		}
+
+		assert(!memcpy_s(dst, dst_contiguous, src, copy));
+		bytes -= copy;
+		src = source_cir_buf_wrap(src + copy, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst + copy, sink->buf_start, sink->buf_end);
+	}
 }
 
 int eq_iir_setup(struct processing_module *mod, int nch)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	int delay_size;
+
+	cd->channels = nch;
 
 	/* Free existing IIR channels data if it was allocated */
 	eq_iir_free_delaylines(mod);
@@ -491,4 +504,3 @@ int eq_iir_setup(struct processing_module *mod, int nch)
 	eq_iir_init_delay(cd->iir, cd->iir_delay, nch);
 	return 0;
 }
-
