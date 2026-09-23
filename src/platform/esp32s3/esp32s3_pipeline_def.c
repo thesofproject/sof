@@ -138,6 +138,32 @@ static const struct sof_static_kcontrol esp32s3_controls[] = {
 		.min = 0, .max = 65536, .def = 65536, .channels = 2,
 		.uac2_entity_id = CAPTURE_FU_ID
 	),
+#if defined(CONFIG_COMP_BT_AUDIO)
+	SOF_STATIC_KCONTROL_SWITCH(
+		.id = 8, .name = "BT Audio Stream Switch",
+		.target_comp_id = 1,
+		.def = 0,
+		.uac2_entity_id = 0
+	),
+	SOF_STATIC_KCONTROL_VOLUME(
+		.id = 9, .name = "BT Stream Volume",
+		.target_comp_id = 1,
+		.min = 0, .max = 65536, .def = 65536, .channels = 2,
+		.uac2_entity_id = 0
+	),
+	SOF_STATIC_KCONTROL_ENUM(
+		.id = 10, .name = "Audio Endpoint Route",
+		.target_comp_id = 1,
+		.min = 0, .max = 2, .def = 0, .channels = 1,
+		.uac2_entity_id = 0
+	),
+	SOF_STATIC_KCONTROL_ENUM(
+		.id = 14, .name = "BT Audio Format",
+		.target_comp_id = 1,
+		.min = 0, .max = 6, .def = 0, .channels = 1,
+		.uac2_entity_id = 0
+	),
+#endif
 };
 
 /* -------------------------------------------------------------------------

@@ -507,8 +507,16 @@ static int cmd_sof_bt_status(const struct shell *sh, size_t argc, char **argv)
 	bt_service_get_status(&st);
 	const struct bt_audio_format_desc *desc = bt_service_get_current_format_desc();
 
+#if defined(CONFIG_PLATFORM_ESP32P4)
 	shell_print(sh, "=== Bluetooth LE Audio / C6 Co-Processor Status ===");
 	shell_print(sh, "  ESP32-C6 Power:    %s (GPIO 54 asserted)", st.c6_powered ? "ON" : "OFF");
+#elif defined(CONFIG_PLATFORM_ESP32S3)
+	shell_print(sh, "=== Bluetooth LE Audio Status (ESP32-S3) ===");
+	shell_print(sh, "  BLE Controller:    %s", st.c6_powered ? "READY" : "DISABLED");
+#else
+	shell_print(sh, "=== Bluetooth LE Audio Status ===");
+	shell_print(sh, "  BT Controller:     %s", st.c6_powered ? "READY" : "DISABLED");
+#endif
 	shell_print(sh, "  Link State:        %s",
 		    st.state == BT_STATE_DISABLED ? "DISABLED" :
 		    (st.state == BT_STATE_READY ? "READY" :
