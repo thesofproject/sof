@@ -105,12 +105,12 @@ static void crossover_generic_split_4way(int32_t in,
 static int crossover_default_pass(struct comp_data *cd,
 				  struct sof_source *source,
 				  struct sof_sink **sinks,
-				  int32_t num_sinks,
-				  uint32_t frames)
+				  uint32_t num_sinks,
+				  size_t frames)
 {
 	size_t bytes = frames * source_get_frame_bytes(source);
+	uint32_t i;
 	int ret;
-	int i;
 
 	for (i = 0; i < num_sinks; i++) {
 		if (!sinks[i])
@@ -127,8 +127,8 @@ static int crossover_default_pass(struct comp_data *cd,
 static int crossover_s16_default(struct comp_data *cd,
 				 struct sof_source *source,
 				 struct sof_sink **sinks,
-				 int32_t num_sinks,
-				 uint32_t frames)
+				 uint32_t num_sinks,
+				 size_t frames)
 {
 	int16_t *y[SOF_CROSSOVER_MAX_STREAMS];
 	int16_t *y_start[SOF_CROSSOVER_MAX_STREAMS];
@@ -140,11 +140,12 @@ static int crossover_s16_default(struct comp_data *cd,
 	size_t x_samples, y_samples;
 	unsigned int nch = source_get_channels(source);
 	size_t bytes = frames * source_get_frame_bytes(source);
-	int active_sinks = 0;
+	uint32_t active_sinks = 0;
 	size_t remaining_samples;
 	size_t i, n;
 	unsigned int ch;
-	int j, ret;
+	uint32_t j;
+	int ret;
 
 	ret = source_get_data_s16(source, bytes, &x, &x_start, &x_samples);
 	if (ret)
@@ -206,8 +207,8 @@ static int crossover_s16_default(struct comp_data *cd,
 static int crossover_s24_default(struct comp_data *cd,
 				 struct sof_source *source,
 				 struct sof_sink **sinks,
-				 int32_t num_sinks,
-				 uint32_t frames)
+				 uint32_t num_sinks,
+				 size_t frames)
 {
 	int32_t *y[SOF_CROSSOVER_MAX_STREAMS];
 	int32_t *y_start[SOF_CROSSOVER_MAX_STREAMS];
@@ -219,11 +220,12 @@ static int crossover_s24_default(struct comp_data *cd,
 	size_t x_samples, y_samples;
 	unsigned int nch = source_get_channels(source);
 	size_t bytes = frames * source_get_frame_bytes(source);
-	int active_sinks = 0;
+	uint32_t active_sinks = 0;
 	size_t remaining_samples;
 	size_t i, n;
 	unsigned int ch;
-	int j, ret;
+	uint32_t j;
+	int ret;
 
 	ret = source_get_data_s32(source, bytes, &x, &x_start, &x_samples);
 	if (ret)
@@ -299,8 +301,8 @@ static int crossover_s24_default(struct comp_data *cd,
 static int crossover_s32_default(struct comp_data *cd,
 				 struct sof_source *source,
 				 struct sof_sink **sinks,
-				 int32_t num_sinks,
-				 uint32_t frames)
+				 uint32_t num_sinks,
+				 size_t frames)
 {
 	int32_t *y[SOF_CROSSOVER_MAX_STREAMS];
 	int32_t *y_start[SOF_CROSSOVER_MAX_STREAMS];
@@ -312,11 +314,12 @@ static int crossover_s32_default(struct comp_data *cd,
 	size_t x_samples, y_samples;
 	unsigned int nch = source_get_channels(source);
 	size_t bytes = frames * source_get_frame_bytes(source);
-	int active_sinks = 0;
+	uint32_t active_sinks = 0;
 	size_t remaining_samples;
 	size_t i, n;
 	unsigned int ch;
-	int j, ret;
+	uint32_t j;
+	int ret;
 
 	ret = source_get_data_s32(source, bytes, &x, &x_start, &x_samples);
 	if (ret)
