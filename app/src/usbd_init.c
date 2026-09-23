@@ -188,6 +188,7 @@ struct usbd_context *sample_usbd_setup_device(usbd_msg_cb_t msg_cb)
 	}
 	LOG_INF("Registered Clock Master string descriptor at index %u", clock_master_str.str.idx);
 
+#if !defined(CONFIG_SOC_SERIES_ESP32S3)
 	if (USBD_SUPPORTS_HIGH_SPEED &&
 	    usbd_caps_speed(&sample_usbd) == USBD_SPEED_HS) {
 		err = usbd_add_configuration(&sample_usbd, USBD_SPEED_HS,
@@ -206,6 +207,7 @@ struct usbd_context *sample_usbd_setup_device(usbd_msg_cb_t msg_cb)
 
 		sample_fix_code_triple(&sample_usbd, USBD_SPEED_HS);
 	}
+#endif
 
 	err = usbd_add_configuration(&sample_usbd, USBD_SPEED_FS,
 				     &sample_fs_config);
