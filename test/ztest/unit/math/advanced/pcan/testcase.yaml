@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2026 Intel Corporation. All rights reserved.
+#
+# PCAN (Per-Channel AGC Normalization) unit tests for Ztest framework
+#
+
+tests:
+  sof.unit.math.advanced.pcan:
+    tags: math advanced pcan mfcc microwakeword
+    platform_allow: native_sim
+    integration_platforms:
+      - native_sim
+    build_only: false
