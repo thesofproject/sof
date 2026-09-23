@@ -38,33 +38,31 @@
 LOG_MODULE_DECLARE(eq_iir, CONFIG_SOF_LOG_LEVEL);
 
 #if CONFIG_FORMAT_S16LE
-void eq_iir_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-			struct output_stream_buffer *bsink, uint32_t frames)
+void eq_iir_s16_default(struct processing_module *mod, const struct cir_buf_source *source,
+			struct cir_buf_sink *sink, size_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct iir_state_df1 *filter;
-	int16_t *x0;
+	const int16_t *x0;
 	int16_t *y0;
-	int16_t *x;
+	const int16_t *x;
 	int16_t *y;
-	int nmax;
-	int n1;
-	int n2;
-	int i;
-	int j;
-	int n;
-	const int nch = audio_stream_get_channels(source);
-	const int samples = frames * nch;
-	int processed = 0;
+	size_t nmax;
+	size_t n1;
+	size_t n2;
+	unsigned int i;
+	size_t j;
+	size_t n;
+	const unsigned int nch = cd->channels;
+	const size_t samples = frames * nch;
+	size_t processed = 0;
 
-	x = audio_stream_get_rptr(source);
-	y = audio_stream_get_wptr(sink);
+	x = source->ptr;
+	y = sink->ptr;
 	while (processed < samples) {
 		nmax = samples - processed;
-		n1 = audio_stream_bytes_without_wrap(source, x) >> 1;
-		n2 = audio_stream_bytes_without_wrap(sink, y) >> 1;
+		n1 = cir_buf_samples_without_wrap_s16(x, source->buf_end);
+		n2 = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
 		n = MIN(n1, n2);
 		n = MIN(n, nmax);
 		for (i = 0; i < nch; i++) {
@@ -78,41 +76,39 @@ void eq_iir_s16_default(struct processing_module *mod, struct input_stream_buffe
 			}
 		}
 		processed += n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
 
-void eq_iir_s24_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-			struct output_stream_buffer *bsink, uint32_t frames)
+void eq_iir_s24_default(struct processing_module *mod, const struct cir_buf_source *source,
+			struct cir_buf_sink *sink, size_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct iir_state_df1 *filter;
-	int32_t *x0;
+	const int32_t *x0;
 	int32_t *y0;
-	int32_t *x;
+	const int32_t *x;
 	int32_t *y;
-	int nmax;
-	int n1;
-	int n2;
-	int i;
-	int j;
-	int n;
-	const int nch = audio_stream_get_channels(source);
-	const int samples = frames * nch;
-	int processed = 0;
+	size_t nmax;
+	size_t n1;
+	size_t n2;
+	unsigned int i;
+	size_t j;
+	size_t n;
+	const unsigned int nch = cd->channels;
+	const size_t samples = frames * nch;
+	size_t processed = 0;
 
-	x = audio_stream_get_rptr(source);
-	y = audio_stream_get_wptr(sink);
+	x = source->ptr;
+	y = sink->ptr;
 	while (processed < samples) {
 		nmax = samples - processed;
-		n1 = audio_stream_bytes_without_wrap(source, x) >> 2;
-		n2 = audio_stream_bytes_without_wrap(sink, y) >> 2;
+		n1 = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n2 = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
 		n = MIN(n1, n2);
 		n = MIN(n, nmax);
 		for (i = 0; i < nch; i++) {
@@ -126,41 +122,39 @@ void eq_iir_s24_default(struct processing_module *mod, struct input_stream_buffe
 			}
 		}
 		processed += n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
 
-void eq_iir_s32_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-			struct output_stream_buffer *bsink, uint32_t frames)
+void eq_iir_s32_default(struct processing_module *mod, const struct cir_buf_source *source,
+			struct cir_buf_sink *sink, size_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct iir_state_df1 *filter;
-	int32_t *x0;
+	const int32_t *x0;
 	int32_t *y0;
-	int32_t *x;
+	const int32_t *x;
 	int32_t *y;
-	int nmax;
-	int n1;
-	int n2;
-	int i;
-	int j;
-	int n;
-	const int nch = audio_stream_get_channels(source);
-	const int samples = frames * nch;
-	int processed = 0;
+	size_t nmax;
+	size_t n1;
+	size_t n2;
+	unsigned int i;
+	size_t j;
+	size_t n;
+	const unsigned int nch = cd->channels;
+	const size_t samples = frames * nch;
+	size_t processed = 0;
 
-	x = audio_stream_get_rptr(source);
-	y = audio_stream_get_wptr(sink);
+	x = source->ptr;
+	y = sink->ptr;
 	while (processed < samples) {
 		nmax = samples - processed;
-		n1 = audio_stream_bytes_without_wrap(source, x) >> 2;
-		n2 = audio_stream_bytes_without_wrap(sink, y) >> 2;
+		n1 = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n2 = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
 		n = MIN(n1, n2);
 		n = MIN(n, nmax);
 		for (i = 0; i < nch; i++) {
@@ -174,8 +168,8 @@ void eq_iir_s32_default(struct processing_module *mod, struct input_stream_buffe
 			}
 		}
 		processed += n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
@@ -345,7 +339,8 @@ int eq_iir_validate_config(struct comp_dev *dev, void *new_data, uint32_t new_da
 	return 0;
 }
 
-static int eq_iir_init_coef(struct processing_module *mod, int nch)
+static int eq_iir_init_coef(struct processing_module *mod, unsigned int nch,
+			    size_t *delay_size)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct sof_eq_iir_config *config = cd->config;
@@ -353,17 +348,17 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 	struct sof_eq_iir_header *lookup[SOF_EQ_IIR_MAX_RESPONSES];
 	struct sof_eq_iir_header *eq;
 	int32_t *assign_response;
-	int size_sum = 0;
+	size_t size_sum = 0;
 	int resp = 0;
-	int i;
+	unsigned i;
 	int s;
 	int ret;
 
-	comp_info(mod->dev, "%u responses, %u channels, stream %d channels",
+	comp_info(mod->dev, "%u responses, %u channels, stream %u channels",
 		  config->number_of_responses, config->channels_in_config, nch);
 
 	if (nch > PLATFORM_MAX_CHANNELS) {
-		comp_err(mod->dev, "invalid stream channels %d", nch);
+		comp_err(mod->dev, "invalid stream channels %u", nch);
 		return -EINVAL;
 	}
 
@@ -387,7 +382,7 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 			/* Initialize EQ channel to bypass and continue with
 			 * next channel response.
 			 */
-			comp_info(mod->dev, "ch %d is set to bypass", i);
+			comp_info(mod->dev, "ch %u is set to bypass", i);
 			iir_reset_df1(&iir[i]);
 			continue;
 		}
@@ -402,7 +397,7 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 		eq = lookup[resp];
 		s = iir_delay_size_df1(eq);
 		if (s > 0) {
-			size_sum += s;
+			size_sum += (size_t)s;
 		} else {
 			comp_err(mod->dev, "sections count %d exceeds max",
 				 eq->num_sections);
@@ -410,17 +405,18 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 		}
 
 		iir_init_coef_df1(&iir[i], eq);
-		comp_info(mod->dev, "ch %d is set to response %d", i, resp);
+		comp_info(mod->dev, "ch %u is set to response %d", i, resp);
 	}
 
-	return size_sum;
+	*delay_size = size_sum;
+	return 0;
 }
 
 static void eq_iir_init_delay(struct iir_state_df1 *iir,
-			      int32_t *delay_start, int nch)
+			      int32_t *delay_start, unsigned int nch)
 {
 	int32_t *delay = delay_start;
-	int i;
+	unsigned int i;
 
 	/* Initialize second phase to set EQ delay lines pointers. A
 	 * bypass mode filter is indicated by biquads count of zero.
@@ -435,7 +431,7 @@ void eq_iir_free_delaylines(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct iir_state_df1 *iir = cd->iir;
-	int i = 0;
+	unsigned int i;
 
 	/* Free the common buffer for all EQs and point then
 	 * each IIR channel delay line to NULL.
@@ -447,19 +443,39 @@ void eq_iir_free_delaylines(struct processing_module *mod)
 		iir[i].delay = NULL;
 }
 
-void eq_iir_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
-		 struct output_stream_buffer *bsink, uint32_t frames)
-{
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-
-	audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
-}
-
-int eq_iir_setup(struct processing_module *mod, int nch)
+void eq_iir_pass(struct processing_module *mod, const struct cir_buf_source *source,
+		 struct cir_buf_sink *sink, size_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	int delay_size;
+	const uint8_t *src = source->ptr;
+	uint8_t *dst = sink->ptr;
+	size_t bytes = frames * cd->frame_bytes;
+
+	while (bytes) {
+		size_t src_contiguous = (const uint8_t *)source->buf_end - src;
+		size_t dst_contiguous = (uint8_t *)sink->buf_end - dst;
+		size_t copy = MIN(bytes, MIN(src_contiguous, dst_contiguous));
+
+		if (!copy) {
+			src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
+			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
+			continue;
+		}
+
+		assert(!memcpy_s(dst, dst_contiguous, src, copy));
+		bytes -= copy;
+		src = source_cir_buf_wrap(src + copy, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst + copy, sink->buf_start, sink->buf_end);
+	}
+}
+
+int eq_iir_setup(struct processing_module *mod, unsigned int nch)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	size_t delay_size = 0;
+	int ret;
+
+	cd->channels = nch;
 
 	/* Free existing IIR channels data if it was allocated */
 	eq_iir_free_delaylines(mod);
@@ -468,9 +484,9 @@ int eq_iir_setup(struct processing_module *mod, int nch)
 	 * eq_iir_init_coef() / eq_iir_blob_words_max() perform all blob size
 	 * sanity checks, including config->size vs cd->config_size.
 	 */
-	delay_size = eq_iir_init_coef(mod, nch);
-	if (delay_size < 0)
-		return delay_size; /* Contains error code */
+	ret = eq_iir_init_coef(mod, nch, &delay_size);
+	if (ret < 0)
+		return ret;
 
 	/* If all channels were set to bypass there's no need to
 	 * allocate delay. Just return with success.
@@ -491,4 +507,3 @@ int eq_iir_setup(struct processing_module *mod, int nch)
 	eq_iir_init_delay(cd->iir, cd->iir_delay, nch);
 	return 0;
 }
-

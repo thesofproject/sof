@@ -38,33 +38,31 @@ LOG_MODULE_DECLARE(eq_iir, CONFIG_SOF_LOG_LEVEL);
 
 #if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE
 static void eq_iir_s32_16_default(struct processing_module *mod,
-				  struct input_stream_buffer *bsource,
-				  struct output_stream_buffer *bsink, uint32_t frames)
+				  const struct cir_buf_source *source,
+				  struct cir_buf_sink *sink, size_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct iir_state_df1 *filter;
-	int32_t *x0;
+	const int32_t *x0;
 	int16_t *y0;
-	int32_t *x;
+	const int32_t *x;
 	int16_t *y;
-	int nmax;
-	int n1;
-	int n2;
-	int i;
-	int j;
-	int n;
-	const int nch = audio_stream_get_channels(source);
-	const int samples = frames * nch;
-	int processed = 0;
+	size_t nmax;
+	size_t n1;
+	size_t n2;
+	unsigned int i;
+	size_t j;
+	size_t n;
+	const unsigned int nch = cd->channels;
+	const size_t samples = frames * nch;
+	size_t processed = 0;
 
-	x = audio_stream_get_rptr(source);
-	y = audio_stream_get_wptr(sink);
+	x = source->ptr;
+	y = sink->ptr;
 	while (processed < samples) {
 		nmax = samples - processed;
-		n1 = audio_stream_bytes_without_wrap(source, x) >> 2; /* divide 4 */
-		n2 = audio_stream_bytes_without_wrap(sink, y) >> 1; /* divide 2 */
+		n1 = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n2 = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
 		n = MIN(n1, n2);
 		n = MIN(n, nmax);
 		for (i = 0; i < nch; i++) {
@@ -78,41 +76,39 @@ static void eq_iir_s32_16_default(struct processing_module *mod,
 			}
 		}
 		processed += n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE
 static void eq_iir_s32_24_default(struct processing_module *mod,
-				  struct input_stream_buffer *bsource,
-				  struct output_stream_buffer *bsink, uint32_t frames)
+				  const struct cir_buf_source *source,
+				  struct cir_buf_sink *sink, size_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct iir_state_df1 *filter;
-	int32_t *x0;
+	const int32_t *x0;
 	int32_t *y0;
-	int32_t *x;
+	const int32_t *x;
 	int32_t *y;
-	int nmax;
-	int n1;
-	int n2;
-	int i;
-	int j;
-	int n;
-	const int nch = audio_stream_get_channels(source);
-	const int samples = frames * nch;
-	int processed = 0;
+	size_t nmax;
+	size_t n1;
+	size_t n2;
+	unsigned int i;
+	size_t j;
+	size_t n;
+	const unsigned int nch = cd->channels;
+	const size_t samples = frames * nch;
+	size_t processed = 0;
 
-	x = audio_stream_get_rptr(source);
-	y = audio_stream_get_wptr(sink);
+	x = source->ptr;
+	y = sink->ptr;
 	while (processed < samples) {
 		nmax = samples - processed;
-		n1 = audio_stream_bytes_without_wrap(source, x) >> 2;
-		n2 = audio_stream_bytes_without_wrap(sink, y) >> 2;
+		n1 = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n2 = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
 		n = MIN(n1, n2);
 		n = MIN(n, nmax);
 		for (i = 0; i < nch; i++) {
@@ -126,29 +122,29 @@ static void eq_iir_s32_24_default(struct processing_module *mod,
 			}
 		}
 		processed += n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
-static void eq_iir_s32_s16_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
-				struct output_stream_buffer *bsink, uint32_t frames)
+static void eq_iir_s32_s16_pass(struct processing_module *mod,
+				const struct cir_buf_source *source,
+				struct cir_buf_sink *sink, size_t frames)
 {
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-	int32_t *x = audio_stream_get_rptr(source);
-	int16_t *y = audio_stream_get_wptr(sink);
-	int nmax;
-	int n;
-	int i;
-	int remaining_samples = frames * audio_stream_get_channels(source);
+	struct comp_data *cd = module_get_private_data(mod);
+	const int32_t *x = source->ptr;
+	int16_t *y = sink->ptr;
+	size_t nmax;
+	size_t n;
+	size_t i;
+	size_t remaining_samples = frames * cd->channels;
 
 	while (remaining_samples) {
-		nmax = EQ_IIR_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
+		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
 		n = MIN(remaining_samples, nmax);
-		nmax = EQ_IIR_BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
+		nmax = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*y = sat_int16(Q_SHIFT_RND(*x, 31, 15));
@@ -156,29 +152,29 @@ static void eq_iir_s32_s16_pass(struct processing_module *mod, struct input_stre
 			y++;
 		}
 		remaining_samples -= n;
-		x = audio_stream_wrap(source, x);
-		y = audio_stream_wrap(sink, y);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
-static void eq_iir_s32_s24_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
-				struct output_stream_buffer *bsink, uint32_t frames)
+static void eq_iir_s32_s24_pass(struct processing_module *mod,
+				const struct cir_buf_source *source,
+				struct cir_buf_sink *sink, size_t frames)
 {
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-	int32_t *x = audio_stream_get_rptr(source);
-	int32_t *y = audio_stream_get_wptr(sink);
-	int nmax;
-	int n;
-	int i;
-	int remaining_samples = frames * audio_stream_get_channels(source);
+	struct comp_data *cd = module_get_private_data(mod);
+	const int32_t *x = source->ptr;
+	int32_t *y = sink->ptr;
+	size_t nmax;
+	size_t n;
+	size_t i;
+	size_t remaining_samples = frames * cd->channels;
 
 	while (remaining_samples) {
-		nmax = EQ_IIR_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
+		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
 		n = MIN(remaining_samples, nmax);
-		nmax = EQ_IIR_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
+		nmax = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
 		n = MIN(n, nmax);
 		for (i = 0; i < n; i++) {
 			*y = sat_int24(Q_SHIFT_RND(*x, 31, 23));
@@ -186,8 +182,8 @@ static void eq_iir_s32_s24_pass(struct processing_module *mod, struct input_stre
 			y++;
 		}
 		remaining_samples -= n;
-		x = audio_stream_wrap(source, x);
-		y = audio_stream_wrap(sink, y);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
@@ -298,7 +294,7 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 }
 
 int eq_iir_new_blob(struct processing_module *mod, enum sof_ipc_frame source_format,
-		    enum sof_ipc_frame sink_format, int channels)
+		    enum sof_ipc_frame sink_format, unsigned int channels)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	int ret;
