@@ -1103,6 +1103,7 @@ __cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
 	const struct comp_driver *drv;
 	struct comp_dev *dev = NULL;
 	uint32_t data_offset;
+	size_t data_max;
 	int ret;
 
 	assert_can_be_cold();
@@ -1167,6 +1168,21 @@ __cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
 	if (ret < 0)
 		ret = IPC4_MOD_INVALID_ID;
 
+	/* data_offset is now the reply payload size, but it was seeded from
+	 * the host-controlled 20-bit data_off_size field and a module that
+	 * produces no data leaves it untouched, so it can still claim up to
+	 * ~1MB. The payload lives in ipc->comp_data (SOF_IPC_MSG_MAX_SIZE
+	 * bytes) and the sender copies tx_size bytes of it into the DSP
+	 * mailbox, so reject anything that does not fit rather than handing
+	 * an out-of-range size to mailbox_dspbox_write().
+	 */
+	data_max = SOF_IPC_MSG_MAX_SIZE - (size_t)(data - (char *)ipc_get()->comp_data);
+	if (!ret && data_offset > data_max) {
+		ipc_cmd_err(&ipc_tr, "get_large_config reply size %u exceeds %zu",
+			    data_offset, data_max);
+		ret = IPC4_INVALID_CONFIG_DATA_LEN;
+	}
+
 	/* Copy host config and overwrite */
 	reply.extension.dat = config->extension.dat;
 	reply.extension.r.data_off_size = data_offset;
@@ -1199,6 +1215,7 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 	const struct comp_driver *drv;
 	struct comp_dev *dev = NULL;
 	uint32_t data_offset;
+	size_t data_max;
 	int ret;
 
 	assert_can_be_cold();
@@ -1273,6 +1290,21 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 	/* set up ipc4 error code for reply data */
 	if (ret < 0)
 		ret = IPC4_INVALID_RESOURCE_ID;
+
+	/* data_offset is now the reply payload size, but it was seeded from
+	 * the host-controlled 20-bit data_off_size field and a module that
+	 * produces no data leaves it untouched, so it can still claim up to
+	 * ~1MB. The payload lives in ipc->comp_data (SOF_IPC_MSG_MAX_SIZE
+	 * bytes) and ipc_platform_send_msg() copies tx_size bytes of it into
+	 * the DSP mailbox, so reject anything that does not fit rather than
+	 * handing an out-of-range size to mailbox_dspbox_write().
+	 */
+	data_max = SOF_IPC_MSG_MAX_SIZE - (size_t)(data - (char *)ipc_get()->comp_data);
+	if (!ret && data_offset > data_max) {
+		ipc_cmd_err(&ipc_tr, "get_large_config reply size %u exceeds %zu",
+			    data_offset, data_max);
+		ret = IPC4_INVALID_CONFIG_DATA_LEN;
+	}
 
 	/* Copy host config and overwrite */
 	reply.extension.dat = config->extension.dat;
