@@ -17,6 +17,8 @@
 #elif defined(CONFIG_SOC_SERIES_ESP32S3)
 #include <soc/rtc_cntl_reg.h>
 #include <esp_system.h>
+#include <hal/gpio_ll.h>
+#include <esp_rom_gpio.h>
 #endif
 #include <soc/gpio_sig_map.h>
 #include <sof/audio/usb_audio.h>
@@ -660,6 +662,75 @@ static int cmd_sof_bootloader(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
+#if defined(CONFIG_SOC_SERIES_ESP32S3)
+static void set_peer_gpio_pin(uint32_t gpio, int level, bool output)
+{
+	esp_rom_gpio_pad_select_gpio(gpio);
+	if (output) {
+		gpio_ll_set_level(&GPIO, gpio, level);
+		gpio_ll_output_enable(&GPIO, gpio);
+		gpio_ll_input_disable(&GPIO, gpio);
+		esp_rom_gpio_connect_out_signal(gpio, SIG_GPIO_OUT_IDX, false, false);
+	} else {
+		gpio_ll_output_disable(&GPIO, gpio);
+		gpio_ll_input_enable(&GPIO, gpio);
+		gpio_ll_pullup_en(&GPIO, gpio);
+	}
+}
+
+static int cmd_sof_peer(const struct shell *sh, size_t argc, char **argv)
+{
+	if (argc < 2) {
+		shell_print(sh, "Usage: sof peer <reset|bootloader> [boot_gpio] [rst_gpio]");
+		shell_print(sh, "Default: boot_gpio=5 (D2), rst_gpio=6 (D3)");
+		return -EINVAL;
+	}
+
+	uint32_t boot_gpio = 5; /* D2 on Arduino Nano ESP32 */
+	uint32_t rst_gpio = 6;  /* D3 on Arduino Nano ESP32 */
+
+	if (argc > 2) {
+		boot_gpio = strtoul(argv[2], NULL, 0);
+	}
+	if (argc > 3) {
+		rst_gpio = strtoul(argv[3], NULL, 0);
+	}
+
+	if (strcmp(argv[1], "bootloader") == 0 || strcmp(argv[1], "boot") == 0) {
+		shell_print(sh, "Putting peer into ROM bootloader (BOOT GPIO%u, RST GPIO%u)...",
+			    boot_gpio, rst_gpio);
+		/* 1. Pull BOOT (B1/GPIO0) LOW */
+		set_peer_gpio_pin(boot_gpio, 0, true);
+		k_msleep(20);
+		/* 2. Assert RST (CHIP_PU) LOW */
+		set_peer_gpio_pin(rst_gpio, 0, true);
+		k_msleep(50);
+		/* 3. Release RST (high impedance / pullup) */
+		set_peer_gpio_pin(rst_gpio, 1, false);
+		/* 4. Hold BOOT LOW for 100 ms while peer enters ROM bootloader */
+		k_msleep(100);
+		/* 5. Release BOOT (high impedance / pullup) */
+		set_peer_gpio_pin(boot_gpio, 1, false);
+		shell_print(sh, "Peer entered ROM bootloader successfully.");
+		return 0;
+	} else if (strcmp(argv[1], "reset") == 0) {
+		shell_print(sh, "Resetting peer (RST GPIO%u)...", rst_gpio);
+		/* Ensure BOOT is not asserted */
+		set_peer_gpio_pin(boot_gpio, 1, false);
+		/* Assert RST LOW */
+		set_peer_gpio_pin(rst_gpio, 0, true);
+		k_msleep(50);
+		/* Release RST */
+		set_peer_gpio_pin(rst_gpio, 1, false);
+		shell_print(sh, "Peer reset complete.");
+		return 0;
+	} else {
+		shell_error(sh, "Unknown action: %s. Use 'reset' or 'bootloader'", argv[1]);
+		return -EINVAL;
+	}
+}
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmds,
 	SHELL_CMD(status, NULL, "Print current SOF pipeline and audio interface status", cmd_sof_status),
 	SHELL_CMD(regs, NULL, "Dump I2S1/PDM hardware registers", cmd_sof_regs),
@@ -679,6 +750,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmds,
 	SHELL_CMD(drc, NULL, "Control DRC bypass (sof drc <enable|bypass>)", cmd_sof_drc),
 	SHELL_CMD(tdfb, NULL, "Control TDFB beamformer bypass (sof tdfb <enable|bypass>)", cmd_sof_tdfb),
 	SHELL_CMD(bootloader, NULL, "Reboot to ROM bootloader for flashing (sof bootloader)", cmd_sof_bootloader),
+#if defined(CONFIG_SOC_SERIES_ESP32S3)
+	SHELL_CMD(peer, NULL, "Peer board reset/bootloader (sof peer <reset|bootloader> [boot_gpio] [rst_gpio])", cmd_sof_peer),
+#endif
 	SHELL_SUBCMD_SET_END
 );
 

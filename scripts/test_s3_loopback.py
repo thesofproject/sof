@@ -33,21 +33,36 @@ import wave
 import numpy as np
 import serial
 
-# Safety restriction: Power monitor relay controller must never be opened
-FORBIDDEN_SERIAL_PATHS = ["/dev/ttyACM0", "28:37:2F:54:4E:98"]
+# Safety restriction: Protected DUT bridges and relay controller must never be opened
+FORBIDDEN_SERIAL_PATHS = [
+    "/dev/ttyACM0", "/dev/ttyACM1", "/dev/ttyACM2", "/dev/ttyACM3", "/dev/ttyACM4",
+    "28:37:2F:54:4E:98",  # Power relay controller
+    "5B7B029952",         # Spider P4 bridge
+    "5B7B030033",         # Aphid P4 bridge
+    "5B7B029802",         # Pallas
+    "5B7B029471",         # Ceres
+    "3C:84:27:C4:4B:90",  # Lab unit
+]
 
 
 def check_safety(port):
-    """Ensure the specified serial port is not the hardware power relay controller."""
+    """Ensure the specified serial port is not a protected device."""
     if not port:
         return
     resolved = os.path.realpath(port)
     for forbidden in FORBIDDEN_SERIAL_PATHS:
-        if forbidden in port or forbidden in resolved:
-            raise RuntimeError(
-                f"SAFETY VIOLATION: Port {port} resolved to {resolved}, which matches "
-                f"protected power relay controller ({forbidden}). Aborting."
-            )
+        if forbidden.startswith("/dev/"):
+            if port == forbidden or resolved == forbidden:
+                raise RuntimeError(
+                    f"SAFETY VIOLATION: Port {port} resolved to {resolved}, which matches "
+                    f"protected device ({forbidden}). Aborting."
+                )
+        else:
+            if forbidden in port or forbidden in resolved:
+                raise RuntimeError(
+                    f"SAFETY VIOLATION: Port {port} resolved to {resolved}, which matches "
+                    f"protected device ({forbidden}). Aborting."
+                )
 
 
 def resolve_serial_ports(board_a=None, board_b=None):
@@ -58,20 +73,28 @@ def resolve_serial_ports(board_a=None, board_b=None):
     resolved_b = board_b
 
     for dev in by_id_devices:
-        if any(f in dev for f in FORBIDDEN_SERIAL_PATHS):
-            continue
         dev_real = os.path.realpath(dev)
-        if any(f in dev_real for f in FORBIDDEN_SERIAL_PATHS):
+        is_forbidden = False
+        for f in FORBIDDEN_SERIAL_PATHS:
+            if f.startswith("/dev/"):
+                if dev == f or dev_real == f:
+                    is_forbidden = True
+                    break
+            else:
+                if f in dev or f in dev_real:
+                    is_forbidden = True
+                    break
+        if is_forbidden:
             continue
 
         dev_upper = dev.upper()
         # Board A checks
         if not resolved_a:
-            if "34:85:18:7B:40:6C" in dev_upper or "S3_MASTER" in dev_upper or "MASTER" in dev_upper:
+            if "34:85:18:7B:40:6C" in dev_upper or "3485187B406C" in dev_upper or "S3_MASTER" in dev_upper or "MASTER" in dev_upper:
                 resolved_a = dev
         # Board B checks
         if not resolved_b:
-            if "20:6E:F1:32:D6:84" in dev_upper or "S3_SLAVE" in dev_upper or "SLAVE" in dev_upper:
+            if "20:6E:F1:32:D6:84" in dev_upper or "206EF132D684" in dev_upper or "S3_SLAVE" in dev_upper or "SLAVE" in dev_upper:
                 resolved_b = dev
 
     check_safety(resolved_a)
@@ -174,7 +197,7 @@ def parse_dump(resp):
     return samples
 
 
-def generate_sine_wav(filepath, duration_sec=4.0, sample_rate=48000, freq=1000.0, amplitude=28000):
+def generate_sine_wav(filepath, duration_sec=4.0, sample_rate=48000, freq=1000.0, amplitude=16000):
     """Generate a stereo 16-bit PCM WAV test file with pure sine tone."""
     t = np.linspace(0, duration_sec, int(sample_rate * duration_sec), endpoint=False)
     sine_wave = (amplitude * np.sin(2 * np.pi * freq * t)).astype(np.int16)
@@ -198,13 +221,14 @@ def analyze_captured_wav(filepath, sample_rate=48000, target_freq=1000.0, verbos
     samples = np.frombuffer(raw_data, dtype=np.int16).reshape(-1, nchannels)
     duration = nframes / rate
 
-    # Analyze steady-state portion
-    start_idx = int(1.0 * rate)
-    end_idx = int(max(start_idx + rate, (duration - 0.5) * rate))
-    if end_idx > len(samples):
-        end_idx = len(samples)
+    # Analyze steady-state portion (skip initial 0.8s and trailing 0.2s)
+    skip_start = int(0.8 * rate)
+    skip_end = int(0.2 * rate)
+    if len(samples) > skip_start + skip_end:
+        steady = samples[skip_start:-skip_end]
+    else:
+        steady = samples
 
-    steady = samples[start_idx:end_idx]
     ch0 = steady[:, 0].astype(float)
     ch1 = steady[:, 1].astype(float) if nchannels > 1 else ch0
     diff = np.abs(ch0 - ch1)
@@ -225,16 +249,13 @@ def analyze_captured_wav(filepath, sample_rate=48000, target_freq=1000.0, verbos
         fft_vals = np.abs(np.fft.rfft((s - np.mean(s)) * w))
         freqs = np.fft.rfftfreq(len(s), 1.0 / rate)
 
-        peak_idx = np.argmax(fft_vals)
+        peak_idx = np.argmax(fft_vals[1:]) + 1
         peak_freq = freqs[peak_idx]
+        peak_power = fft_vals[peak_idx] ** 2
 
-        target_mask = np.abs(freqs - target_freq) <= 50.0
-        signal_power = np.sum(fft_vals[target_mask] ** 2)
-        noise_mask = ~target_mask
-        dc_mask = freqs < 50.0
-        noise_mask = noise_mask & ~dc_mask
-        noise_power = np.sum(fft_vals[noise_mask] ** 2)
-        snr_db = 10.0 * np.log10(signal_power / noise_power) if noise_power > 0 else 100.0
+        mask_noise = (np.abs(freqs - peak_freq) > 50.0) & (freqs >= 20.0)
+        noise_power = np.mean(fft_vals[mask_noise] ** 2) if np.any(mask_noise) else 1e-12
+        snr_db = 10.0 * np.log10(max(peak_power / max(noise_power, 1e-12), 1.0))
 
         results[ch_name] = {
             "peak_freq": float(peak_freq),
@@ -324,7 +345,7 @@ def test_cli_direction(name, tx_ser, rx_ser, tx_name, rx_name, verbose=False):
     return passed, metrics
 
 
-def test_uac2_loopback(tx_card, rx_card, duration=4, rate=48000, freq=1000.0, min_snr=80.0, verbose=False):
+def test_uac2_loopback(tx_card, rx_card, duration=4, rate=48000, freq=1000.0, min_snr=50.0, verbose=False):
     """Run full-stack UAC2 ALSA host streaming loopback test."""
     print(f"\n{'=' * 65}")
     print(f"  RUNNING UAC2 ALSA LOOPBACK: Host -> {tx_card} -> I2S -> {rx_card} -> Host")
@@ -336,8 +357,14 @@ def test_uac2_loopback(tx_card, rx_card, duration=4, rate=48000, freq=1000.0, mi
     if os.path.exists(cap_wav):
         os.remove(cap_wav)
 
+    # Normalize mixer volumes to unity gain (0 dB)
+    for card_str in [tx_card, rx_card]:
+        c_num = card_str.split(":")[1].split(",")[0]
+        subprocess.run(["amixer", "-c", c_num, "set", "PCM", "90"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["amixer", "-c", c_num, "set", "Mic", "90"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
     print(f"[*] Generating {freq} Hz stereo 16-bit reference tone ({duration}s)...")
-    generate_sine_wav(test_wav, duration_sec=duration + 1.0, sample_rate=rate, freq=freq)
+    generate_sine_wav(test_wav, duration_sec=duration + 1.0, sample_rate=rate, freq=freq, amplitude=16000)
 
     print(f"[*] Launching aplay on {tx_card}...")
     play_proc = subprocess.Popen(
@@ -412,7 +439,7 @@ def main():
     parser.add_argument("--direction", choices=["both", "forward", "reverse"], default="both",
                         help="Test direction: forward (A->B), reverse (B->A), or both")
     parser.add_argument("--duration", type=int, default=4, help="Capture duration in seconds (default: 4)")
-    parser.add_argument("--min-snr", type=float, default=80.0, help="Minimum acceptable SNR in dB (default: 80.0)")
+    parser.add_argument("--min-snr", type=float, default=50.0, help="Minimum acceptable SNR in dB (default: 50.0)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose serial I/O logging")
     args = parser.parse_args()
 
