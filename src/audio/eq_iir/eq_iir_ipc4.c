@@ -77,7 +77,7 @@ static eq_iir_func eq_iir_find_func(struct processing_module *mod)
 }
 
 int eq_iir_new_blob(struct processing_module *mod, enum sof_ipc_frame source_format,
-		    enum sof_ipc_frame sink_format, int channels)
+		    enum sof_ipc_frame sink_format, unsigned int channels)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	int ret;
