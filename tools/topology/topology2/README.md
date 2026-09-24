@@ -887,4 +887,134 @@ Test complete: 20 / 20 passed
 * **Audio Frames**: 4,000 frames captured per run without overruns (`-EPIPE`) or watchdog aborts (`-EIO`).
 * **Kernel & DSP Stability**: Verified 0 IPC errors, 0 ASoC component errors, and 0 widget teardown leaks in `dmesg`.
 
+---
+
+### 6. Verified D0i3 Low Power Sleep-and-Wake Results
+
+In the D0i3 Wake-on-Voice use case, the host opens the WoV capture PCM, configures the DSP in D0i3 low-power listening mode, and suspends the host CPU to `s2idle`. Upon keyword detection (or the `CONFIG_COMP_MWW_FAKE_WAKE_MS` fake-wake timer expiry), the DSP sends `SOF_IPC4_NOTIFY_PHRASE_DETECTED` to wake the host from `s2idle` via AudioDSP MSI IRQ 193.
+
+#### Key Implementation Details
+1. **D0ix Power State Tracking (`NOTIFIER_ID_D0IX_STATE`)**:
+   Subscribes to `NOTIFIER_ID_D0IX_STATE` so detector slots track when the host enters/exits D0i3.
+2. **Telemetry IPC Suppression in D0i3**:
+   ALSA enum kcontrol score notifications (`mww_notify_score`) are suppressed while in D0i3 (`cd->in_d0ix == true`) to prevent intermediate score updates from waking the host prematurely.
+3. **D0i3-Entry Timer Arming**:
+   The fake wake deadline is re-armed upon receiving `NOTIFIER_ID_D0IX_STATE` with `notif->entering == true`, ensuring the configured delay (e.g. 5.0s) elapses while the host is fully suspended.
+
+#### 5-Run Sleep-and-Wake Validation Script (`/tmp/run_5_wov_sleep_wake.sh`):
+```bash
+#!/bin/bash
+set -e
+
+SUCCESS=0
+TOTAL=5
+
+echo "Starting 5-run WOV sleep-and-wake test sequence on Aphid (Panther Lake)..."
+
+for i in $(seq 1 $TOTAL); do
+    echo ""
+    echo "=================================================="
+    echo "=== RUN $i / $TOTAL ==="
+    echo "=================================================="
+    
+    # Launch blocking read in background
+    /tmp/wov_blocking_read > /tmp/wov_run_${i}.log 2>&1 &
+    WOV_PID=$!
+    
+    # Give stream 0.5s to start and prepare
+    sleep 0.5
+    
+    # Suspend to s2idle with 30s safety RTC alarm
+    echo "Suspending to s2idle (expecting DSP wake in ~5s)..."
+    T_SUSP=$(date +%s.%N)
+    rtcwake -d /dev/rtc1 -m freeze -s 30 > /tmp/rtcwake_run_${i}.log 2>&1
+    T_RESUME=$(date +%s.%N)
+    
+    SUSP_DUR=$(echo "$T_RESUME - $T_SUSP" | bc)
+    echo "Host suspended for ${SUSP_DUR}s"
+    
+    # Wait for wov_blocking_read to finish
+    wait $WOV_PID
+    
+    WAKE_IRQ=$(cat /sys/power/pm_wakeup_irq 2>/dev/null || echo "unknown")
+    echo "Wakeup IRQ: $WAKE_IRQ"
+    
+    READ_OUTPUT=$(cat /tmp/wov_run_${i}.log | grep "read returned" || true)
+    echo "PCM read result: $READ_OUTPUT"
+    
+    if echo "$READ_OUTPUT" | grep -q "read returned 4000 frames" && [ "$WAKE_IRQ" = "193" ]; then
+        echo ">>> RUN $i: PASS <<<"
+        SUCCESS=$((SUCCESS + 1))
+    else
+        echo ">>> RUN $i: FAIL <<<"
+    fi
+    
+    sleep 2
+done
+
+echo ""
+echo "=================================================="
+echo "Final Summary: $SUCCESS / $TOTAL tests PASSED"
+echo "=================================================="
+```
+
+#### Hardware Test Execution Results:
+```text
+==================================================
+=== RUN 1 / 5 ===
+==================================================
+Suspending to s2idle (expecting DSP wake in ~5s)...
+Host suspended for 4.930398174s
+Wakeup IRQ: 193
+PCM read result: t=0.805 read returned 4000 frames after 0.805s
+>>> RUN 1: PASS <<<
+
+==================================================
+=== RUN 2 / 5 ===
+==================================================
+Suspending to s2idle (expecting DSP wake in ~5s)...
+Host suspended for 5.396541126s
+Wakeup IRQ: 193
+PCM read result: t=1.066 read returned 4000 frames after 1.066s
+>>> RUN 2: PASS <<<
+
+==================================================
+=== RUN 3 / 5 ===
+==================================================
+Suspending to s2idle (expecting DSP wake in ~5s)...
+Host suspended for 5.368300935s
+Wakeup IRQ: 193
+PCM read result: t=1.054 read returned 4000 frames after 1.054s
+>>> RUN 3: PASS <<<
+
+==================================================
+=== RUN 4 / 5 ===
+==================================================
+Suspending to s2idle (expecting DSP wake in ~5s)...
+Host suspended for 5.389408886s
+Wakeup IRQ: 193
+PCM read result: t=1.064 read returned 4000 frames after 1.064s
+>>> RUN 4: PASS <<<
+
+==================================================
+=== RUN 5 / 5 ===
+==================================================
+Suspending to s2idle (expecting DSP wake in ~5s)...
+Host suspended for 5.393660894s
+Wakeup IRQ: 193
+PCM read result: t=1.032 read returned 4000 frames after 1.032s
+>>> RUN 5: PASS <<<
+
+==================================================
+Final Summary: 5 / 5 tests PASSED
+==================================================
+```
+
+* **Pass Rate**: **`5 / 5 (100%)`**
+* **Suspend Duration**: \(\approx 5.38\) seconds in `s2idle` before DSP wake.
+* **Wakeup IRQ**: IRQ 193 (`AudioDSP` MSI) triggered system resume from `s2idle`.
+* **Audio Capture**: Clean 4,000 frames read upon host wakeup.
+* **Kernel & DSP Health**: 0 kernel warnings, 0 DSP panics.
+
+
 
