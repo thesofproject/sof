@@ -33,10 +33,18 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#if CONFIG_COMP_MFCC_DEBUG_TRACE
+#include <zephyr/kernel.h>
+#endif
 
 LOG_MODULE_REGISTER(mfcc, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(mfcc);
+
+#if CONFIG_COMP_MFCC_DEBUG_TRACE
+static uint32_t last_mfcc_cycle;
+static uint32_t mfcc_call_count;
+#endif
 
 /** \brief Source/sink API based source copy function map. */
 struct mfcc_source_func_map {
@@ -162,6 +170,13 @@ static int mfcc_process(struct processing_module *mod,
 	size_t source_avail;
 	int frames;
 	int num_ceps;
+#if CONFIG_COMP_MFCC_DEBUG_TRACE
+	uint32_t now = k_cycle_get_32();
+	uint32_t delta_cycles = now - last_mfcc_cycle;
+
+	last_mfcc_cycle = now;
+	mfcc_call_count++;
+#endif
 
 	comp_dbg(dev, "start");
 
@@ -172,23 +187,47 @@ static int mfcc_process(struct processing_module *mod,
 	 * can continue while the previous period is drained.
 	 */
 	pending = state->header_pending || state->out_remain > 0;
-	if (cd->config->compress_output && pending)
-		return mfcc_process_output(mod, cd, sources, sinks, 0, 0);
+	if (cd->config->compress_output && pending) {
+		int ret = mfcc_process_output(mod, cd, sources, sinks, 0, 0);
+
+#if CONFIG_COMP_MFCC_DEBUG_TRACE
+		comp_info(dev, "[MFCC proc %u] delta=%u us (pending retry, ret=%d)",
+			  mfcc_call_count, k_cyc_to_us_near32(delta_cycles), ret);
+#endif
+		return ret;
+	}
 
 	source_avail = source_get_data_frames_available(sources[0]);
 	frames = MIN(source_avail, cd->max_frames);
-	if (!frames)
+	if (!frames) {
+#if CONFIG_COMP_MFCC_DEBUG_TRACE
+		comp_info(dev, "[MFCC proc %u] delta=%u us (no frames, avail=%zu)",
+			  mfcc_call_count, k_cyc_to_us_near32(delta_cycles), source_avail);
+#endif
 		return 0;
+	}
 
 	/* Copy input audio from source to MFCC internal circular buffer */
 	cd->source_func(sources[0], &state->buf, &state->emph, frames, state->source_channel);
 
 	/* Run STFT and Mel/DCT processing */
 	num_ceps = mfcc_stft_process(mod, cd);
-	if (num_ceps < 0)
+	if (num_ceps < 0) {
+#if CONFIG_COMP_MFCC_DEBUG_TRACE
+		comp_info(dev, "[MFCC proc %u] delta=%u us stft error %d",
+			  mfcc_call_count, k_cyc_to_us_near32(delta_cycles), num_ceps);
+#endif
 		return num_ceps;
+	}
 
-	return mfcc_process_output(mod, cd, sources, sinks, num_ceps, frames);
+	int ret = mfcc_process_output(mod, cd, sources, sinks, num_ceps, frames);
+
+#if CONFIG_COMP_MFCC_DEBUG_TRACE
+	comp_info(dev, "[MFCC proc %u] delta=%u us avail=%zu frames=%d ceps=%d ret=%d",
+		  mfcc_call_count, k_cyc_to_us_near32(delta_cycles),
+		  source_avail, frames, num_ceps, ret);
+#endif
+	return ret;
 }
 
 /**
@@ -242,8 +281,14 @@ static int mfcc_prepare(struct processing_module *mod,
 	/* Initialize MFCC, max_frames is set to dev->frames + 4 */
 	if (cd->config && data_size > 0) {
 		uint32_t src_rate = audio_stream_get_rate(&sourceb->stream);
+		int max_frames;
 
-		ret = mfcc_setup(mod, dev->frames + 4, src_rate,
+		if (dev->frames < cd->config->frame_shift)
+			dev->frames = cd->config->frame_shift;
+
+		max_frames = dev->frames + 4;
+
+		ret = mfcc_setup(mod, max_frames, src_rate,
 				 audio_stream_get_channels(&sourceb->stream));
 		if (ret < 0) {
 			comp_err(dev, "setup failed.");
@@ -317,6 +362,10 @@ static int mfcc_reset(struct processing_module *mod)
 
 	/* Reset to similar state as init() */
 	cd->source_func = NULL;
+#if CONFIG_COMP_MFCC_DEBUG_TRACE
+	last_mfcc_cycle = 0;
+	mfcc_call_count = 0;
+#endif
 	return 0;
 }
 

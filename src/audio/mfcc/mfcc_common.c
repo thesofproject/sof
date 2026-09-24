@@ -13,6 +13,9 @@
 #include <sof/math/auditory.h>
 #include <sof/math/fft.h>
 #include <sof/math/matrix.h>
+#if CONFIG_COMP_MFCC_PCAN
+#include <sof/math/pcan.h>
+#endif
 #include <sof/math/sqrt.h>
 #include <sof/math/trig.h>
 #include <sof/math/window.h>
@@ -352,8 +355,23 @@ int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_data *cd)
 		 * to add the missing "gain".
 		 */
 		mel_scale_shift = input_shift - fft->fft_plan->len;
+
+#if CONFIG_COMP_MFCC_PCAN
+		if (state->pcan.enable_pcan) {
+			psy_apply_mel_filterbank_with_linear_32(&state->melfb, fft->fft_out,
+							       state->power_spectra, state->mel_log_32,
+							       state->mel_linear, mel_scale_shift);
+			pcan_noise_reduction(&state->pcan, state->mel_linear);
+			pcan_apply(&state->pcan, state->mel_linear);
+			pcan_log_scale(&state->pcan, state->mel_linear);
+		} else {
+			psy_apply_mel_filterbank_32(&state->melfb, fft->fft_out, state->power_spectra,
+						    state->mel_log_32, mel_scale_shift);
+		}
+#else
 		psy_apply_mel_filterbank_32(&state->melfb, fft->fft_out, state->power_spectra,
 					    state->mel_log_32, mel_scale_shift);
+#endif
 
 		if (state->mel_only) {
 			/* In Mel-only mode output Mel log spectra directly */
@@ -419,7 +437,7 @@ int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_data *cd)
 		/* Use hop counter for frame numbering (independent of VAD enable) */
 		state->header.frame_number = state->hop_count;
 
-		/* Run VAD on the mel log spectrum (available in both modes) */
+		/* Run VAD on the scaled mel log spectrum (available in both modes) */
 		if (config->enable_vad) {
 			mfcc_vad_update(&cd->vad, state->mel_log_32);
 
@@ -496,6 +514,30 @@ static void mfcc_prepare_output(struct mfcc_state *state, int num_ceps)
 
 	if (num_ceps <= 0)
 		return;
+
+#if CONFIG_COMP_MFCC_PCAN
+	if (state->pcan.enable_pcan) {
+		int8_t *out8 = (int8_t *)state->out_stage;
+
+		for (k = 0; k < num_ceps; k++) {
+			/* Map PCAN log-scaled output (~0..666) to int8 [-128..127] */
+			int32_t val = (int32_t)state->mel_linear[k];
+
+			val = ((val * 256) + 333) / 666 - 128;
+			if (val > 127)
+				val = 127;
+			else if (val < -128)
+				val = -128;
+
+			out8[k] = (int8_t)val;
+		}
+
+		state->out_data_ptr = state->out_stage;
+		state->out_remain = num_ceps;
+		state->header_pending = true;
+		return;
+	}
+#endif
 
 	/* Copy into out_stage so the next STFT hop may freely reuse
 	 * mel_log_32 / cepstral_coef while this frame is still pending.
@@ -585,8 +627,14 @@ static int mfcc_output_compress(struct processing_module *mod, struct mfcc_comp_
 		state->dtx_silence_counter = 0;
 	}
 
+#if CONFIG_COMP_MFCC_PCAN
+	size_t sample_size = state->pcan.enable_pcan ? sizeof(int8_t) : sizeof(int32_t);
+#else
+	size_t sample_size = sizeof(int32_t);
+#endif
+
 	out_bytes = (state->header_pending ? sizeof(state->header) : 0) +
-		    state->out_remain * sizeof(int32_t);
+		    state->out_remain * sample_size;
 	if (out_bytes == 0)
 		return 0;
 
@@ -609,7 +657,7 @@ static int mfcc_output_compress(struct processing_module *mod, struct mfcc_comp_
 	if (state->out_remain > 0) {
 		mfcc_sink_write_bytes(&dst, sink_start, sink_buf_size,
 				      (uint8_t *)state->out_data_ptr,
-				      state->out_remain * sizeof(int32_t));
+				      state->out_remain * sample_size);
 	}
 
 	ret = sink_commit_buffer(sinks[0], commit_bytes);
@@ -653,11 +701,10 @@ static int mfcc_output_legacy(struct processing_module *mod, struct mfcc_comp_da
 	void *sink_start;
 	size_t sink_buf_size;
 	uint8_t *dst;
-	int n32;
 	int ret;
 
 	/* The MFCC sink is treated as an opaque byte container: the period
-	 * carries an MFCC blob (header + int32 features), not PCM audio.
+	 * carries an MFCC blob (header + features), not PCM audio.
 	 * Sizing the commit as sink_frame_bytes * frames keeps the period
 	 * size matched to whatever the sink advertises (S16_LE / S24_4LE /
 	 * S32_LE), so no format-specific conversion is needed. Any payload
@@ -702,17 +749,25 @@ static int mfcc_output_legacy(struct processing_module *mod, struct mfcc_comp_da
 		}
 	}
 
-	/* Write pending feature data (always int32) */
+	/* Write pending feature data (int8 in PCAN mode, int32 otherwise) */
 	if (state->out_remain > 0 && avail > 0) {
-		data_bytes = state->out_remain * sizeof(int32_t);
-		to_write = MIN(data_bytes, avail) & ~(size_t)3;
+#if CONFIG_COMP_MFCC_PCAN
+		size_t sample_size = state->pcan.enable_pcan ? sizeof(int8_t) : sizeof(int32_t);
+#else
+		size_t sample_size = sizeof(int32_t);
+#endif
+		data_bytes = state->out_remain * sample_size;
+		to_write = MIN(data_bytes, avail);
+		if (sample_size > 1)
+			to_write &= ~(sample_size - 1);
 		if (to_write > 0) {
 			mfcc_sink_write_bytes(&dst, sink_start, sink_buf_size,
 					      (uint8_t *)state->out_data_ptr,
 					      to_write);
-			n32 = to_write / sizeof(int32_t);
-			state->out_data_ptr += n32;
-			state->out_remain -= n32;
+			int n = to_write / sample_size;
+
+			state->out_data_ptr = (void *)((uint8_t *)state->out_data_ptr + to_write);
+			state->out_remain -= n;
 		}
 	}
 
