@@ -1208,8 +1208,14 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 
 	tr_dbg(&ipc_tr, "ipc: comp %d -> cmd %d", data->comp_id, data->cmd);
 
-	/* get component values */
-	ret = comp_cmd(comp_dev->cd, cmd, data, SOF_IPC_MSG_MAX_SIZE);
+	/*
+	 * Components use max_data_size as the memcpy_s() destination size for
+	 * data->data->data, so pass the payload capacity left after the
+	 * control and ABI headers rather than the whole comp_data buffer.
+	 */
+	ret = comp_cmd(comp_dev->cd, cmd, data,
+		       SOF_IPC_MSG_MAX_SIZE - offsetof(struct sof_ipc_ctrl_data, data) -
+		       sizeof(struct sof_abi_hdr));
 	if (ret < 0) {
 		ipc_cmd_err(&ipc_tr, "ipc: comp %d cmd %u failed %d", data->comp_id,
 			    data->cmd, ret);
