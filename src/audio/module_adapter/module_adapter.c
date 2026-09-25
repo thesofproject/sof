@@ -516,13 +516,15 @@ int module_adapter_prepare(struct comp_dev *dev)
 	 * Hence check for NULL.
 	 */
 	sink = comp_dev_get_first_data_consumer(dev);
-	if (!sink) {
+	if (!sink && mod->max_sinks) {
 		comp_err(dev, "no sink present on period size calculation");
 		return -EINVAL;
 	}
 
-	mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
-	comp_dbg(dev, "got period_bytes = %u", mod->period_bytes);
+	if (sink) {
+		mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
+		comp_dbg(dev, "got period_bytes = %u", mod->period_bytes);
+	}
 
 	/* no more to do for sink/source mode */
 	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
