@@ -646,17 +646,41 @@ To reproduce this test case, both the host Linux kernel and the SOF DSP firmware
 ### 2. Firmware & Topology Build Instructions
 
 #### Step 1: Build the Firmware Binary with Fake Wake Test Aid
-To test WOV in an automated lab environment without a physical speaker or microphone, enable the synthetic fake-wake overlay (`app/wov-d0i3-fake-wake.conf`, which sets `CONFIG_COMP_MWW_FAKE_WAKE_MS=5000`):
+To test WOV in an automated lab environment without a physical speaker or microphone, enable the synthetic fake-wake overlay (`app/wov-d0i3-fake-wake.conf`), which sets `CONFIG_COMP_MWW_FAKE_WAKE_MS=5000` and `CONFIG_LLEXT_TYPE_ELF_RELOCATABLE=y`:
+
+##### Method A: One-Command Build & Signing (Recommended)
+Using the SOF build wrapper, which builds Zephyr ELF, compiles `rimage`, signs the image, and packages artifacts in one step:
 
 ```bash
-# In the SOF workspace with Zephyr environment activated:
-west build --build-dir build-ptl \
-    --board intel_adsp/ace30/ptl sof/app -p always -- \
-    -DEXTRA_CONF_FILE="sof/app/wov-d0i3-fake-wake.conf;sof/app/llext_relocatable.conf"
+# In the SOF workspace with Zephyr environment and SDK activated:
+source .venv/bin/activate
+export ZEPHYR_SDK_INSTALL_DIR=/path/to/zephyr-sdk-1.0.1
+
+./sof/scripts/xtensa-build-zephyr.py -z -p \
+    -o sof/app/wov-d0i3-fake-wake.conf \
+    ptl
 ```
 
 The signed firmware image is produced at:
-`build-ptl/zephyr/zephyr.ri`
+`build-ptl/zephyr/zephyr.ri` (and packaged at `build-sof-staging/sof/intel/sof-ipc4/ptl/community/sof-ptl.ri`).
+
+##### Method B: Direct `west build` and `rimage` Signing
+```bash
+# 1. Build Zephyr ELF with the test overlay:
+west build --build-dir build-ptl \
+    --board intel_adsp/ace30/ptl sof/app -p always -- \
+    -DEXTRA_CONF_FILE="sof/app/wov-d0i3-fake-wake.conf"
+
+# 2. Build rimage tool (if not already built):
+cmake -B build-rimage -S sof/tools/rimage
+cmake --build build-rimage
+
+# 3. Sign the firmware image:
+build-rimage/rimage -k sof/keys/otc_private_key_3k.pem \
+    -c sof/tools/rimage/config/platform-ptl.toml \
+    -o build-ptl/zephyr/zephyr.ri \
+    build-ptl/zephyr/zephyr.elf
+```
 
 #### Step 2: Compile the 4-Channel Multi-Slot Topology
 
