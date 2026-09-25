@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2026 Intel Corporation. All rights reserved.
+
+tests:
+  sof.unit.math.mu_law:
+    tags: [math, mu_law, codec, g711]
+    platform_allow: native_sim
+    integration_platforms:
+      - native_sim
+    build_only: false
