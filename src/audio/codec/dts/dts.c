@@ -21,15 +21,14 @@ static void *dts_effect_allocate_codec_memory(void *mod_void, unsigned int lengt
 	struct comp_dev *dev = mod->dev;
 	void *pMem;
 
-	comp_dbg(dev, "dts_effect_allocate_codec_memory() start");
+	comp_dbg(dev, "start");
 
 	pMem = mod_alloc_align(mod, (uint32_t)length, (uint32_t)alignment);
 
 	if (pMem == NULL)
-		comp_err(dev,
-			"dts_effect_allocate_codec_memory() failed to allocate %d bytes", length);
+		comp_err(dev, "failed to allocate %d bytes", length);
 
-	comp_dbg(dev, "dts_effect_allocate_codec_memory() done");
+	comp_dbg(dev, "done");
 	return pMem;
 }
 
@@ -71,25 +70,19 @@ static int dts_effect_convert_sof_interface_result(struct comp_dev *dev,
 	return ret;
 }
 
-static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
+static int dts_effect_populate_buffer_configuration(struct comp_dev *dev, struct sof_source *source,
 	DtsSofInterfaceBufferConfiguration *buffer_config)
 {
-	struct comp_buffer *source = comp_dev_get_first_data_producer(dev);
-	const struct audio_stream *stream;
 	DtsSofInterfaceBufferLayout buffer_layout;
 	DtsSofInterfaceBufferFormat buffer_format;
 	unsigned int buffer_fmt, frame_fmt, rate, channels;
 
 	comp_dbg(dev, "start");
 
-	if (!source)
-		return -EINVAL;
-
-	stream = &source->stream;
-	buffer_fmt = audio_stream_get_buffer_fmt(stream);
-	frame_fmt = audio_stream_get_frm_fmt(stream);
-	rate = audio_stream_get_rate(stream);
-	channels = audio_stream_get_channels(stream);
+	buffer_fmt = source_get_buffer_fmt(source);
+	frame_fmt = source_get_frm_fmt(source);
+	rate = source_get_rate(source);
+	channels = source_get_channels(source);
 
 	switch (buffer_fmt) {
 	case SOF_IPC_BUFFER_INTERLEAVED:
@@ -187,11 +180,14 @@ static int dts_codec_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "start");
 
-	ret = dts_effect_populate_buffer_configuration(dev, &buffer_configuration);
+	if (num_of_sources < 1) {
+		comp_err(dev, "invalid number of sources %d", num_of_sources);
+		return -EINVAL;
+	}
+
+	ret = dts_effect_populate_buffer_configuration(dev, sources[0], &buffer_configuration);
 	if (ret) {
-		comp_err(dev,
-			"dts_effect_populate_buffer_configuration failed %d",
-			ret);
+		comp_err(dev, "dts_effect_populate_buffer_configuration failed %d", ret);
 		return ret;
 	}
 
@@ -236,19 +232,23 @@ static int dts_codec_init_process(struct processing_module *mod)
 	return ret;
 }
 
-static int
-dts_codec_process(struct processing_module *mod,
-		  struct input_stream_buffer *input_buffers, int num_input_buffers,
-		  struct output_stream_buffer *output_buffers, int num_output_buffers)
+static int dts_codec_process(struct processing_module *mod,
+			     struct sof_source **sources, int num_of_sources,
+			     struct sof_sink **sinks, int num_of_sinks)
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = &mod->priv;
 	DtsSofInterfaceResult dts_result;
 	unsigned int bytes_processed = 0;
+	const void *src_ptr, *src_buf_start;
+	void *snk_ptr, *snk_buf_start;
+	size_t buf_size, size_to_wrap;
+
+	comp_dbg(dev, "start");
 
 	/* Proceed only if we have enough data to fill the module buffer completely */
-	if (input_buffers[0].size < codec->mpd.in_buff_size) {
+	if (source_get_data_available(sources[0]) < codec->mpd.in_buff_size) {
 		comp_dbg(dev, "not enough data to process");
 		return -ENODATA;
 	}
@@ -259,28 +259,48 @@ dts_codec_process(struct processing_module *mod,
 			return ret;
 	}
 
-	memcpy_s(codec->mpd.in_buff, codec->mpd.in_buff_size,
-		 input_buffers[0].data, codec->mpd.in_buff_size);
-	codec->mpd.avail = codec->mpd.in_buff_size;
+	ret = source_get_data(sources[0], codec->mpd.in_buff_size,
+			      &src_ptr, &src_buf_start, &buf_size);
+	if (ret)
+		return ret;
 
-	comp_dbg(dev, "start");
+	size_to_wrap = cir_buf_bytes_without_wrap(src_ptr, src_buf_start + buf_size);
+	if (codec->mpd.in_buff_size <= size_to_wrap) {
+		memcpy_s(codec->mpd.in_buff, codec->mpd.in_buff_size,
+			 src_ptr, codec->mpd.in_buff_size);
+	} else {
+		memcpy_s(codec->mpd.in_buff, codec->mpd.in_buff_size,
+			 src_ptr, size_to_wrap);
+		memcpy_s((uint8_t *)codec->mpd.in_buff + size_to_wrap,
+			 codec->mpd.in_buff_size - size_to_wrap,
+			 src_buf_start, codec->mpd.in_buff_size - size_to_wrap);
+	}
 
 	dts_result = dtsSofInterfaceProcess(codec->private, &bytes_processed);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
-	codec->mpd.consumed = !ret ? bytes_processed : 0;
-	codec->mpd.produced = !ret ? bytes_processed : 0;
-	input_buffers[0].consumed = codec->mpd.consumed;
-
 	if (ret) {
+		source_release_data(sources[0], 0);
 		comp_err(dev, "failed %d %d", ret, dts_result);
 		return ret;
 	}
+	source_release_data(sources[0], bytes_processed);
 
 	/* copy the produced samples into the output buffer */
-	memcpy_s(output_buffers[0].data, codec->mpd.produced, codec->mpd.out_buff,
-		 codec->mpd.produced);
-	output_buffers[0].size = codec->mpd.produced;
+	ret = sink_get_buffer(sinks[0], bytes_processed, &snk_ptr, &snk_buf_start, &buf_size);
+	if (ret)
+		return ret;
+
+	size_to_wrap = cir_buf_bytes_without_wrap(snk_ptr, snk_buf_start + buf_size);
+	if (bytes_processed <= size_to_wrap) {
+		memcpy_s(snk_ptr, bytes_processed, codec->mpd.out_buff, bytes_processed);
+	} else {
+		memcpy_s(snk_ptr, size_to_wrap, codec->mpd.out_buff, size_to_wrap);
+		memcpy_s(snk_buf_start, bytes_processed - size_to_wrap,
+			 (const uint8_t *)codec->mpd.out_buff + size_to_wrap,
+			 bytes_processed - size_to_wrap);
+	}
+	sink_commit_buffer(sinks[0], bytes_processed);
 
 	comp_dbg(dev, "done");
 
@@ -471,7 +491,7 @@ dts_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
 static const struct module_interface dts_interface = {
 	.init = dts_codec_init,
 	.prepare = dts_codec_prepare,
-	.process_raw_data = dts_codec_process,
+	.process = dts_codec_process,
 	.set_configuration = dts_codec_set_configuration,
 	.reset = dts_codec_reset,
 	.free = dts_codec_free
