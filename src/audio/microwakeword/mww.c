@@ -246,6 +246,7 @@ __cold static int mww_init(struct processing_module *mod)
 
 	cd->drain_req_ms = MWW_KPB_DRAIN_REQ_MS;
 	cd->agc_gain_q23 = MWW_AGC_GAIN_TARGET_Q23;
+	mod->max_sinks = 0;
 #if CONFIG_AMS
 	cd->kpd_uuid_id = AMS_INVALID_MSG_TYPE;
 #endif
