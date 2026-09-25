@@ -110,7 +110,7 @@ static int mic_privacy_configure(struct processing_module *mod, struct copier_da
 	cd->mic_priv = mic_priv_data;
 
 	ret = notifier_register(cd->mic_priv, NULL, NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE,
-				mic_privacy_event, 0);
+				mic_privacy_event);
 
 	if (ret != 0)
 		mod_free(mod, mic_priv_data);

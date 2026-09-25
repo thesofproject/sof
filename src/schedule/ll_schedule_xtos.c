@@ -796,8 +796,7 @@ int scheduler_init_ll(struct ll_schedule_domain *domain)
 	sch->domain = domain;
 
 	/* notification of clock changes */
-	notifier_register(sch, NULL, NOTIFIER_CLK_CHANGE_ID(domain->clk),
-			  ll_scheduler_notify, 0);
+	notifier_register(sch, NULL, NOTIFIER_CLK_CHANGE_ID(domain->clk), ll_scheduler_notify);
 
 	scheduler_init(domain->type, &schedule_ll_ops, sch);
 

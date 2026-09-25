@@ -938,8 +938,7 @@ static int kpb_prepare(struct comp_dev *dev)
 					   kpb_ams_kpd_notification);
 #else
 	/* Register KPB for notification *on the current core* */
-	ret = notifier_register(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT,
-				kpb_event_handler, 0);
+	ret = notifier_register(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT, kpb_event_handler);
 #endif /* CONFIG_AMS */
 #endif
 
