@@ -877,7 +877,7 @@ static int kpb_prepare(struct comp_dev *dev)
 #else
 	/* Register KPB for notification */
 	ret = notifier_register(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT,
-				kpb_event_handler, 0);
+				kpb_event_handler);
 #endif /* CONFIG_AMS */
 
 	if (ret < 0) {

@@ -103,8 +103,7 @@ __cold int dai_assign_group(struct dai_data *dd, struct comp_dev *dev, uint32_t 
 		 group_id, dd->group->num_dais);
 
 	/* Register for the atomic trigger event */
-	notifier_register(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER,
-			  dai_atomic_trigger, 0);
+	notifier_register(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER, dai_atomic_trigger);
 
 	return 0;
 }
