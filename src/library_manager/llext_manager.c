@@ -289,6 +289,9 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 		}
 	}
 
+	mctx->writable_merged.addr = (uintptr_t)va_base_data;
+	mctx->writable_merged.size = data_size;
+
 	const struct llext_loader *ldr = &mctx->ebl->loader;
 	const struct llext *ext = mctx->llext;
 
@@ -372,12 +375,8 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	size_t rodata_size = mctx->segment[LIB_MANAGER_RODATA].size;
 
 	/* Writable data (.data, .bss, etc.) */
-	void __sparse_cache *va_base_data = (void __sparse_cache *)
-		mctx->segment[LIB_MANAGER_DATA].addr;
-	void __sparse_cache *va_base_bss = (void __sparse_cache *)
-		mctx->segment[LIB_MANAGER_BSS].addr;
-	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size +
-		mctx->segment[LIB_MANAGER_BSS].size;
+	void __sparse_cache *va_base_data = (void __sparse_cache *)mctx->writable_merged.addr;
+	size_t data_size = mctx->writable_merged.size;
 	int err = 0, ret;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
@@ -398,12 +397,6 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	ret = llext_manager_align_unmap(va_base_text, text_size);
 	if (ret < 0)
 		err = ret;
-
-	/* Mimic the logic from load_module where the .bss address is used for mapping
-	 * in case of e.g. lack of writable .data section
-	 */
-	if (!va_base_data)
-		va_base_data = va_base_bss;
 
 	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_DATA,
 					      va_base_data, data_size);
@@ -863,8 +856,8 @@ static int llext_manager_add_mod_domain(struct lib_manager_module *mctx, struct 
 	size_t rodata_size = mctx->segment[LIB_MANAGER_RODATA].size;
 
 	/* Writable data (.data, .bss and others) */
-	uintptr_t va_base_data = mctx->segment[LIB_MANAGER_DATA].addr;
-	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
+	uintptr_t va_base_data = mctx->writable_merged.addr;
+	size_t data_size = mctx->writable_merged.size;
 
 	/*
 	 * Add to domain on first load: for "normal" modules use_count == 1,
@@ -1039,8 +1032,8 @@ static int llext_manager_rm_mod_domain(struct lib_manager_module *mctx, struct k
 	size_t rodata_size = mctx->segment[LIB_MANAGER_RODATA].size;
 
 	/* Writable data (.data, .bss and others) */
-	uintptr_t va_base_data = mctx->segment[LIB_MANAGER_DATA].addr;
-	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
+	uintptr_t va_base_data = mctx->writable_merged.addr;
+	size_t data_size = mctx->writable_merged.size;
 
 	int err, ret = llext_manager_rm_partition(domain, va_base_text, text_size,
 						  K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
