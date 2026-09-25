@@ -11,8 +11,11 @@
 #include <cmocka.h>
 #include <kernel/header.h>
 #include <sof/audio/component_ext.h>
+#include <sof/audio/audio_buffer.h>
 #include <eq_iir/eq_iir.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 #include <ipc/control.h>
 
 #include "../../util.h"
@@ -157,6 +160,8 @@ static int setup(void **state)
 	struct test_data *td;
 	struct sof_ipc_comp_process *ipc;
 	struct comp_dev *dev;
+	struct sof_source *sources[1];
+	struct sof_sink *sinks[1];
 	int ret;
 
 	td = test_malloc(sizeof(*td));
@@ -197,7 +202,9 @@ static int setup(void **state)
 	mod->stream_params->channels = params->channels;
 	mod->period_bytes = get_frame_bytes(params->source_format, params->channels) * 48000 / 1000;
 
-	ret = module_prepare(mod, NULL, 0, NULL, 0);
+	sources[0] = audio_buffer_get_source(&td->source->audio_buffer);
+	sinks[0] = audio_buffer_get_sink(&td->sink->audio_buffer);
+	ret = module_prepare(mod, sources, 1, sinks, 1);
 	if (ret)
 		return ret;
 
@@ -432,8 +439,14 @@ static void test_audio_eq_iir(void **state)
 
 	struct comp_buffer *source = td->source;
 	struct comp_buffer *sink = td->sink;
+	struct sof_source *sources[1];
+	struct sof_sink *sinks[1];
+	size_t sink_avail_before;
 	int ret;
 	int frames;
+
+	sources[0] = audio_buffer_get_source(&source->audio_buffer);
+	sinks[0] = audio_buffer_get_sink(&sink->audio_buffer);
 
 	while (td->continue_loop) {
 		frames = frames_jitter(td->params->frames);
@@ -456,12 +469,12 @@ static void test_audio_eq_iir(void **state)
 
 		mod->input_buffers[0].consumed = 0;
 		mod->output_buffers[0].size = 0;
-		ret = module_process_legacy(mod, mod->input_buffers, 1,
-					    mod->output_buffers, 1);
+		sink_avail_before = audio_stream_get_avail_bytes(&sink->stream);
+		ret = module_process_sink_src(mod, sources, 1, sinks, 1);
 		assert_int_equal(ret, 0);
 
-		comp_update_buffer_consume(source, mod->input_buffers[0].consumed);
-		comp_update_buffer_produce(sink, mod->output_buffers[0].size);
+		mod->output_buffers[0].size = audio_stream_get_avail_bytes(&sink->stream) -
+					      sink_avail_before;
 
 		switch (audio_stream_get_frm_fmt(&sink->stream)) {
 		case SOF_IPC_FRAME_S16_LE:
