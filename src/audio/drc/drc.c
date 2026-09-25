@@ -481,4 +481,30 @@ SOF_LLEXT_BUILDINFO;
 DECLARE_MODULE_ADAPTER(drc_interface, drc_uuid, drc_tr);
 SOF_MODULE_INIT(drc, sys_comp_module_drc_interface_init);
 
+#if CONFIG_STATIC_PIPELINE
+#include <sof/audio/pipeline/static_pipeline.h>
+
+static int drc_static_apply_switch(struct comp_dev *dev, uint32_t channels, int32_t val)
+{
+	struct processing_module *mod = comp_mod(dev);
+
+	if (!mod)
+		return -EINVAL;
+
+	struct drc_comp_data *cd = module_get_private_data(mod);
+
+	if (cd)
+		cd->enable_switch = (val != 0);
+
+	return 0;
+}
+
+static struct sof_static_module_ops drc_static_ops = {
+	.uuid = &drc_uuid,
+	.apply_switch = drc_static_apply_switch,
+};
+
+DECLARE_STATIC_MODULE_OPS(drc, &drc_static_ops);
+#endif /* CONFIG_STATIC_PIPELINE */
+
 #endif

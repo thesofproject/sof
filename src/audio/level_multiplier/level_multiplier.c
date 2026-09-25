@@ -204,4 +204,46 @@ DECLARE_TR_CTX(level_multiplier_tr, SOF_UUID(level_multiplier_uuid), LOG_LEVEL_I
 DECLARE_MODULE_ADAPTER(level_multiplier_interface, level_multiplier_uuid, level_multiplier_tr);
 SOF_MODULE_INIT(level_multiplier, sys_comp_module_level_multiplier_interface_init);
 
+#if CONFIG_STATIC_PIPELINE
+#include <sof/audio/pipeline/static_pipeline.h>
+
+static int lm_static_apply_volume(struct comp_dev *dev, uint32_t channels, int32_t val)
+{
+	struct processing_module *mod = comp_mod(dev);
+
+	if (!mod)
+		return -EINVAL;
+
+	struct level_multiplier_comp_data *cd = module_get_private_data(mod);
+
+	if (cd)
+		cd->gain = val;
+
+	return 0;
+}
+
+static int lm_static_apply_switch(struct comp_dev *dev, uint32_t channels, int32_t val)
+{
+	struct processing_module *mod = comp_mod(dev);
+
+	if (!mod)
+		return -EINVAL;
+
+	struct level_multiplier_comp_data *cd = module_get_private_data(mod);
+
+	if (cd)
+		cd->gain = (val == 0) ? 0 : LEVEL_MULTIPLIER_GAIN_ONE;
+
+	return 0;
+}
+
+static struct sof_static_module_ops lm_static_ops = {
+	.uuid = &level_multiplier_uuid,
+	.apply_volume = lm_static_apply_volume,
+	.apply_switch = lm_static_apply_switch,
+};
+
+DECLARE_STATIC_MODULE_OPS(level_multiplier, &lm_static_ops);
+#endif /* CONFIG_STATIC_PIPELINE */
+
 #endif

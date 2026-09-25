@@ -240,6 +240,246 @@ sequenceDiagram
     deactivate Sched
 ```
 
+## Static Pipeline Subsystem (Hostless / Standalone Execution)
+
+In microcontroller, hostless, or standalone embedded environments (e.g. ESP32-P4/S3/C6, Teensy 4.1 / i.MX RT1062, Nordic nRF54, RP2350, audio bridge appliances, smart speakers, standalone DSP dongles), there is no dynamic IPC host (Linux ALSA/SoundWire or Windows driver) to construct audio topologies at runtime.
+
+The Static Pipeline subsystem (`CONFIG_STATIC_PIPELINE`) provides a declarative C API (`<sof/audio/pipeline/static_pipeline.h>`) and loader engine (`static_pipeline_loader.c`) that instantiates full SOF processing graphs directly at boot:
+
+```mermaid
+graph TD
+  Topo["Declarative Topology Descriptor<br/>(struct sof_static_topology)"] --> Loader["Static Topology Loader<br/>(sof_static_topology_init)"]
+  Loader --> PPL["Native Pipelines<br/>(pipeline_new)"]
+  Loader --> COMPS["Components<br/>(DAI, USB/Host, Modules)"]
+  Loader --> BUFS["Intermediate Buffers<br/>(buffer_alloc)"]
+  Loader --> ROUTES["Graph Connections<br/>(pipeline_connect)"]
+  Loader --> CONTROLS["Kcontrols & Custom Callbacks<br/>(Volume, Mute, EQ Bypass, Routing)"]
+```
+
+### Key Capabilities & Architecture
+
+1. **Declarative Definitions**: Topologies describe pipelines, components (modules, DAI, USB/Host endpoints), intermediate buffers, routes, PCMs, and kcontrols using builder macros (`SOF_STATIC_MODULE`, `SOF_STATIC_ENDPOINT_DAI`, `SOF_STATIC_ENDPOINT_USB`, `SOF_STATIC_BUFFER`, `SOF_STATIC_ROUTE`, `SOF_STATIC_KCONTROL_*`).
+2. **Ops-Driven Module Architecture**: Generic headers and the loader engine are completely decoupled from individual audio modules. Each audio processing component defines and registers operations (`struct sof_static_module_ops`) providing `.create`, `.apply_volume`, `.apply_switch`, and `.apply_enum` callbacks directly in its own module source file via `DECLARE_STATIC_MODULE_OPS()`.
+3. **Explicit Parameter Initialization**: Synchronously negotiates stream parameters and prepares all graph components (`comp_params`, `comp_prepare`) to bring non-host-driven pipelines into ready state before audio streaming begins.
+4. **Trigger & State Synchronization**: Provides direct runtime pipeline control (`sof_static_pipeline_trigger()`, `sof_static_pipeline_trigger_by_uac2_term()`) with state validation, synchronous trigger execution, per-component trigger propagation, and scheduler copy task activation/cancellation.
+5. **Decoupled Control Callbacks**: Standard kcontrols dispatch directly to module ops (Volume, Mute, Level Multiplier, EQ bypass, DRC compression switch, Selector channel), while custom platform or board-level controls (clock mode switching, hardware routing, DMIC injectors) are handled cleanly via `custom_control_handler` callbacks.
+
+### Usage Guide & Tutorial
+
+#### 1. Defining Components
+
+Declare processing modules, host/USB endpoints, and hardware DAIs using either concise constructor macros or explicit struct declarations:
+
+```c
+#include <sof/audio/pipeline/static_pipeline.h>
+
+extern const struct sof_uuid src_uuid;
+extern const struct sof_uuid volume_uuid;
+extern const struct sof_uuid eq_iir_uuid;
+
+static const struct sof_static_comp s_comps[] = {
+    /* Playback Endpoint (USB UAC2 Terminal ID 1) @ 44.1 kHz */
+    SOF_STATIC_ENDPOINT_USB(
+        1, 1, "USB_PB", SOF_IPC_STREAM_PLAYBACK,
+        SOF_IPC_FRAME_S16_LE, 44100, 2, 1
+    ),
+    /* Sample Rate Converter: 44.1 kHz In -> 48 kHz Out */
+    SOF_STATIC_MODULE_RATE_CONV(
+        2, 1, "SRC_PB", SOF_IPC_STREAM_PLAYBACK, &src_uuid,
+        SOF_IPC_FRAME_S16_LE, 44100, 48000, 2
+    ),
+    /* Volume Control Module @ 48 kHz */
+    SOF_STATIC_MODULE(
+        3, 1, "VOL_PB", SOF_IPC_STREAM_PLAYBACK, &volume_uuid,
+        SOF_IPC_FRAME_S16_LE, 48000, 2, NULL, 0
+    ),
+    /* 4-Band Parametric IIR EQ Module @ 48 kHz */
+    SOF_STATIC_MODULE(
+        4, 1, "EQ_PB", SOF_IPC_STREAM_PLAYBACK, &eq_iir_uuid,
+        SOF_IPC_FRAME_S16_LE, 48000, 2, NULL, 0
+    ),
+    /* Hardware I2S DAI Output @ 48 kHz */
+    SOF_STATIC_ENDPOINT_DAI(
+        5, 1, "I2S_TX", SOF_IPC_STREAM_PLAYBACK,
+        SOF_IPC_FRAME_S16_LE, 48000, 2,
+        SOF_DAI_INTEL_SSP, 0, SOF_DAI_FMT_I2S | SOF_DAI_FMT_CBC_CFC
+    ),
+};
+```
+
+#### 2. Defining Intermediate Buffers
+
+Allocate audio buffers connecting consecutive processing blocks. In multi-rate pipelines (such as with SRC / ASRC), buffers can declare their individual sample rates and channel counts or inherit them dynamically from the upstream producer:
+
+```c
+static const struct sof_static_buffer s_buffers[] = {
+    /* Buffer between USB_PB (1) and SRC_PB (2) @ 44.1 kHz */
+    SOF_STATIC_BUFFER(
+        .id = 1,
+        .size = 45 * 2 * sizeof(int16_t) * 4, /* 4 periods @ 44.1 kHz */
+        .fmt = SOF_IPC_FRAME_S16_LE,
+        .rate = 44100,
+        .channels = 2,
+    ),
+    /* Buffer between SRC_PB (2) and VOL_PB (3) @ 48 kHz */
+    SOF_STATIC_BUFFER(
+        .id = 2,
+        .size = 48 * 2 * sizeof(int16_t) * 4, /* 4 periods @ 48 kHz */
+        .fmt = SOF_IPC_FRAME_S16_LE,
+        .rate = 48000,
+        .channels = 2,
+    ),
+    /* Buffer between VOL_PB (3) and EQ_PB (4) @ 48 kHz */
+    SOF_STATIC_BUFFER(
+        .id = 3,
+        .size = 48 * 2 * sizeof(int16_t) * 4,
+        .fmt = SOF_IPC_FRAME_S16_LE,
+        .rate = 48000,
+        .channels = 2,
+    ),
+    /* Buffer between EQ_PB (4) and I2S_TX (5) @ 48 kHz */
+    SOF_STATIC_BUFFER(
+        .id = 4,
+        .size = 48 * 2 * sizeof(int16_t) * 4,
+        .fmt = SOF_IPC_FRAME_S16_LE,
+        .rate = 48000,
+        .channels = 2,
+    ),
+};
+```
+
+#### 3. Defining Graph Routes
+
+Connect component outputs through intermediate buffers to component inputs:
+
+```c
+static const struct sof_static_route s_routes[] = {
+    SOF_STATIC_ROUTE(.src_comp_id = 1, .buffer_id = 1, .sink_comp_id = 2),
+    SOF_STATIC_ROUTE(.src_comp_id = 2, .buffer_id = 2, .sink_comp_id = 3),
+    SOF_STATIC_ROUTE(.src_comp_id = 3, .buffer_id = 3, .sink_comp_id = 4),
+    SOF_STATIC_ROUTE(.src_comp_id = 4, .buffer_id = 4, .sink_comp_id = 5),
+};
+```
+
+#### 4. Defining Top-Level Pipelines
+
+Specify pipeline execution properties, scheduling domains, and boundary endpoints:
+
+```c
+static const struct sof_static_pipeline_desc s_pipelines[] = {
+    {
+        .pipeline_id = 1,
+        .name = "Playback Pipeline",
+        .direction = SOF_IPC_STREAM_PLAYBACK,
+        .priority = 0,
+        .core = 0,
+        .period = 1000,               /* 1 ms tick */
+        .frames_per_sched = 48,       /* 48 frames per ms @ 48 kHz */
+        .time_domain = SOF_TIME_DOMAIN_TIMER,
+        .default_rate = 48000,        /* Pipeline target rate */
+        .default_channels = 2,
+        .sched_comp_id = 5,           /* Driven by I2S DAI */
+        .source_comp_id = 1,          /* Ingress: USB_PB */
+        .sink_comp_id = 5,            /* Egress: I2S_TX */
+    },
+};
+```
+
+#### 5. Defining Kcontrols & Custom Handlers
+
+Declare runtime controls (volume, mute, filter bypass switches) and optional platform callbacks:
+
+```c
+static const struct sof_static_kcontrol s_controls[] = {
+    SOF_STATIC_KCONTROL_VOLUME(
+        .id = 1,
+        .name = "Master Playback Volume",
+        .target_comp_id = 3,          /* Targets VOL_PB (3) */
+        .min = 0,
+        .max = 65536,
+        .def = 65536,                 /* 0 dB default */
+        .channels = 2,
+        .uac2_entity_id = 10,         /* Bound to UAC2 Feature Unit 10 */
+    ),
+    SOF_STATIC_KCONTROL_SWITCH(
+        .id = 2,
+        .name = "EQ Bypass Switch",
+        .target_comp_id = 4,          /* Targets EQ_PB (4, 0=bypass, 1=active) */
+        .min = 0,
+        .max = 1,
+        .def = 1,
+        .channels = 1,
+    ),
+    SOF_STATIC_KCONTROL_SWITCH(
+        .id = 3,
+        .name = "Hardware Clock Mode",
+        .target_comp_id = 0,          /* Custom control (dispatched to callback) */
+        .min = 0,
+        .max = 1,
+        .def = 1,                     /* 1 = Master, 0 = Slave */
+        .channels = 1,
+    ),
+};
+
+static int platform_control_callback(const struct sof_static_kcontrol *ctl,
+                                     int32_t val, void *priv)
+{
+    if (ctl->id == 3) {
+        /* Reconfigure physical I2S clock mode between Master and Slave */
+        return platform_set_i2s_clock_mode(val == 1);
+    }
+    return -EINVAL;
+}
+
+const struct sof_static_topology g_my_platform_topology = {
+    .name = "Demo Playback Topology",
+    .num_pipelines = ARRAY_SIZE(s_pipelines),
+    .pipelines = s_pipelines,
+    .num_comps = ARRAY_SIZE(s_comps),
+    .comps = s_comps,
+    .num_buffers = ARRAY_SIZE(s_buffers),
+    .buffers = s_buffers,
+    .num_routes = ARRAY_SIZE(s_routes),
+    .routes = s_routes,
+    .num_controls = ARRAY_SIZE(s_controls),
+    .controls = s_controls,
+    .custom_control_handler = platform_control_callback,
+    .custom_control_data = NULL,
+};
+```
+
+#### 6. Instantiating and Running the Topology
+
+At board startup, call `sof_static_topology_init()`:
+
+```c
+#include <sof/audio/pipeline/static_pipeline.h>
+
+int my_platform_init(void)
+{
+    /* Build and prepare audio pipeline graph */
+    int ret = sof_static_topology_init(&g_my_platform_topology);
+    if (ret < 0) {
+        LOG_ERR("Failed to initialize static topology: %d", ret);
+        return ret;
+    }
+
+    /* Start audio streaming */
+    sof_static_pipeline_trigger(1, true);
+    return 0;
+}
+```
+
+#### 7. Runtime Control APIs
+
+- **`sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)`**: Updates volume, mute, or bypass state at runtime.
+- **`sof_static_kcontrol_get(uint32_t ctrl_id, int32_t *val)`**: Reads current control value.
+- **`sof_static_pipeline_start(uint32_t pipeline_id)`**: Prepares and starts a pipeline synchronously.
+- **`sof_static_pipeline_stop(uint32_t pipeline_id)`**: Stops and pauses an active pipeline synchronously.
+- **`sof_static_pipeline_trigger(uint32_t pipeline_id, bool start)`**: Starts or stops a pipeline synchronously.
+- **`sof_static_kcontrol_set_by_uac2(uint8_t entity_id, uint8_t ch, int32_t val, bool is_volume)`**: Automatically translates USB UAC2 8.8 dB fader commands to SOF native volume values.
+
 ## Configuration and Scripts
 
-* **CMakeLists.txt**: Straightforward build configuration integrating the fundamental internal execution blocks of the SOF graph: `pipeline-graph.c`, `pipeline-stream.c`, `pipeline-params.c`, `pipeline-xrun.c`, and `pipeline-schedule.c`.
+* **CMakeLists.txt**: Build configuration integrating internal execution blocks of the SOF graph (`pipeline-graph.c`, `pipeline-stream.c`, `pipeline-params.c`, `pipeline-xrun.c`, `pipeline-schedule.c`) and conditionally compiling `static_pipeline_loader.c`, `static_pipeline_modules.c`, and `static_pipeline_uac2.c` when `CONFIG_STATIC_PIPELINE=y`.
+* **Endpoint Callbacks**: Hardware DAI endpoints can attach optional platform-specific clock and hardware configuration callbacks via `SOF_STATIC_ENDPOINT_DAI_CFG()` without polluting the generic loader with SoC-specific code.

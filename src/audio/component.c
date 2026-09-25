@@ -100,6 +100,29 @@ int comp_set_adapter_ops(const struct comp_driver *drv, const struct module_inte
 	return -ENODEV;
 }
 
+const struct comp_driver *comp_driver_find(const struct sof_uuid *uuid, uint32_t type)
+{
+	struct comp_driver_list *drivers = comp_drivers_get();
+	struct list_item *clist;
+
+	if (!drivers)
+		return NULL;
+
+	list_for_item(clist, &drivers->list) {
+		struct comp_driver_info *info = container_of(clist, struct comp_driver_info, list);
+
+		/* Match by UUID if provided (used for audio processing modules) */
+		if (uuid && info->drv->uid && !memcmp(info->drv->uid, uuid, UUID_SIZE))
+			return info->drv;
+
+		/* Match by driver type if no UUID is specified (used for Host and DAI endpoints) */
+		if (!uuid && info->drv->type == type)
+			return info->drv;
+	}
+
+	return NULL;
+}
+
 /* NOTE: Keep the component state diagram up to date:
  * sof-docs/developer_guides/firmware/components/images/comp-dev-states.pu
  */

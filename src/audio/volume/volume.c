@@ -889,4 +889,103 @@ DECLARE_MODULE_ADAPTER(gain_interface, gain_uuid, gain_tr);
 SOF_MODULE_INIT(gain, sys_comp_module_gain_interface_init);
 #endif
 
+#if CONFIG_STATIC_PIPELINE
+#include <sof/audio/pipeline/static_pipeline.h>
+
+#if CONFIG_IPC_MAJOR_4
+#include "peak_volume.h"
+
+struct static_ipc4_vol_init_cfg {
+	struct ipc4_base_module_cfg base_cfg;
+	struct ipc4_peak_volume_config config[1];
+};
+#endif
+
+static struct comp_dev *vol_static_create(const struct comp_driver *drv,
+					  struct comp_ipc_config *cfg,
+					  const struct sof_static_comp *cdesc,
+					  uint32_t period_us)
+{
+#if CONFIG_IPC_MAJOR_4
+	struct static_ipc4_vol_init_cfg vol_cfg;
+
+	memset(&vol_cfg, 0, sizeof(vol_cfg));
+	sof_static_init_base_cfg(&vol_cfg.base_cfg, cdesc, period_us);
+	vol_cfg.config[0].channel_id = 0xffffffff;
+	vol_cfg.config[0].target_volume = 0x7FFFFFFF;
+	vol_cfg.config[0].curve_type = IPC4_AUDIO_CURVE_TYPE_WINDOWS_FADE;
+	vol_cfg.config[0].curve_duration = 100000;
+
+	struct ipc_config_process spec = {
+		.size = sizeof(vol_cfg),
+		.data = (const uint8_t *)&vol_cfg,
+	};
+	return drv->ops.create(drv, cfg, &spec);
+#else
+	struct ipc_config_volume vol_cfg = {
+		.channels = cdesc->caps.max_channels ? cdesc->caps.max_channels : 2,
+		.min_value = 0,
+		.max_value = INT32_MAX,
+		.ramp = SOF_VOLUME_LINEAR,
+		.initial_ramp = 0,
+	};
+	struct ipc_config_process spec = {
+		.size = sizeof(vol_cfg),
+		.data = (const uint8_t *)&vol_cfg,
+	};
+	return drv->ops.create(drv, cfg, &spec);
+#endif
+}
+
+static int vol_static_apply_volume(struct comp_dev *dev, uint32_t channels, int32_t val)
+{
+	struct processing_module *mod = comp_mod(dev);
+
+	if (!mod)
+		return -EINVAL;
+
+	for (uint32_t ch = 0; ch < channels; ch++)
+		volume_set_chan(mod, ch, val, true);
+
+	return 0;
+}
+
+static int vol_static_apply_switch(struct comp_dev *dev, uint32_t channels, int32_t val)
+{
+	struct processing_module *mod = comp_mod(dev);
+
+	if (!mod)
+		return -EINVAL;
+
+	for (uint32_t ch = 0; ch < channels; ch++) {
+		if (val == 0)
+			volume_set_chan_mute(mod, ch);
+		else
+			volume_set_chan_unmute(mod, ch);
+	}
+
+	return 0;
+}
+
+static struct sof_static_module_ops vol_static_ops = {
+	.uuid = &volume_uuid,
+	.create = vol_static_create,
+	.apply_volume = vol_static_apply_volume,
+	.apply_switch = vol_static_apply_switch,
+};
+
+DECLARE_STATIC_MODULE_OPS(volume, &vol_static_ops);
+
+#if CONFIG_COMP_GAIN
+static struct sof_static_module_ops gain_static_ops = {
+	.uuid = &gain_uuid,
+	.create = vol_static_create,
+	.apply_volume = vol_static_apply_volume,
+	.apply_switch = vol_static_apply_switch,
+};
+
+DECLARE_STATIC_MODULE_OPS(gain, &gain_static_ops);
+#endif
+#endif /* CONFIG_STATIC_PIPELINE */
+
 #endif

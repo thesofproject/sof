@@ -51,6 +51,16 @@ config HOST_DMA_IPC_POSITION_UPDATES
 	  by sending an IPC message whenever one period of audio is transferred.
 	  Most platforms provide more efficient ways to query the DMA status.
 
+config STATIC_PIPELINE
+	bool "Declarative Static Audio Pipeline Loader"
+	default n
+	help
+	  Enable support for declarative static audio pipelines in Sound
+	  Open Firmware. This provides a compile-time and runtime loader
+	  engine for hostless, microcontroller, and standalone embedded
+	  targets that do not rely on dynamic IPC topology messages from
+	  a host operating system.
+
 config COMP_CHAIN_DMA
 	  bool "Chain DMA component"
 	  depends on IPC_MAJOR_4

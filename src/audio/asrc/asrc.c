@@ -846,4 +846,39 @@ SOF_LLEXT_BUILDINFO;
 DECLARE_MODULE_ADAPTER(asrc_interface, ASRC_UUID, asrc_tr);
 SOF_MODULE_INIT(asrc, sys_comp_module_asrc_interface_init);
 
+#if CONFIG_STATIC_PIPELINE
+#include <sof/audio/pipeline/static_pipeline.h>
+
+#if CONFIG_IPC_MAJOR_4
+#include "asrc_ipc4.h"
+
+static struct comp_dev *asrc_static_create(const struct comp_driver *drv,
+					   struct comp_ipc_config *cfg,
+					   const struct sof_static_comp *cdesc,
+					   uint32_t period_us)
+{
+	struct ipc4_asrc_module_cfg asrc_cfg;
+
+	memset(&asrc_cfg, 0, sizeof(asrc_cfg));
+	sof_static_init_base_cfg(&asrc_cfg.base, cdesc, period_us);
+	asrc_cfg.out_freq = (enum ipc4_sampling_frequency)(cdesc->caps.sink_rate ?
+							   cdesc->caps.sink_rate :
+							   cdesc->caps.default_rate);
+
+	struct ipc_config_process spec = {
+		.size = sizeof(asrc_cfg),
+		.data = (const uint8_t *)&asrc_cfg,
+	};
+	return drv->ops.create(drv, cfg, &spec);
+}
+
+static struct sof_static_module_ops asrc_static_ops = {
+	.uuid = &ASRC_UUID,
+	.create = asrc_static_create,
+};
+
+DECLARE_STATIC_MODULE_OPS(asrc, &asrc_static_ops);
+#endif /* CONFIG_IPC_MAJOR_4 */
+#endif /* CONFIG_STATIC_PIPELINE */
+
 #endif
