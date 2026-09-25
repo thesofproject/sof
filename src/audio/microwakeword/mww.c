@@ -33,6 +33,7 @@
 
 #include <ipc4/base-config.h>
 #include <ipc4/header.h>
+#include <ipc4/handler.h>
 #include <ipc4/module.h>
 #include <ipc4/notification.h>
 
@@ -164,6 +165,8 @@ struct mww_comp_data {
 	uint32_t vad_gated_inferences;
 	uint32_t detections;
 	uint32_t kpb_trigger_events;
+	bool host_output_gated; /**< Last host output gate state for transition logs. */
+	bool host_wake_pending; /**< Keep host output active until D0I0. */
 } __attribute__((aligned(8)));
 
 #if CONFIG_AMS
@@ -487,8 +490,22 @@ static int mww_process(struct processing_module *mod,
 		}
 #endif
 
-		/* Copy source data to sink so downstream stages keep seeing raw MFCC hops */
-		if (num_of_sinks > 0 && sinks[0]) {
+		/* Keep detection running in D0IX, but stop feature traffic to the host. */
+		bool d0ix_allowed = ipc4_d0ix_is_allowed();
+
+		if (!d0ix_allowed)
+			cd->host_wake_pending = false;
+
+		bool gate_host_output = d0ix_allowed && !cd->host_wake_pending;
+
+		if (gate_host_output != cd->host_output_gated) {
+			comp_info(dev, "MWW host output %s for D0IX",
+				  gate_host_output ? "gated" : "resumed");
+			cd->host_output_gated = gate_host_output;
+		}
+
+		/* Copy source data to sink so downstream stages keep seeing raw MFCC hops. */
+		if (!gate_host_output && num_of_sinks > 0 && sinks[0]) {
 			void *snk_ptr, *snk_buf_start;
 			size_t snk_buf_size;
 			int sret = sink_get_buffer(sinks[0], MWW_HOP_BYTES,
@@ -550,6 +567,10 @@ static int mww_process(struct processing_module *mod,
 					comp_info(dev, "MWW keyword detected: probability=%d pct (consecutive=%u, total=%u)",
 						  (int)(cd->mwc.probability * 100.0f),
 						  cd->consecutive_detects, cd->detections);
+					if (d0ix_allowed) {
+						comp_info(dev, "MWW keyword trigger -> resuming host output");
+						cd->host_wake_pending = true;
+					}
 					cd->kpb_trigger_events++;
 					mww_notify_kpb(mod);
 					cd->consecutive_detects = 0;

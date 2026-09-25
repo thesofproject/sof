@@ -1687,7 +1687,8 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	bool is_sink_ready = (comp_buffer_get_sink_state(kpb->host_sink) == COMP_STATE_ACTIVE);
+	bool is_sink_ready = kpb->host_sink &&
+		(comp_buffer_get_sink_state(kpb->host_sink) == COMP_STATE_ACTIVE);
 	size_t sample_width = kpb->config.sampling_width;
 	size_t drain_req = (size_t)cli->drain_req * kpb->config.channels *
 			       (kpb->config.sampling_freq / 1000) *
