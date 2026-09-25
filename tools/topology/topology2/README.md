@@ -446,9 +446,9 @@ Object.Base.manifest.1 {
 Set `ALSA_TOPOLOGY_PLUGIN_DIR` to the directory containing `libalsatplg_module_nhlt.so`:
 
 ```bash
-ALSA_CONFIG_DIR=tools/topology/topology2 \
+ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
 ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
-alsatplg -I tools/topology/topology2 -p \
+alsatplg -I $PWD/tools/topology/topology2 -p \
     -c tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf \
     -o build/sof-tgl-dmic-wov-multi-4ch.tplg
 ```
@@ -577,23 +577,23 @@ Compile all three targets:
 
 ```bash
 # 1. Panther Lake (PTL)
-ALSA_CONFIG_DIR=tools/topology/topology2 \
+ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
 ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
-alsatplg -I tools/topology/topology2 -p \
+alsatplg -I $PWD/tools/topology/topology2 -p \
     -c tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf \
     -o build/sof-ptl-dmic-wov-multi-4ch.tplg
 
 # 2. Tiger Lake (TGL)
-ALSA_CONFIG_DIR=tools/topology/topology2 \
+ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
 ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
-alsatplg -I tools/topology/topology2 -p \
+alsatplg -I $PWD/tools/topology/topology2 -p \
     -c tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf \
     -o build/sof-tgl-dmic-wov-multi-4ch.tplg
 
 # 3. Wildcat Lake (WCL)
-ALSA_CONFIG_DIR=tools/topology/topology2 \
+ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
 ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
-alsatplg -I tools/topology/topology2 -p \
+alsatplg -I $PWD/tools/topology/topology2 -p \
     -c tools/topology/topology2/dmic-wov-multi-wcl-4ch-manifest.conf \
     -o build/sof-wcl-dmic-wov-multi-4ch.tplg
 ```
@@ -661,9 +661,9 @@ The signed firmware image is produced at:
 #### Step 2: Compile the 4-Channel Multi-Slot Topology
 
 ```bash
-ALSA_CONFIG_DIR=tools/topology/topology2 \
+ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
 ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
-alsatplg -I tools/topology/topology2 -p \
+alsatplg -I $PWD/tools/topology/topology2 -p \
     -c tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf \
     -o build/sof-ptl-dmic-wov-multi-4ch.tplg
 ```
