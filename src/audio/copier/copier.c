@@ -5,6 +5,8 @@
 // Author: Rander Wang <rander.wang@linux.intel.com>
 
 #include <sof/audio/buffer.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
@@ -605,72 +607,138 @@ static int copier_copy_to_sinks(struct copier_data *cd, struct comp_dev *dev,
 	return ret;
 }
 
+/**
+ * @brief Describe a source read window as a cir_buf_source for the PCM converter.
+ *
+ * Acquire the source data window through the source API and bridge it into a
+ * cir_buf_source descriptor (buffer base/end address and read pointer). The read
+ * pointer is not advanced here; the caller releases the source when done. Channel
+ * count is passed to the converter separately.
+ *
+ * @param cir Descriptor to populate.
+ * @param source Source handle to read from.
+ * @param bytes Amount of data to make available to the converter.
+ * @return 0 on success, negative error code otherwise.
+ */
+static int copier_source_get_stream(struct cir_buf_source *cir,
+				    struct sof_source *source, size_t bytes)
+{
+	const void *data_ptr, *buf_start;
+	size_t buf_size;
+	int ret;
+
+	ret = source_get_data(source, bytes, &data_ptr, &buf_start, &buf_size);
+	if (ret)
+		return ret;
+
+	cir->buf_start = buf_start;
+	cir->buf_end = (const char *)buf_start + buf_size;
+	cir->ptr = data_ptr;
+
+	return 0;
+}
+
+/**
+ * @brief Describe a sink write window as a cir_buf_sink for the PCM converter.
+ *
+ * Sibling of copier_source_get_stream() for the sink side. Acquire the sink
+ * buffer through the sink API and bridge it into a cir_buf_sink descriptor. The
+ * write pointer is not advanced here; the caller commits the sink when done.
+ *
+ * @param cir Descriptor to populate.
+ * @param sink Sink handle to write to.
+ * @param bytes Amount of free space to make available to the converter.
+ * @return 0 on success, negative error code otherwise.
+ */
+static int copier_sink_get_stream(struct cir_buf_sink *cir,
+				  struct sof_sink *sink, size_t bytes)
+{
+	void *data_ptr, *buf_start;
+	size_t buf_size;
+	int ret;
+
+	ret = sink_get_buffer(sink, bytes, &data_ptr, &buf_start, &buf_size);
+	if (ret)
+		return ret;
+
+	cir->buf_start = buf_start;
+	cir->buf_end = (char *)buf_start + buf_size;
+	cir->ptr = data_ptr;
+
+	return 0;
+}
+
 static int copier_module_copy(struct processing_module *mod,
-			      struct input_stream_buffer *input_buffers, int num_input_buffers,
-			      struct output_stream_buffer *output_buffers, int num_output_buffers)
+			      struct sof_source **sources, int num_of_sources,
+			      struct sof_sink **sinks, int num_of_sinks)
 {
 	struct copier_data *cd = module_get_private_data(mod);
-	struct comp_buffer *src_c;
-	struct comp_copy_limits processed_data;
+	struct cir_buf_source src_cir;
+	struct sof_source *source;
+	uint32_t src_frames_avail, frames = 0;
+	int ret;
 	int i;
 
-	if (!num_input_buffers || !num_output_buffers)
+	if (!num_of_sources || !num_of_sinks)
 		return 0;
 
-	src_c = container_of(input_buffers[0].data, struct comp_buffer, stream);
+	source = sources[0];
 
-	processed_data.source_bytes = 0;
+	src_frames_avail = source_get_data_frames_available(source);
+	ret = copier_source_get_stream(&src_cir, source,
+				       src_frames_avail * source_get_frame_bytes(source));
+	if (ret)
+		return ret;
 
 	/* convert format and copy to each active sink */
-	for (i = 0; i < num_output_buffers; i++) {
+	for (i = 0; i < num_of_sinks; i++) {
 		struct comp_buffer *sink_c;
 		struct comp_dev *sink_dev;
+		struct cir_buf_sink snk_cir;
+		size_t sink_bytes, source_samples;
+		int sink_queue_id;
 
-		sink_c = container_of(output_buffers[i].data, struct comp_buffer, stream);
+		/*
+		 * The consumer component's activity state is a pipeline-topology property
+		 * with no sink/source API equivalent, so it is still read via comp_buffer.
+		 */
+		sink_c = comp_buffer_get_from_sink(sinks[i]);
 		sink_dev = comp_buffer_get_sink_component(sink_c);
-		processed_data.sink_bytes = 0;
-		if (sink_dev->state == COMP_STATE_ACTIVE) {
-			/* Bridge the legacy audio_stream buffers into cir_buf descriptors for
-			 * the new pcm_converter interface (read/write pointers = offset 0).
-			 */
-			struct cir_buf_source src_cir = {
-				.buf_start = audio_stream_get_addr(input_buffers[0].data),
-				.buf_end = audio_stream_get_end_addr(input_buffers[0].data),
-				.ptr = audio_stream_get_rptr(input_buffers[0].data),
-			};
-			struct cir_buf_sink snk_cir = {
-				.buf_start = audio_stream_get_addr(output_buffers[i].data),
-				.buf_end = audio_stream_get_end_addr(output_buffers[i].data),
-				.ptr = audio_stream_get_wptr(output_buffers[i].data),
-			};
-			uint32_t source_samples;
-			int sink_queue_id;
-			pcm_converter_func converter;
+		if (sink_dev->state != COMP_STATE_ACTIVE)
+			continue;
 
-			/*
-			 * Buffer ID is constructed as IPC4_COMP_ID(src_queue, dst_queue).
-			 * From the buffer's perspective, copier's sink is the source,
-			 * so we use IPC4_SRC_QUEUE_ID() to get the correct copier sink index.
-			 */
-			sink_queue_id = IPC4_SRC_QUEUE_ID(buf_get_id(sink_c));
-			if (sink_queue_id >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT)
-				return -EINVAL;
-			converter = cd->converter[sink_queue_id];
-
-			comp_get_copy_limits(src_c, sink_c, &processed_data);
-
-			source_samples = processed_data.frames *
-					audio_stream_get_channels(input_buffers[0].data);
-			converter(&src_cir, audio_stream_get_channels(input_buffers[0].data),
-				  &snk_cir, audio_stream_get_channels(output_buffers[i].data),
-				  source_samples, DUMMY_CHMAP);
-
-			output_buffers[i].size = processed_data.sink_bytes;
-			cd->output_total_data_processed += processed_data.sink_bytes;
+		/*
+		 * Buffer ID is constructed as IPC4_COMP_ID(src_queue, dst_queue).
+		 * From the buffer's perspective, copier's sink is the source,
+		 * so we use IPC4_SRC_QUEUE_ID() to get the correct copier sink index.
+		 */
+		sink_queue_id = IPC4_SRC_QUEUE_ID(sink_get_id(sinks[i]));
+		if (sink_queue_id >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT) {
+			source_release_data(source, 0);
+			return -EINVAL;
 		}
+
+		frames = MIN(src_frames_avail, sink_get_free_frames(sinks[i]));
+		sink_bytes = frames * sink_get_frame_bytes(sinks[i]);
+		source_samples = frames * source_get_channels(source);
+
+		ret = copier_sink_get_stream(&snk_cir, sinks[i], sink_bytes);
+		if (ret) {
+			source_release_data(source, 0);
+			return ret;
+		}
+
+		cd->converter[sink_queue_id](&src_cir, source_get_channels(source),
+					     &snk_cir, sink_get_channels(sinks[i]),
+					     source_samples, DUMMY_CHMAP);
+
+		/* commit produced data to the sink (cache writeback + advance wptr) */
+		sink_commit_buffer(sinks[i], sink_bytes);
+		cd->output_total_data_processed += sink_bytes;
 	}
 
-	input_buffers[0].consumed = processed_data.source_bytes;
+	/* consume the data read by the converter from the source */
+	source_release_data(source, frames * source_get_frame_bytes(source));
 
 	return 0;
 }
@@ -730,8 +798,8 @@ static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_de
  * gateway, i.e., produce/consume single stream.
  */
 static int copier_process(struct processing_module *mod,
-			  struct input_stream_buffer *input_buffers, int num_input_buffers,
-			  struct output_stream_buffer *output_buffers, int num_output_buffers)
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -755,8 +823,7 @@ static int copier_process(struct processing_module *mod,
 	}
 
 	/* module copier case */
-	return copier_module_copy(mod, input_buffers, num_input_buffers, output_buffers,
-				  num_output_buffers);
+	return copier_module_copy(mod, sources, num_of_sources, sinks, num_of_sinks);
 }
 
 static int copier_params(struct processing_module *mod)
@@ -1288,7 +1355,7 @@ static APP_SYSUSER_DATA const struct module_endpoint_ops copier_endpoint_ops = {
 static APP_SYSUSER_DATA const struct module_interface copier_interface = {
 	.init = copier_init,
 	.prepare = copier_prepare,
-	.process_audio_stream = copier_process,
+	.process = copier_process,
 	.reset = copier_reset,
 	.free = copier_free,
 	.set_configuration = copier_set_configuration,
