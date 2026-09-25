@@ -580,7 +580,10 @@ static int test_keyword_get_config(struct comp_dev *dev,
 	bs = cd->config.size;
 	comp_info(dev, "value of block size: %zu", bs);
 
-	if (bs == 0 || bs > size)
+	/* bs comes from the host/topology blob and is the memcpy source length
+	 * from the fixed-size cd->config, so bound it by the struct size too.
+	 */
+	if (bs == 0 || bs > sizeof(cd->config) || bs > size)
 		return -EINVAL;
 
 	ret = memcpy_s(cdata->data->data, size, &cd->config, bs);
