@@ -171,6 +171,11 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
+# MSI Prestige 13 AI+ A3MG for example
+"cavs-sdw\;sof-ptl-rt713-l3-rt1320-l1\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
+
 # LG Gram Pro 2026 (16Z90U-KU7BK) with RT713 on link 3 and single stereo RT1320 on link 1
 "cavs-sdw\;sof-ptl-rt713-l3-rt1320-l1-2ch\;PLATFORM=ptl,SDW_DMIC=0,NUM_SDW_AMP_LINKS=1,\
 NUM_DMICS=2,PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=3,DMIC1_ID=4,\
