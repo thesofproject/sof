@@ -219,7 +219,7 @@ static int multiband_drc_s16_default(const struct processing_module *mod,
 	int32_t *band_buf_drc_sink;
 	const int16_t *x, *buf_x_start;
 	int16_t *y, *buf_y_start;
-	int buf_x_samples, buf_y_samples;
+	size_t buf_x_samples, buf_y_samples;
 	size_t n_bytes = frames * source_get_frame_bytes(source);
 	int band;
 	int nbuf;
@@ -304,7 +304,7 @@ static int multiband_drc_s24_default(const struct processing_module *mod,
 	int32_t *band_buf_drc_sink;
 	const int32_t *x, *buf_x_start;
 	int32_t *y, *buf_y_start;
-	int buf_x_samples, buf_y_samples;
+	size_t buf_x_samples, buf_y_samples;
 	size_t n_bytes = frames * source_get_frame_bytes(source);
 	int band;
 	int nbuf;
@@ -389,7 +389,7 @@ static int multiband_drc_s32_default(const struct processing_module *mod,
 	int32_t *band_buf_drc_sink;
 	const int32_t *x, *buf_x_start;
 	int32_t *y, *buf_y_start;
-	int buf_x_samples, buf_y_samples;
+	size_t buf_x_samples, buf_y_samples;
 	size_t n_bytes = frames * source_get_frame_bytes(source);
 	int band;
 	int nbuf;

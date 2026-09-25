@@ -129,9 +129,11 @@ static int tone_s32_passthrough(struct processing_module *mod, struct sof_sink *
 	struct comp_data *cd = module_get_private_data(mod);
 	size_t output_frame_bytes, output_frames;
 	size_t input_frame_bytes, input_frames;
-	int32_t *output_pos, *output_start, output_cirbuf_size;
+	int32_t *output_pos, *output_start;
+	size_t output_cirbuf_size;
 	int32_t const *input_pos, *input_start, *input_end;
-	int32_t *output_end, input_cirbuf_size;
+	int32_t *output_end;
+	size_t input_cirbuf_size;
 	uint32_t frames, bytes;
 	int nch = cd->channels;
 	int n;
@@ -212,7 +214,8 @@ int tone_s32_default(struct processing_module *mod, struct sof_sink *sink,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	size_t output_frame_bytes, output_frames;
-	int32_t *output_pos, *output_start, output_cirbuf_size;
+	int32_t *output_pos, *output_start;
+	size_t output_cirbuf_size;
 	int32_t *output_end;
 	uint32_t frames, bytes;
 	int nch = cd->channels;
