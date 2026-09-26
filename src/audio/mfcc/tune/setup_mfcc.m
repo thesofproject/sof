@@ -51,6 +51,13 @@ function setup_mfcc()
 	setup.tplg_fn = 'ceps13_compress_dtx.conf';
 	export_mfcc_setup(gen_cfg, setup);
 
+	% Mel spectrogram with PCAN normalization and compress PCM output
+	setup = get_mel_spectrogram_config();
+	setup.enable_pcan = true;
+	setup.compress_output = true;
+	setup.tplg_fn = 'mel80_pcan_compress.conf';
+	export_mfcc_setup(gen_cfg, setup);
+
 end
 
 function cfg = get_mfcc_default_config()
@@ -94,6 +101,11 @@ function cfg = get_mfcc_default_config()
 	cfg.dtx_silence_hops_interval = 0;
 	cfg.update_controls = false;
 	cfg.compress_output = false;
+	cfg.enable_pcan = false;
+	cfg.pcan_strength = 0.95;
+	cfg.pcan_offset = 80.0;
+	cfg.pcan_gain_bits = 21;
+	cfg.pcan_smoothing_coef = 819;
 end
 
 function cfg = get_mel_spectrogram_config()
@@ -113,7 +125,7 @@ function cfg = get_mel_spectrogram_config()
 	cfg.num_mel_bins = 80;
 	cfg.preemphasis_coefficient = 0;
 	cfg.raw_energy = false;
-	cfg.remove_dc_offset = false;
+	cfg.remove_dc_offset = true;
 	cfg.round_to_power_of_two = true;
 	cfg.sample_frequency = 16000;
 	cfg.snip_edges = true;
@@ -123,20 +135,25 @@ function cfg = get_mel_spectrogram_config()
 	cfg.vtln_low = 0;
 	cfg.vtln_warp = 1.0;
 	cfg.window_type = 'hann';
-	cfg.mel_log = 'log10';
+	cfg.mel_log = 'log'; % Set to 'db' for librosa, set to 'log10' for matlab
 	cfg.pmin = 1e-10;
-	cfg.top_db = 8; % applied for log10, would be 80 dB clamp for decibels as 10*log10()
-	cfg.mel_offset = 4.0; % For whisper like Mel scale and normalize
-	cfg.mel_scale = 0.25; % For whisper like Mel scale and normalize
-	cfg.mmax_init = 0; % Initial value max Mel value, data clamp is mmax - top_db
-	cfg.mmax_coef = 0; % Dynamic max Mel value decay coefficient (zero lock to found max)
-	cfg.dynamic_mmax = true;
-	cfg.enable_vad = true;
+	cfg.top_db = 80.0;
+	cfg.mel_offset = 4.0; % Whisper: (mel + 4.0) * 0.25
+	cfg.mel_scale = 0.25;
+	cfg.mmax_init = 0;
+	cfg.mmax_coef = 0.005; % Whisper mmax tracking: slow decay
+	cfg.dynamic_mmax = false;
+	cfg.enable_vad = false;
 	cfg.enable_dtx = false;
 	cfg.dtx_trailing_silence_hops = 0;
 	cfg.dtx_silence_hops_interval = 0;
-	cfg.update_controls = true;
+	cfg.update_controls = false;
 	cfg.compress_output = false;
+	cfg.enable_pcan = false;
+	cfg.pcan_strength = 0.95;
+	cfg.pcan_offset = 80.0;
+	cfg.pcan_gain_bits = 21;
+	cfg.pcan_smoothing_coef = 819;
 end
 
 function export_mfcc_setup(gen_cfg, cfg)
@@ -173,8 +190,9 @@ v = q_convert(cfg.mmax_coef, 15);                [b8, j] = add_w16b(v, b8, j);
 
 v = cfg.dtx_trailing_silence_hops;                [b8, j] = add_w16b(v, b8, j); % DTX trailing silence hops
 v = cfg.dtx_silence_hops_interval;                [b8, j] = add_w16b(v, b8, j); % DTX silence frame interval
+v = cfg.pcan_smoothing_coef;                 [b8, j] = add_w32b(v, b8, j); % PCAN smoothing coef in Q14
 % Reserved
-for i = 1:5
+for i = 1:4
 	[b8, j] = add_w32b(0, b8, j);
 end
 
@@ -200,10 +218,9 @@ v = q_convert(cfg.top_db, 7);                    [b8, j] = add_w16b(v, b8, j);
 v = 0;                                           [b8, j] = add_w16b(v, b8, j); % vtln_high Qx.y TBD
 v = 0;                                           [b8, j] = add_w16b(v, b8, j); % vtln_low Qx.y TBD
 v = 0;                                           [b8, j] = add_w16b(v, b8, j); % vtln_warp Qx.y TBD
-% reserved16[3]
-for i = 1:3
-	[b8, j] = add_w16b(0, b8, j);
-end
+v = q_convert(cfg.pcan_strength, 15);            [b8, j] = add_w16b(v, b8, j); % PCAN strength in Q1.15
+v = q_convert(cfg.pcan_offset, 7);               [b8, j] = add_w16b(v, b8, j); % PCAN offset in Q8.7
+v = cfg.pcan_gain_bits;                          [b8, j] = add_w16b(v, b8, j); % PCAN gain bits
 v = cfg.htk_compat;                              [b8, j] = add_w8b(v, b8, j); % bool
 v = cfg.raw_energy;                              [b8, j] = add_w8b(v, b8, j); % bool
 v = cfg.remove_dc_offset;                        [b8, j] = add_w8b(v, b8, j); % bool
@@ -216,8 +233,9 @@ v = cfg.enable_vad;                              [b8, j] = add_w8b(v, b8, j); % 
 v = cfg.enable_dtx;                              [b8, j] = add_w8b(v, b8, j); % bool
 v = cfg.update_controls;                         [b8, j] = add_w8b(v, b8, j); % bool
 v = cfg.compress_output;                         [b8, j] = add_w8b(v, b8, j); % bool
-% reserved_bool[4]
-for i = 1:4
+v = cfg.enable_pcan;                             [b8, j] = add_w8b(v, b8, j); % bool
+% reserved_bool[3]
+for i = 1:3
 	[b8, j] = add_w8b(0, b8, j);
 end
 

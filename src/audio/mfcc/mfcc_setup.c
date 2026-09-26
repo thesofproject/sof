@@ -10,6 +10,7 @@
 #include <sof/math/auditory.h>
 #include <sof/math/icomplex16.h>
 #include <sof/math/icomplex32.h>
+#include <sof/math/pcan.h>
 #include <sof/math/trig.h>
 #include <sof/math/window.h>
 #include <sof/trace/trace.h>
@@ -459,8 +460,62 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		}
 	}
 
+	if (config->enable_pcan) {
+		struct pcan_config pcfg;
+		uint32_t *pcan_noise;
+		int16_t *pcan_lut;
+
+		pcfg.strength = (config->pcan_strength > 0) ?
+			((float)config->pcan_strength / 32768.0f) : 0.95f;
+		pcfg.offset = (config->pcan_offset > 0) ?
+			((float)config->pcan_offset / 128.0f) : 80.0f;
+		pcfg.gain_bits = (config->pcan_gain_bits > 0) ?
+			config->pcan_gain_bits : 21;
+		pcfg.smoothing_coef = (config->pcan_smoothing_coef > 0) ?
+			(uint16_t)config->pcan_smoothing_coef : 819;
+		pcfg.smoothing_bits = 10;
+		pcfg.input_correction_bits = 0;
+		pcfg.enable_pcan = true;
+
+		pcan_noise = mod_zalloc(mod, config->num_mel_bins * sizeof(uint32_t));
+		if (!pcan_noise) {
+			comp_err(dev, "Failed PCAN noise estimate alloc");
+			ret = -ENOMEM;
+			goto free_vad;
+		}
+
+		pcan_lut = mod_zalloc(mod, PCAN_LUT_SIZE * sizeof(int16_t));
+		if (!pcan_lut) {
+			comp_err(dev, "Failed PCAN gain LUT alloc");
+			mod_free(mod, pcan_noise);
+			ret = -ENOMEM;
+			goto free_vad;
+		}
+
+		ret = pcan_populate_state(&pcfg, &state->pcan, pcan_noise, pcan_lut,
+					  config->num_mel_bins, 10, 0);
+		if (ret < 0) {
+			comp_err(dev, "Failed PCAN state init");
+			mod_free(mod, pcan_noise);
+			mod_free(mod, pcan_lut);
+			goto free_vad;
+		}
+	} else {
+		state->pcan.enable_pcan = false;
+		state->pcan.noise_estimate = NULL;
+		state->pcan.gain_lut = NULL;
+	}
+
 	comp_dbg(dev, "done");
 	return 0;
+
+free_vad:
+	if (config->enable_vad) {
+		mod_free(mod, cd->vad.noise_floor);
+		mod_free(mod, cd->vad.weights);
+		cd->vad.noise_floor = NULL;
+		cd->vad.weights = NULL;
+	}
 
 free_out_stage:
 	mod_free(mod, state->out_stage);
@@ -528,6 +583,8 @@ void mfcc_free_buffers(struct processing_module *mod)
 	mfcc_free_and_null(mod, (void **)&cd->state.dct.matrix);
 	mfcc_free_and_null(mod, (void **)&cd->state.lifter.matrix);
 	mfcc_free_and_null(mod, (void **)&cd->state.out_stage);
+	mfcc_free_and_null(mod, (void **)&cd->state.pcan.noise_estimate);
+	mfcc_free_and_null(mod, (void **)&cd->state.pcan.gain_lut);
 	mfcc_free_and_null(mod, (void **)&cd->vad.noise_floor);
 	mfcc_free_and_null(mod, (void **)&cd->vad.weights);
 }
