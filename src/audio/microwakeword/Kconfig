@@ -28,4 +28,15 @@ config COMP_MWW_MODEL_FROM_CONTROL
 	  or topology configuration data blob via binary kcontrol (bytes control)
 	  instead of using the static mww_model_data embedded in the firmware image.
 
+config COMP_MWW_FAKE_WAKE_MS
+	int "Synthesise a keyword detection this many ms after D0i3 entry (0 = off)"
+	default 0
+	help
+	  Test aid for boards with no microphone connected, where a real keyword
+	  can never fire. When non-zero, detector slot 0 arms a timer for this
+	  many milliseconds each time the host puts the DSP into D0i3, and on
+	  expiry raises the same KPB drain and NOTIFIER_ID_WOV_DETECT events a
+	  real detection would, waking the host out of S0iX. The timer is
+	  cancelled when the host returns to D0i0. Leave at 0 for production.
+
 endif # COMP_MWW

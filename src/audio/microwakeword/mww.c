@@ -41,6 +41,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 
 /* TFLM error strings land here. Route to printk/mtrace so AllocateTensors()
@@ -55,6 +56,16 @@ int DebugVsnprintf(char *buffer, size_t buf_size, const char *format,
 		   va_list vlist)
 {
 	return vsnprintk(buffer, buf_size, format, vlist);
+}
+
+void __assert_func(const char *file, int line, const char *func,
+		   const char *failedexpr)
+{
+	(void)file;
+	(void)line;
+	(void)func;
+	(void)failedexpr;
+	sof_panic(0);
 }
 
 #include <sof/lib/notifier.h>
@@ -162,6 +173,19 @@ struct mww_comp_data {
 	uint32_t vad_gated_inferences;
 	uint32_t detections;
 	uint32_t kpb_trigger_events;
+
+	/* D0ix power state: true when host is in D0i3 (sleeping), false in D0i0 */
+	bool in_d0ix;
+
+#if CONFIG_COMP_MWW_FAKE_WAKE_MS > 0
+	/* Test aid: synthesise a detection some time after the host enters D0i3.
+	 * Checked inline from mww_process() (the pipeline's own task context) -
+	 * deliberately NOT a k_work/system-workqueue callback, since firing the
+	 * KPB-drain/notifier path from a foreign thread context crashed the DSP.
+	 */
+	bool fake_wake_armed;
+	int64_t fake_wake_deadline_ms;
+#endif
 } __attribute__((aligned(8)));
 
 #if CONFIG_AMS
@@ -227,6 +251,59 @@ static void on_wov_ctrl(void *arg, enum notify_id id, void *data)
 	}
 }
 
+#if CONFIG_COMP_MWW_FAKE_WAKE_MS > 0
+/* Only slot 0 arms, so the arbiter still sees a single winner and the other
+ * slots take their usual "already active, ignoring" path.
+ */
+#define MWW_FAKE_WAKE_SLOT 0
+
+/* Raise exactly what a real detection raises: drain the KPB history, then tell
+ * the arbiter, which notifies the host and pauses the sibling slots. Called
+ * inline from mww_process() once the deadline has passed - same thread/task
+ * context a real detection uses, unlike a k_work system-workqueue callback.
+ */
+static void mww_fake_wake_fire(struct processing_module *mod, struct comp_dev *dev,
+				struct mww_comp_data *cd)
+{
+	struct wov_detect_notif payload = { .slot_id = cd->wov_slot_id };
+
+	comp_info(dev, "mww slot %u: FAKE wake (%d ms after D0i3 entry)",
+		  cd->wov_slot_id, CONFIG_COMP_MWW_FAKE_WAKE_MS);
+
+	cd->detections++;
+	cd->kpb_trigger_events++;
+	mww_notify_kpb(mod);
+	notifier_event(dev, NOTIFIER_ID_WOV_DETECT, NOTIFIER_TARGET_CORE_ALL_MASK,
+		       &payload, sizeof(payload));
+}
+
+#endif /* CONFIG_COMP_MWW_FAKE_WAKE_MS > 0 */
+
+static void on_d0ix_state(void *arg, enum notify_id id, void *data)
+{
+	struct comp_dev *dev = arg;
+	struct processing_module *mod = comp_mod(dev);
+	struct mww_comp_data *cd = module_get_private_data(mod);
+	const struct d0ix_state_notif *notif = data;
+
+	cd->in_d0ix = notif->entering;
+	comp_info(dev, "MWW slot %u: D0ix state %s", cd->wov_slot_id,
+		  notif->entering ? "entering (D0i3)" : "exiting (D0i0)");
+
+#if CONFIG_COMP_MWW_FAKE_WAKE_MS > 0
+	if (cd->wov_slot_id == MWW_FAKE_WAKE_SLOT) {
+		if (notif->entering) {
+			cd->fake_wake_deadline_ms = k_uptime_get() + CONFIG_COMP_MWW_FAKE_WAKE_MS;
+			cd->fake_wake_armed = true;
+			comp_info(dev, "MWW slot %u: fake wake armed on D0i3 entry, firing in %d ms",
+				  cd->wov_slot_id, CONFIG_COMP_MWW_FAKE_WAKE_MS);
+		} else {
+			cd->fake_wake_armed = false;
+		}
+	}
+#endif
+}
+
 __cold static void mww_log_summary_at_shutdown(struct processing_module *mod)
 {
 	struct mww_comp_data *cd = mod ? module_get_private_data(mod) : NULL;
@@ -249,7 +326,7 @@ __cold static void mww_log_summary_at_shutdown(struct processing_module *mod)
 }
 
 #if CONFIG_IPC_MAJOR_4
-static void mww_notify_score(const struct comp_dev *dev, uint32_t score_idx)
+static void mww_notify_score(const struct comp_dev *dev, struct mww_comp_data *cd, uint32_t score_idx)
 {
 	struct sof_ipc4_notify_module_data *msg_module_data;
 	struct sof_ipc4_control_msg_payload *msg_payload;
@@ -258,6 +335,12 @@ static void mww_notify_score(const struct comp_dev *dev, uint32_t score_idx)
 			     sizeof(struct sof_ipc4_control_msg_payload) +
 			     sizeof(struct sof_ipc4_ctrl_value_chan);
 	struct ipc4_voice_cmd_notification notif;
+
+	/* Do not send telemetry score notifications to host while host is in D0i3 (suspended),
+	 * as any IPC notification would prematurely wake the host up.
+	 */
+	if (cd->in_d0ix)
+		return;
 
 	memset_s(&notif, sizeof(notif), 0, sizeof(notif));
 	notif.primary.r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
@@ -340,47 +423,61 @@ static int mww_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "entry slot %u", cd->wov_slot_id);
 
-	if (cd->initialized)
-		return 0;
+	if (!cd->initialized) {
+		const unsigned char *model_ptr = NULL;
+		size_t blob_size = 0;
 
-	const unsigned char *model_ptr = NULL;
-	size_t blob_size = 0;
+		model_ptr = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
+		if (model_ptr && blob_size > 0) {
+			comp_info(dev, "MWW: loaded model from control blob, size=%zu", blob_size);
+		} else {
+			model_ptr = NULL;
+			blob_size = 0;
+		}
 
-	model_ptr = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
-	if (model_ptr && blob_size > 0) {
-		comp_info(dev, "MWW: loaded model from control blob, size=%zu", blob_size);
-	} else {
-		model_ptr = NULL;
-		blob_size = 0;
-	}
+		ret = MWW_SetModel(&cd->mwc, model_ptr, blob_size);
+		if (ret < 0) {
+			comp_err(dev, "MWW_SetModel failed: %d (%s)", ret, cd->mwc.error);
+			return ret;
+		}
 
-	ret = MWW_SetModel(&cd->mwc, model_ptr, blob_size);
-	if (ret < 0) {
-		comp_err(dev, "MWW_SetModel failed: %d (%s)", ret, cd->mwc.error);
-		return ret;
-	}
-
-	ret = MWW_InitOps(&cd->mwc);
-	if (ret < 0) {
-		comp_err(dev, "MWW_InitOps failed: %d (%s)", ret, cd->mwc.error);
-		return ret;
-	}
+		ret = MWW_InitOps(&cd->mwc);
+		if (ret < 0) {
+			comp_err(dev, "MWW_InitOps failed: %d (%s)", ret, cd->mwc.error);
+			return ret;
+		}
 
 #if CONFIG_AMS
-	/* Register KD as AMS producer */
-	ret = ams_helper_register_producer(dev, &cd->kpd_uuid_id, ams_kpd_msg_uuid);
-	if (ret)
-		return ret;
+		/* Register KD as AMS producer */
+		ret = ams_helper_register_producer(dev, &cd->kpd_uuid_id, ams_kpd_msg_uuid);
+		if (ret)
+			return ret;
 #endif
 
-	notifier_register(dev, NULL, NOTIFIER_ID_WOV_CTRL, on_wov_ctrl, 0);
+		notifier_register(dev, NULL, NOTIFIER_ID_WOV_CTRL, on_wov_ctrl, 0);
+		notifier_register(dev, NULL, NOTIFIER_ID_D0IX_STATE, on_d0ix_state, 0);
+		cd->initialized = true;
+		comp_info(dev, "MWW slot %u model initialized: arena_used=%zu / capacity=%zu bytes",
+			  cd->wov_slot_id, MWW_ArenaUsedBytes(&cd->mwc), MWW_ArenaCapacity(&cd->mwc));
+	}
 
-	cd->initialized = true;
+#if CONFIG_COMP_MWW_FAKE_WAKE_MS > 0
+	if (cd->wov_slot_id == MWW_FAKE_WAKE_SLOT) {
+		/* Arm directly off stream prepare for S0-only testing (no D0i3
+		 * involved) - deadline expires CONFIG_COMP_MWW_FAKE_WAKE_MS after
+		 * the WOV pcm is prepared, same mww_process() inline-poll firing
+		 * path a D0i3-entry-armed wake would use.
+		 */
+		cd->fake_wake_deadline_ms = k_uptime_get() + CONFIG_COMP_MWW_FAKE_WAKE_MS;
+		cd->fake_wake_armed = true;
+		comp_info(dev, "MWW slot %u: fake wake armed at prepare, firing in %d ms",
+			  cd->wov_slot_id, CONFIG_COMP_MWW_FAKE_WAKE_MS);
+	}
+#endif
+
 	cd->feature_slices_filled = 0;
 	cd->vad_history = 0;
 	cd->consecutive_detects = 0;
-	comp_info(dev, "MWW slot %u model initialized: arena_used=%zu / capacity=%zu bytes",
-		  cd->wov_slot_id, MWW_ArenaUsedBytes(&cd->mwc), MWW_ArenaCapacity(&cd->mwc));
 
 	return 0;
 }
@@ -409,6 +506,13 @@ static int mww_process(struct processing_module *mod,
 		return 0;
 	}
 
+#if CONFIG_COMP_MWW_FAKE_WAKE_MS > 0
+	if (cd->fake_wake_armed && k_uptime_get() >= cd->fake_wake_deadline_ms) {
+		cd->fake_wake_armed = false;
+		mww_fake_wake_fire(mod, dev, cd);
+	}
+#endif
+
 	if (cd->paused) {
 		cd->window_peak_prob = 0.0f;
 		cd->score_hop_counter = 0;
@@ -416,7 +520,7 @@ static int mww_process(struct processing_module *mod,
 			cd->current_score_idx = 0;
 			cd->last_notified_score_idx = 0;
 #if CONFIG_IPC_MAJOR_4
-			mww_notify_score(dev, 0);
+			mww_notify_score(dev, cd, 0);
 #endif
 		}
 		size_t avail = source_get_data_available(sources[0]);
@@ -615,9 +719,9 @@ static int mww_process(struct processing_module *mod,
 			cd->window_peak_prob = 0.0f;
 
 #if CONFIG_IPC_MAJOR_4
-			if (cd->current_score_idx != cd->last_notified_score_idx || cd->current_score_idx > 0) {
+			if (!cd->in_d0ix && (cd->current_score_idx != cd->last_notified_score_idx || cd->current_score_idx > 0)) {
 				cd->last_notified_score_idx = cd->current_score_idx;
-				mww_notify_score(dev, cd->current_score_idx);
+				mww_notify_score(dev, cd, cd->current_score_idx);
 			}
 #endif
 		}
@@ -640,12 +744,10 @@ static int mww_reset(struct processing_module *mod)
 	cd->window_peak_prob = 0.0f;
 	cd->current_score_idx = 0;
 	cd->last_notified_score_idx = 0;
+	cd->in_d0ix = false;
 	cd->agc_gain_q23 = MWW_AGC_GAIN_TARGET_Q23;
 	memset(cd->feature_buf, 0, sizeof(cd->feature_buf));
 	MWW_Reset(&cd->mwc);
-#if CONFIG_IPC_MAJOR_4
-	mww_notify_score(mod->dev, 0);
-#endif
 	return 0;
 }
 
@@ -659,6 +761,12 @@ __cold static int mww_free(struct processing_module *mod)
 	mww_log_summary_at_shutdown(mod);
 
 	notifier_unregister(mod->dev, NULL, NOTIFIER_ID_WOV_CTRL);
+	notifier_unregister(mod->dev, NULL, NOTIFIER_ID_D0IX_STATE);
+
+#if CONFIG_COMP_MWW_FAKE_WAKE_MS > 0
+	if (cd->wov_slot_id == MWW_FAKE_WAKE_SLOT)
+		cd->fake_wake_armed = false;
+#endif
 
 #if CONFIG_AMS
 	if (cd->kpd_uuid_id != AMS_INVALID_MSG_TYPE) {

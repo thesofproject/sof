@@ -280,6 +280,7 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 			break;
 		case COMP_STATE_ACTIVE:
 		case COMP_STATE_PAUSED:
+		case COMP_STATE_PREPARE:
 			/* No action needed */
 			break;
 		case COMP_STATE_READY:
@@ -311,6 +312,7 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 		case COMP_STATE_READY:
 		case COMP_STATE_ACTIVE:
 		case COMP_STATE_PAUSED:
+		case COMP_STATE_PREPARE:
 			/* No action needed */
 			break;
 		default:
@@ -401,6 +403,7 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 		switch (status) {
 		case COMP_STATE_ACTIVE:
 		case COMP_STATE_PAUSED:
+		case COMP_STATE_PREPARE:
 			cmd = COMP_TRIGGER_STOP;
 			break;
 		default:

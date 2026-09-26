@@ -60,6 +60,8 @@ struct wov_arb_data {
 	/* Number of input pins (= KPB slots); read from nb_input_pins at init. */
 	uint8_t num_slots;
 	uint32_t copy_count;
+	uint32_t drain_frames_copied;
+	uint32_t drain_frames_total;
 };
 
 #if CONFIG_IPC_MAJOR_4
@@ -99,6 +101,35 @@ static void notify_control_change(const struct comp_dev *dev, uint16_t control_i
 
 	ipc_msg_send(msg, NULL, true);
 }
+
+/* Wake the host: a blocking read() on the WOV capture PCM has no other way
+ * to learn that a detection just pushed a burst of drained KPB data into the
+ * host DMA buffer (the stream runs with SNDRV_PCM_INFO_NO_PERIOD_WAKEUP so
+ * ALSA's normal period-elapsed IRQ path is not relied on here). This mirrors
+ * detect_test.c's notify_host() so the kernel's sof_ipc4_rx_msg() can key off
+ * SOF_IPC4_NOTIFY_PHRASE_DETECTED and call snd_sof_pcm_period_elapsed().
+ */
+static void notify_host_detect(const struct comp_dev *dev, uint32_t slot_id)
+{
+	struct ipc4_voice_cmd_notification notif;
+	struct ipc_msg *msg;
+
+	memset_s(&notif, sizeof(notif), 0, sizeof(notif));
+	notif.primary.r.word_id = slot_id;
+	notif.primary.r.notif_type = SOF_IPC4_NOTIFY_PHRASE_DETECTED;
+	notif.primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
+	notif.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	notif.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+
+	notif.extension.r.sv_score = (uint16_t)(dev_comp_id(dev) & 0xffff);
+	notif.extension.r.rsvd1 = (uint32_t)(dev_comp_id(dev) >> 16);
+
+	msg = ipc_msg_w_ext_init(NULL, notif.primary.dat, notif.extension.dat, 0);
+	if (!msg)
+		return;
+
+	ipc_msg_send(msg, NULL, true);
+}
 #endif
 
 /* -------------------------------------------------------------------------
@@ -132,6 +163,8 @@ static void arb_on_detect(void *arg, enum notify_id id, void *data)
 #if CONFIG_IPC_MAJOR_4
 	/* Notify host ALSA enum control: 1..N corresponds to Slot 1..N (0 is Listening) */
 	notify_control_change(dev, 0, (uint32_t)cd->active_slot + 1);
+	/* Wake a blocking read() on the host WOV capture PCM - see notify_host_detect(). */
+	notify_host_detect(dev, det->slot_id);
 #endif
 
 	/* Broadcast PAUSE to all detectors. The winning slot continues draining
@@ -226,6 +259,8 @@ static int wov_arb_prepare(struct comp_dev *dev)
 
 	cd->active_slot = WOV_ARB_NO_ACTIVE;
 	cd->copy_count = 0;
+	cd->drain_frames_copied = 0;
+	cd->drain_frames_total = 0;
 
 	if (!dev->frames) {
 		component_set_nearest_period_frames(dev, cd->base_cfg.audio_fmt.sampling_frequency);
@@ -252,6 +287,8 @@ static int wov_arb_reset(struct comp_dev *dev)
 	comp_info(dev, "wov_arb_reset");
 
 	cd->active_slot = WOV_ARB_NO_ACTIVE;
+	cd->drain_frames_copied = 0;
+	cd->drain_frames_total = 0;
 
 	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_DETECT);
 
@@ -274,6 +311,8 @@ static int wov_arb_trigger(struct comp_dev *dev, int cmd)
 	 * all detectors so they return to listening mode.
 	 */
 	if (cmd == COMP_TRIGGER_STOP || cmd == COMP_TRIGGER_PAUSE) {
+		cd->drain_frames_copied = 0;
+		cd->drain_frames_total = 0;
 		if (cd->active_slot != WOV_ARB_NO_ACTIVE) {
 			comp_info(dev, "wov_arb: stream stopped, resuming all slots");
 			cd->active_slot = WOV_ARB_NO_ACTIVE;
@@ -376,36 +415,75 @@ static int wov_arb_copy(struct comp_dev *dev)
 	sink_free = audio_stream_get_free_bytes(&sink->stream);
 
 	uint32_t num_sources = 0;
-	list_for_item(src_item, &dev->bsource_list) {
-		num_sources++;
-	}
-
-	uint32_t eff_active_slot = cd->active_slot;
-	if (eff_active_slot == WOV_ARB_NO_ACTIVE && num_sources <= 1)
-		eff_active_slot = 0;
-
-	/* First pass: find how many bytes the active source has available. */
-	slot = 0;
+	uint32_t num_kpb_sources = 0;
 	list_for_item(src_item, &dev->bsource_list) {
 		source = list_item(src_item, struct comp_buffer, sink_list);
-		if (slot == eff_active_slot) {
-			active_avail = audio_stream_get_avail_bytes(&source->stream);
-			break;
+		num_sources++;
+		if (source->source && dev_comp_type(source->source) == SOF_COMP_KPB)
+			num_kpb_sources++;
+	}
+
+	/*
+	 * Do NOT force a lone source "active" while listening: the host PCM must
+	 * stay silent/idle (no data, no host-copier IRQs) until a real WOV
+	 * detection (or the fake-wake test path) sets cd->active_slot via
+	 * on_wov_detect(). That is what lets the host block in read() and the
+	 * platform actually reach D0i3/suspend instead of being kept awake by a
+	 * continuous keep-alive stream.
+	 */
+	uint32_t eff_active_slot = cd->active_slot;
+	struct comp_buffer *active_source = NULL;
+
+	/* Find active audio source buffer if a slot is triggered */
+	if (eff_active_slot != WOV_ARB_NO_ACTIVE) {
+		if (num_kpb_sources == 1) {
+			/* Single KPB architecture: KPB is the audio source for all slots */
+			list_for_item(src_item, &dev->bsource_list) {
+				source = list_item(src_item, struct comp_buffer, sink_list);
+				if (source->source && dev_comp_type(source->source) == SOF_COMP_KPB) {
+					active_source = source;
+					break;
+				}
+			}
+		} else if (num_kpb_sources > 1) {
+			/* Multi-KPB architecture: slot maps to the KPB instance */
+			slot = 0;
+			list_for_item(src_item, &dev->bsource_list) {
+				source = list_item(src_item, struct comp_buffer, sink_list);
+				if (source->source && dev_comp_type(source->source) == SOF_COMP_KPB) {
+					if (slot == eff_active_slot) {
+						active_source = source;
+						break;
+					}
+					slot++;
+				}
+			}
+		} else {
+			/* Fallback when no KPB source identified (pin 0 or slot-th source) */
+			slot = 0;
+			list_for_item(src_item, &dev->bsource_list) {
+				source = list_item(src_item, struct comp_buffer, sink_list);
+				if ((buf_get_id(source) >> 16) == 0 || slot == eff_active_slot) {
+					active_source = source;
+					break;
+				}
+				slot++;
+			}
 		}
-		if (++slot >= cd->num_slots)
-			break;
+
+		if (active_source)
+			active_avail = audio_stream_get_avail_bytes(&active_source->stream);
 	}
 
 	copy_bytes = MIN(active_avail, sink_free);
 
 	uint32_t copied_dst_bytes = 0;
 
-	/* Second pass: copy active slot, silently drain idle slots. */
-	slot = 0;
+	/* Second pass: copy active audio slot, silently drain idle/detector slots. */
 	list_for_item(src_item, &dev->bsource_list) {
 		source = list_item(src_item, struct comp_buffer, sink_list);
 
-		if (slot == eff_active_slot && copy_bytes > 0) {
+		if (source == active_source && copy_bytes > 0) {
 			uint32_t src_frame_bytes = audio_stream_frame_bytes(&source->stream);
 			uint32_t dst_frame_bytes = audio_stream_frame_bytes(&sink->stream);
 			uint32_t src_frames = copy_bytes / src_frame_bytes;
@@ -444,6 +522,16 @@ static int wov_arb_copy(struct comp_dev *dev)
 				buffer_stream_writeback(sink, dst_bytes);
 				comp_update_buffer_produce(sink, dst_bytes);
 				copied_dst_bytes = dst_bytes;
+
+				bool first_data = (cd->drain_frames_total == 0);
+				cd->drain_frames_total += frames;
+				cd->drain_frames_copied += frames;
+				if (first_data || cd->drain_frames_copied >= 320) {
+#if CONFIG_IPC_MAJOR_4
+					notify_host_detect(dev, cd->active_slot);
+#endif
+					cd->drain_frames_copied = 0;
+				}
 			}
 		} else {
 			uint32_t avail = audio_stream_get_avail_bytes(&source->stream);
@@ -451,25 +539,43 @@ static int wov_arb_copy(struct comp_dev *dev)
 			if (avail > 0)
 				comp_update_buffer_consume(source, avail);
 		}
-
-		if (++slot >= cd->num_slots)
-			break;
 	}
 
 	uint32_t fill_bytes = 0;
-	if (copied_dst_bytes == 0 && sink_free > 0) {
-		/* No active audio copied: push period-sized silence so the host copier stays fed. */
+	if (copied_dst_bytes == 0 && sink_free > 0 && eff_active_slot != WOV_ARB_NO_ACTIVE) {
+		/* Active drain momentarily starved of source data: top up with
+		 * silence so the host copier doesn't fall behind and hit an
+		 * -EIO rate deficit (see below). This does NOT run while
+		 * WOV_ARB_NO_ACTIVE (nothing triggered yet) -- in that case we
+		 * must produce zero bytes so the host PCM stays idle/blocked
+		 * and the platform can reach D0i3, rather than being kept busy
+		 * by a synthetic keep-alive stream.
+		 *
+		 * Fill everything the sink has free rather than one dev->frames
+		 * period. The host copier DMA is what creates free space, at the
+		 * stream rate, so topping the buffer up cannot outrun the host -
+		 * but capping the fill at a single period can and does fall
+		 * behind it: with dev->frames 32 and ~300 copies/s the arbiter
+		 * produced ~9.6k frames/s against the 16k frames/s the FE
+		 * expects, so capture starved and userspace saw -EIO.
+		 */
 		uint32_t dst_frame_bytes = audio_stream_frame_bytes(&sink->stream);
 		if (!dst_frame_bytes)
 			dst_frame_bytes = 2;
-		uint32_t period_dst_bytes = dev->frames * dst_frame_bytes;
-		fill_bytes = MIN(sink_free, period_dst_bytes ? period_dst_bytes : 320);
-		fill_bytes = (fill_bytes / dst_frame_bytes) * dst_frame_bytes;
+		fill_bytes = (sink_free / dst_frame_bytes) * dst_frame_bytes;
 
 		if (fill_bytes > 0) {
 			audio_stream_set_zero(&sink->stream, fill_bytes);
 			buffer_stream_writeback(sink, fill_bytes);
 			comp_update_buffer_produce(sink, fill_bytes);
+
+			cd->drain_frames_copied += (fill_bytes / dst_frame_bytes);
+			if (cd->drain_frames_copied >= 320) {
+#if CONFIG_IPC_MAJOR_4
+				notify_host_detect(dev, cd->active_slot);
+#endif
+				cd->drain_frames_copied = 0;
+			}
 		}
 	}
 

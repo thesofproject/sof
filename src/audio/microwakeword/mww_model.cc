@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iterator>
+#include <new>
 
 #include "tensorflow/lite/core/c/common.h"
 #include "tensorflow/lite/micro/micro_allocator.h"
@@ -29,6 +30,8 @@ static constexpr size_t kArenaSize = 98304;
 alignas(16) static uint8_t g_arenas[kMaxSlots][kArenaSize];
 
 using MwwOpResolver = tflite::MicroMutableOpResolver<14>;
+alignas(alignof(MwwOpResolver)) static uint8_t g_op_resolver_storage[kMaxSlots][sizeof(MwwOpResolver)];
+alignas(alignof(tflite::MicroInterpreter)) static uint8_t g_interpreter_storage[kMaxSlots][sizeof(tflite::MicroInterpreter)];
 
 struct mww_instance {
 	uint8_t slot_id;
@@ -127,15 +130,20 @@ int MWW_InitOps(struct mww_classify *mwc)
 	struct mww_instance *inst = static_cast<struct mww_instance *>(mwc->instance);
 	uint8_t slot = inst->slot_id;
 
-	inst->op_resolver = new MwwOpResolver();
-	if (!inst->op_resolver) {
-		mwc->error = "op_resolver alloc failed (OOM)";
-		return -ENOMEM;
+	if (inst->interpreter) {
+		inst->interpreter->~MicroInterpreter();
+		inst->interpreter = nullptr;
 	}
+	if (inst->op_resolver) {
+		inst->op_resolver->~MicroOpResolver();
+		inst->op_resolver = nullptr;
+	}
+
+	inst->op_resolver = new (&g_op_resolver_storage[slot]) MwwOpResolver();
 
 	if (RegisterOps(inst->op_resolver) != 0) {
 		mwc->error = "register ops failed";
-		delete inst->op_resolver;
+		inst->op_resolver->~MicroOpResolver();
 		inst->op_resolver = nullptr;
 		return -EINVAL;
 	}
@@ -146,7 +154,7 @@ int MWW_InitOps(struct mww_classify *mwc)
 	inst->allocator = tflite::MicroAllocator::Create(inst->arena, inst->arena_size);
 	if (!inst->allocator) {
 		mwc->error = "allocator alloc failed (OOM)";
-		delete inst->op_resolver;
+		inst->op_resolver->~MicroOpResolver();
 		inst->op_resolver = nullptr;
 		return -ENOMEM;
 	}
@@ -154,24 +162,19 @@ int MWW_InitOps(struct mww_classify *mwc)
 	inst->resource_variables = tflite::MicroResourceVariables::Create(inst->allocator, kNumResourceVariables);
 	if (!inst->resource_variables) {
 		mwc->error = "resource_variables alloc failed (OOM)";
-		delete inst->op_resolver;
+		inst->op_resolver->~MicroOpResolver();
 		inst->op_resolver = nullptr;
 		return -ENOMEM;
 	}
 
-	inst->interpreter = new tflite::MicroInterpreter(inst->model, *inst->op_resolver,
-							  inst->allocator, inst->resource_variables);
-	if (!inst->interpreter) {
-		mwc->error = "interpreter alloc failed (OOM)";
-		delete inst->op_resolver;
-		inst->op_resolver = nullptr;
-		return -ENOMEM;
-	}
+	inst->interpreter = new (&g_interpreter_storage[slot])
+		tflite::MicroInterpreter(inst->model, *inst->op_resolver,
+					 inst->allocator, inst->resource_variables);
 
 	if (inst->interpreter->AllocateTensors() != kTfLiteOk) {
 		mwc->error = "interpreter tensor allocate failed";
-		delete inst->interpreter;
-		delete inst->op_resolver;
+		inst->interpreter->~MicroInterpreter();
+		inst->op_resolver->~MicroOpResolver();
 		inst->interpreter = nullptr;
 		inst->op_resolver = nullptr;
 		return -EINVAL;
@@ -263,10 +266,14 @@ void MWW_Free(struct mww_classify *mwc)
 		return;
 
 	struct mww_instance *inst = static_cast<struct mww_instance *>(mwc->instance);
-	delete inst->interpreter;
-	delete inst->op_resolver;
-	inst->interpreter = nullptr;
-	inst->op_resolver = nullptr;
+	if (inst->interpreter) {
+		inst->interpreter->~MicroInterpreter();
+		inst->interpreter = nullptr;
+	}
+	if (inst->op_resolver) {
+		inst->op_resolver->~MicroOpResolver();
+		inst->op_resolver = nullptr;
+	}
 	inst->allocator = nullptr;
 	inst->resource_variables = nullptr;
 	inst->model = nullptr;
