@@ -24,8 +24,16 @@
 int audio_buffer_attach_secondary_buffer(struct sof_audio_buffer *buffer, bool at_input,
 					 struct sof_audio_buffer *secondary_buffer)
 {
+#ifdef CONFIG_DP_TO_DP_BIND
+	/* check per-side: allow attaching on both sides (needed for DP-to-DP) */
+	if (at_input && buffer->secondary_buffer_sink)
+		return -EINVAL;
+	if (!at_input && buffer->secondary_buffer_source)
+		return -EINVAL;
+#else
 	if (buffer->secondary_buffer_sink || buffer->secondary_buffer_source)
 		return -EINVAL;
+#endif
 
 	/* secondary buffer must share audio params with the primary buffer */
 	secondary_buffer->audio_stream_params = buffer->audio_stream_params;
@@ -47,6 +55,19 @@ int audio_buffer_sync_secondary_buffer(struct sof_audio_buffer *buffer, size_t l
 
 	struct sof_source *data_src;
 	struct sof_sink *data_dst;
+
+#ifdef CONFIG_DP_TO_DP_BIND
+	if (buffer->secondary_buffer_sink &&
+	    buffer->secondary_buffer_sink == buffer->secondary_buffer_source) {
+		/*
+		 * DP-to-DP case: a single shared ring_buffer is attached on both sides.
+		 * The source DP writes directly to the ring_buffer sink API, and the
+		 * sink DP reads directly from the ring_buffer source API.
+		 * No copying is needed during the LL cycle.
+		 */
+		return 0;
+	}
+#endif
 
 	if (buffer->secondary_buffer_sink) {
 		/*
@@ -95,7 +116,12 @@ void audio_buffer_free(struct sof_audio_buffer *buffer)
 	CORE_CHECK_STRUCT(buffer);
 #if CONFIG_PIPELINE_2_0
 	audio_buffer_free(buffer->secondary_buffer_sink);
+#ifdef CONFIG_DP_TO_DP_BIND
+	if (buffer->secondary_buffer_source != buffer->secondary_buffer_sink)
+		audio_buffer_free(buffer->secondary_buffer_source);
+#else
 	audio_buffer_free(buffer->secondary_buffer_source);
+#endif
 #endif /* CONFIG_PIPELINE_2_0 */
 	/* "virtual destructor": free the buffer internals and buffer memory */
 	buffer->ops->free(buffer);
@@ -203,18 +229,14 @@ uint32_t audio_buffer_sink_get_lft(struct sof_sink *sink)
 	return us_in_buffer;
 
 	/*
-	 * TODO, Currently there's no DP to DP connection
-	 * >>> the code below is never accessible and won't work because of cache incoherence <<<
+	 * NOTE: DP-to-DP connections are now supported via a single shared ring_buffer
+	 * attached as secondary buffer on both sides of a comp_buffer.
 	 *
-	 * to make DP to DP connection possible:
-	 *
-	 * 1) module data must be ALWAYS located in non cached memory alias, allowing
-	 *    cross core access to params like period (needed below) and calling
-	 *    module_get_deadline for the next module, regardless of cores the modules are
-	 *    running on
-	 * 2) comp_buffer must be removed from all pipeline code, replaced with a generic abstract
-	 *    class audio_buffer - allowing using comp_buffer and ring_buffer without current
-	 *    "hybrid buffer" solution
+	 * Future improvements:
+	 * 1) module data should be in non-cached memory alias for reliable
+	 *    cross-core access to params like period and deadlines
+	 * 2) comp_buffer should be replaced with generic audio_buffer
+	 *    throughout pipeline code (Pipeline 2.0)
 	 */
 }
 
