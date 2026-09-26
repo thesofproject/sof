@@ -4,9 +4,6 @@ add_executable(sof-ctl
 	ctl.c
 )
 
-target_link_directories(sof-ctl BEFORE
-	PRIVATE "${SOF_ROOT_SOURCE_DIRECTORY}/../tools/lib")
-
 target_link_libraries(sof-ctl PRIVATE
 	"-lasound"
 )
@@ -26,7 +23,6 @@ target_compile_options(sof-ctl PRIVATE
 )
 
 target_include_directories(sof-ctl PRIVATE
-	"${SOF_ROOT_SOURCE_DIRECTORY}/../tools/include"
 	"${SOF_ROOT_SOURCE_DIRECTORY}/src/include"
 	"${SOF_ROOT_SOURCE_DIRECTORY}"
 )
