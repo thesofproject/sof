@@ -127,6 +127,7 @@ ee2585f2-e7d8-43dc-90ab4224e00c3e84 modules
 0d9f2256-8e4f-47b3-8448239a334f1191 multiband_drc
 c607ff4d-9cb6-49dc-b6787da3c63ea557 mux
 64ce6e35-857a-4878-ace8e2a2f42e3069 mux4
+4067fe1d-cd63-4877-966ba06ded1719ce mww
 f36BF24B-9AAF-83f4-8677E072E8AEADB7 notification_pool
 1fb15a7a-83cd-4c2e-8b324da1b2adeeaf notifier
 7ae671a7-4617-4a09-bf6d9d29c998dbc1 ns

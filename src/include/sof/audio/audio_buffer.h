@@ -330,8 +330,15 @@ void audio_buffer_reset(struct sof_audio_buffer *buffer)
 	if (buffer->secondary_buffer_sink && buffer->secondary_buffer_sink->ops->reset)
 		buffer->secondary_buffer_sink->ops->reset(buffer->secondary_buffer_sink);
 
+#ifdef CONFIG_DP_TO_DP_BIND
+	if (buffer->secondary_buffer_source &&
+	    buffer->secondary_buffer_source != buffer->secondary_buffer_sink &&
+	    buffer->secondary_buffer_source->ops->reset)
+		buffer->secondary_buffer_source->ops->reset(buffer->secondary_buffer_source);
+#else
 	if (buffer->secondary_buffer_source && buffer->secondary_buffer_source->ops->reset)
 		buffer->secondary_buffer_source->ops->reset(buffer->secondary_buffer_source);
+#endif
 #endif
 }
 

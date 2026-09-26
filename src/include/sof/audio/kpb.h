@@ -257,4 +257,11 @@ struct kpb_fmt_dev_list {
 void sys_comp_kpb_init(void);
 #endif
 
+/* Polling-based cross-core notification for keyword detection.
+ * Avoids the AMS->IDC->p4wq cross-core wake path when the detector runs on
+ * a different core than KPB. Set by the detector; polled by kpb_copy().
+ */
+void kpb_notify_request_drain(uint32_t drain_req_ms);
+bool kpb_notify_poll_drain(uint32_t *drain_req_ms);
+
 #endif /* __SOF_AUDIO_KPB_H__ */

@@ -83,6 +83,10 @@ if(CONFIG_MATH_AUDITORY)
   add_subdirectory(auditory)
 endif()
 
+if(CONFIG_MATH_PCAN)
+  add_subdirectory(pcan)
+endif()
+
 if(CONFIG_MATH_DCT)
   list(APPEND base_files dct.c)
 endif()
