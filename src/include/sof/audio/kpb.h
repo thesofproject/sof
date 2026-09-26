@@ -113,6 +113,8 @@ enum kpb_client_state {
 };
 
 struct kpb_client {
+	struct comp_dev *dev;
+	struct k_queue *queue;
 	uint8_t id; /**< id associated with output sink */
 	uint32_t drain_req; /**< normalized value of buffered bytes */
 	enum kpb_client_state state; /**< current state of a client */
@@ -252,6 +254,17 @@ struct kpb_fmt_dev_list {
 	struct comp_dev *modules_list_item[FAST_MODE_TASK_MAX_MODULES_COUNT];
 	struct comp_dev *kpb_mi_ptr;
 };
+
+#if CONFIG_KPB_CLI_Q
+void kpb_notifier_schedule(struct kpb_client *cli);
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#include <sof/compiler_attributes.h>
+__syscall void kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli);
+#include <zephyr/syscalls/kpb.h>
+#else
+#define kpb_notifier_init z_impl_kpb_notifier_init
+#endif
+#endif
 
 #ifdef UNIT_TEST
 void sys_comp_kpb_init(void);
