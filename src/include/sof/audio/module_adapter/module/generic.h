@@ -156,7 +156,6 @@ struct module_resource {
 		struct comp_data_blob_handler *bhp; /**< Blob handler ptr */
 		const void *sram_ptr; /**< SRAM ptr from fast_get() */
 	};
-	struct list_item list; /**< list element */
 	size_t size; /**< Size of allocated heap memory, 0 if not from heap */
 	enum mod_resource_type type; /**< Resource type */
 };
