@@ -6,12 +6,18 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <stdint.h>
+#include <string.h>
 #include <cmocka.h>
 #include <kernel/header.h>
 #include <sof/audio/component_ext.h>
 #include <eq_fir/eq_fir.h>
+#include <sof/audio/audio_buffer.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 #include <ipc/control.h>
+#include <user/eq.h>
+#include <user/fir.h>
 
 #include "../../util.h"
 #include "../../../include/cmocka_chirp_2ch.h"
@@ -83,13 +89,15 @@ static struct sof_ipc_comp_process *create_eq_fir_comp_ipc(struct test_data *td)
 	return ipc;
 }
 
-static int eq_fir_send_config(struct processing_module *mod)
+static int eq_fir_send_blob(struct processing_module *mod,
+			    const struct sof_abi_hdr *blob,
+			    size_t blob_storage_size)
 {
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
-	struct sof_abi_hdr *blob = (struct sof_abi_hdr *)fir_coef_2ch;
-	size_t cdata_size = sizeof(struct sof_ipc_ctrl_data) +
-		sizeof(struct sof_abi_hdr) + blob->size;
+	size_t cdata_size = sizeof(struct sof_ipc_ctrl_data) + sizeof(struct sof_abi_hdr) +
+		blob->size;
 	struct sof_ipc_ctrl_data *cdata;
+	size_t copy_size;
 	int ret;
 
 	cdata = calloc(1, cdata_size);
@@ -102,7 +110,10 @@ static int eq_fir_send_config(struct processing_module *mod)
 	cdata->data[0].type = blob->type;
 	cdata->data[0].size = blob->size;
 	cdata->data[0].abi = blob->abi;
-	memcpy_s(cdata->data[0].data, blob->size, blob->data, blob->size);
+	copy_size = blob_storage_size > sizeof(*blob) ? blob_storage_size - sizeof(*blob) : 0;
+	copy_size = MIN(copy_size, (size_t)blob->size);
+	if (copy_size)
+		memcpy_s(cdata->data[0].data, blob->size, blob->data, copy_size);
 
 	ret = ops->set_configuration(mod, 0, MODULE_CFG_FRAGMENT_SINGLE,
 				     blob->size, (const uint8_t *)cdata,
@@ -110,6 +121,18 @@ static int eq_fir_send_config(struct processing_module *mod)
 
 	free(cdata);
 	return ret;
+}
+
+static int eq_fir_send_config(struct processing_module *mod)
+{
+	return eq_fir_send_blob(mod, (const struct sof_abi_hdr *)fir_coef_2ch,
+				sizeof(fir_coef_2ch));
+}
+
+static void copy_eq_fir_blob(uint32_t *blob)
+{
+	assert_int_equal(memcpy_s(blob, sizeof(fir_coef_2ch), fir_coef_2ch,
+				  sizeof(fir_coef_2ch)), 0);
 }
 
 static void prepare_sink(struct test_data *td, struct processing_module *mod)
@@ -158,6 +181,8 @@ static int setup(void **state)
 	struct test_data *td;
 	struct sof_ipc_comp_process *ipc;
 	struct comp_dev *dev;
+	struct sof_source *sources[1];
+	struct sof_sink *sinks[1];
 	int ret;
 
 	td = test_malloc(sizeof(*td));
@@ -198,7 +223,9 @@ static int setup(void **state)
 	mod->stream_params->channels = params->channels;
 	mod->period_bytes = get_frame_bytes(params->source_format, params->channels) * 48000 / 1000;
 
-	ret = module_prepare(mod, NULL, 0, NULL, 0);
+	sources[0] = audio_buffer_get_source(&td->source->audio_buffer);
+	sinks[0] = audio_buffer_get_sink(&td->sink->audio_buffer);
+	ret = module_prepare(mod, sources, 1, sinks, 1);
 	if (ret)
 		return ret;
 
@@ -423,6 +450,160 @@ static void verify_sink_s32(struct test_data *td)
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
+static void fill_source_for_test(struct test_data *td, int frames)
+{
+	switch (audio_stream_get_frm_fmt(&td->source->stream)) {
+#if CONFIG_FORMAT_S16LE
+	case SOF_IPC_FRAME_S16_LE:
+		fill_source_s16(td, frames);
+		break;
+#endif
+#if CONFIG_FORMAT_S24LE
+	case SOF_IPC_FRAME_S24_4LE:
+		fill_source_s24(td, frames);
+		break;
+#endif
+#if CONFIG_FORMAT_S32LE
+	case SOF_IPC_FRAME_S32_LE:
+		fill_source_s32(td, frames);
+		break;
+#endif
+	default:
+		assert_true(false);
+		break;
+	}
+}
+
+static void test_eq_fir_rounds_down_odd_frame_count(void **state)
+{
+	struct test_data *td = *state;
+	struct processing_module *mod = comp_mod(td->dev);
+	struct sof_source *sources[1];
+	struct sof_sink *sinks[1];
+	const size_t frame_bytes = get_frame_bytes(td->params->source_format,
+						   td->params->channels);
+	size_t source_avail_before;
+	size_t sink_avail_before;
+	int ret;
+
+	sources[0] = audio_buffer_get_source(&td->source->audio_buffer);
+	sinks[0] = audio_buffer_get_sink(&td->sink->audio_buffer);
+	fill_source_for_test(td, 3);
+	source_avail_before = audio_stream_get_avail_bytes(&td->source->stream);
+	sink_avail_before = audio_stream_get_avail_bytes(&td->sink->stream);
+	mod->output_buffers[0].size = 0;
+
+	ret = module_process_sink_src(mod, sources, 1, sinks, 1);
+	assert_int_equal(ret, 0);
+	assert_int_equal(source_avail_before -
+			 audio_stream_get_avail_bytes(&td->source->stream),
+			 2 * frame_bytes);
+	assert_int_equal(audio_stream_get_avail_bytes(&td->sink->stream) -
+			 sink_avail_before, 2 * frame_bytes);
+}
+
+static void test_eq_fir_rejects_invalid_configurations(void **state)
+{
+	struct test_data *td = *state;
+	struct processing_module *mod = comp_mod(td->dev);
+	uint32_t blob_copy[ARRAY_SIZE(fir_coef_2ch)];
+	struct sof_abi_hdr *abi;
+	struct sof_eq_fir_config *config;
+	struct sof_fir_coef_data *coef;
+	int ret;
+
+	copy_eq_fir_blob(blob_copy);
+	abi = (struct sof_abi_hdr *)blob_copy;
+	config = (struct sof_eq_fir_config *)abi->data;
+	abi->size = sizeof(*config);
+	config->size = abi->size;
+	ret = eq_fir_send_blob(mod, abi, sizeof(blob_copy));
+	assert_int_equal(ret, -EINVAL);
+
+	copy_eq_fir_blob(blob_copy);
+	abi = (struct sof_abi_hdr *)blob_copy;
+	config = (struct sof_eq_fir_config *)abi->data;
+	abi->size = sizeof(*config) + 2 * sizeof(int16_t) +
+		(SOF_FIR_COEF_NHEADER - 1) * sizeof(int16_t);
+	config->size = abi->size;
+	ret = eq_fir_send_blob(mod, abi, sizeof(blob_copy));
+	assert_int_equal(ret, -EINVAL);
+
+	copy_eq_fir_blob(blob_copy);
+	abi = (struct sof_abi_hdr *)blob_copy;
+	abi->size = sizeof(struct sof_eq_fir_config) - 1;
+	ret = eq_fir_send_blob(mod, abi, sizeof(blob_copy));
+	assert_int_equal(ret, -EINVAL);
+
+	copy_eq_fir_blob(blob_copy);
+	abi = (struct sof_abi_hdr *)blob_copy;
+	abi->size = SOF_EQ_FIR_MAX_SIZE + 1;
+	ret = eq_fir_send_blob(mod, abi, sizeof(blob_copy));
+	assert_int_equal(ret, -EINVAL);
+
+	copy_eq_fir_blob(blob_copy);
+	abi = (struct sof_abi_hdr *)blob_copy;
+	config = (struct sof_eq_fir_config *)abi->data;
+	config->size = abi->size - sizeof(int16_t);
+	ret = eq_fir_send_blob(mod, abi, sizeof(blob_copy));
+	assert_int_equal(ret, -EINVAL);
+
+	copy_eq_fir_blob(blob_copy);
+	abi = (struct sof_abi_hdr *)blob_copy;
+	config = (struct sof_eq_fir_config *)abi->data;
+	config->channels_in_config = 1;
+	ret = eq_fir_send_blob(mod, abi, sizeof(blob_copy));
+	assert_int_equal(ret, -EINVAL);
+
+	copy_eq_fir_blob(blob_copy);
+	abi = (struct sof_abi_hdr *)blob_copy;
+	config = (struct sof_eq_fir_config *)abi->data;
+	config->number_of_responses = SOF_EQ_FIR_MAX_RESPONSES + 1;
+	ret = eq_fir_send_blob(mod, abi, sizeof(blob_copy));
+	assert_int_equal(ret, -EINVAL);
+
+	copy_eq_fir_blob(blob_copy);
+	abi = (struct sof_abi_hdr *)blob_copy;
+	config = (struct sof_eq_fir_config *)abi->data;
+	coef = (struct sof_fir_coef_data *)&config->data[config->channels_in_config];
+	coef->length = 0;
+	ret = eq_fir_send_blob(mod, abi, sizeof(blob_copy));
+	assert_int_equal(ret, -EINVAL);
+
+	copy_eq_fir_blob(blob_copy);
+	abi = (struct sof_abi_hdr *)blob_copy;
+	config = (struct sof_eq_fir_config *)abi->data;
+	coef = (struct sof_fir_coef_data *)&config->data[config->channels_in_config];
+	coef->length = 3;
+	ret = eq_fir_send_blob(mod, abi, sizeof(blob_copy));
+	assert_int_equal(ret, -EINVAL);
+
+	copy_eq_fir_blob(blob_copy);
+	abi = (struct sof_abi_hdr *)blob_copy;
+	config = (struct sof_eq_fir_config *)abi->data;
+	coef = (struct sof_fir_coef_data *)&config->data[config->channels_in_config];
+	coef->length = SOF_FIR_MAX_LENGTH;
+	ret = eq_fir_send_blob(mod, abi, sizeof(blob_copy));
+	assert_int_equal(ret, -EINVAL);
+
+	copy_eq_fir_blob(blob_copy);
+	abi = (struct sof_abi_hdr *)blob_copy;
+	config = (struct sof_eq_fir_config *)abi->data;
+	config->data[0] = 1;
+	ret = eq_fir_send_blob(mod, abi, sizeof(blob_copy));
+	assert_int_equal(ret, -EINVAL);
+}
+
+#if CONFIG_IPC_MAJOR_3
+static void test_eq_fir_rejects_invalid_frame_format(void **state)
+{
+	struct test_data *td = *state;
+	struct processing_module *mod = comp_mod(td->dev);
+
+	assert_int_equal(set_fir_func(mod, (enum sof_ipc_frame)0xffff), -EINVAL);
+}
+#endif
+
 static int frames_jitter(int frames)
 {
 	int r = rand();
@@ -442,8 +623,14 @@ static void test_audio_eq_fir(void **state)
 
 	struct comp_buffer *source = td->source;
 	struct comp_buffer *sink = td->sink;
+	struct sof_source *sources[1];
+	struct sof_sink *sinks[1];
+	size_t avail_before;
 	int ret;
 	int frames;
+
+	sources[0] = audio_buffer_get_source(&source->audio_buffer);
+	sinks[0] = audio_buffer_get_sink(&sink->audio_buffer);
 
 	while (td->continue_loop) {
 		frames = frames_jitter(td->params->frames);
@@ -464,15 +651,15 @@ static void test_audio_eq_fir(void **state)
 			break;
 		}
 
-		mod->input_buffers[0].consumed = 0;
 		mod->output_buffers[0].size = 0;
 
-		ret = module_process_legacy(mod, mod->input_buffers, 1,
-					    mod->output_buffers, 1);
+		td->dev->frames = mod->input_buffers[0].size;
+		avail_before = audio_stream_get_avail_bytes(&sink->stream);
+		ret = module_process_sink_src(mod, sources, 1, sinks, 1);
 		assert_int_equal(ret, 0);
 
-		comp_update_buffer_consume(source, mod->input_buffers[0].consumed);
-		comp_update_buffer_produce(sink, mod->output_buffers[0].size);
+		mod->output_buffers[0].size = audio_stream_get_avail_bytes(&sink->stream) -
+					      avail_before;
 
 		switch (audio_stream_get_frm_fmt(&sink->stream)) {
 		case SOF_IPC_FRAME_S16_LE:
@@ -511,7 +698,11 @@ int main(void)
 	int ret;
 	int i;
 
-	struct CMUnitTest tests[ARRAY_SIZE(parameters)];
+#if CONFIG_IPC_MAJOR_3
+	struct CMUnitTest tests[ARRAY_SIZE(parameters) + 3];
+#else
+	struct CMUnitTest tests[ARRAY_SIZE(parameters) + 2];
+#endif
 
 	for (i = 0; i < ARRAY_SIZE(parameters); i++) {
 		tests[i].name = "test_audio_eq_fir";
@@ -520,6 +711,30 @@ int main(void)
 		tests[i].teardown_func = teardown;
 		tests[i].initial_state = &parameters[i];
 	}
+
+	i = ARRAY_SIZE(parameters);
+	tests[i].name = "test_eq_fir_rounds_down_odd_frame_count";
+	tests[i].test_func = test_eq_fir_rounds_down_odd_frame_count;
+	tests[i].setup_func = setup;
+	tests[i].teardown_func = teardown;
+	tests[i].initial_state = &parameters[0];
+	i++;
+
+	tests[i].name = "test_eq_fir_rejects_invalid_configurations";
+	tests[i].test_func = test_eq_fir_rejects_invalid_configurations;
+	tests[i].setup_func = setup;
+	tests[i].teardown_func = teardown;
+	tests[i].initial_state = &parameters[0];
+	i++;
+
+#if CONFIG_IPC_MAJOR_3
+	tests[i].name = "test_eq_fir_rejects_invalid_frame_format";
+	tests[i].test_func = test_eq_fir_rejects_invalid_frame_format;
+	tests[i].setup_func = setup;
+	tests[i].teardown_func = teardown;
+	tests[i].initial_state = &parameters[0];
+	i++;
+#endif
 
 	cmocka_set_message_output(CM_OUTPUT_TAP);
 
