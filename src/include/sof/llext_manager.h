@@ -40,6 +40,7 @@ bool comp_is_llext(struct comp_dev *comp);
 #define llext_manager_free_module(component_id) 0
 #define llext_manager_add_library(module_id) 0
 #define llext_manager_add_domain(component_id, domain) 0
+#define llext_manager_rm_domain(component_id, domain) 0
 #define comp_is_llext(comp) false
 #endif
 

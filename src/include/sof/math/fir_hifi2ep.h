@@ -16,7 +16,7 @@
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
 #include <user/fir.h>
-#include <xtensa/config/defs.h>
+#include <xtensa/config/core-isa.h>
 #include <xtensa/tie/xt_hifi2.h>
 #include <stdint.h>
 
