@@ -19,6 +19,8 @@
 #include <sof/lib/mailbox.h>
 #include <sof/platform.h>
 #include <sof/ut.h>
+#include <sof/schedule/dp_schedule.h>
+#include <module/module/interface.h>
 #include <rtos/interrupt.h>
 #include <rtos/symbol.h>
 #include <ipc4/base_fw.h>
@@ -263,10 +265,27 @@ int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 		return -EINVAL;
 	}
 
-	if (interface->set_configuration)
-		return interface->set_configuration(mod, param_id, pos, data_offset_size,
-						    (const uint8_t *)data, fragment_size,
-						    NULL, 0);
+	if (interface->set_configuration) {
+#if CONFIG_SOF_USERSPACE_APPLICATION
+		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+			union scheduler_dp_thread_ipc_param param = {
+				.set_config = {
+					.param_id = param_id,
+					.position = pos,
+					.data_offset_size = data_offset_size,
+					.data = data,
+					.fragment_size = fragment_size,
+				},
+			};
+
+			return scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_LARGE_CONFIG_SET, &param);
+		} else
+#endif
+			return interface->set_configuration(mod, param_id, pos, data_offset_size,
+							    (const uint8_t *)data, fragment_size,
+							    NULL, 0);
+	}
+
 	return 0;
 }
 
@@ -297,9 +316,29 @@ int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 		}
 	}
 
-	if (interface->get_configuration)
-		return interface->get_configuration(mod, param_id, data_offset_size,
-						    (uint8_t *)data, fragment_size);
+	if (interface->get_configuration) {
+#if CONFIG_SOF_USERSPACE_APPLICATION
+		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+			union scheduler_dp_thread_ipc_param param = {
+				.get_config = {
+					.param_id = param_id,
+					.data_offset_size = *data_offset_size,
+					.data = data,
+					.fragment_size = fragment_size,
+				},
+			};
+
+			int ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_LARGE_CONFIG_GET,
+							  &param);
+			if (!ret)
+				*data_offset_size = param.get_config.data_offset_size;
+			return ret;
+		} else
+#endif
+			return interface->get_configuration(mod, param_id, data_offset_size,
+							    (uint8_t *)data, fragment_size);
+	}
+
 	/*
 	 * Return error if getter is not implemented. Otherwise, the host will suppose
 	 * the GET_VALUE command is successful, but the received cdata is not filled.

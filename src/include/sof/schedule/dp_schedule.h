@@ -15,6 +15,7 @@
 #include <ipc4/base_fw.h>
 #include <ipc4/module.h>
 #include <ipc4/pipeline.h>
+#include <module/module/interface.h>
 
 struct processing_module;
 struct module_ext_init_data;
@@ -129,15 +130,28 @@ union scheduler_dp_thread_ipc_param {
 		int n_sinks;
 		struct sof_sink **sinks;
 	} pipeline_state;
+	struct {
+		uint32_t param_id;
+		enum module_cfg_fragment_position position;
+		uint32_t data_offset_size;
+		size_t fragment_size;
+		const char *data;
+	} set_config;
+	struct {
+		uint32_t param_id;
+		uint32_t data_offset_size;
+		size_t fragment_size;
+		char *data;
+	} get_config;
 };
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
-			    const union scheduler_dp_thread_ipc_param *param);
+			    union scheduler_dp_thread_ipc_param *param);
 #else
 static inline int scheduler_dp_thread_ipc(struct processing_module *pmod,
 					  unsigned int cmd,
-					  const union scheduler_dp_thread_ipc_param *param)
+					  union scheduler_dp_thread_ipc_param *param)
 {
 	return 0;
 }

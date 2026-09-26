@@ -29,8 +29,8 @@ struct comp_data_blob_handler {
 	uint32_t single_blob:1; /**< Allocate only one blob. Module can not
 				  *  be active while reconfguring.
 				  */
-	void *(*alloc)(size_t size);	/**< alternate allocator, maybe null */
-	void (*free)(void *buf);	/**< alternate free(), maybe null */
+	void *(*alloc)(struct comp_data_blob_handler *, size_t);/**< allocator, maybe null */
+	void (*free)(struct comp_data_blob_handler *, void *);	/**< deallocator, maybe null */
 
 	/** validator for new data, maybe null */
 	int (*validator)(struct comp_dev *dev, void *new_data, uint32_t new_data_size);
@@ -43,8 +43,8 @@ static void comp_free_data_blob(struct comp_data_blob_handler *blob_handler)
 	if (!blob_handler->data)
 		return;
 
-	blob_handler->free(blob_handler->data);
-	blob_handler->free(blob_handler->data_new);
+	blob_handler->free(blob_handler, blob_handler->data);
+	blob_handler->free(blob_handler, blob_handler->data_new);
 	blob_handler->data = NULL;
 	blob_handler->data_new = NULL;
 	blob_handler->data_size = 0;
@@ -75,7 +75,7 @@ void *comp_get_data_blob(struct comp_data_blob_handler *blob_handler,
 		comp_dbg(blob_handler->dev, "new data available");
 
 		/* Free "old" data blob and set data to data_new pointer */
-		blob_handler->free(blob_handler->data);
+		blob_handler->free(blob_handler, blob_handler->data);
 		blob_handler->data = blob_handler->data_new;
 		blob_handler->data_size = blob_handler->new_data_size;
 
@@ -143,7 +143,7 @@ int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
 		return 0;
 
 	/* Data blob allocation */
-	blob_handler->data = blob_handler->alloc(size);
+	blob_handler->data = blob_handler->alloc(blob_handler, size);
 	if (!blob_handler->data) {
 		comp_err(blob_handler->dev, "model->data allocation failed");
 		return -ENOMEM;
@@ -232,7 +232,7 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 
 		if (blob_handler->single_blob) {
 			if (data_offset_size != blob_handler->data_size) {
-				blob_handler->free(blob_handler->data);
+				blob_handler->free(blob_handler, blob_handler->data);
 				blob_handler->data = NULL;
 			} else {
 				blob_handler->data_new = blob_handler->data;
@@ -241,7 +241,7 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 		}
 
 		if (!blob_handler->data_new) {
-			blob_handler->data_new = blob_handler->alloc(data_offset_size);
+			blob_handler->data_new = blob_handler->alloc(blob_handler, data_offset_size);
 			if (!blob_handler->data_new) {
 				comp_err(blob_handler->dev, "blob_handler->data_new allocation failed.");
 				return -ENOMEM;
@@ -277,7 +277,7 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 						      blob_handler->new_data_size);
 			if (ret < 0) {
 				comp_err(blob_handler->dev, "new data is invalid! discarding it...");
-				blob_handler->free(blob_handler->data_new);
+				blob_handler->free(blob_handler, blob_handler->data_new);
 				blob_handler->data_new = NULL;
 				return ret;
 			}
@@ -288,7 +288,7 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 		 * the new configuration presence is checked in copy().
 		 */
 		if (blob_handler->dev->state ==  COMP_STATE_READY) {
-			blob_handler->free(blob_handler->data);
+			blob_handler->free(blob_handler, blob_handler->data);
 			blob_handler->data = NULL;
 		}
 
@@ -347,7 +347,7 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 
 		if (blob_handler->single_blob) {
 			if (data_offset != blob_handler->data_size) {
-				blob_handler->free(blob_handler->data);
+				blob_handler->free(blob_handler, blob_handler->data);
 				blob_handler->data = NULL;
 			} else {
 				blob_handler->data_new = blob_handler->data;
@@ -357,7 +357,7 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 
 		if (!blob_handler->data_new) {
 			blob_handler->data_new =
-				blob_handler->alloc(data_offset);
+				blob_handler->alloc(blob_handler, data_offset);
 
 			if (!blob_handler->data_new) {
 				comp_err(blob_handler->dev,
@@ -376,7 +376,7 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 			       blob_handler->new_data_size, data, valid_data_size);
 		if (ret) {
 			comp_err(blob_handler->dev, "failed to copy fragment");
-			blob_handler->free(blob_handler->data_new);
+			blob_handler->free(blob_handler, blob_handler->data_new);
 			blob_handler->data_new = NULL;
 			blob_handler->new_data_size = 0;
 			blob_handler->data_pos = 0;
@@ -411,7 +411,7 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 			       data, valid_data_size);
 		if (ret) {
 			comp_err(blob_handler->dev, "failed to copy fragment");
-			blob_handler->free(blob_handler->data_new);
+			blob_handler->free(blob_handler, blob_handler->data_new);
 			blob_handler->data_new = NULL;
 			blob_handler->new_data_size = 0;
 			blob_handler->data_pos = 0;
@@ -431,7 +431,7 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 		 * the new configuration presence is checked in copy().
 		 */
 		if (blob_handler->dev->state ==  COMP_STATE_READY) {
-			blob_handler->free(blob_handler->data);
+			blob_handler->free(blob_handler, blob_handler->data);
 			blob_handler->data = NULL;
 		}
 
@@ -510,7 +510,7 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 
 		if (blob_handler->single_blob) {
 			if (cdata->data->size != blob_handler->data_size) {
-				blob_handler->free(blob_handler->data);
+				blob_handler->free(blob_handler, blob_handler->data);
 				blob_handler->data = NULL;
 			} else {
 				blob_handler->data_new = blob_handler->data;
@@ -520,7 +520,7 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 
 		if (!blob_handler->data_new) {
 			blob_handler->data_new =
-				blob_handler->alloc(cdata->data->size);
+				blob_handler->alloc(blob_handler, cdata->data->size);
 			if (!blob_handler->data_new) {
 				comp_err(blob_handler->dev, "blob_handler->data_new allocation failed.");
 				return -ENOMEM;
@@ -556,7 +556,7 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 						      blob_handler->new_data_size);
 			if (ret < 0) {
 				comp_err(blob_handler->dev, "new data blob invalid, discarding");
-				blob_handler->free(blob_handler->data_new);
+				blob_handler->free(blob_handler, blob_handler->data_new);
 				blob_handler->data_new = NULL;
 				return ret;
 			}
@@ -567,7 +567,7 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 		 * the new configuration presence is checked in copy().
 		 */
 		if (blob_handler->dev->state ==  COMP_STATE_READY) {
-			blob_handler->free(blob_handler->data);
+			blob_handler->free(blob_handler, blob_handler->data);
 			blob_handler->data = NULL;
 		}
 
@@ -659,28 +659,38 @@ int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
 }
 EXPORT_SYMBOL(comp_data_blob_get_cmd);
 
-static void *default_alloc(size_t size)
+static void *default_alloc(struct comp_data_blob_handler *handler, size_t size)
 {
+	if (handler->dev->mod)
+		return sof_ctx_alloc(handler->dev->mod->priv.resources.alloc,
+				     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_LARGE_BUFFER, size, 0);
 	return sof_heap_alloc(sof_sys_user_heap_get(),
 			      SOF_MEM_FLAG_USER | SOF_MEM_FLAG_LARGE_BUFFER, size, 0);
 }
 
-static void default_free(void *buf)
+static void default_free(struct comp_data_blob_handler *handler, void *buf)
 {
-	sof_heap_free(sof_sys_user_heap_get(), buf);
+	if (handler->dev->mod)
+		sof_ctx_free(handler->dev->mod->priv.resources.alloc, buf);
+	else
+		sof_heap_free(sof_sys_user_heap_get(), buf);
 }
 
 struct comp_data_blob_handler *
 comp_data_blob_handler_new_ext(struct comp_dev *dev, bool single_blob,
-			       void *(*alloc)(size_t size),
-			       void (*free)(void *buf))
+			       void *(*alloc)(struct comp_data_blob_handler *, size_t),
+			       void (*free)(struct comp_data_blob_handler *, void *))
 {
 	struct comp_data_blob_handler *handler;
 
 	comp_dbg(dev, "entry");
 
-	handler = sof_heap_alloc(sof_sys_user_heap_get(), SOF_MEM_FLAG_USER,
-				 sizeof(struct comp_data_blob_handler), 0);
+	if (dev->mod)
+		handler = sof_ctx_alloc(dev->mod->priv.resources.alloc, 0,
+					sizeof(struct comp_data_blob_handler), 0);
+	else
+		handler = sof_heap_alloc(sof_sys_user_heap_get(), SOF_MEM_FLAG_USER,
+					 sizeof(struct comp_data_blob_handler), 0);
 
 	if (handler) {
 		memset(handler, 0, sizeof(*handler));
@@ -701,6 +711,9 @@ void comp_data_blob_handler_free(struct comp_data_blob_handler *blob_handler)
 
 	comp_free_data_blob(blob_handler);
 
-	sof_heap_free(sof_sys_user_heap_get(), blob_handler);
+	if (blob_handler->dev->mod)
+		sof_ctx_free(blob_handler->dev->mod->priv.resources.alloc, blob_handler);
+	else
+		sof_heap_free(sof_sys_user_heap_get(), blob_handler);
 }
 EXPORT_SYMBOL(comp_data_blob_handler_free);

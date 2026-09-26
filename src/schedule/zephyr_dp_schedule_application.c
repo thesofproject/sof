@@ -62,6 +62,19 @@ struct ipc4_flat {
 		 * valid and is covered by the DP thread's SOF_DP_PART_CFG partition.
 		 */
 		struct module_ext_init_data init_instance;
+		struct {
+			uint32_t param_id;
+			enum module_cfg_fragment_position position;
+			uint32_t data_offset_size;
+			size_t fragment_size;
+			const char *data;
+		} set_config;
+		struct {
+			uint32_t param_id;
+			uint32_t data_offset_size;
+			size_t fragment_size;
+			char *data;
+		} get_config;
 	};
 };
 
@@ -108,15 +121,39 @@ static int ipc_thread_flatten(unsigned int cmd, const union scheduler_dp_thread_
 			       flat->pipeline_state.n_sinks *
 			       sizeof(flat->pipeline_state.sink[0]));
 		}
+		break;
+	case SOF_IPC4_MOD_LARGE_CONFIG_SET:
+		flat->set_config.param_id = param->set_config.param_id;
+		flat->set_config.position = param->set_config.position;
+		flat->set_config.data_offset_size = param->set_config.data_offset_size;
+		flat->set_config.fragment_size = param->set_config.fragment_size;
+		flat->set_config.data = param->set_config.data;
+		break;
+	case SOF_IPC4_MOD_LARGE_CONFIG_GET:
+		flat->get_config.param_id = param->get_config.param_id;
+		flat->get_config.data_offset_size = param->get_config.data_offset_size;
+		flat->get_config.fragment_size = param->get_config.fragment_size;
+		flat->get_config.data = NULL/*param->get_config.data*/;
 	}
 
 	return 0;
 }
 
+/* memory allocation helper structure */
+struct scheduler_dp_task_memory {
+	struct task task;
+	struct task_dp_pdata pdata;
+	struct comp_driver drv;
+	struct ipc4_flat flat;
+};
+
 /* Unpack IPC data and execute a callback */
 static void ipc_thread_unflatten_run(struct processing_module *pmod, struct ipc4_flat *flat)
 {
 	const struct module_interface *const ops = pmod->dev->drv->adapter_ops;
+	struct scheduler_dp_task_memory *task_mem = container_of(flat,
+								 struct scheduler_dp_task_memory,
+								 flat);
 
 	switch (flat->cmd) {
 	case SOF_IPC4_MOD_BIND:
@@ -167,6 +204,21 @@ static void ipc_thread_unflatten_run(struct processing_module *pmod, struct ipc4
 						 flat->pipeline_state.sink,
 						 flat->pipeline_state.n_sinks);
 		}
+		break;
+	case SOF_IPC4_MOD_LARGE_CONFIG_SET:
+		flat->ret = ops->set_configuration(pmod, flat->set_config.param_id,
+						   flat->set_config.position,
+						   flat->set_config.data_offset_size,
+						   (const uint8_t *)flat->set_config.data,
+						   flat->set_config.fragment_size, NULL, 0);
+		break;
+	case SOF_IPC4_MOD_LARGE_CONFIG_GET:
+		flat->ret = ops->get_configuration(pmod, flat->get_config.param_id,
+						   &flat->get_config.data_offset_size,
+						   task_mem->pdata.ipc_config_data,
+						   flat->get_config.fragment_size);
+		if (!flat->ret)
+			flat->get_config.data = task_mem->pdata.ipc_config_data;
 	}
 }
 
@@ -174,7 +226,7 @@ static void ipc_thread_unflatten_run(struct processing_module *pmod, struct ipc4
 
 /* Signal an IPC and wait for processing completion */
 int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
-			    const union scheduler_dp_thread_ipc_param *param)
+			    union scheduler_dp_thread_ipc_param *param)
 {
 	if (!pmod) {
 		tr_err(&dp_tr, "no thread module");
@@ -205,16 +257,24 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 
 	scheduler_dp_unlock(lock_key);
 
-	if (!ret) {
-		/* Wait for completion */
-		ret = k_sem_take(&dp_sync[core], DP_THREAD_IPC_TIMEOUT);
-		if (ret < 0)
-			tr_err(&dp_tr, "Failed waiting for DP thread: %d", ret);
-		else
-			ret = pdata->flat->ret;
+	if (ret < 0)
+		return ret;
+
+	/* Wait for completion */
+	ret = k_sem_take(&dp_sync[core], DP_THREAD_IPC_TIMEOUT);
+	if (ret < 0) {
+		tr_err(&dp_tr, "Failed waiting for DP thread: %d", ret);
+		return ret;
 	}
 
-	return ret;
+	if (!pdata->flat->ret && cmd == SOF_IPC4_MOD_LARGE_CONFIG_GET) {
+		/* A single case of returning data */
+		param->get_config.data_offset_size = pdata->flat->get_config.data_offset_size;
+		return memcpy_s(param->get_config.data, SOF_IPC_MSG_MAX_SIZE,
+				pdata->flat->get_config.data, param->get_config.fragment_size);
+	}
+
+	return pdata->flat->ret;
 }
 
 /* Go through all DP tasks and recalculate their readiness and deadlines
@@ -415,14 +475,6 @@ static void scheduler_dp_domain_free(struct task_dp_pdata *pdata)
 	objpool_free(&dp_mdom_head, mdom);
 }
 
-/* memory allocation helper structure */
-struct scheduler_dp_task_memory {
-	struct task task;
-	struct task_dp_pdata pdata;
-	struct comp_driver drv;
-	struct ipc4_flat flat;
-};
-
 void z_impl_scheduler_dp_internal_free(struct task *task)
 {
 	struct task_dp_pdata *pdata = task->priv_data;
@@ -502,20 +554,32 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 	struct task_dp_pdata *pdata = &task_memory->pdata;
 
+	if (mod->dev->drv->adapter_ops->get_configuration) {
+		pdata->ipc_config_data = mod_alloc_ext(mod, SOF_MEM_FLAG_USER, SOF_IPC_MSG_MAX_SIZE,
+						       0);
+		if (!pdata->ipc_config_data) {
+			tr_err(&dp_tr, "Failed to allocate memory for get-config");
+			ret = -ENOMEM;
+			goto e_stack;
+		}
+	} else {
+		pdata->ipc_config_data = NULL;
+	}
+
 	pdata->flat = &task_memory->flat;
 
 	pdata->event = k_object_alloc(K_OBJ_EVENT);
 	if (!pdata->event) {
 		tr_err(&dp_tr, "Event object allocation failed");
 		ret = -ENOMEM;
-		goto e_stack;
+		goto e_config;
 	}
 
 	pdata->thread = k_object_alloc(K_OBJ_THREAD);
 	if (!pdata->thread) {
 		tr_err(&dp_tr, "Thread object allocation failed");
 		ret = -ENOMEM;
-		goto e_kobj;
+		goto e_event;
 	}
 	memset(&pdata->thread->arch, 0, sizeof(pdata->thread->arch));
 
@@ -593,12 +657,12 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	/* Host mailbox partition for additional IPC parameters: read-only */
 	pdata->mpart[SOF_DP_PART_CFG] = (struct k_mem_partition){
 		.start = (uintptr_t)sys_cache_uncached_ptr_get((void *)MAILBOX_HOSTBOX_BASE),
-		.size = 4096,
+		.size = MAILBOX_HOSTBOX_SIZE,
 		.attr = K_MEM_PARTITION_P_RO_U_RO,
 	};
 	pdata->mpart[SOF_DP_PART_CFG_CACHE] = (struct k_mem_partition){
 		.start = (uintptr_t)MAILBOX_HOSTBOX_BASE,
-		.size = 4096,
+		.size = MAILBOX_HOSTBOX_SIZE,
 		.attr = K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB,
 	};
 
@@ -640,10 +704,11 @@ e_thread:
 	if (on_pool)
 		objpool_free(&dp_mdom_head, mdom);
 	k_thread_abort(pdata->thread_id);
-e_kobj:
-	/* k_object_free looks for a pointer in the list, any invalid value can be passed */
 	k_object_free(pdata->thread);
+e_event:
 	k_object_free(pdata->event);
+e_config:
+	mod_free(mod, pdata->ipc_config_data);
 e_stack:
 	user_stack_free(p_stack);
 e_tmem:

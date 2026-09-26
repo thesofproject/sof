@@ -116,8 +116,8 @@ int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
  */
 struct comp_data_blob_handler *
 comp_data_blob_handler_new_ext(struct comp_dev *dev, bool single_blob,
-			       void *(*alloc)(size_t size),
-			       void (*free)(void *buf));
+			       void *(*alloc)(struct comp_data_blob_handler *, size_t),
+			       void (*free)(struct comp_data_blob_handler *, void *));
 
 /**
  * Returns new data blob handler.

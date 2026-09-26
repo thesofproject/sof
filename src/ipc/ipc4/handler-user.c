@@ -1091,10 +1091,11 @@ __cold static int ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 	return IPC4_SUCCESS;
 }
 
-__cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
-					uint32_t *reply_ext,
-					uint32_t *reply_tx_size,
-					void **reply_tx_data)
+#ifdef CONFIG_SOF_USERSPACE_LL
+__cold static int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
+						uint32_t *reply_ext,
+						uint32_t *reply_tx_size,
+						void **reply_tx_data)
 {
 	struct ipc4_module_large_config_reply reply;
 	const struct ipc4_module_large_config *config =
@@ -1189,6 +1190,7 @@ __cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
 	*reply_tx_data = data;
 	return ret;
 }
+#endif
 
 __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
@@ -1683,6 +1685,13 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 		break;
 	case SOF_IPC4_MOD_BIND:
 #ifdef CONFIG_SOF_USERSPACE_LL
+		/*
+		 * bind and unbind can connect LL with DP. In that case it isn't
+		 * immediately clear whether the handler should run in the DP
+		 * thread context or in the LL IPC thread context. The LL IPC
+		 * thread has access to DP modules, so we have to perform
+		 * binding in the LL IPC thread context
+		 */
 		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat,
 					   ipc4_user_target_core_module(ipc4));
 #else
@@ -1691,6 +1700,7 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 		break;
 	case SOF_IPC4_MOD_UNBIND:
 #ifdef CONFIG_SOF_USERSPACE_LL
+		/* DP / LL: see comment above */
 		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat,
 					   ipc4_user_target_core_module(ipc4));
 #else

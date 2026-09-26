@@ -1443,7 +1443,7 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 #if CONFIG_SOF_USERSPACE_APPLICATION
 		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
 			/* Process DP module's trigger */
-			const union scheduler_dp_thread_ipc_param param = {
+			union scheduler_dp_thread_ipc_param param = {
 				.pipeline_state.trigger_cmd = cmd,
 			};
 			return scheduler_dp_thread_ipc(mod, SOF_IPC4_GLB_SET_PIPELINE_STATE,
@@ -1512,17 +1512,6 @@ void module_adapter_free(struct comp_dev *dev)
 	struct list_item *blist, *_blist;
 
 	comp_dbg(dev, "start");
-
-#if CONFIG_SOF_USERSPACE_APPLICATION
-	if (dev->task)
-		/*
-		 * Run DP module's .free() method in its thread context.
-		 * Unlike with other IPCs we first run module's .free() in
-		 * thread context, then cancel the thread, and then execute
-		 * final clean up
-		 */
-		scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_DELETE_INSTANCE, NULL);
-#endif
 
 	ret = module_free(mod);
 	if (ret)
