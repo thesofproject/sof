@@ -171,15 +171,19 @@ static int nxp_eap_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
 	struct nxp_eap_data *eap = module_get_private_data(mod);
-	struct comp_buffer *source = comp_dev_get_first_data_producer(dev);
-	const struct audio_stream *stream;
+	struct sof_source *source;
 
 	comp_dbg(dev, "entry");
 
-	stream = &source->stream;
-	eap->sample_rate = audio_stream_get_rate(stream);
-	eap->channels = audio_stream_get_channels(stream);
-	eap->frame_bytes = audio_stream_frame_bytes(stream);
+	if (num_of_sources != 1) {
+		comp_err(dev, "invalid number of sources %d", num_of_sources);
+		return -EINVAL;
+	}
+
+	source = sources[0];
+	eap->sample_rate = source_get_rate(source);
+	eap->channels = source_get_channels(source);
+	eap->frame_bytes = source_get_frame_bytes(source);
 	eap->audio_time_ms = 0;
 
 	/* total bytes needed to be in the input buffer to be processed
@@ -226,47 +230,76 @@ static int nxp_eap_reset(struct processing_module *mod)
 }
 
 static int nxp_eap_process(struct processing_module *mod,
-			   struct input_stream_buffer *input_buffers, int num_input_buffers,
-			   struct output_stream_buffer *output_buffers, int num_output_buffers)
+			   struct sof_source **sources, int num_of_sources,
+			   struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *eap = &mod->priv;
 	struct nxp_eap_data *eap_data = module_get_private_data(mod);
 	LVM_INT16 *buffer_table[2];
-	LVM_ReturnStatus_en ret;
+	LVM_ReturnStatus_en lvm_ret;
+	const size_t process_size = eap->mpd.in_buff_size;
+	int ret;
+	const void *src_ptr;
+	const void *src_buf_start;
+	void *snk_ptr;
+	void *snk_buf_start;
+	size_t buf_size;
+	size_t size_to_wrap;
 
 	comp_dbg(dev, "entry");
 
-	/* we need to input buffer to be completely full to be able to process it */
-	if (input_buffers[0].size < eap->mpd.in_buff_size)
+	/* we need the input buffer to be completely full to be able to process it */
+	if (source_get_data_available(sources[0]) < process_size)
 		return -ENODATA;
 
-	memcpy_s(eap->mpd.in_buff, eap->mpd.in_buff_size,
-		 (uint8_t *)input_buffers[0].data + input_buffers[0].consumed,
-		 eap->mpd.in_buff_size);
-	eap->mpd.avail = eap->mpd.in_buff_size;
+	ret = source_get_data(sources[0], process_size, &src_ptr, &src_buf_start, &buf_size);
+	if (ret)
+		return ret;
+
+	/* buf_size is the total ring buffer size; handle wrap when copying to in_buff */
+	size_to_wrap = cir_buf_bytes_without_wrap(src_ptr, src_buf_start + buf_size);
+	if (process_size <= size_to_wrap) {
+		memcpy_s(eap->mpd.in_buff, process_size, src_ptr, process_size);
+	} else {
+		memcpy_s(eap->mpd.in_buff, process_size, src_ptr, size_to_wrap);
+		memcpy_s((uint8_t *)eap->mpd.in_buff + size_to_wrap,
+			 process_size - size_to_wrap,
+			 src_buf_start, process_size - size_to_wrap);
+	}
 
 	buffer_table[0] = eap->mpd.out_buff;
 	buffer_table[1] = LVM_NULL;
 
-	eap_data->audio_time_ms += eap->mpd.avail / (eap_data->sample_rate / 1000);
+	eap_data->audio_time_ms += process_size / (eap_data->sample_rate / 1000);
 
-	ret = LVM_Process(eap_data->instance, (LVM_INT16 *)eap->mpd.in_buff,
-			  (LVM_INT16 **)buffer_table, eap->mpd.avail / eap_data->frame_bytes,
-			  eap_data->audio_time_ms);
-	if (ret != LVM_SUCCESS) {
-		comp_err(dev, "failed with error %d", ret);
+	lvm_ret = LVM_Process(eap_data->instance, (LVM_INT16 *)eap->mpd.in_buff,
+			      (LVM_INT16 **)buffer_table, process_size / eap_data->frame_bytes,
+			      eap_data->audio_time_ms);
+	if (lvm_ret != LVM_SUCCESS) {
+		comp_err(dev, "failed with error %d", lvm_ret);
+		source_release_data(sources[0], 0);
 		return -EIO;
 	}
 
-	eap->mpd.produced = eap->mpd.in_buff_size;
-	eap->mpd.consumed = eap->mpd.in_buff_size;
-
-	input_buffers[0].consumed = eap->mpd.consumed;
+	source_release_data(sources[0], process_size);
 
 	/* copy produced samples to output buffer */
-	memcpy_s(output_buffers[0].data, eap->mpd.produced, eap->mpd.out_buff, eap->mpd.produced);
-	output_buffers[0].size = eap->mpd.produced;
+	ret = sink_get_buffer(sinks[0], process_size, &snk_ptr, &snk_buf_start, &buf_size);
+	if (ret)
+		return ret;
+
+	/* buf_size is the total ring buffer size; handle wrap when copying from out_buff */
+	size_to_wrap = cir_buf_bytes_without_wrap(snk_ptr, snk_buf_start + buf_size);
+	if (process_size <= size_to_wrap) {
+		memcpy_s(snk_ptr, process_size, eap->mpd.out_buff, process_size);
+	} else {
+		memcpy_s(snk_ptr, size_to_wrap, eap->mpd.out_buff, size_to_wrap);
+		memcpy_s(snk_buf_start, process_size - size_to_wrap,
+			 (const uint8_t *)eap->mpd.out_buff + size_to_wrap,
+			 process_size - size_to_wrap);
+	}
+	sink_commit_buffer(sinks[0], process_size);
 
 	return 0;
 }
@@ -328,7 +361,7 @@ static int nxp_eap_get_config(struct processing_module *mod,
 static const struct module_interface nxp_eap_interface = {
 	.init = nxp_eap_init,
 	.prepare = nxp_eap_prepare,
-	.process_raw_data = nxp_eap_process,
+	.process = nxp_eap_process,
 	.set_configuration = nxp_eap_set_config,
 	.get_configuration = nxp_eap_get_config,
 	.reset = nxp_eap_reset,
