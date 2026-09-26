@@ -24,8 +24,9 @@ declare -a COMMIT_ID=(
     "d37128311b445e758136b8602d1bbd2a755e115d"
 )
 
-# Directory where repositories will be cloned/updated.
-BASE_DIR="$HOME/work/sof"  # Or any other desired location
+# Directory where repositories will be cloned/updated. Override by exporting
+# BASE_DIR before invoking the script.
+BASE_DIR="${BASE_DIR:-$HOME/work/sof}"
 
 # Function to check if a commit ID exists in a repository
 check_commit() {
