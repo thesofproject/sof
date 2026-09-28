@@ -13,6 +13,19 @@
 #include <sof/math/numbers.h>
 #include <limits.h>
 
+int release_source_and_commit_sink(struct sof_source *source, size_t free_size,
+	struct sof_sink *sink, size_t commit_size)
+{
+	int src_ret;
+	int sink_ret;
+
+	src_ret = source_release_data(source, free_size);
+	sink_ret = sink_commit_buffer(sink, (src_ret ? 0 : commit_size));
+
+	return src_ret ? src_ret : sink_ret;
+}
+EXPORT_SYMBOL(release_source_and_commit_sink);
+
 int source_to_sink_copy(struct sof_source *source,
 			struct sof_sink *sink, bool free, size_t size)
 {

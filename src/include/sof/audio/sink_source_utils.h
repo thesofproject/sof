@@ -12,6 +12,23 @@
 #include <sof/math/numbers.h>
 
 /**
+ * release processed data from source and commit produced data to sink
+ *
+ * @param source the data source to release data from
+ * @param free_size number of bytes to be released (freed) from the source
+ * @param sink the data target to commit data to
+ * @param commit_size number of bytes to be committed to the sink
+ *
+ * @return 0 on success;
+ *	   on error, the error code returned by source_release_data() takes
+ *	   precedence, otherwise the error code returned by sink_commit_buffer()
+ *	   is returned. The sink is always committed regardless of the source
+ *	   release result.
+ */
+int release_source_and_commit_sink(struct sof_source *source, size_t free_size,
+	struct sof_sink *sink, size_t commit_size);
+
+/**
  * copy bytes from source to sink
  *
  * @param source the data source
