@@ -292,12 +292,33 @@ EXPORT_SYMBOL(z_impl_mod_alloc_ext);
  * Like comp_data_blob_handler_new() but the handler is automatically freed.
  */
 #if CONFIG_COMP_BLOB
+static bool mod_data_blob_find(void *data, void *arg)
+{
+	struct comp_data_blob_handler **bhp = arg;
+	struct module_resource *container = data;
+
+	if (container->type != MOD_RES_BLOB_HANDLER)
+		return false;
+
+	*bhp = container->bhp;
+	return true;
+}
+
 struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processing_module *mod)
 {
+	struct module_resources *res = &mod->priv.resources;
 	struct comp_data_blob_handler *bhp;
 	struct module_resource *container;
 
 	k_mutex_lock(&mod_res_lock, K_FOREVER);
+	int ret = objpool_iterate(&res->objpool, mod_data_blob_find, &bhp);
+
+	if (!ret) {
+		k_mutex_unlock(&mod_res_lock);
+		/* data blob already exists */
+		comp_warn(mod->dev, "Returning existing data blob");
+		return bhp;
+	}
 
 	container = container_get(mod);
 	if (!container) {
@@ -320,6 +341,26 @@ struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processin
 	return bhp;
 }
 EXPORT_SYMBOL(z_impl_mod_data_blob_handler_new);
+
+int z_impl_mod_data_blob_set(struct processing_module *mod,
+			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			     const uint8_t *fragment_in, size_t fragment_size)
+{
+	struct module_resources *res = &mod->priv.resources;
+	struct comp_data_blob_handler *bhp = NULL;
+
+	k_mutex_lock(&mod_res_lock, K_FOREVER);
+	int ret = objpool_iterate(&res->objpool, mod_data_blob_find, &bhp);
+	k_mutex_unlock(&mod_res_lock);
+
+	if (ret < 0)
+		return ret;
+
+	if (!bhp)
+		return -EFAULT;
+
+	return comp_data_blob_set(bhp, pos, data_offset_size, fragment_in, fragment_size);
+}
 #endif
 
 /**
@@ -538,6 +579,24 @@ struct comp_data_blob_handler *z_vrfy_mod_data_blob_handler_new(struct processin
 	return z_impl_mod_data_blob_handler_new(mod);
 }
 #include <zephyr/syscalls/mod_data_blob_handler_new_mrsh.c>
+
+int z_vrfy_mod_data_blob_set(struct processing_module *mod,
+			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			     const uint8_t *fragment_in, size_t fragment_size)
+{
+	size_t h_size = 0;
+	uintptr_t h_start;
+
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
+	mod_heap_info(mod, &h_size, &h_start);
+	if (h_size)
+		K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
+	if (fragment_size)
+		K_OOPS(K_SYSCALL_MEMORY_READ(fragment_in, fragment_size));
+
+	return z_impl_mod_data_blob_set(mod, pos, data_offset_size, fragment_in, fragment_size);
+}
+#include <zephyr/syscalls/mod_data_blob_set_mrsh.c>
 #endif
 #endif
 
