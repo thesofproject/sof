@@ -5,6 +5,7 @@ config COMP_MWW
 	depends on SOF_STAGING
 	depends on CPP
 	depends on STD_CPP17
+	depends on IPC_MAJOR_4
 	help
 	  Select for microWakeWord component support. This module runs a
 	  TensorFlow Lite Micro streaming keyword-spotting model (based on

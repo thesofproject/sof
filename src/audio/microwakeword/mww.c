@@ -43,6 +43,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <zephyr/sys/printk.h>
+#if CONFIG_COMP_MWW_DEBUG_TRACE
+#include <zephyr/kernel.h>	/* k_cycle_get_32(), k_cyc_to_us_near32() */
+#endif
 
 /* TFLM error strings land here. Route to printk/mtrace so AllocateTensors()
  * and Invoke() failures print their real reason instead of vanishing.
@@ -75,6 +78,16 @@ int DebugVsnprintf(char *buffer, size_t buf_size, const char *format,
 #define MWW_HOP_BYTES (sizeof(struct mfcc_data_header) + MWW_FEATURE_SIZE * sizeof(int8_t))
 #else
 #define MWW_HOP_BYTES (sizeof(struct mfcc_data_header) + MWW_FEATURE_SIZE * sizeof(int32_t))
+#endif
+
+/*
+ * PCAN consistency guard: CONFIG_COMP_MWW_PCAN and CONFIG_COMP_MFCC_PCAN
+ * must always be set together. If MFCC produces int32 Q9.23 hops (PCAN off)
+ * but MWW expects int8 hops (PCAN on), every hop header and feature frame is
+ * desynchronized. The topology MWW_PCAN flag must also match this Kconfig.
+ */
+#if IS_ENABLED(CONFIG_COMP_MWW_PCAN) != IS_ENABLED(CONFIG_COMP_MFCC_PCAN)
+#error "CONFIG_COMP_MWW_PCAN and CONFIG_COMP_MFCC_PCAN must both be enabled or both disabled"
 #endif
 
 /* Pre-roll history in ms that KPB drains to host on wake-word trigger. */

@@ -519,6 +519,13 @@ static void mfcc_prepare_output(struct mfcc_state *state, int num_ceps)
 	if (state->pcan.enable_pcan) {
 		int8_t *out8 = (int8_t *)state->out_stage;
 
+		/* In PCAN mode mel_linear[] is indexed by k < num_ceps.
+		 * num_ceps must not exceed the number of Mel bins or we
+		 * read past the end of the Mel filterbank array.
+		 */
+		if (num_ceps > state->melfb.mel_bins)
+			return;
+
 		for (k = 0; k < num_ceps; k++) {
 			/* Map PCAN log-scaled output (~0..666) to int8 [-128..127] */
 			int32_t val = (int32_t)state->mel_linear[k];
