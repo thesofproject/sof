@@ -938,12 +938,24 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 	struct ring_buffer *ring_buffer = NULL;
 
 	if (src_is_dp || sink_is_dp) {
-		struct processing_module *srcmod = comp_mod(source);
-		struct module_data *src_module_data = &srcmod->priv;
-		struct processing_module *dstmod = comp_mod(sink);
-		struct module_data *dst_module_data = &dstmod->priv;
+		uint32_t in_size = ibs;
+		uint32_t out_size = obs;
 		bool is_shared = audio_buffer_is_shared(&buffer->audio_buffer);
 		uint32_t buf_id = buf_get_id(buffer);
+
+		if (sink_is_dp && sink->drv->type == SOF_COMP_MODULE_ADAPTER) {
+			struct processing_module *dstmod = comp_mod(sink);
+			struct module_data *dst_module_data = &dstmod->priv;
+
+			in_size = MAX(ibs, dst_module_data->mpd.in_buff_size);
+		}
+
+		if (src_is_dp && source->drv->type == SOF_COMP_MODULE_ADAPTER) {
+			struct processing_module *srcmod = comp_mod(source);
+			struct module_data *src_module_data = &srcmod->priv;
+
+			out_size = MAX(obs, src_module_data->mpd.out_buff_size);
+		}
 
 		/*
 		 * Handle cases where the size of the ring buffer depends on the
@@ -953,9 +965,7 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 		 * is only for the ring buffer. The size of intermediate buffer created above is
 		 * unchanged.
 		 */
-		ring_buffer = ring_buffer_create(dp, MAX(ibs, dst_module_data->mpd.in_buff_size),
-						 MAX(obs, src_module_data->mpd.out_buff_size),
-						 is_shared, buf_id);
+		ring_buffer = ring_buffer_create(dp, in_size, out_size, is_shared, buf_id);
 		if (!ring_buffer) {
 			buffer_free(buffer);
 			return IPC4_OUT_OF_MEMORY;
