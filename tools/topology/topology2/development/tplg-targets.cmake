@@ -19,8 +19,8 @@ SSP1_PCM_CORE_ID=0,SSP2_PCM_CORE_ID=0,\
 SSP0_MIXER_2LEVEL=1,PLATFORM=tgl"
 
 # Lean SSP0 NoCodec topology for TGL microWakeWord (MWW/KPB) bring-up
-"cavs-nocodec-mww-kpb\;sof-tgl-nocodec-mww\;PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-tgl-nocodec-mww.bin,PLATFORM=tgl"
+"cavs-nocodec-mww-kpb\;sof-tgl-nocodec-mww-pcan-kpb\;PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-tgl-nocodec-mww-pcan-kpb.bin,PLATFORM=tgl,MWW_PCAN=true"
 
 # multicore disabled due to SOF issue #8942
 "cavs-nocodec\;sof-adl-nocodec\;NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
@@ -523,20 +523,11 @@ MFCC_FRAME_BYTES=344,MFCC_BLOB=mel"
 HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,SDW_JACK_COMPR_AUDIO_FEATURE_CAPTURE=true,\
 MFCC_FRAME_BYTES=76,MFCC_BLOB=ceps"
 
-# Soundwire topologies with microWakeWord (MWW)/KPB Wake-on-Voice on jack
-"cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-mww-kpb\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,\
-HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,SDW_JACK_MWW_KPB_CAPTURE=true"
-
 # Soundwire topologies with microWakeWord (MWW)/KPB Wake-on-Voice on DMIC (PCAN 8-bit mode)
 "cavs-sdw\;sof-ptl-rt713-l3-rt1320-l12-mww-pcan-kpb\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=2,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
 SDW_DMIC_MWW_KPB_CAPTURE=true,MWW_PCAN=true"
-
-"cavs-sdw\;sof-arl-cs42l43-l0-cs35l56-l23-mww-kpb\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
-SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
-SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
-SDW_DMIC_MWW_KPB_CAPTURE=true"
 
 "cavs-sdw\;sof-arl-cs42l43-l0-cs35l56-l23-mfcc-mel-compr\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
