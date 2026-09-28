@@ -314,10 +314,25 @@ static inline void mod_ipc_msg_free(struct processing_module *mod,
 
 #if CONFIG_COMP_BLOB
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+/**
+ * \brief Module-managed wrapper for comp_data_blob_handler_new_ext().
+ */
 __syscall struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
+/**
+ * \brief Module-managed wrapper for comp_data_blob_set().
+ *
+ * Note, that only one data blob per module is allowed.
+ */
+__syscall int mod_data_blob_set(struct processing_module *mod,
+				enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				const uint8_t *fragment, size_t fragment_size);
 #else
 struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processing_module *mod);
+int z_impl_mod_data_blob_set(struct processing_module *mod,
+			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			     const uint8_t *fragment, size_t fragment_size);
 #define mod_data_blob_handler_new z_impl_mod_data_blob_handler_new
+#define mod_data_blob_set z_impl_mod_data_blob_set
 #endif
 void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh);
 #endif
