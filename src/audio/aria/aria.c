@@ -44,7 +44,7 @@ const int32_t sof_aria_index_tab[] = {
 		0,    1,    2,    3
 };
 
-static size_t get_required_emory(size_t chan_cnt, size_t smpl_group_cnt)
+static size_t get_required_memory(size_t chan_cnt, size_t smpl_group_cnt)
 {
 	/* Current implementation is able to apply 1 ms transition */
 	/* internal circular buffer aligned to 8 bytes */
@@ -84,13 +84,13 @@ static int aria_algo_init(struct aria_data *cd, void *buffer_desc,
 }
 
 static inline void aria_process_data(struct processing_module *mod,
-				     struct audio_stream *source,
-				     struct audio_stream *sink,
-				     size_t frames)
+				     struct cir_buf_source *source,
+				     struct cir_buf_sink *sink,
+				     size_t frames, size_t frame_bytes)
 {
 	struct aria_data *cd = module_get_private_data(mod);
-	size_t data_size = audio_stream_frame_bytes(source) * frames;
-	size_t sample_size = audio_stream_get_channels(source) * frames;
+	size_t data_size = frame_bytes * frames;
+	size_t sample_size = cd->chan_cnt * frames;
 
 	if (cd->att) {
 		aria_algo_calc_gain(cd, sof_aria_index_tab[cd->gain_state + 1], source, frames);
@@ -98,11 +98,11 @@ static inline void aria_process_data(struct processing_module *mod,
 	} else {
 		/* bypass processing gets unprocessed data from buffer */
 		cir_buf_copy(cd->data_ptr, cd->data_addr, cd->data_end,
-			     sink->w_ptr, sink->addr, sink->end_addr,
+			     sink->ptr, sink->buf_start, sink->buf_end,
 			     data_size);
 	}
 
-	cir_buf_copy(source->r_ptr, source->addr, source->end_addr,
+	cir_buf_copy(source->ptr, source->buf_start, source->buf_end,
 		     cd->data_ptr, cd->data_addr, cd->data_end,
 		     data_size);
 	cd->data_ptr = cir_buf_wrap(cd->data_ptr + sample_size, cd->data_addr, cd->data_end);
@@ -139,11 +139,11 @@ static int aria_init(struct processing_module *mod)
 	chc = base_cfg->audio_fmt.channels_count;
 	sgs = (base_cfg->audio_fmt.depth >> 3) * chc;
 	sgc = ibs / sgs;
-	req_mem = get_required_emory(chc, sgc);
+	req_mem = get_required_memory(chc, sgc);
 	att = aria->attenuation;
 
 	if (aria->attenuation > ARIA_MAX_ATT) {
-		comp_warn(dev, "Attenuation value %d must not be greater than %d",
+		comp_warn(dev, "Attenuation value %zu must not be greater than %d",
 			  att, ARIA_MAX_ATT);
 		att = ARIA_MAX_ATT;
 	}
@@ -153,7 +153,7 @@ static int aria_init(struct processing_module *mod)
 
 	if (!buf) {
 		mod_free(mod, cd);
-		comp_err(dev, "allocation failed for size %d", req_mem);
+		comp_err(dev, "allocation failed for size %zu", req_mem);
 		return -ENOMEM;
 	}
 
@@ -169,38 +169,29 @@ static int aria_free(struct processing_module *mod)
 	return 0;
 }
 
-static void aria_set_stream_params(struct comp_buffer *buffer,
-				   struct processing_module *mod)
-{
-	const struct ipc4_audio_format *audio_fmt = &mod->priv.cfg.base_cfg.audio_fmt;
-
-	ipc4_update_buffer_format(buffer, audio_fmt);
-}
-
 static int aria_prepare(struct processing_module *mod,
 			struct sof_source **sources, int num_of_sources,
 			struct sof_sink **sinks, int num_of_sinks)
 {
+	const struct ipc4_audio_format *audio_fmt = &mod->priv.cfg.base_cfg.audio_fmt;
 	int ret;
-	struct comp_buffer *source, *sink;
 	struct comp_dev *dev = mod->dev;
 	struct aria_data *cd = module_get_private_data(mod);
 
 	comp_info(dev, "entry");
 
-	source = comp_dev_get_first_data_producer(dev);
-	sink = comp_dev_get_first_data_consumer(dev);
-	if (!source || !sink) {
-		comp_err(dev, "no source or sink buffer");
+	if (num_of_sources != 1 || num_of_sinks != 1) {
+		comp_err(dev, "expected 1 source and 1 sink, got %d sources and %d sinks",
+			 num_of_sources, num_of_sinks);
 		return -ENOTCONN;
 	}
 
-	aria_set_stream_params(source, mod);
-	aria_set_stream_params(sink, mod);
-	audio_stream_set_align(SOF_FRAME_BYTE_ALIGN, SOF_FRAME_COUNT_ALIGN, &source->stream);
+	ipc4_update_source_format(sources[0], audio_fmt);
+	ipc4_update_sink_format(sinks[0], audio_fmt);
+	source_set_alignment_constants(sources[0], SOF_FRAME_BYTE_ALIGN, SOF_FRAME_COUNT_ALIGN);
 
-	if (audio_stream_get_valid_fmt(&source->stream) != SOF_IPC_FRAME_S24_4LE ||
-	    audio_stream_get_valid_fmt(&sink->stream) != SOF_IPC_FRAME_S24_4LE) {
+	if (source_get_valid_fmt(sources[0]) != SOF_IPC_FRAME_S24_4LE ||
+	    sink_get_valid_fmt(sinks[0]) != SOF_IPC_FRAME_S24_4LE) {
 		comp_err(dev, "format is not supported");
 		return -EINVAL;
 	}
@@ -246,30 +237,52 @@ static int aria_reset(struct processing_module *mod)
 
 
 static int aria_process(struct processing_module *mod,
-			struct input_stream_buffer *input_buffers, int num_input_buffers,
-			struct output_stream_buffer *output_buffers, int num_output_buffers)
+			struct sof_source **sources, int num_of_sources,
+			struct sof_sink **sinks, int num_of_sinks)
 {
 	/* Aria algo supports only 4-bytes containers */
 	struct aria_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	uint32_t copy_bytes;
-	uint32_t frames = input_buffers[0].size;
+	struct sof_source *source = sources[0];
+	struct sof_sink *sink = sinks[0];
+	const size_t frame_bytes = source_get_frame_bytes(source);
+	struct cir_buf_source src_desc;
+	struct cir_buf_sink snk_desc;
+	size_t src_size, snk_size;
+	size_t copy_bytes;
+	size_t frames;
+	int ret;
 
 	comp_dbg(dev, "entry");
 
+	frames = source_get_data_frames_available(source);
+	frames = MIN(frames, sink_get_free_frames(sink));
 	frames = MIN(frames, cd->smpl_group_cnt);
 
 	/* Aria won't change the stream format and channels, so sink and source
 	 * has the same bytes to produce and consume.
 	 */
-	copy_bytes = frames * audio_stream_frame_bytes(input_buffers[0].data);
+	copy_bytes = frames * frame_bytes;
 	if (copy_bytes == 0)
 		return 0;
 
-	aria_process_data(mod, input_buffers[0].data, output_buffers[0].data, frames);
+	ret = source_get_data(source, copy_bytes, &src_desc.ptr, &src_desc.buf_start, &src_size);
+	if (ret)
+		return ret;
 
-	input_buffers[0].consumed = copy_bytes;
-	output_buffers[0].size = copy_bytes;
+	ret = sink_get_buffer(sink, copy_bytes, &snk_desc.ptr, &snk_desc.buf_start, &snk_size);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
+	}
+
+	src_desc.buf_end = (const char *)src_desc.buf_start + src_size;
+	snk_desc.buf_end = (char *)snk_desc.buf_start + snk_size;
+
+	aria_process_data(mod, &src_desc, &snk_desc, frames, frame_bytes);
+
+	source_release_data(source, copy_bytes);
+	sink_commit_buffer(sink, copy_bytes);
 
 	return 0;
 }
@@ -307,7 +320,7 @@ static int aria_set_config(struct processing_module *mod, uint32_t param_id,
 static const struct module_interface aria_interface = {
 	.init = aria_init,
 	.prepare = aria_prepare,
-	.process_audio_stream = aria_process,
+	.process = aria_process,
 	.reset = aria_reset,
 	.free = aria_free,
 	.set_configuration = aria_set_config,
