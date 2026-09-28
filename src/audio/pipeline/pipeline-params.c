@@ -275,12 +275,16 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 			return 0;
 	}
 
-	if (current->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL) {
-		/* init a task for LL module, DP task has been created in during init_instance */
-		err = pipeline_comp_ll_task_init(current->pipeline);
-		if (err < 0)
-			return err;
-	}
+	/* init pipeline LL tasks (trigger_task and pipe_task) if not yet done.
+	 * This must be called for every pipeline, including DP-only pipelines,
+	 * because even a pipeline with only DP modules still needs the LL trigger
+	 * task to handle the IPC trigger command and the pipe task to drive the
+	 * inter-component ring buffer synchronisation.
+	 * The DP component tasks themselves are created during init_instance.
+	 */
+	err = pipeline_comp_ll_task_init(current->pipeline);
+	if (err < 0)
+		return err;
 
 	err = comp_prepare(current);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
