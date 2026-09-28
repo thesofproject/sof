@@ -247,17 +247,15 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
 
+	if (!size) {
+		comp_err(mod->dev, "requested allocation of 0 bytes.");
+		return NULL;
+	}
+
 	k_mutex_lock(&mod_res_lock, K_FOREVER);
 
 	container = container_get(mod);
 	if (!container) {
-		k_mutex_unlock(&mod_res_lock);
-		return NULL;
-	}
-
-	if (!size) {
-		comp_err(mod->dev, "requested allocation of 0 bytes.");
-		container_put(mod, container);
 		k_mutex_unlock(&mod_res_lock);
 		return NULL;
 	}
