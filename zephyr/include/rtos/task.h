@@ -77,6 +77,9 @@ struct task {
 
 static inline bool task_is_active(struct task *task)
 {
+	if (!task)
+		return false;
+
 	switch (task->state) {
 	case SOF_TASK_STATE_QUEUED:
 	case SOF_TASK_STATE_PENDING:

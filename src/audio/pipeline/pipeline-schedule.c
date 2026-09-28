@@ -390,7 +390,7 @@ static struct task *pipeline_task_init(struct pipeline *p, uint32_t type)
 	}
 
 	task->sched_comp = p->sched_comp;
-	task->registrable = p == p->sched_comp->pipeline;
+	task->registrable = p->sched_comp && p == p->sched_comp->pipeline;
 
 	return &task->task;
 }
@@ -458,7 +458,8 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 				p->trigger.host = ppl_data->start;
 				ppl_data->start = NULL;
 #ifdef CONFIG_IPC_MAJOR_4
-				if (schedule_task(p->trigger_task, 0, 0) < 0)
+				if (p->trigger_task &&
+				    schedule_task(p->trigger_task, 0, 0) < 0)
 					pipe_err(p, "failed to schedule trigger task");
 #endif
 			} else {
@@ -483,7 +484,8 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 				p->trigger.host = ppl_data->start;
 				ppl_data->start = NULL;
 #ifdef CONFIG_IPC_MAJOR_4
-				if (schedule_task(p->trigger_task, 0, 0) < 0)
+				if (p->trigger_task &&
+				    schedule_task(p->trigger_task, 0, 0) < 0)
 					pipe_err(p, "failed to schedule trigger task");
 #endif
 			} else {
@@ -563,6 +565,7 @@ void pipeline_comp_ll_task_free(struct pipeline *p)
 
 	if (p->trigger_task)
 		sof_heap_free(p->heap, p->trigger_task);
+	p->trigger_task = NULL;
 #endif
 
 	if (p->pipe_task) {
@@ -570,6 +573,7 @@ void pipeline_comp_ll_task_free(struct pipeline *p)
 		schedule_task_free(p->pipe_task);
 #endif
 		sof_heap_free(p->heap, p->pipe_task);
+		p->pipe_task = NULL;
 	}
 }
 
@@ -639,6 +643,11 @@ void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
+	if (!p->pipe_task) {
+		pipe_err(p, "pipe_task is NULL, pipeline not prepared");
+		return;
+	}
+
 	/* disable system agent panic for DMA driven pipelines */
 	if (!pipeline_is_timer_driven(p))
 		sa_set_panic_on_delay(false);
