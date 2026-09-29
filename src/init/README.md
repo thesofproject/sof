@@ -1,5 +1,9 @@
 # DSP Initialization (`src/init`)
 
+> **Runs in:** Kernel-only — boot and early bring-up run in supervisor context before any user
+> thread exists; this code never executes in a user thread. See
+> [User/kernel split](../include/sof/userspace/README.md).
+
 The `src/init` directory contains the generic digital signal processor (DSP) initialization code and firmware metadata structures for Sound Open Firmware (SOF). It acts as the bridge between the underlying RTOS (Zephyr) boot phase and the SOF-specific task scheduling and processing pipelines.
 
 ## Architecture and Boot Flow
