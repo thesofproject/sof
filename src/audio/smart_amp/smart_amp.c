@@ -90,10 +90,23 @@ static inline void smart_amp_free_mod_memories(struct smart_amp_data *sad)
 	sad->mod_data = NULL;
 }
 
+/* Alignment required for every buffer handed to the inner model.
+ *
+ * mod_alloc() requests no particular alignment, and on platforms built with
+ * CONFIG_SYS_HEAP_SMALL_ONLY=y and without CONFIG_SOF_ZEPHYR_HEAP_CACHED the
+ * Zephyr sys_heap chunk header is only 4 bytes, so every returned pointer is
+ * 4 modulo 8 (see chunk_mem() in zephyr/lib/heap/heap.c). Inner models using
+ * Xtensa HiFi 8-byte loads and stores (AE_L32X2 / AE_S32X2 / AE_L64 / AE_S64)
+ * then take an unhandled LoadStoreAlignmentCause exception. Ask for 16 bytes
+ * explicitly, matching the alignment the vendor libraries lay their internal
+ * memory blocks out on.
+ */
+#define SMART_AMP_BUF_ALIGN 16
+
 static inline int smart_amp_buf_alloc(struct processing_module *mod,
 				      struct smart_amp_buf *buf, size_t size)
 {
-	buf->data = mod_alloc(mod, size);
+	buf->data = mod_alloc_align(mod, size, SMART_AMP_BUF_ALIGN);
 	if (!buf->data)
 		return -ENOMEM;
 	buf->size = size;
@@ -739,21 +752,54 @@ static int smart_amp_prepare(struct processing_module *mod,
 	int ret, i;
 
 	comp_dbg(dev, "%d sources %d sinks", num_of_sources, num_of_sinks);
+
 #if CONFIG_IPC_MAJOR_4
 	smart_amp_ipc4_params(mod);
 #endif
 
 	/* In module API, state is managed by the framework, so no comp_set_state needed */
+
+	/* Neither pointer is cleared by smart_amp_reset(), so a re-prepare after
+	 * the feedback branch was disconnected would otherwise keep using the
+	 * stale buffer from the previous run.
+	 */
+	sad->source_buf = NULL;
+	sad->feedback_buf = NULL;
+
 	for (i = 0; i < num_of_sources; i++) {
-		/* NOTE: This should not work in module based environment:
-		 *	 sources[i]->bound_module->dev->ipc_config.type == SOF_COMP_DEMUX
-		 *	 So let's check which one of the sources is from a capture stream.
-		 *	 The code is not tested and may not work.
+		struct comp_buffer *buf = comp_buffer_get_from_source(sources[i]);
+		struct comp_dev *producer;
+
+		if (!buf) {
+			comp_err(dev, "source %d has no buffer", i);
+			return -ENOTCONN;
+		}
+
+		/*
+		 * Tell the feedback source from the playback one.
+		 *
+		 * Do not use sources[i]->bound_module here: it is only ever assigned by
+		 * module_bind(), whose sole caller lives in module_adapter_ipc4.c, so it
+		 * stays NULL on IPC3 platforms (e.g. AMD ACP7x) and dereferencing it
+		 * faults the DSP.
+		 *
+		 * The feedback buffer is filled by the demux of the echo reference
+		 * capture pipeline, so its producer belongs to a different pipeline than
+		 * this module, while the playback source is filled by the host component
+		 * of our own pipeline. Comparing pipeline ids works under both IPC
+		 * versions, and unlike comp_dev::direction it is already valid here even
+		 * when the capture pipeline has not been parametrised yet.
 		 */
-		if (sources[i]->bound_module->dev->direction == SOF_IPC_STREAM_CAPTURE)
-			sad->feedback_buf = comp_buffer_get_from_source(sources[i]);
+		producer = comp_buffer_get_source_component(buf);
+		if (producer && dev_comp_pipe_id(producer) != dev_comp_pipe_id(dev))
+			sad->feedback_buf = buf;
 		else
-			sad->source_buf = comp_buffer_get_from_source(sources[i]);
+			sad->source_buf = buf;
+	}
+
+	if (!sad->source_buf) {
+		comp_err(dev, "no playback source buffer");
+		return -ENOTCONN;
 	}
 
 	/* sink buffer */
