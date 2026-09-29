@@ -33,9 +33,9 @@ LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
  * \param[in,out] cd Volume component private data.
  * \param[in] channels_count Number of channels to process.
  */
-static void vol_store_gain(struct vol_data *cd, const int channels_count)
+static void vol_store_gain(struct vol_data *cd, const unsigned int channels_count)
 {
-	int32_t i;
+	unsigned int i;
 
 	for (i = 0; i < channels_count; i++) {
 		cd->vol[i] = cd->volume[i];
@@ -71,7 +71,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 	ae_valignx2 outu = AE_ZALIGN128();
 	const ae_int32x4 *in = source->ptr;
 	ae_int32x4 *out = sink->ptr;
-	const int channels_count = cd->channels;
+	const unsigned int channels_count = cd->channels;
 	const int inc = sizeof(ae_int32x4);
 	int samples = channels_count * frames;
 
@@ -201,7 +201,7 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 	ae_int32x4 *vol;
 	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
-	const int channels_count = cd->channels;
+	const unsigned int channels_count = cd->channels;
 	const int inc = sizeof(ae_int32x4);
 	int samples = channels_count * frames;
 	const ae_int32x4 *in = source->ptr;
@@ -282,7 +282,7 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 	int i, n, m;
 	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
-	const int channels_count = cd->channels;
+	const unsigned int channels_count = cd->channels;
 	int samples = channels_count * frames;
 	const ae_int32x4 *in = source->ptr;
 	ae_int32x4 *out = sink->ptr;
@@ -333,7 +333,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 	ae_valignx2 outu = AE_ZALIGN128();
 	const ae_int16x8 *in = source->ptr;
 	ae_int16x8 *out = sink->ptr;
-	const int channels_count = cd->channels;
+	const unsigned int channels_count = cd->channels;
 	const int inc = sizeof(ae_int32x4);
 	int samples = channels_count * frames;
 
@@ -426,7 +426,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	ae_valignx2 outu = AE_ZALIGN128();
 	const ae_int16x8 *in = source->ptr;
 	ae_int16x8 *out = sink->ptr;
-	const int channels_count = cd->channels;
+	const unsigned int channels_count = cd->channels;
 	int samples = channels_count * frames;
 
 	while (samples) {
