@@ -44,11 +44,12 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 	ae_f32x2 in_sample;
 	ae_f32x2 out_sample;
 	ae_f32x2 volume;
-	int channel, n, i, m;
+	unsigned int channel;
+	int n, i, m;
 	ae_f32 *in0 = (void *)source->ptr;
 	ae_f32 *out0 = sink->ptr;
 	ae_f32 *in, *out;
-	const int channels_count = cd->channels;
+	const unsigned int channels_count = cd->channels;
 	const int inc = sizeof(ae_f32) * channels_count;
 	int samples = channels_count * frames;
 	ae_f32x2 peak_vol;
@@ -114,11 +115,12 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	ae_f32x2 in_sample;
-	int channel, n, i, m;
+	unsigned int channel;
+	int n, i, m;
 	ae_f32 *in0 = (void *)source->ptr;
 	ae_f32 *out0 = sink->ptr;
 	ae_f32 *in, *out;
-	const int channels_count = cd->channels;
+	const unsigned int channels_count = cd->channels;
 	const int inc = sizeof(ae_f32) * channels_count;
 	int samples = channels_count * frames;
 	ae_f32x2 peak_vol;
@@ -170,8 +172,9 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 	ae_f32x2 in_sample;
 	ae_f32x2 out_sample;
 	ae_f32x2 volume;
-	int i, n, channel, m;
-	const int channels_count = cd->channels;
+	int i, n, m;
+	unsigned int channel;
+	const unsigned int channels_count = cd->channels;
 	const int inc = sizeof(ae_f32) * channels_count;
 	int samples = channels_count * frames;
 	ae_f32 *in0 = (void *)source->ptr;
@@ -238,8 +241,9 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	ae_f32x2 in_sample;
-	int i, n, channel, m;
-	const int channels_count = cd->channels;
+	int i, n, m;
+	unsigned int channel;
+	const unsigned int channels_count = cd->channels;
 	const int inc = sizeof(ae_f32) * channels_count;
 	int samples = channels_count * frames;
 	ae_f32 *in0 = (void *)source->ptr;
@@ -295,12 +299,13 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 	ae_f32x2 out_sample0;
 	ae_f16x4 in_sample;
 	ae_f16x4 out_sample;
-	int i, n, channel, m;
+	int i, n, m;
+	unsigned int channel;
 	ae_f16 *in;
 	ae_f16 *out;
 	ae_f16 *in0 = (void *)source->ptr;
 	ae_f16 *out0 = sink->ptr;
-	const int channels_count = cd->channels;
+	const unsigned int channels_count = cd->channels;
 	const int inc = sizeof(ae_f16) * channels_count;
 	int samples = channels_count * frames;
 	ae_f32x2 peak_vol;
@@ -370,12 +375,13 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	ae_f16x4 in_sample;
-	int i, n, channel, m;
+	int i, n, m;
+	unsigned int channel;
 	ae_f16 *in;
 	ae_f16 *out;
 	ae_f16 *in0 = (void *)source->ptr;
 	ae_f16 *out0 = sink->ptr;
-	const int channels_count = cd->channels;
+	const unsigned int channels_count = cd->channels;
 	const int inc = sizeof(ae_f16) * channels_count;
 	int samples = channels_count * frames;
 	ae_f32x2 peak_vol;
