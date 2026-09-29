@@ -1,5 +1,13 @@
 # SOF Scheduling Architecture
 
+> **Runs in:** Boundary / bridge — this directory owns the LL/DP schedulers and their thread +
+> memory-domain setup. `zephyr_ll.c` and `zephyr_domain.c` are kernel-side; `zephyr_ll_user.c`
+> sets up the LL user memory domain (kernel-executed) and supports the LL user thread.
+> `zephyr_dp_schedule_thread.c` is boundary code that can create and manage both kernel and
+> `K_USER` DP threads depending on configuration; `zephyr_dp_schedule_application.c` is the
+> DP application-mode path. This directory hosts the `zephyr_ll_task_sem_*` and
+> `scheduler_dp_*` syscalls. See [User/kernel split](../include/sof/userspace/README.md).
+
 This directory (`src/schedule`) contains the Sound Open Firmware (SOF) scheduling infrastructure, deeply integrated with the underlying Zephyr RTOS. SOF utilizes a multi-tiered scheduling approach to cater to different real-time constraints, ranging from hard real-time, low-latency requirements to more relaxed, compute-intensive data processing tasks.
 
 ## Overview of Schedulers

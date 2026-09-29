@@ -1,5 +1,10 @@
 # Audio Processing Modules (`src/module`)
 
+> **Runs in:** Shared library — this directory defines the processing-module API/ABI. It is
+> context-agnostic: the same interface is used whether a module is a statically linked core
+> component or a user-space LLEXT module, so it must stay free of privileged operations. See
+> [User/kernel split](../include/sof/userspace/README.md).
+
 The `src/module` directory and the `src/include/module` headers define the Sound Open Firmware (SOF) modern Audio Processing Module API. This architecture abstracts the underlying OS and pipeline scheduler implementations from the actual audio signal processing logic, allowing modules to be written once and deployed either as statically linked core components or as dynamically loadable Zephyr EXT (LLEXT) modules.
 
 ## Architecture Overview
