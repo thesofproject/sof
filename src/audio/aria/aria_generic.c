@@ -47,8 +47,9 @@ static void aria_algo_get_data(struct processing_module *mod,
 	int32_t gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2]];
 	/* do linear approximation between points gain_begin and gain_end */
 	int32_t gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3]];
-	int32_t m, n, i, ch;
-	int32_t samples = frames * audio_stream_get_channels(sink);
+	size_t m, n, i;
+	int ch;
+	size_t samples = frames * audio_stream_get_channels(sink);
 	int32_t *out = audio_stream_get_wptr(sink);
 	int32_t *in = cd->data_ptr;
 	int32_t gain;

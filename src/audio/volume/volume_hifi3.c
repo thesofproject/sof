@@ -66,7 +66,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 	ae_f32x2 volume;
 	ae_f32x2 *buf;
 	ae_f32x2 *buf_end;
-	int i, n, m;
+	size_t i, n, m;
 	ae_f32x2 *vol;
 	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
@@ -74,7 +74,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 	ae_f32x2 *out = sink->ptr;
 	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_f32x2);
-	int samples = channels_count * frames;
+	size_t samples = channels_count * frames;
 
 	/* to ensure the address is 8-byte aligned and avoid risk of
 	 * error loading of volume gain while the cd->vol would be set
@@ -143,13 +143,13 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	ae_f32x2 in_sample;
-	int i, n, m;
+	size_t i, n, m;
 	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	const ae_f32x2 *in = source->ptr;
 	ae_f32x2 *out = sink->ptr;
 	const int channels_count = cd->channels;
-	int samples = channels_count * frames;
+	size_t samples = channels_count * frames;
 
 	while (samples) {
 		m = cir_buf_samples_without_wrap_s32(in, source->buf_end);
@@ -189,7 +189,7 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 	ae_f32x2 in_sample;
 	ae_f32x2 out_sample;
 	ae_f32x2 volume;
-	int i, n, m;
+	size_t i, n, m;
 	ae_f32x2 *buf;
 	ae_f32x2 *buf_end;
 	ae_f32x2 *vol;
@@ -197,7 +197,7 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 	ae_valign outu = AE_ZALIGN64();
 	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_f32x2);
-	int samples = channels_count * frames;
+	size_t samples = channels_count * frames;
 	const ae_f32x2 *in = source->ptr;
 	ae_f32x2 *out = sink->ptr;
 
@@ -266,11 +266,11 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	ae_f32x2 in_sample;
-	int i, n, m;
+	size_t i, n, m;
 	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	const int channels_count = cd->channels;
-	int samples = channels_count * frames;
+	size_t samples = channels_count * frames;
 	const ae_f32x2 *in = source->ptr;
 	ae_f32x2 *out = sink->ptr;
 
@@ -314,7 +314,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 	ae_f32x2 out_sample1;
 	ae_f16x4 in_sample;
 	ae_f16x4 out_sample;
-	int i, n, m;
+	size_t i, n, m;
 	ae_f32x2 *buf;
 	ae_f32x2 *buf_end;
 	ae_f32x2 *vol;
@@ -324,7 +324,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 	ae_f16x4 *out = sink->ptr;
 	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_f32x2);
-	int samples = channels_count * frames;
+	size_t samples = channels_count * frames;
 
 	/* to ensure the address is 8-byte aligned and avoid risk of
 	 * error loading of volume gain while the cd->vol would be set
@@ -404,13 +404,13 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	ae_f16x4 in_sample;
-	int i, n, m;
+	size_t i, n, m;
 	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	const ae_f16x4 *in = source->ptr;
 	ae_f16x4 *out = sink->ptr;
 	const int channels_count = cd->channels;
-	int samples = channels_count * frames;
+	size_t samples = channels_count * frames;
 
 	while (samples) {
 		m = cir_buf_samples_without_wrap_s16(in, source->buf_end);
