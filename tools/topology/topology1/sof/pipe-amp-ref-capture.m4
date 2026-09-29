@@ -43,10 +43,17 @@ ifelse(SMART_FB_CHANNELS, `8',
 `define(`FB_CHMAP',`0x01,0x02,0x04,0x08,0x00,0x00,0x00,0x00')'
 )
 
-ifelse(SMART_REF_CH_NUM, `4',
+dnl REF_CHMAP may be pre-defined by the platform m4 to override the default.
+dnl The default non-4-channel branch maps out ch1 to in ch2, which is correct
+dnl for 4-slot VIVI-interleaved hardware.  On platforms with only 2 TDM slots
+dnl where V and I are interleaved within the same slot (e.g. AMD ACP7x with
+dnl 2x max98388), the second amp's data sits in slot 1, not slot 2; using the
+dnl default would map out ch1 to a non-existent in ch2 which mux.c silently
+dnl discards, making ch1 permanently silent.
+ifdef(`REF_CHMAP',`',`ifelse(SMART_REF_CH_NUM, `4',
 `define(`REF_CHMAP',`0x01,0x02,0x04,0x08,0x00,0x00,0x00,0x00')',
 `define(`REF_CHMAP',`0x01,0x04,0x00,0x00,0x00,0x00,0x00,0x00')'
-)
+)')
 
 
 # should be aligned with struct sof_mux_config, used for mux input/output configuration.
