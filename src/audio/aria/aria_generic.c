@@ -49,6 +49,7 @@ static void aria_algo_get_data(struct processing_module *mod,
 	int32_t gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3]];
 	size_t m, n, i;
 	unsigned int ch;
+	int idx;
 	size_t samples = frames * cd->chan_cnt;
 	int32_t *out = sink->ptr;
 	const int32_t *in = cd->data_ptr;
@@ -56,11 +57,11 @@ static void aria_algo_get_data(struct processing_module *mod,
 	const unsigned int ch_n = cd->chan_cnt;
 	const int shift = 31 - cd->att;
 
-	for (i = 1; i < ARIA_MAX_GAIN_STATES - 1; i++) {
-		if (cd->gains[sof_aria_index_tab[gain_state_add_2 + i]] < gain_begin)
-			gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2 + i]];
-		if (cd->gains[sof_aria_index_tab[gain_state_add_3 + i]] < gain_end)
-			gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3 + i]];
+	for (idx = 1; idx < ARIA_MAX_GAIN_STATES - 1; idx++) {
+		if (cd->gains[sof_aria_index_tab[gain_state_add_2 + idx]] < gain_begin)
+			gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2 + idx]];
+		if (cd->gains[sof_aria_index_tab[gain_state_add_3 + idx]] < gain_end)
+			gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3 + idx]];
 	}
 	step = (gain_end - gain_begin) / (int32_t)frames;
 	gain = gain_begin;
