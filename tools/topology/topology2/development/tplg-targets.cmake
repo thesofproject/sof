@@ -18,6 +18,10 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec.bin,\
 SSP1_PCM_CORE_ID=0,SSP2_PCM_CORE_ID=0,\
 SSP0_MIXER_2LEVEL=1,PLATFORM=tgl"
 
+# Lean SSP0 NoCodec topology for TGL microWakeWord (MWW/KPB) bring-up
+"cavs-nocodec-mww-kpb\;sof-tgl-nocodec-mww\;PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-tgl-nocodec-mww.bin,PLATFORM=tgl"
+
 # multicore disabled due to SOF issue #8942
 "cavs-nocodec\;sof-adl-nocodec\;NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 SSP1_PCM_CORE_ID=0,SSP2_PCM_CORE_ID=0,\
@@ -54,6 +58,13 @@ PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,\
 NHLT_BIN=nhlt-sof-lnl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000"
 
 "cavs-sdw\;sof-lnl-fpga-rt711-l0\;PLATFORM=lnl,NUM_HDMIS=0,PASSTHROUGH=true"
+
+# HDA generic + KPB-based Wake-on-Voice (microWakeWord) capture branch.
+# Adds a WoV drain PCM and an MFCC/MWW detect PCM tapped off the
+# Analog capture endpoint (module-copier.4.2). Applies to all IPC4
+# HDA platforms; no NHLT differentiation.
+"sof-hda-generic\;sof-hda-generic-mww-kpb\;HDA_CONFIG=mix,HDA_MIC_MWW_KPB_CAPTURE=true"
+"sof-hda-generic\;sof-hda-generic-mww-pcan-kpb\;HDA_CONFIG=mix,HDA_MIC_MWW_KPB_CAPTURE=true,MWW_PCAN=true"
 
 # HDA topology with passthrough analog codec pipelines
 "sof-hda-generic\;sof-hda-passthrough\;HDA_CONFIG=passthrough"
@@ -400,6 +411,12 @@ PDM1_MIC_B_ENABLE=1,DMIC0_PCM_ID=99,PREPROCESS_PLUGINS=nhlt,NUM_HDMIS=4,\
 NHLT_BIN=nhlt-sof-adl-max98357a-rt5682.bin,SPK_ID=7,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
 INCLUDE_BT_OFFLOAD=false,DEEP_BUF_SPK=true,SPEAKER_CODEC_NAME=SSP2-Codec,SPEAKER_SSP_DAI_INDEX=2"
 
+"cavs-rt5682\;sof-adl-max98357a-rt5682-mww-pcan-kpb\;PLATFORM=adl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
+PDM1_MIC_B_ENABLE=1,DMIC0_PCM_ID=99,PREPROCESS_PLUGINS=nhlt,NUM_HDMIS=4,\
+NHLT_BIN=nhlt-sof-adl-max98357a-rt5682.bin,SPK_ID=7,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
+INCLUDE_BT_OFFLOAD=false,DEEP_BUF_SPK=true,SPEAKER_CODEC_NAME=SSP2-Codec,SPEAKER_SSP_DAI_INDEX=2,\
+DMIC_MWW_KPB_CAPTURE=true,MWW_PCAN=true"
+
 # RT721 eval board with PCH-DMIC, sof_sdw_quirk_table with SOC_SDW_PCH_DMIC
 # Enable FLOAT_LE and U8 PCM formats
 "cavs-sdw\;sof-ptl-rt721-4ch-allfmt\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
@@ -505,6 +522,21 @@ MFCC_FRAME_BYTES=344,MFCC_BLOB=mel"
 "cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-mfcc-ceps-compr\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,\
 HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,SDW_JACK_COMPR_AUDIO_FEATURE_CAPTURE=true,\
 MFCC_FRAME_BYTES=76,MFCC_BLOB=ceps"
+
+# Soundwire topologies with microWakeWord (MWW)/KPB Wake-on-Voice on jack
+"cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-mww-kpb\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,\
+HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,SDW_JACK_MWW_KPB_CAPTURE=true"
+
+# Soundwire topologies with microWakeWord (MWW)/KPB Wake-on-Voice on DMIC (PCAN 8-bit mode)
+"cavs-sdw\;sof-ptl-rt713-l3-rt1320-l12-mww-pcan-kpb\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=2,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+SDW_DMIC_MWW_KPB_CAPTURE=true,MWW_PCAN=true"
+
+"cavs-sdw\;sof-arl-cs42l43-l0-cs35l56-l23-mww-kpb\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+SDW_DMIC_MWW_KPB_CAPTURE=true"
 
 "cavs-sdw\;sof-arl-cs42l43-l0-cs35l56-l23-mfcc-mel-compr\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\

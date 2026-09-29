@@ -33,6 +33,7 @@
 #include <ipc4/notification.h>
 #include <ipc4/handler.h>
 #include <ipc/trace.h>
+#include <rtos/symbol.h>
 #include <user/trace.h>
 
 #include <rtos/atomic.h>
@@ -51,6 +52,16 @@
 #include <stdint.h>
 
 #include "../audio/copier/ipcgtw_copier.h"
+
+static uint32_t d0ix_allowed __aligned(PLATFORM_DCACHE_ALIGN);
+
+bool ipc4_d0ix_is_allowed(void)
+{
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)&d0ix_allowed,
+				 sizeof(d0ix_allowed));
+	return d0ix_allowed;
+}
+EXPORT_SYMBOL(ipc4_d0ix_is_allowed);
 
 /* Command format errors during fuzzing are reported for virtually all
  * commands, and the resulting flood of logging becomes a severe
@@ -324,6 +335,10 @@ __cold static int ipc4_module_process_d0ix(struct ipc4_message_request *ipc4)
 		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 	else
 		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+
+	d0ix_allowed = !d0ix.extension.r.prevent_power_gating;
+	dcache_writeback_region((__sparse_force void __sparse_cache *)&d0ix_allowed,
+				sizeof(d0ix_allowed));
 
 	return 0;
 }

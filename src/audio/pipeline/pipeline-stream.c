@@ -179,12 +179,22 @@ int pipeline_copy(struct pipeline *p)
 
 	PPL_LOCK(p->core);
 
+	if (!p->source_comp) {
+		PPL_UNLOCK();
+		return 0;
+	}
+
 	if (p->source_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dir = PPL_DIR_UPSTREAM;
 		start = p->sink_comp;
 	} else {
 		dir = PPL_DIR_DOWNSTREAM;
 		start = p->source_comp;
+	}
+
+	if (!start) {
+		PPL_UNLOCK();
+		return 0;
 	}
 
 	data.start = start;

@@ -70,6 +70,12 @@ int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4, struct ipc_
 int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4);
 
 /**
+ * \brief Check whether the host currently allows D0IX entry.
+ * \return true after SET_D0IX enables D0IX, false when power gating is prevented.
+ */
+bool ipc4_d0ix_is_allowed(void);
+
+/**
  * \brief Complete the IPC compound message.
  * @param[in] msg_id IPC message ID.
  * @param[in] error Error code of the IPC command.

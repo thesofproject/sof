@@ -72,6 +72,13 @@ function sof_selector_blobs()
 	sel.coeffs(1, lfe) = 10^(+10/20);
 	sixch_to_mono_pack8 = write_blob(sel, "downmix_51_to_mono_with_lfe");
 
+	% 4 channel to mono downmix
+	sel.ch_count = [4 1];
+	sel.ch_config = [IPC4_CHANNEL_CONFIG_QUATRO IPC4_CHANNEL_CONFIG_MONO];
+	sel.coeffs = zeros(8,8);
+	sel.coeffs(1, 1:4) = 0.25;
+	fourch_to_mono_pack8 = write_blob(sel, "downmix_4ch_to_mono");
+
 	% 7.1 to 5.1 downmix
 	sel.ch_count = [8 6];
 	sel.ch_config = [IPC4_CHANNEL_CONFIG_7_POINT_1 IPC4_CHANNEL_CONFIG_5_POINT_1];
