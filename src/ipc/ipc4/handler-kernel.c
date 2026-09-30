@@ -21,6 +21,7 @@
 #include <sof/ipc/driver.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/llext_manager.h>
 #include <sof/math/numbers.h>
@@ -324,6 +325,17 @@ __cold static int ipc4_module_process_d0ix(struct ipc4_message_request *ipc4)
 		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 	else
 		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+
+	/* Tell interested components that the host is entering or leaving S0iX.
+	 * prevent_power_gating is set on the way back to D0i0 and clear when the
+	 * host allows the DSP to power gate, i.e. when the host is going to sleep.
+	 */
+	struct d0ix_state_notif notif = {
+		.entering = !d0ix.extension.r.prevent_power_gating,
+	};
+
+	notifier_event(NULL, NOTIFIER_ID_D0IX_STATE, NOTIFIER_TARGET_CORE_ALL_MASK,
+		       &notif, sizeof(notif));
 
 	return 0;
 }
