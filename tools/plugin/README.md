@@ -5,6 +5,9 @@ is still WIP with many rough edges that need refined before production
 deployment, however the plugin is usable today as a rapid development
 framework for SOF infrastructure and processing.
 
+For an internals overview (process model, data flow, IPC, module loading and
+symbol resolution) see [architecture.md](architecture.md).
+
 ### Features
  * aplay & arecord usage working today
  * alsamixer & amixer usage not working today
