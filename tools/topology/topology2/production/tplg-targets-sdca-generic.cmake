@@ -65,6 +65,9 @@ SDW_AMP_FEEDBACK=false,SDW_ECHO_REF_DAI=true,SDW_SPK_ECHO_REF=true,SDW_SPK_ECHO_
 "cavs-sdw\;sof-sdca-jack-ref-dai\;SDW_JACK=false,NUM_HDMIS=0,JACK_RATE=48000,\
 SDW_ECHO_REF_DAI=true,SDW_JACK_ECHO_REF=true,SDW_JACK_ECHO_REF_PCM_ID=11"
 
+"cavs-sdw\;sof-sdw-wov\;SDW_JACK=false,SDW_DMIC=0,NUM_HDMIS=0,\
+SDW_DMIC_MWW_KPB_CAPTURE=true,MWW_PCAN=true"
+
 # Topology for speaker with 2-way crossover filter in SOF
 # with channels order L-low, R-low, L-high, R-high
 "cavs-sdw\;sof-sdca-2amp-id2-xover\;NUM_SDW_AMP_LINKS=2,SDW_JACK=false,\
