@@ -10,7 +10,12 @@
 	sched_caps = [1, 0x00008000]
 
 	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
+	REM # 1 source, 2 sinks: kpb.c drives a sel_sink (buf_id 0, the real-time
+	REM # feed to the detectors) and a host_sink (buf_id 1, the drain that
+	REM # bursts pre-roll to the host). Only one sink was declared here, so
+	REM # the drain path could not be bound from topology.
 	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff,
+			1, 0, 0xfeef, 0xf, 0xa, 0x45ff,
 			1, 0, 0xfeef, 0xf, 0xa, 0x45ff]
 
 	REM # mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]

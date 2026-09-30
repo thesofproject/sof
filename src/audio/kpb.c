@@ -1090,13 +1090,18 @@ static int kpb_reset(struct comp_dev *dev)
 		 * let kpb_copy complete the reset once scheduled.
 		 * If host_sink is NULL or same as sel_sink (unified WOV pipeline),
 		 * or state is BUFFERING, reset immediately.
+		 * Under IPC4, pipeline triggers and resets are synchronous;
+		 * returning -EBUSY breaks the pipeline state machine and causes
+		 * host teardown to fail.
 		 */
+#if !CONFIG_IPC_MAJOR_4
 		if (kpb->host_sink && kpb->host_sink != kpb->sel_sink &&
 		    kpb->state == KPB_STATE_DRAINING) {
 			kpb_change_state(kpb, KPB_STATE_RESETTING);
 			ret = -EBUSY;
 			break;
 		}
+#endif
 		/* host_sink == NULL or unified WOV path: immediate full reset */
 		kpb->hd.buffered = 0;
 		kpb->sel_sink = NULL;
