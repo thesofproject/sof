@@ -462,6 +462,12 @@ int module_adapter_prepare(struct comp_dev *dev)
 	 * Second example is a module with variable data rate on output (like MPEG encoder)
 	 */
 	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		/* legacy comp_driver consumers don't set their input buffer params at bind */
+		comp_dev_for_each_consumer(dev, sink) {
+			if (!audio_stream_get_rate(&sink->stream) && mod->stream_params)
+				buffer_set_params(sink, mod->stream_params, BUFFER_UPDATE_FORCE);
+		}
+
 		/* calculate DP period if a module didn't */
 		if (!dev->period)
 			module_adapter_calculate_dp_period(dev);
