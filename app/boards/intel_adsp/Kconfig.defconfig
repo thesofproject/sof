@@ -121,7 +121,7 @@ config MM_DRV
 	default y
 
 config UAOL
-	default y if ACE
+	default n
 
 
 # # Zephyr / power settings
