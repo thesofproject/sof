@@ -94,7 +94,7 @@ static int comp_buffer_commit_buffer(struct sof_sink *sink, size_t commit_size)
 
 	if (commit_size) {
 		buffer_stream_writeback(buffer, commit_size);
-		audio_stream_produce(&buffer->stream, commit_size);
+		comp_update_buffer_produce(buffer, commit_size);
 	}
 
 	return 0;
