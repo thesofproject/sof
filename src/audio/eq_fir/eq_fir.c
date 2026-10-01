@@ -11,6 +11,7 @@
 #include <sof/audio/data_blob.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/sink_source_utils.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
@@ -39,21 +40,6 @@
 LOG_MODULE_REGISTER(eq_fir, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(eq_fir);
-
-/* Pass-through functions to replace FIR core while not configured for
- * response.
- */
-
-static void eq_fir_passthrough(struct fir_state_32x16 fir[],
-			       struct input_stream_buffer *bsource,
-			       struct output_stream_buffer *bsink,
-			       int frames)
-{
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-
-	audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
-}
 
 static void eq_fir_free_delaylines(struct processing_module *mod)
 {
@@ -378,14 +364,20 @@ static int eq_fir_set_config(struct processing_module *mod, uint32_t config_id,
 
 /* copy and process stream data from source to sink buffers */
 static int eq_fir_process(struct processing_module *mod,
-			  struct input_stream_buffer *input_buffers,
-			  int num_input_buffers,
-			  struct output_stream_buffer *output_buffers,
-			  int num_output_buffers)
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = input_buffers[0].data;
-	uint32_t frame_count = input_buffers[0].size;
+	struct sof_source *source = sources[0];
+	struct sof_sink *sink = sinks[0];
+	struct cir_buf_source source_buf;
+	struct cir_buf_sink sink_buf;
+	size_t source_frame_bytes;
+	size_t sink_frame_bytes;
+	size_t source_bytes;
+	size_t sink_bytes;
+	size_t buffer_size;
+	size_t frame_count;
 	int ret;
 
 	comp_dbg(mod->dev, "entry");
@@ -395,17 +387,17 @@ static int eq_fir_process(struct processing_module *mod,
 		cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
 		if (!cd->config || eq_fir_check_blob_size(mod->dev, cd->config_size) < 0)
 			return -EINVAL;
-		ret = eq_fir_setup(mod, audio_stream_get_channels(source));
+		ret = eq_fir_setup(mod, source_get_channels(source));
 		if (ret < 0) {
 			comp_err(mod->dev, "failed FIR setup");
 			return ret;
 		} else if (cd->fir_delay_size) {
 			comp_dbg(mod->dev, "active");
-			ret = set_fir_func(mod, audio_stream_get_frm_fmt(source));
+			ret = set_fir_func(mod, source_get_frm_fmt(source));
 			if (ret < 0)
 				return ret;
 		} else {
-			cd->eq_fir_func = eq_fir_passthrough;
+			cd->eq_fir_func = NULL;
 			comp_dbg(mod->dev, "pass-through");
 		}
 	}
@@ -418,22 +410,70 @@ static int eq_fir_process(struct processing_module *mod,
 	 * break the delay line alignment if called with odd number of frames
 	 * so it can't be used here.
 	 */
-
+	frame_count = source_sink_avail_frames_aligned(source, sink);
 	frame_count &= ~0x1;
-	if (frame_count) {
-		cd->eq_fir_func(cd->fir, &input_buffers[0], &output_buffers[0], frame_count);
-		module_update_buffer_position(&input_buffers[0], &output_buffers[0], frame_count);
+	if (!frame_count)
+		return 0;
+
+	source_frame_bytes = source_get_frame_bytes(source);
+	sink_frame_bytes = sink_get_frame_bytes(sink);
+	source_bytes = frame_count * source_frame_bytes;
+	sink_bytes = frame_count * sink_frame_bytes;
+
+	if (!cd->fir_delay_size) {
+		if (source_frame_bytes != sink_frame_bytes)
+			return -EINVAL;
+
+		return source_to_sink_copy(source, sink, true, source_bytes);
 	}
 
-	return 0;
+	if (!cd->eq_fir_func)
+		return -EINVAL;
+
+	ret = source_get_data(source, source_bytes, &source_buf.ptr,
+			      &source_buf.buf_start, &buffer_size);
+	if (ret < 0)
+		return ret;
+	if (buffer_size < source_bytes) {
+		comp_err(mod->dev, "source buffer size %zu is insufficient for %zu bytes",
+			 buffer_size, source_bytes);
+		source_release_data(source, 0);
+		return -EINVAL;
+	}
+	source_buf.buf_end = (const char *)source_buf.buf_start + buffer_size;
+
+	ret = sink_get_buffer(sink, sink_bytes, &sink_buf.ptr, &sink_buf.buf_start,
+			      &buffer_size);
+	if (ret < 0) {
+		source_release_data(source, 0);
+		return ret;
+	}
+	if (buffer_size < sink_bytes) {
+		comp_err(mod->dev, "sink buffer size %zu is insufficient for %zu bytes",
+			 buffer_size, sink_bytes);
+		source_release_data(source, 0);
+		sink_commit_buffer(sink, 0);
+		return -EINVAL;
+	}
+	sink_buf.buf_end = (char *)sink_buf.buf_start + buffer_size;
+
+	cd->eq_fir_func(cd->fir, &source_buf, &sink_buf, frame_count, cd->nch);
+
+	ret = source_release_data(source, source_bytes);
+	if (ret < 0) {
+		sink_commit_buffer(sink, 0);
+		return ret;
+	}
+
+	return sink_commit_buffer(sink, sink_bytes);
 }
 
-static void eq_fir_set_alignment(struct audio_stream *source)
+static int eq_fir_set_alignment(struct sof_source *source)
 {
 	const uint32_t byte_align = SOF_FRAME_BYTE_ALIGN;
 	const uint32_t frame_align_req = 2; /* Process multiples of 2 frames */
 
-	audio_stream_set_align(byte_align, frame_align_req, source);
+	return source_set_alignment_constants(source, byte_align, frame_align_req);
 }
 
 static int eq_fir_prepare(struct processing_module *mod,
@@ -441,8 +481,9 @@ static int eq_fir_prepare(struct processing_module *mod,
 			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
+	struct sof_source *source;
+	struct sof_sink *sink;
 	int channels;
 	enum sof_ipc_frame frame_fmt;
 	int ret = 0;
@@ -450,12 +491,13 @@ static int eq_fir_prepare(struct processing_module *mod,
 	comp_dbg(dev, "entry");
 
 	/* EQ component will only ever have 1 source and 1 sink buffer. */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	sinkb = comp_dev_get_first_data_consumer(dev);
-	if (!sourceb || !sinkb) {
+	if (num_of_sources != 1 || num_of_sinks != 1) {
 		comp_err(dev, "no source or sink buffer");
 		return -ENOTCONN;
 	}
+
+	source = sources[0];
+	sink = sinks[0];
 
 	ret = eq_fir_params(mod);
 	if (ret < 0) {
@@ -463,11 +505,20 @@ static int eq_fir_prepare(struct processing_module *mod,
 		return ret;
 	}
 
-	eq_fir_set_alignment(&sourceb->stream);
-	channels = audio_stream_get_channels(&sinkb->stream);
-	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
+	ret = eq_fir_set_alignment(source);
+	if (ret < 0)
+		return ret;
 
-	cd->eq_fir_func = eq_fir_passthrough;
+	if (source_get_channels(source) != sink_get_channels(sink) ||
+	    source_get_frm_fmt(source) != sink_get_frm_fmt(sink)) {
+		comp_err(dev, "source and sink audio formats do not match");
+		return -EINVAL;
+	}
+
+	channels = sink_get_channels(sink);
+	frame_fmt = source_get_frm_fmt(source);
+
+	cd->eq_fir_func = NULL;
 	cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
 	if (cd->config) {
 		if (eq_fir_check_blob_size(dev, cd->config_size) < 0)
@@ -514,7 +565,7 @@ static const struct module_interface eq_fir_interface = {
 		.free = eq_fir_free,
 		.set_configuration = eq_fir_set_config,
 		.get_configuration = eq_fir_get_config,
-		.process_audio_stream = eq_fir_process,
+		.process = eq_fir_process,
 		.prepare = eq_fir_prepare,
 		.reset = eq_fir_reset,
 };
