@@ -178,7 +178,7 @@ int module_adapter_set_state(struct processing_module *mod, struct comp_dev *dev
 }
 
 static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
-					 bool set)
+					 bool set, int max_data_size)
 {
 	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
@@ -225,9 +225,14 @@ static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ct
 		return 0;
 	}
 
+	/*
+	 * For a get, the fragment is the reply buffer starting at cdata, so pass
+	 * its full size rather than the host-controlled num_elems: getters check
+	 * num_elems against fragment_size, which is meaningless if they are equal.
+	 */
 	if (interface->get_configuration)
 		return interface->get_configuration(mod, pos, &data_offset_size,
-						    (uint8_t *)cdata, cdata->num_elems);
+						    (uint8_t *)cdata, max_data_size);
 
 	comp_err(dev, "no configuration op get for %d",
 		 dev_comp_id(dev));
@@ -235,7 +240,7 @@ static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ct
 }
 
 static int module_adapter_ctrl_get_set_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
-					    bool set)
+					    bool set, int max_data_size)
 {
 	int ret;
 	struct processing_module __maybe_unused *mod = comp_mod(dev);
@@ -255,7 +260,7 @@ static int module_adapter_ctrl_get_set_data(struct comp_dev *dev, struct sof_ipc
 		ret = -EIO;
 		break;
 	case SOF_CTRL_CMD_BINARY:
-		ret = module_adapter_get_set_params(dev, cdata, set);
+		ret = module_adapter_get_set_params(dev, cdata, set, max_data_size);
 		break;
 	default:
 		comp_err(dev, "module_adapter_ctrl_set_data error: unknown set data command");
@@ -278,10 +283,10 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
-		ret = module_adapter_ctrl_get_set_data(dev, cdata, true);
+		ret = module_adapter_ctrl_get_set_data(dev, cdata, true, max_data_size);
 		break;
 	case COMP_CMD_GET_DATA:
-		ret = module_adapter_ctrl_get_set_data(dev, cdata, false);
+		ret = module_adapter_ctrl_get_set_data(dev, cdata, false, max_data_size);
 		break;
 	case COMP_CMD_SET_VALUE:
 		/*
