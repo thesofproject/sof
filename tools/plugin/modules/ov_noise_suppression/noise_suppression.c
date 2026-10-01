@@ -50,25 +50,60 @@ static int ns_init(struct processing_module *mod)
 
 static int
 ns_process(struct processing_module *mod,
-	   struct input_stream_buffer *input_buffers, int num_input_buffers,
-	   struct output_stream_buffer *output_buffers, int num_output_buffers)
+	   struct sof_source **sources, int num_of_sources,
+	   struct sof_sink **sinks, int num_of_sinks)
 {
 	ns_handle handle = module_get_private_data(mod);
+	struct sof_source *source = sources[0];
+	struct sof_sink *sink = sinks[0];
+	const size_t frame_bytes = source_get_frame_bytes(source);
+	struct cir_buf_source src_desc;
+	struct cir_buf_sink snk_desc;
+	size_t buf_size;
+	size_t copy_bytes;
+	size_t frames;
 	int ret;
 
-	ret = ov_ns_process(handle, input_buffers, num_input_buffers,
-			    output_buffers, num_output_buffers);
-	if (ret < 0)
+	frames = source_get_data_frames_available(source);
+	frames = MIN(frames, sink_get_free_frames(sink));
+
+	/* Noise suppression keeps the stream format and channel count, so the
+	 * source and sink consume and produce the same number of bytes.
+	 */
+	copy_bytes = frames * frame_bytes;
+	if (copy_bytes == 0)
+		return 0;
+
+	ret = source_get_data(source, copy_bytes, &src_desc.ptr, &src_desc.buf_start, &buf_size);
+	if (ret)
 		return ret;
 
-	module_update_buffer_position(&input_buffers[0], &output_buffers[0], ret);
+	src_desc.buf_end = (const char *)src_desc.buf_start + buf_size;
+
+	ret = sink_get_buffer(sink, copy_bytes, &snk_desc.ptr, &snk_desc.buf_start, &buf_size);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
+	}
+
+	snk_desc.buf_end = (char *)snk_desc.buf_start + buf_size;
+
+	ret = ov_ns_process(handle, &src_desc, &snk_desc, frames);
+	if (ret < 0) {
+		source_release_data(source, 0);
+		sink_commit_buffer(sink, 0);
+		return ret;
+	}
+
+	source_release_data(source, ret * frame_bytes);
+	sink_commit_buffer(sink, ret * frame_bytes);
 
 	return 0;
 }
 
 static const struct module_interface ns_interface = {
 	.init = ns_init,
-	.process_audio_stream = ns_process,
+	.process = ns_process,
 	.free = ns_free
 };
 

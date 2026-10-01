@@ -9,15 +9,20 @@
 #ifndef _NOISE_SUPPRESSION_INTERFACE_H
 #define _NOISE_SUPPRESSION_INTERFACE_H
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+	struct cir_buf_source;
+	struct cir_buf_sink;
 	typedef void *ns_handle;
 	int ov_ns_init(ns_handle *handle);
 	void ov_ns_free(ns_handle handle);
 	int ov_ns_process(ns_handle handle,
-			  struct input_stream_buffer *input_buffers, int num_input_buffers,
-			  struct output_stream_buffer *output_buffers, int num_output_buffers);
+			  struct cir_buf_source *source,
+			  struct cir_buf_sink *sink,
+			  size_t frame_count);
 
 #ifdef __cplusplus
 }
