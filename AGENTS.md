@@ -20,3 +20,23 @@ This document outlines the rules AI agents must follow when checking out branche
 ### Codestyle and Linting
 * **Standard:** Use `clangd` instead of `checkpatch` for codestyle verification.
 * **Rationale:** `checkpatch` is prone to confusion with assembly and non-standard C; `clangd` provides better integration with IDEs and AI tools and is easier to maintain.
+
+### User/kernel boundary
+On PTL and other userspace configurations, audio application logic runs in Zephyr user-space
+while the OS/HAL stays in the kernel. The authoritative model, directory taxonomy, syscall map,
+memory-partition markers and Kconfig hierarchy are documented in
+[`src/include/sof/userspace/README.md`](src/include/sof/userspace/README.md). When adding or
+moving code, follow it:
+
+* **Place code in the right tier.** OS/HAL/boot/inter-core → a kernel-only directory
+  (`arch/`, `drivers/`, `idc/`, `init/`, `platform/`, `probe/`, `logging/`, `trace/`); audio
+  application logic → `audio/`; reusable pure code → a shared-library directory (`lib/`,
+  `math/`, `module/`) kept free of privileged operations. Each top-level directory's
+  `README.md` states its tier in a "Runs in:" banner — keep it accurate.
+* **Cross the boundary only via a syscall.** Add a `__syscall` declaration, put the `z_vrfy_`
+  validator in the boundary tier (preferably `zephyr/syscall/<subsystem>.c`), validate every
+  user-supplied argument, and add the call to
+  [`src/include/sof/userspace/syscalls.h`](src/include/sof/userspace/syscalls.h).
+* **Mark shared globals.** Any global a user thread reads or writes must carry a partition
+  marker (`APP_TASK_*`, `APP_SYSUSER_*`, or a `K_APP_*` partition) at its declaration site, and
+  kernel code must re-validate such data because it is user-writable.
