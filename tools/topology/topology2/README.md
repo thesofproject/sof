@@ -418,13 +418,26 @@ In your top-level topology manifest (e.g. `dmic-wov-multi-4ch-manifest.conf`):
 ```conf
 Define {
     PREPROCESS_PLUGINS "nhlt"
+    DMIC_DAI_INDEX     1
+    DMIC_NAME          "dmic16k"
 }
 
-# Define DAI hardware configuration
+# Define DAI hardware configuration (2 endpoints: Endpoint 0 @ 48kHz, Endpoint 1 @ 16kHz)
 Object.Dai.DMIC [
     {
-        name           $DMIC_NAME
-        dai_index      $DMIC_DAI_INDEX
+        name           "dmic01"
+        dai_index      0
+        id             6
+        driver_version $DMIC_DRIVER_VERSION
+        io_clk         38400000
+        sample_rate    48000
+        num_pdm_active 2
+        ...
+    }
+    {
+        name           "dmic16k"
+        dai_index      1
+        id             7
         driver_version $DMIC_DRIVER_VERSION
         io_clk         38400000
         sample_rate    16000
@@ -443,11 +456,11 @@ Object.Base.manifest.1 {
 
 ### 2. Compiling with NHLT Plugin
 
-Set `ALSA_TOPOLOGY_PLUGIN_DIR` to the directory containing `libalsatplg_module_nhlt.so`:
+Set `ALSA_TOPOLOGY_PLUGIN_DIR` to the directory containing `libalsatplg_module_nhlt.so` (e.g. `/usr/lib/x86_64-linux-gnu/alsa-topology` on Debian/Ubuntu or `/usr/lib/alsa-topology`):
 
 ```bash
 ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
-ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
+ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/x86_64-linux-gnu/alsa-topology \
 alsatplg -I $PWD/tools/topology/topology2 -p \
     -c tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf \
     -o build/sof-tgl-dmic-wov-multi-4ch.tplg
@@ -573,21 +586,21 @@ Compile all three targets:
 ```bash
 # 1. Panther Lake (PTL)
 ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
-ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
+ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/x86_64-linux-gnu/alsa-topology \
 alsatplg -I $PWD/tools/topology/topology2 -p \
     -c tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf \
     -o build/sof-ptl-dmic-wov-multi-4ch.tplg
 
 # 2. Tiger Lake (TGL)
 ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
-ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
+ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/x86_64-linux-gnu/alsa-topology \
 alsatplg -I $PWD/tools/topology/topology2 -p \
     -c tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf \
     -o build/sof-tgl-dmic-wov-multi-4ch.tplg
 
 # 3. Wildcat Lake (WCL)
 ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
-ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
+ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/x86_64-linux-gnu/alsa-topology \
 alsatplg -I $PWD/tools/topology/topology2 -p \
     -c tools/topology/topology2/dmic-wov-multi-wcl-4ch-manifest.conf \
     -o build/sof-wcl-dmic-wov-multi-4ch.tplg

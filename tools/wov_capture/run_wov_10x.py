@@ -10,11 +10,37 @@ import subprocess
 import sys
 import time
 
-SLOTS = [
-    (1, "wovdebug_111"),
-    (2, "wovdebug_112"),
-    (3, "wovdebug_113"),
-]
+def find_wov_pcm(card=0):
+    """Auto-detect DMIC Multi-WOV capture PCM device index."""
+    try:
+        with open("/proc/asound/pcm") as f:
+            for line in f:
+                if "DMIC Multi-WOV" in line:
+                    m = re.match(r"^(\d+)-(\d+):", line)
+                    if m and int(m.group(1)) == card:
+                        return int(m.group(2))
+    except Exception:
+        pass
+    return 11
+
+def find_wov_slots(card=0):
+    """Auto-detect slot controls (e.g. wovdebug_101 or wovdebug_111)."""
+    try:
+        cmd = ["amixer", "-c", str(card), "controls"]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if "wovdebug_101" in res.stdout:
+            return [
+                (1, "wovdebug_101"),
+                (2, "wovdebug_102"),
+                (3, "wovdebug_103"),
+            ]
+    except Exception:
+        pass
+    return [
+        (1, "wovdebug_111"),
+        (2, "wovdebug_112"),
+        (3, "wovdebug_113"),
+    ]
 
 def get_kcontrol(name, card=0):
     cmd = ["amixer", "-c", str(card), "cget", f"name={name}"]
@@ -31,9 +57,11 @@ def set_kcontrol(name, val, card=0):
     res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return res.returncode == 0
 
-def reset_all_controls(card=0):
+def reset_all_controls(card=0, slots=None):
+    if slots is None:
+        slots = find_wov_slots(card)
     set_kcontrol("wov_active_slot", 0, card=card)
-    for _, ctl in SLOTS:
+    for _, ctl in slots:
         set_kcontrol(ctl, 0, card=card)
 
 def get_dsp_power_state():
@@ -62,7 +90,9 @@ def check_d0i3_transition(t_start):
         pass
     return False
 
-def run_s0_iteration(iteration, slot, ctl, card=0, device=12):
+def run_s0_iteration(iteration, slot, ctl, card=0, device=None):
+    if device is None:
+        device = find_wov_pcm(card)
     reset_all_controls(card)
     out_wav = f"/tmp/wov_s0_run{iteration}_slot{slot}.wav"
     subprocess.run(["rm", "-f", out_wav])
@@ -104,7 +134,9 @@ def run_s0_iteration(iteration, slot, ctl, card=0, device=12):
         "passed": passed,
     }
 
-def run_d0i3_iteration(iteration, slot, ctl, card=0, device=12):
+def run_d0i3_iteration(iteration, slot, ctl, card=0, device=None):
+    if device is None:
+        device = find_wov_pcm(card)
     reset_all_controls(card)
     out_wav = f"/tmp/wov_d0i3_run{iteration}_slot{slot}.wav"
     subprocess.run(["rm", "-f", out_wav])
@@ -168,18 +200,23 @@ def main():
     print("  SOF WOV HARDWARE VALIDATION: 10x S0 and 10x D0i3 CAPTURE TESTS")
     print("=" * 70)
     
+    card = 0
+    slots = find_wov_slots(card)
+    device = find_wov_pcm(card)
+    print(f"Target: hw:{card},{device}, Controls: {[ctl for _, ctl in slots]}")
+    
     # Ensure dynamic debug is enabled for DSP power state messages
     subprocess.run('echo "file hda-dsp.c +p" > /sys/kernel/debug/dynamic_debug/control 2>/dev/null', shell=True)
     
     # Initial cleanup
-    reset_all_controls()
+    reset_all_controls(card=card, slots=slots)
     time.sleep(1.0)
     
     s0_results = []
     print("\n--- PHASE 1: Running 10x S0 WoV Capture Tests ---")
     for i in range(1, 11):
-        slot, ctl = SLOTS[(i - 1) % len(SLOTS)]
-        res = run_s0_iteration(i, slot, ctl)
+        slot, ctl = slots[(i - 1) % len(slots)]
+        res = run_s0_iteration(i, slot, ctl, card=card, device=device)
         s0_results.append(res)
         status_str = "PASS" if res["passed"] else "FAIL"
         print(f"  [S0 Run {i:02d}/10] Slot {slot} ({ctl}): {status_str} in {res['elapsed']:.2f}s, size={res['size']}B, slot_reset={res['post_slot']}, ctl_reset={res['post_ctl']}")
@@ -189,8 +226,8 @@ def main():
     d0i3_results = []
     print("\n--- PHASE 2: Running 10x D0i3 WoV Idle Delay & Wake Tests ---")
     for i in range(1, 11):
-        slot, ctl = SLOTS[(i - 1) % len(SLOTS)]
-        res = run_d0i3_iteration(i, slot, ctl)
+        slot, ctl = slots[(i - 1) % len(slots)]
+        res = run_d0i3_iteration(i, slot, ctl, card=card, device=device)
         d0i3_results.append(res)
         status_str = "PASS" if res["passed"] else "FAIL"
         print(f"  [D0i3 Run {i:02d}/10] Slot {slot} ({ctl}): {status_str} in {res['elapsed']:.2f}s, d0i3={res['d0i3_state']}, size={res['size']}B, slot_reset={res['post_slot']}, ctl_reset={res['post_ctl']}")
