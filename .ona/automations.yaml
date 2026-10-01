@@ -1,0 +1,84 @@
+tasks:
+  installDeps:
+    name: Install SOF build dependencies
+    description: |
+      Install system packages required to build SOF firmware and tools:
+      ninja-build, clang, llvm, device-tree-compiler, python3-pyelftools,
+      and the west Zephyr meta-tool.
+    command: |
+      sudo apt-get update -qq
+      sudo apt-get install -y \
+        ninja-build \
+        clang \
+        llvm \
+        device-tree-compiler \
+        python3-pyelftools \
+        libasound2-dev \
+        libglib2.0-dev \
+        libssl-dev \
+        pkg-config \
+        patchelf
+      pip3 install --user west anytree jsonschema
+      echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+      export PATH="$HOME/.local/bin:$PATH"
+      west --version
+    triggeredBy:
+      - postDevcontainerStart
+
+  westUpdate:
+    name: Initialize west workspace
+    description: |
+      Run west init and west update to fetch Zephyr and all SOF manifest
+      dependencies. This is required before any firmware build.
+    command: |
+      export PATH="$HOME/.local/bin:$PATH"
+      # west init -l uses the local manifest (west.yml) without re-cloning sof
+      west init -l .
+      west update --narrow --fetch-opt=--filter=tree:0
+    triggeredBy:
+      - postDevcontainerStart
+    dependsOn:
+      - installDeps
+
+  installSdk:
+    name: Install Zephyr SDK
+    description: |
+      Download and install the Zephyr SDK version matching the workspace
+      (reads SDK_VERSION from the fetched zephyr tree). Patches SDK host
+      tool binaries to use the system dynamic linker so they run on Ubuntu.
+    command: |
+      export PATH="$HOME/.local/bin:$PATH"
+      SDK_VERSION=$(cat /workspaces/zephyr/SDK_VERSION)
+      echo "Installing Zephyr SDK $SDK_VERSION"
+      west sdk install --version "$SDK_VERSION" -t xtensa-dc233c_zephyr-elf
+      # The SDK setup.sh -h (host tools) fails without the OE sysroot linker.
+      # Run setup without -h then patch the ELF interpreter on all host binaries.
+      ~/zephyr-sdk-${SDK_VERSION}/setup.sh -t xtensa-dc233c_zephyr-elf
+      SYSROOT=~/zephyr-sdk-${SDK_VERSION}/hosttools/sysroots/x86_64-pokysdk-linux
+      SYSTEM_LD=$(ls /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 2>/dev/null | head -1)
+      find "$SYSROOT/usr/bin" -type f -executable | while read f; do
+        interp=$(readelf -l "$f" 2>/dev/null | grep "program interpreter" | grep -o '/[^]]*')
+        if [ -n "$interp" ]; then
+          patchelf --set-interpreter "$SYSTEM_LD" \
+                   --set-rpath "$SYSROOT/lib:$SYSROOT/usr/lib" "$f" 2>/dev/null
+        fi
+      done
+      echo "export ZEPHYR_SDK_INSTALL_DIR=~/zephyr-sdk-${SDK_VERSION}" >> ~/.bashrc
+      ~/zephyr-sdk-${SDK_VERSION}/hosttools/sysroots/x86_64-pokysdk-linux/usr/bin/dtc --version
+    triggeredBy:
+      - postDevcontainerStart
+    dependsOn:
+      - westUpdate
+
+  buildTools:
+    name: Build SOF host tools
+    description: |
+      Build the SOF host-side tools (logger, ctl, probes, topologies) using
+      CMake + Ninja. Run manually after west workspace is initialized.
+    command: |
+      export PATH="$HOME/.local/bin:$PATH"
+      ./scripts/build-tools.sh
+    triggeredBy:
+      - manual
+    dependsOn:
+      - installSdk
