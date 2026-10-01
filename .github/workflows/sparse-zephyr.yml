@@ -35,7 +35,7 @@ jobs:
     # this in sync with it.
     runs-on: ubuntu-26.04
     container:
-      image: thesofproject/zephyr-lite:v0.29.3
+      image: thesofproject/zephyr-lite:v0.29.4
 
     strategy:
       fail-fast: false

@@ -35,7 +35,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.29.3
+      image: thesofproject/zephyr-lite:v0.29.4
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -85,7 +85,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.29.3
+      image: thesofproject/zephyr-lite:v0.29.4
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -116,7 +116,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.29.3
+      image: thesofproject/zephyr-lite:v0.29.4
     strategy:
       fail-fast: false
       matrix:

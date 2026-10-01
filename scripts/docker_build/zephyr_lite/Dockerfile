@@ -2,7 +2,7 @@
 # Copyright(c) 2025 Intel Corporation. All rights reserved.
 
 # Use zephyr-build as base image
-FROM ghcr.io/zephyrproject-rtos/zephyr-build:v0.29.3 as base
+FROM ghcr.io/zephyrproject-rtos/zephyr-build:v0.29.4 as base
 
 # Remove additional toolchains.
 # As this is not ideal solution there is a plan to build docker image without zephyr-build as the base
