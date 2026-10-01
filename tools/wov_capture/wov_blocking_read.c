@@ -30,6 +30,36 @@ static double now_s(void)
 	return ts.tv_sec + ts.tv_nsec / 1e9;
 }
 
+static int get_active_slot(int card)
+{
+	snd_ctl_t *ctl_handle;
+	char ctl_name[32];
+	snprintf(ctl_name, sizeof(ctl_name), "hw:%d", card);
+	if (snd_ctl_open(&ctl_handle, ctl_name, 0) < 0)
+		return -1;
+
+	snd_ctl_elem_id_t *id;
+	snd_ctl_elem_id_alloca(&id);
+	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
+	snd_ctl_elem_id_set_name(id, "wov_active_slot");
+
+	snd_ctl_elem_value_t *val;
+	snd_ctl_elem_value_alloca(&val);
+	snd_ctl_elem_value_set_id(val, id);
+
+	int slot = -1;
+	for (int retry = 0; retry < 15; retry++) {
+		if (snd_ctl_elem_read(ctl_handle, val) >= 0) {
+			slot = snd_ctl_elem_value_get_enumerated(val, 0);
+			if (slot > 0)
+				break;
+		}
+		usleep(10000);
+	}
+	snd_ctl_close(ctl_handle);
+	return slot;
+}
+
 int main(int argc, char **argv)
 {
 	const char *device = argc > 1 ? argv[1] : "hw:0,12";
@@ -41,6 +71,18 @@ int main(int argc, char **argv)
 	snd_pcm_t *pcm;
 	snd_pcm_hw_params_t *hw;
 	int err;
+
+	int card = 0;
+	if (strncmp(device, "hw:", 3) == 0)
+		card = atoi(device + 3);
+
+	int triggered_slot = -1;
+	int expected_slot = 0;
+	if (ctl) {
+		size_t len = strlen(ctl);
+		if (len > 0 && ctl[len - 1] >= '1' && ctl[len - 1] <= '9')
+			expected_slot = ctl[len - 1] - '0';
+	}
 
 	err = snd_pcm_open(&pcm, device, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK);
 	if (err < 0) {
@@ -148,6 +190,12 @@ int main(int argc, char **argv)
 			break;
 		}
 		if (n > 0) {
+			if (triggered_slot < 0) {
+				triggered_slot = get_active_slot(card);
+				printf("t=%.3f triggered active_slot=%d (expected=%d)\n",
+				       now_s() - t0, triggered_slot, expected_slot);
+				fflush(stdout);
+			}
 			if (wav_fp)
 				fwrite(buf, sizeof(short), n, wav_fp);
 			frames_captured += n;
@@ -177,5 +225,12 @@ int main(int argc, char **argv)
 	/* Allow STOP notification to settle in ALSA control cache before close */
 	usleep(150000);
 	snd_pcm_close(pcm);
-	return (frames_captured >= total_frames) ? 0 : 1;
+
+	int ok = (frames_captured >= total_frames);
+	if (expected_slot > 0 && triggered_slot != expected_slot) {
+		fprintf(stderr, "error: triggered slot %d does not match expected slot %d\n",
+			triggered_slot, expected_slot);
+		ok = 0;
+	}
+	return ok ? 0 : 1;
 }

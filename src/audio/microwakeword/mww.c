@@ -416,7 +416,12 @@ __cold static int mww_init(struct processing_module *mod)
 	else if (dev->ipc_config.pipeline_id >= 111 && dev->ipc_config.pipeline_id <= 113)
 		cd->wov_slot_id = (uint8_t)(dev->ipc_config.pipeline_id - 111);
 	else
-		cd->wov_slot_id = (uint8_t)(IPC4_INST_ID(dev->ipc_config.id) % 3);
+		/* In IPC4, kernel IDA assigns module instance IDs in reverse DAPM
+		 * traversal order (mww.103 -> 0, mww.102 -> 1, mww.101 -> 2).
+		 * Invert so instance 2 -> slot 0 (Slot 1), instance 1 -> slot 1
+		 * (Slot 2), instance 0 -> slot 2 (Slot 3), matching detect_test.c.
+		 */
+		cd->wov_slot_id = (uint8_t)(2 - (IPC4_INST_ID(dev->ipc_config.id) % 3));
 
 	cd->mwc.slot_id = cd->wov_slot_id;
 	cd->paused = false;

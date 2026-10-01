@@ -121,11 +121,17 @@ def run_s0_iteration(iteration, slot, ctl, card=0, device=None):
             break
         time.sleep(0.1)
     
-    passed = (p.returncode == 0) and (file_sz > 0) and (post_slot == "0") and (post_ctl == "off")
+    trig_slot = None
+    m = re.search(r"triggered active_slot=(\d+)", p.stdout)
+    if m:
+        trig_slot = int(m.group(1))
+
+    passed = (p.returncode == 0) and (file_sz > 0) and (post_slot == "0") and (post_ctl == "off") and (trig_slot == slot)
     return {
         "iteration": iteration,
         "mode": "S0",
         "slot": slot,
+        "trig_slot": trig_slot,
         "ctl": ctl,
         "elapsed": elapsed,
         "size": file_sz,
@@ -180,11 +186,17 @@ def run_d0i3_iteration(iteration, slot, ctl, card=0, device=None):
         
     post_pstate = get_dsp_power_state()
     
-    passed = (proc.returncode == 0) and (file_sz > 0) and (post_slot == "0") and (post_ctl == "off") and (d0i3_state == "D0I3")
+    trig_slot = None
+    m = re.search(r"triggered active_slot=(\d+)", stdout)
+    if m:
+        trig_slot = int(m.group(1))
+
+    passed = (proc.returncode == 0) and (file_sz > 0) and (post_slot == "0") and (post_ctl == "off") and (d0i3_state == "D0I3") and (trig_slot == slot)
     return {
         "iteration": iteration,
         "mode": "D0i3",
         "slot": slot,
+        "trig_slot": trig_slot,
         "ctl": ctl,
         "elapsed": elapsed,
         "size": file_sz,
@@ -219,7 +231,7 @@ def main():
         res = run_s0_iteration(i, slot, ctl, card=card, device=device)
         s0_results.append(res)
         status_str = "PASS" if res["passed"] else "FAIL"
-        print(f"  [S0 Run {i:02d}/10] Slot {slot} ({ctl}): {status_str} in {res['elapsed']:.2f}s, size={res['size']}B, slot_reset={res['post_slot']}, ctl_reset={res['post_ctl']}")
+        print(f"  [S0 Run {i:02d}/10] Slot {slot} ({ctl}): {status_str} in {res['elapsed']:.2f}s, trig_slot={res['trig_slot']}, size={res['size']}B, slot_reset={res['post_slot']}, ctl_reset={res['post_ctl']}")
         sys.stdout.flush()
         time.sleep(3.0)
         
@@ -230,7 +242,7 @@ def main():
         res = run_d0i3_iteration(i, slot, ctl, card=card, device=device)
         d0i3_results.append(res)
         status_str = "PASS" if res["passed"] else "FAIL"
-        print(f"  [D0i3 Run {i:02d}/10] Slot {slot} ({ctl}): {status_str} in {res['elapsed']:.2f}s, d0i3={res['d0i3_state']}, size={res['size']}B, slot_reset={res['post_slot']}, ctl_reset={res['post_ctl']}")
+        print(f"  [D0i3 Run {i:02d}/10] Slot {slot} ({ctl}): {status_str} in {res['elapsed']:.2f}s, trig_slot={res['trig_slot']}, d0i3={res['d0i3_state']}, size={res['size']}B, slot_reset={res['post_slot']}, ctl_reset={res['post_ctl']}")
         sys.stdout.flush()
         time.sleep(6.0)
         
