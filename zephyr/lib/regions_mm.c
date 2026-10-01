@@ -741,7 +741,27 @@ void vmh_log_stats(struct vmh_heap *heap)
 			(stats.max_allocated_bytes / block_size),
 			heap->out_of_blocks[idx]);
 	}
+
 	heap->logged = true;
+}
+
+void vmh_log_alloc_stats(struct vmh_heap *heap)
+{
+	size_t tot_allocated = 0, tot_free = 0;
+
+	for (int idx = 0; idx < MAX_MEMORY_ALLOCATORS_COUNT; idx++) {
+		if (!heap->physical_blocks_allocators[idx])
+			continue;
+
+		struct sys_memory_stats stats = {0};
+
+		sys_mem_blocks_runtime_stats_get(heap->physical_blocks_allocators[idx], &stats);
+
+		tot_allocated += stats.allocated_bytes;
+		tot_free += stats.free_bytes;
+	}
+
+	LOG_INF("allocated %zu free %zu", tot_allocated, tot_free);
 }
 #endif
 
