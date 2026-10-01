@@ -100,19 +100,16 @@ extern "C" {
 	}
 
 	int ov_ns_process(ns_handle handle,
-			  struct input_stream_buffer *input_buffers, int num_input_buffers,
-			  struct output_stream_buffer *output_buffers, int num_output_buffers)
+			  struct cir_buf_source *source,
+			  struct cir_buf_sink *sink,
+			  size_t frame_count)
 	{
-		struct audio_stream *source = (struct audio_stream *)input_buffers[0].data;
-		struct audio_stream *sink = (struct audio_stream *)output_buffers[0].data;
 		struct ns_data *nd = (struct ns_data *)handle;
 		std::vector<float> inp_wave_fp32, out_wave_fp32;
 		/* only 16-bit supported for now */
-		int16_t *input_data = (int16_t *)audio_stream_get_rptr(source);
-		int16_t *output_data = (int16_t *)audio_stream_get_wptr(sink);
-		uint32_t frame_count = input_buffers[0].size;
+		const int16_t *input_data = static_cast<const int16_t >(source->ptr);
+		int16_t *output_data = static_cast<int16_t *>(sink->ptr);
 		float scale = 1.0f / std::numeric_limits<int16_t>::max();
-		int i, j, ch;
 
 		/*
 		 * The noise suppression model only supports mono, so process each channel
@@ -121,17 +118,17 @@ extern "C" {
 		inp_wave_fp32.resize(frame_count, 0);
 		out_wave_fp32.resize(frame_count, 0);
 
-		for (ch = 0; ch < NS_MAX_SOURCE_CHANNELS; ch++) {
+		for (unsigned int ch = 0; ch < NS_MAX_SOURCE_CHANNELS; ch++) {
+			const int16_t *inp = input_data + ch;
+
 			/* split each channel samples and convert to floating point */
-			for (i = ch, j = 0; j < frame_count; i+=2,j++) {
-				void *inp = &input_data[i];
+			for (size_t i = 0, i < frame_count; i++) {
+				inp_wave_fp32[i] = static_cast<float>(*inp) * scale;
 
-				/* wrap if needed */
-				if (inp >= source->end_addr)
-			                inp = (char *)source->addr +
-			                        ((char *)inp - (char *)source->end_addr);
-
-				inp_wave_fp32[j] = (float)(*(int16_t *)inp) * scale;
+				inp = static_cast<const int16_t *>(
+					source_cir_buf_wrap(inp + NS_MAX_SOURCE_CHANNELS,
+							    source->buf_start,
+							    source->buf_end));
 			}
 
 			ov::Tensor input_tensor(ov::element::f32, nd->inp_shape,
@@ -170,17 +167,16 @@ extern "C" {
 			std::memcpy(dst, src, frame_count * sizeof(float));
 
 			/* convert back to int and write back to output buffer */
-			for (i = 0, j = ch; i < frame_count; i++,j+=2) {
-				float v = out_wave_fp32[i];
-				void *out = &output_data[j];
+			int16_t *out = output_data + ch;
+			for (size_t i = 0; i < frame_count; i++) {
+				float v = std::clamp(out_wave_fp32[i], -1.0f, +1.0f);
 
-				/* wrap if needed */
-				if (out >= sink->end_addr)
-			                out = (char *)sink->addr +
-			                        ((char *)out - (char *)sink->end_addr);
+				*out = static_cast<int16_t>(v * std::numeric_limits<int16_t>::max());
 
-				v = std::clamp(v, -1.0f, +1.0f);
-				*(int16_t *)out = (int16_t)(v * std::numeric_limits<int16_t>::max());
+				out = static_cast<int16_t *>(
+					cir_buf_wrap(out + NS_MAX_SOURCE_CHANNELS,
+						     sink->buf_start,
+						     sink->buf_end));
 			}
 		}
 
