@@ -14,6 +14,8 @@
 
 LOG_MODULE_DECLARE(lib_manager, CONFIG_SOF_LOG_LEVEL);
 
+void llext_manager_free_vma(uintptr_t vma, size_t size);
+
 struct lib_manager_dram_storage {
 	struct ext_library ext_lib;
 	struct lib_manager_mod_ctx *ctx;
@@ -331,6 +333,9 @@ nomem:
 		for (k = 0; k < ctx->n_mod; k++) {
 			if (mod[k].llext)
 				llext_unload(&mod[k].llext);
+
+			if (mod[k].vma_base)
+				llext_manager_free_vma(mod[k].vma_base, mod[k].vma_size);
 
 			if (mod[k].ebl)
 				rfree(mod[k].ebl);
