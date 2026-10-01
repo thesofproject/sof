@@ -554,6 +554,30 @@ static int wov_arb_copy(struct comp_dev *dev)
 							*(int32_t *)audio_stream_write_frag_s32(&sink->stream, 2 * i + 1) = s;
 						}
 					}
+				} else if (audio_stream_sample_bytes(&source->stream) !=
+					   audio_stream_sample_bytes(&sink->stream)) {
+					/* The KPB path may present S32 audio while the host sink is S16,
+					 * and the generic audio_stream_copy() expects identical sample widths.
+					 * Convert sample-by-sample instead of copying raw bytes to avoid the
+					 * every-other-sample drop that shows up as a 2x tone on the host.
+					 */
+					if (audio_stream_sample_bytes(&source->stream) == sizeof(int32_t) &&
+					    audio_stream_sample_bytes(&sink->stream) == sizeof(int16_t)) {
+						for (uint32_t i = 0; i < frames; i++) {
+							int32_t s = *(int32_t *)audio_stream_read_frag_s32(&source->stream, i);
+							*(int16_t *)audio_stream_write_frag_s16(&sink->stream, i) = (int16_t)s;
+						}
+					} else if (audio_stream_sample_bytes(&source->stream) == sizeof(int16_t) &&
+						   audio_stream_sample_bytes(&sink->stream) == sizeof(int32_t)) {
+						for (uint32_t i = 0; i < frames; i++) {
+							int16_t s = *(int16_t *)audio_stream_read_frag_s16(&source->stream, i);
+							*(int32_t *)audio_stream_write_frag_s32(&sink->stream, i) = (int32_t)s;
+						}
+					} else {
+						audio_stream_copy(&source->stream, 0,
+								 &sink->stream, 0,
+								 src_bytes / audio_stream_sample_bytes(&source->stream));
+					}
 				} else {
 					audio_stream_copy(&source->stream, 0,
 							  &sink->stream, 0,
