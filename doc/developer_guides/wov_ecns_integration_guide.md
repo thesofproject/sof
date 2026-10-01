@@ -60,14 +60,8 @@ flowchart TD
 
         ECNS["ecns.115.1 (Custom ECNS DP Module · 20ms Period)<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><b>Pin 0 In:</b> 16 kHz, 2ch (IBS 1280 bytes)<br/><b>Pin 1 In:</b> 48 kHz, 2ch (IBS 3840 bytes)<br/>─────────────────────────────────<br/><b>Processing:</b><br/>• Pin 0: Extract Left Ch → 16k Mono Clean<br/>• Pin 1: 1-to-1 Stereo Copy → 48k Stereo Clean<br/>─────────────────────────────────<br/><b>Pin 0 Out:</b> 16 kHz, 1ch mono (OBS 640 bytes)<br/><b>Pin 1 Out:</b> 48 kHz, 2ch stereo (OBS 3840 bytes)"]
 
-        MIXIN_115_1["mixin.115.1 ('KPB mixin')<br/>(16 kHz · 1ch mono)"]
-        MIXIN_115_2["mixin.115.2 ('Host mixin')<br/>(48 kHz · 2ch stereo)"]
-
         MIXOUT_115_2 -->|"Pin 0 In (16k)"| ECNS
         MIXOUT_115_1 -->|"Pin 1 In (48k)"| ECNS
-
-        ECNS -->|"Pin 0 Out (Mono clean)"| MIXIN_115_1
-        ECNS -->|"Pin 1 Out (Stereo clean)"| MIXIN_115_2
     end
 
     MIXIN_119 --> MIXOUT_115_2
@@ -75,23 +69,18 @@ flowchart TD
 
     %% Pipeline 117: Host Capture PCM 11
     subgraph P117 ["Pipeline 117: ECNS Clean Host Capture (Core 0, LL 1ms)"]
-        MIXOUT_117["mixout.117.1<br/>(48 kHz · 2ch stereo)"]
         HOST_11["host-copier.11.capture<br/>(PCM 11: hw:0,11)<br/>2ch Stereo Clean Speech<br/>capture_compatible_d0i3: true"]
-        MIXOUT_117 --> HOST_11
     end
-
-    MIXIN_115_2 --> MIXOUT_117
 
     %% Pipeline 116: KPB History Buffer
     subgraph P116 ["Pipeline 116: KPB History Buffer (Core 0, DP 20ms)"]
-        MIXOUT_116["mixout.116.1<br/>(16 kHz · 1ch mono)"]
         KPB["kpb.116.1<br/>(2.0s mono circular history = 64 KB)"]
         MIXIN_116["mixin.116.1<br/>(Fan-out Bus)"]
-        MIXOUT_116 --> KPB
         KPB -->|"Pin 0 (Live Feed)"| MIXIN_116
     end
 
-    MIXIN_115_1 --> MIXOUT_116
+    ECNS -->|"Pin 1 (Stereo 48k clean direct)"| HOST_11
+    ECNS -->|"Pin 0 (Mono 16k clean direct)"| KPB
 
     %% WOV Keyword Spotter Slots
     subgraph WOV_Slots ["Pipelines 111–113: Concurrent WOV Keyword Spotters (Core 0, DP 10ms)"]

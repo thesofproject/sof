@@ -619,6 +619,110 @@ The **`sof-wcl-rt721-4ch-wov-multi.tplg`** (and corresponding PTL variant `sof-p
   - 4-pin WOV Arbiter (`wov-arbiter.114.1`, Pipeline 114) with active slot selection, host wake support, and audio history stream delivery (`PCM 12`, `DMIC Multi-WOV`, 1ch 16 kHz, `capture_compatible_d0i3: true`).
   - *Note*: DMIC raw `PCM 10` (Pipeline 118) has been completely removed to streamline pipeline topology and conserve DSP memory.
 
+#### Dual-Rate DMIC & Multi-Slot WoV Architecture Diagram
+
+The flowchart below details the dedicated dual-rate DMIC capture, 20ms DP ECNS audio processing, KPB circular buffering, 3-slot microWakeWord keyword detection, and WOV Arbiter routing directly to ALSA capture endpoints without intermediate mixin/mixout widgets:
+
+```mermaid
+flowchart TD
+    %% Hardware Digital Microphone Interfaces
+    subgraph PDM_INTERFACES["Digital Microphone Interfaces (2 Separate PDM DAIs)"]
+        direction LR
+        PDM0["PDM Interface: dmic01\nDAI Index: 0 (PDM0)\nRate: 48 kHz · 2ch Stereo · 16-bit"]
+        PDM1["PDM Interface: dmic16k\nDAI Index: 1 (PDM1)\nRate: 16 kHz · 2ch Stereo · 16-bit"]
+    end
+
+    %% Pipeline 110: 48 kHz DAI Ingest
+    subgraph P110["Pipeline 110 — 48 kHz DAI Ingest (Core 0, LL 1ms)"]
+        DAI0["dai-copier.DMIC.dmic01.capture\n(48 kHz · 2ch · S16_LE)"]
+        MIX110["mixin.110.1\n(48 kHz · 2ch)"]
+        DAI0 --> MIX110
+    end
+
+    %% Pipeline 119: 16 kHz DAI Ingest
+    subgraph P119["Pipeline 119 — 16 kHz DAI Ingest (Core 0, LL 1ms)"]
+        DAI1["dai-copier.DMIC.dmic16k.capture\n(16 kHz · 2ch · S16_LE)"]
+        MIX119["mixin.119.1\n(16 kHz · 2ch)"]
+        DAI1 --> MIX119
+    end
+
+    PDM0 --> DAI0
+    PDM1 --> DAI1
+
+    %% Pipeline 115: Dual-Rate ECNS DP Engine
+    subgraph P115["Pipeline 115 — ECNS Processing Engine (Core 0, DP 20ms, lp_mode 1)"]
+        direction TB
+        MO115_1["mixout.115.1\n(Pin 1 In: 48 kHz · 2ch stereo)"]
+        MO115_2["mixout.115.2\n(Pin 0 In: 16 kHz · 2ch stereo)"]
+        ECNS["ecns.115.1 (Dual-Rate DP Module · 20ms Period)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPin 0 In: 16 kHz, 2ch (IBS 1280B)\nPin 1 In: 48 kHz, 2ch (IBS 3840B)\n─────────────────────────────────────────\nProcessing:\n• Pin 0: Extract Left Ch -> 16k Mono Clean\n• Pin 1: 1-to-1 Stereo Copy -> 48k Stereo Clean\n─────────────────────────────────────────\nPin 0 Out: 16 kHz, 1ch mono (OBS 640B)\nPin 1 Out: 48 kHz, 2ch stereo (OBS 3840B)"]
+        MO115_2 -->|"Pin 0 In (16k 2ch)"| ECNS
+        MO115_1 -->|"Pin 1 In (48k 2ch)"| ECNS
+    end
+
+    MIX119 --> MO115_2
+    MIX110 --> MO115_1
+
+    %% Pipeline 117: Host Capture PCM 11 (Direct from ECNS Pin 1)
+    subgraph P117["Pipeline 117 — ECNS Clean Host Capture (Core 0, LL 1ms)"]
+        HOST11["host-copier.11.capture\n(PCM 11: 'DMIC ECNS Capture' · hw:0,11)\n2ch · 48 kHz · S16/S32_LE\ncapture_compatible_d0i3: true"]
+    end
+
+    %% Pipeline 116: KPB History Buffer (Direct from ECNS Pin 0)
+    subgraph P116["Pipeline 116 — 20ms DP KPB History Buffer (Core 0, DP 20ms)"]
+        KPB["kpb.116.1\n(Key Phrase Buffer · 2000ms = 64 KB)\n16 kHz · 1ch mono · S16_LE\nPin 0: sel_sink | Pin 1: host_sink"]
+        MIX116["mixin.116.1\n(3-way detector fanout bus)"]
+        KPB -->|"Pin 0 (Live Audio Feed)"| MIX116
+    end
+
+    ECNS -- "Pin 1 (Direct Stereo 48k Clean)" --> HOST11
+    ECNS -- "Pin 0 (Direct Mono 16k Clean)" --> KPB
+
+    %% Pipelines 111-113: microWakeWord Detector Slots
+    subgraph SLOTS["Pipelines 111–113 — microWakeWord Detector Slots (Core 0, DP 10ms)"]
+        subgraph S0["Slot 0 (Pipeline 111)"]
+            MO111["mixout.111.1"] --> MFCC0["mfcc.111.1\n(Mel-40 10ms)"] --> MWW0["mww.111.1\n(Model: Slot 0)\nControl: wovdebug_111"]
+        end
+        subgraph S1["Slot 1 (Pipeline 112)"]
+            MO112["mixout.112.1"] --> MFCC1["mfcc.112.1\n(Mel-40 10ms)"] --> MWW1["mww.112.1\n(Model: Slot 1)\nControl: wovdebug_112"]
+        end
+        subgraph S2["Slot 2 (Pipeline 113)"]
+            MO113["mixout.113.1"] --> MFCC2["mfcc.113.1\n(Mel-40 10ms)"] --> MWW2["mww.113.1\n(Model: Slot 2)\nControl: wovdebug_113"]
+        end
+    end
+
+    MIX116 --> MO111
+    MIX116 --> MO112
+    MIX116 --> MO113
+
+    %% Pipeline 114: WOV Arbiter & Multi-WOV Host Capture
+    subgraph P114["Pipeline 114 — WOV Arbiter & Multi-WOV Host Capture (Core 0, LL 1ms)"]
+        ARB["wov-arbiter.114.1\n(4-Pin Arbiter · Active Slot Routing)\nPin 0: Audio Drain | Pins 1-3: Trigger Features"]
+        HOST12["host-copier.12.capture\n(PCM 12: 'DMIC Multi-WOV' · hw:0,12)\n1ch · 16 kHz · S16/S32_LE\ncapture_compatible_d0i3: true"]
+        ARB --> HOST12
+    end
+
+    KPB -->|"Pin 1 (2.0s History Pre-roll Drain)"| ARB
+    MWW0 -->|"Pin 1 (Keyword Trigger 0)"| ARB
+    MWW1 -->|"Pin 2 (Keyword Trigger 1)"| ARB
+    MWW2 -->|"Pin 3 (Keyword Trigger 2)"| ARB
+
+    MWW0 -. "Notifier WOV_DETECT (slot=0)" .-> ARB
+    MWW1 -. "Notifier WOV_DETECT (slot=1)" .-> ARB
+    MWW2 -. "Notifier WOV_DETECT (slot=2)" .-> ARB
+    MWW0 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
+    MWW1 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
+    MWW2 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
+    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MWW0
+    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MWW1
+    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MWW2
+
+    style ECNS fill:#1b4f72,stroke:#5dade2,color:#fff
+    style KPB fill:#1c4966,stroke:#5dade2,color:#fff
+    style ARB fill:#4a235a,stroke:#bb8fce,color:#fff
+    style HOST11 fill:#1e8449,stroke:#58d68d,color:#fff
+    style HOST12 fill:#2d5a27,stroke:#58d68d,color:#fff
+```
+
 #### Full System Architecture Graph
 
 ```mermaid
