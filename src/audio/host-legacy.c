@@ -876,8 +876,7 @@ out:
 
 	if (err >= 0)
 		/* set up callback */
-		notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY,
-				  cb ? : host_dma_cb, 0);
+		notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, cb ? : host_dma_cb);
 
 	return err;
 }
