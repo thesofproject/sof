@@ -287,6 +287,14 @@ config MATH_32BIT_MEL_FILTERBANK
 
 endmenu
 
+config MATH_PCAN
+	bool "PCAN (Per-Channel AGC Normalization) library"
+	default n
+	help
+	  Select this to build PCAN (Per-Channel Automatic Gain Control Normalization)
+	  library. PCAN performs dynamic per-channel gain control and piecewise polynomial
+	  root compression across time to suppress stationary noise and enhance acoustic transients.
+
 config MATH_DCT
 	bool "DCT transform library"
 	default n

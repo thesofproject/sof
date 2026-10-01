@@ -11,6 +11,7 @@ config COMP_MFCC
 	select MATH_DECIBELS
 	select MATH_FFT
 	select MATH_MATRIX
+	select MATH_PCAN
 	select MATH_WINDOW
 	select NATURAL_LOGARITHM_FIXED
 	select NUMBERS_NORM
