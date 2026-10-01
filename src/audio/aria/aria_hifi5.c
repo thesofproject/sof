@@ -25,7 +25,7 @@ static inline void set_circular_buf1(const void *start, const void *end)
 }
 
 inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
-				struct audio_stream *source, int frames)
+				struct cir_buf_source *source, size_t frames)
 {
 	/* detecting maximum value in data chunk */
 	ae_int32x2 in_sample;
@@ -36,12 +36,12 @@ inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
 	uint64_t gain = (1ULL << (att + 32)) - 1;
 	int32_t *max_ptr = (int32_t *)&max_data;
 	int32_t max;
-	int samples = frames * audio_stream_get_channels(source);
-	ae_int32x4 *in = audio_stream_get_rptr(source);
-	int i, n, left;
+	size_t samples = frames * cd->chan_cnt;
+	const ae_int32x4 *in = source->ptr;
+	size_t i, n, left;
 
 	while (samples) {
-		n = audio_stream_samples_without_wrap_s32(source, in);
+		n = cir_buf_samples_without_wrap_s32(in, source->buf_end);
 		n = MIN(samples, n);
 		left = n & 3;
 		inu = AE_LA128_PP(in);
@@ -54,7 +54,7 @@ inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
 			AE_L32_IP(in_sample, (ae_int32 *)in, sizeof(ae_int32));
 			max_data = AE_MAXABS32S(max_data, AE_SLAI32(in_sample, 8));
 		}
-		in = audio_stream_wrap(source, in);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		samples -= n;
 	}
 
@@ -69,38 +69,40 @@ inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
 }
 
 static void aria_algo_get_data_odd_channel(struct processing_module *mod,
-					   struct audio_stream *sink,
-					   int frames)
+					   struct cir_buf_sink *sink,
+					   size_t frames)
 {
 	struct aria_data *cd = module_get_private_data(mod);
-	size_t i, ch;
+	size_t i;
 	ae_int32x2 step;
 	int32_t gain_state_add_2 = cd->gain_state + 2;
 	int32_t gain_state_add_3 = cd->gain_state + 3;
 	int32_t gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2]];
 	/* do linear approximation between points gain_begin and gain_end */
 	int32_t gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3]];
-	ae_int32 *out = audio_stream_get_wptr(sink);
-	ae_int32 *in = (ae_int32 *)cd->data_ptr;
+	ae_int32 *out = sink->ptr;
+	const ae_int32 *in = (const ae_int32 *)cd->data_ptr;
 	ae_int32x2 in_sample, out_sample;
 	const int inc = sizeof(ae_int32);
 	ae_int32x2 gain;
-	const int ch_n = cd->chan_cnt;
+	const unsigned int ch_n = cd->chan_cnt;
 	const int shift_bits = 31 - cd->att - 24;
+	unsigned int ch;
 	ae_int64 out1;
+	int idx;
 
-	for (i = 1; i < ARIA_MAX_GAIN_STATES - 1; i++) {
-		if (cd->gains[sof_aria_index_tab[gain_state_add_2 + i]] < gain_begin)
-			gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2 + i]];
-		if (cd->gains[sof_aria_index_tab[gain_state_add_3 + i]] < gain_end)
-			gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3 + i]];
+	for (idx = 1; idx < ARIA_MAX_GAIN_STATES - 1; idx++) {
+		if (cd->gains[sof_aria_index_tab[gain_state_add_2 + idx]] < gain_begin)
+			gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2 + idx]];
+		if (cd->gains[sof_aria_index_tab[gain_state_add_3 + idx]] < gain_end)
+			gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3 + idx]];
 	}
 
-	step = (gain_end - gain_begin) / frames;
+	step = (gain_end - gain_begin) / (int32_t)frames;
 	gain = gain_begin;
 
 	set_circular_buf0(cd->data_addr, cd->data_end);
-	set_circular_buf1(audio_stream_get_addr(sink), audio_stream_get_end_addr(sink));
+	set_circular_buf1(sink->buf_start, sink->buf_end);
 
 	for (i = 0; i < frames; i++) {
 		/*process data one by one if ch_n is odd*/
@@ -119,38 +121,40 @@ static void aria_algo_get_data_odd_channel(struct processing_module *mod,
 }
 
 static void aria_algo_get_data_even_channel(struct processing_module *mod,
-					    struct audio_stream *sink,
-					    int frames)
+					    struct cir_buf_sink *sink,
+					    size_t frames)
 {
 	struct aria_data *cd = module_get_private_data(mod);
-	size_t i, ch;
+	size_t i;
 	ae_int32x2 step;
 	int32_t gain_state_add_2 = cd->gain_state + 2;
 	int32_t gain_state_add_3 = cd->gain_state + 3;
 	int32_t gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2]];
 	/* do linear approximation between points gain_begin and gain_end */
 	int32_t gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3]];
-	ae_int32x2 *out = audio_stream_get_wptr(sink);
-	ae_int32x2 *in = (ae_int32x2 *)cd->data_ptr;
+	ae_int32x2 *out = sink->ptr;
+	const ae_int32x2 *in = (const ae_int32x2 *)cd->data_ptr;
 	ae_int32x2 in_sample, out_sample;
 	ae_int32x2 gain;
-	const int ch_n = cd->chan_cnt;
+	const unsigned int ch_n = cd->chan_cnt;
 	const int inc = sizeof(ae_int32x2);
 	const int shift_bits = 31 - cd->att - 24;
+	unsigned int ch;
 	ae_int64 out1, out2;
+	int idx;
 
-	for (i = 1; i < ARIA_MAX_GAIN_STATES - 1; i++) {
-		if (cd->gains[sof_aria_index_tab[gain_state_add_2 + i]] < gain_begin)
-			gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2 + i]];
-		if (cd->gains[sof_aria_index_tab[gain_state_add_3 + i]] < gain_end)
-			gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3 + i]];
+	for (idx = 1; idx < ARIA_MAX_GAIN_STATES - 1; idx++) {
+		if (cd->gains[sof_aria_index_tab[gain_state_add_2 + idx]] < gain_begin)
+			gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2 + idx]];
+		if (cd->gains[sof_aria_index_tab[gain_state_add_3 + idx]] < gain_end)
+			gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3 + idx]];
 	}
 
-	step = (gain_end - gain_begin) / frames;
+	step = (gain_end - gain_begin) / (int32_t)frames;
 	gain = gain_begin;
 
 	set_circular_buf0(cd->data_addr, cd->data_end);
-	set_circular_buf1(audio_stream_get_addr(sink), audio_stream_get_end_addr(sink));
+	set_circular_buf1(sink->buf_start, sink->buf_end);
 
 	for (i = 0; i < frames; i++) {
 		/*process 2 samples per time if ch_n is even*/
