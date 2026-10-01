@@ -485,18 +485,12 @@ graph TD
     subgraph P105["Pipeline 105 — ECNS DP Processing  (Core 0, DP 20ms)"]
         MO105["mixout 105.1\n(4ch input)"]
         ECNS["ecns.105.1\n(ECNS DP Module, 20ms = 320 frames)\nCh 0,1: Mic | Ch 2,3: Echo Ref"]
-        MIX105_1["mixin 105.1\nPin 0: Ch 0 Mono Clean"]
-        MIX105_2["mixin 105.2\nPin 1: Ch 0,1 Stereo Clean"]
         MO105 --> ECNS
-        ECNS -- "Pin 0 (Mono)" --> MIX105_1
-        ECNS -- "Pin 1 (Stereo)" --> MIX105_2
     end
 
     subgraph P106["Pipeline 106 — KPB History Buffer  (Core 0, DP 20ms)"]
-        MO106["mixout 106.1\n(1ch mono)"]
         KPB["kpb.106.1\n(2.0s mono history = 64 KB)\n16 kHz · 1ch · S16_LE\nPin 0: sel_sink | Pin 1: host_sink"]
         MIX106["mixin 106.1\n(3-way fanout mixin)"]
-        MO106 --> KPB
         KPB -- "Pin 0 (sel_sink)" --> MIX106
     end
 
@@ -528,14 +522,12 @@ graph TD
     end
 
     subgraph P107["Pipeline 107 — ECNS Host PCM Capture  (Core 0, LL 1ms)"]
-        MO107["mixout 107.1\n(2ch stereo)"]
         HC10["host-copier.10\n(hw:0,10 · PCM 10)\n2ch · 16 kHz · S16_LE / S32_LE"]
-        MO107 --> HC10
     end
 
     MIX100 --> MO105
-    MIX105_1 --> MO106
-    MIX105_2 --> MO107
+    ECNS -- "Pin 0 (Mono Clean direct)" --> KPB
+    ECNS -- "Pin 1 (Stereo Clean direct)" --> HC10
     MIX106 --> MO101
     MIX106 --> MO102
     MIX106 --> MO103
@@ -742,31 +734,23 @@ graph TD
         MO115_1["mixout.115.1\n(Pin 1 In: 48 kHz · 2ch stereo)"]
         MO115_2["mixout.115.2\n(Pin 0 In: 16 kHz · 2ch stereo)"]
         ECNS115["ecns.115.1\n(Dual-Rate DP Module · 20ms period)\nPin 0: Extract Left Ch -> 16k Mono Clean\nPin 1: 1-to-1 Stereo Copy -> 48k Stereo Clean"]
-        MIX115_1["mixin.115.1\n('KPB mixin' · Pin 0 Out: 16 kHz mono)"]
-        MIX115_2["mixin.115.2\n('Host mixin' · Pin 1 Out: 48 kHz stereo)"]
         MO115_2 -->|"Pin 0 In"| ECNS115
         MO115_1 -->|"Pin 1 In"| ECNS115
-        ECNS115 -- "Pin 0 (Mono 16k)" --> MIX115_1
-        ECNS115 -- "Pin 1 (Stereo 48k)" --> MIX115_2
     end
     MIX110 --> MO115_1
     MIX119 --> MO115_2
 
     subgraph P117["Pipeline 117 — ECNS Clean Host Capture  (Core 0, LL 1ms)"]
-        MO117["mixout.117.1\n(2ch clean stereo · 48 kHz)"]
         HC11["host-copier.11.capture\n(PCM 11: 'DMIC ECNS Capture')\n2ch · 48 kHz · S16/S32_LE\ncapture_compatible_d0i3 = true"]
-        MO117 --> HC11
     end
-    MIX115_2 --> MO117
+    ECNS115 -- "Pin 1 (Stereo 48k Clean direct)" --> HC11
 
     subgraph P116["Pipeline 116 — 20ms DP KPB History Buffer  (Core 0, DP 20ms)"]
-        MO116["mixout.116.1\n(1ch mono input · 16 kHz)"]
         KPB116["kpb.116.1\n(Key Phrase Buffer · 2000ms = 64 KB)\nPin 0: sel_sink (Real-time live feed)\nPin 1: host_sink (Drain History)"]
         MIX116["mixin.116.1\n(3-way detector fanout)"]
-        MO116 --> KPB116
         KPB116 -- "Pin 0 (sel_sink)" --> MIX116
     end
-    MIX115_1 --> MO116
+    ECNS115 -- "Pin 0 (Mono 16k Clean direct)" --> KPB116
 
     subgraph P111["Pipeline 111 — Slot 0 Detector  (Core 0, DP 10ms)"]
         MO111["mixout.111.1"]
@@ -846,7 +830,7 @@ graph TD
 | **PCM 5** | `HDMI1` | Playback | 2–8 | 48 kHz | S16_LE, S32_LE | P50, P51 | Intel Display Audio HDMI/DP 1 (`host-copier.5.playback` -> `dai-copier.HDA.iDisp1.playback`) | No |
 | **PCM 6** | `HDMI2` | Playback | 2–8 | 48 kHz | S16_LE, S32_LE | P60, P61 | Intel Display Audio HDMI/DP 2 (`host-copier.6.playback` -> `dai-copier.HDA.iDisp2.playback`) | No |
 | **PCM 7** | `HDMI3` | Playback | 2–8 | 48 kHz | S16_LE, S32_LE | P70, P71 | Intel Display Audio HDMI/DP 3 (`host-copier.7.playback` -> `dai-copier.HDA.iDisp3.playback`) | No |
-| **PCM 11** | `DMIC ECNS Capture` | Capture | 2 | 48 kHz | S16_LE, S32_LE | P110, P115, P117 | Continuous clean stereo audio capture processed through 20ms DP ECNS module (`dai-copier.DMIC.dmic01.capture` -> `mixin.110.1` -> `mixout.115.1` -> `ecns.115.1` Pin 1 -> `mixin.115.2` -> `mixout.117.1` -> `host-copier.11.capture`) | **Yes** (`capture_compatible_d0i3 true`) |
+| **PCM 11** | `DMIC ECNS Capture` | Capture | 2 | 48 kHz | S16_LE, S32_LE | P110, P115, P117 | Continuous clean stereo audio capture processed through 20ms DP ECNS module (`dai-copier.DMIC.dmic01.capture` -> `mixin.110.1` -> `mixout.115.1` -> `ecns.115.1` Pin 1 -> `host-copier.11.capture`) | **Yes** (`capture_compatible_d0i3 true`) |
 | **PCM 12** | `DMIC Multi-WOV` | Capture | 1 | 16 kHz | S16_LE, S32_LE | P119, P115, P116, P111-113, P114 | Gated mono Wake-on-Voice capture stream from 4-pin WOV Arbiter (`dai-copier.DMIC.dmic16k.capture` -> `mixin.119.1` -> `mixout.115.2` -> `ecns.115.1` Pin 0 mono clean -> `kpb.116.1` -> `wov-arbiter.114.1` -> `host-copier.12.capture`). Supports S0 keyword detection and D0i3 platform suspend/wake via AudioDSP MSI IRQ. | **Yes** (`capture_compatible_d0i3 true`) |
 | **PCM 31** | `Deepbuffer Jack Out` | Playback | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P15, P1 | Low-power deep-buffer playback to headphone jack (`host-copier.31.playback` -> `gain.15.1` -> `mixin.15.1` -> `mixout.1.1`) | No |
 | **PCM 35** | `Deepbuffer Speaker` | Playback | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P16, P21 | Low-power deep-buffer playback to SmartAmp speakers (`host-copier.35.playback` -> `gain.16.1` -> `mixin.16.1` -> `mixout.21.1`) | No |
