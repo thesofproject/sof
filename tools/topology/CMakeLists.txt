@@ -52,6 +52,8 @@ else()
 		return()
 	endif()
 	# success
+
+	message("-- alsatplg version: " ${ALSATPLG_VERSION_NUMBER})
 endif()
 
 
