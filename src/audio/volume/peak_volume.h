@@ -73,12 +73,12 @@ struct ipc4_peak_volume_config {
 	 * initialization.
 	 */
 	uint64_t curve_duration;
-} __packed __aligned(8);
+} __packed __aligned(4);
 
 struct ipc4_peak_volume_module_cfg {
 	struct ipc4_base_module_cfg base_cfg;
 	struct ipc4_peak_volume_config config[];
-} __packed __aligned(8);
+} __packed __aligned(4);
 
 static inline enum sof_volume_ramp ipc4_curve_type_convert(enum ipc4_curve_type ipc4_type)
 {

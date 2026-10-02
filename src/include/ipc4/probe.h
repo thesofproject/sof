@@ -92,6 +92,6 @@ struct sof_ipc_probe_info_params {
 struct ipc4_probe_module_cfg {
 	struct ipc4_base_module_cfg base_cfg;
 	struct probe_dma gtw_cfg;
-} __packed __aligned(8);
+} __packed __aligned(4);
 
 #endif /* __SOF_IPC4_PROBE_H__ */
