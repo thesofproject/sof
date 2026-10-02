@@ -60,9 +60,13 @@ def set_kcontrol(name, val, card=0):
 def reset_all_controls(card=0, slots=None):
     if slots is None:
         slots = find_wov_slots(card)
-    set_kcontrol("wov_active_slot", 0, card=card)
+    val = get_kcontrol("wov_active_slot", card=card)
+    if val is not None and val != "0":
+        set_kcontrol("wov_active_slot", 0, card=card)
     for _, ctl in slots:
-        set_kcontrol(ctl, 0, card=card)
+        val = get_kcontrol(ctl, card=card)
+        if val is not None and val not in ("0", "off"):
+            set_kcontrol(ctl, 0, card=card)
 
 def get_dsp_power_state():
     """Check most recent DSP power state from dmesg."""
@@ -90,6 +94,27 @@ def check_d0i3_transition(t_start):
         pass
     return False
 
+def check_wav_continuity(wav_path):
+    """Check if test signal is strictly monotonic (diff == 1, 0 skips)."""
+    if not os.path.exists(wav_path) or os.path.getsize(wav_path) == 0:
+        return False, "file missing/empty"
+    try:
+        import struct, wave
+        with wave.open(wav_path) as w:
+            n = w.getnframes()
+            if n < 100:
+                return False, f"too few frames: {n}"
+            raw = w.readframes(n)
+            samples = struct.unpack(f"{n}h", raw)
+            skips = 0
+            for i in range(len(samples) - 1):
+                diff = (samples[i + 1] - samples[i]) & 0xffff
+                if diff != 1:
+                    skips += 1
+            return (skips == 0), f"{n} frames, {skips} skips"
+    except Exception as e:
+        return False, str(e)
+
 def run_s0_iteration(iteration, slot, ctl, card=0, device=None):
     if device is None:
         device = find_wov_pcm(card)
@@ -105,6 +130,7 @@ def run_s0_iteration(iteration, slot, ctl, card=0, device=None):
     elapsed = time.monotonic() - t0
     
     file_sz = os.path.getsize(out_wav) if os.path.exists(out_wav) else 0
+    continuity_ok, continuity_msg = check_wav_continuity(out_wav)
     
     # Wait up to 1.5s for async control updates to settle
     post_slot = None
@@ -126,7 +152,7 @@ def run_s0_iteration(iteration, slot, ctl, card=0, device=None):
     if m:
         trig_slot = int(m.group(1))
 
-    passed = (p.returncode == 0) and (file_sz > 0) and (post_slot == "0") and (post_ctl == "off") and (trig_slot == slot)
+    passed = (p.returncode == 0) and (file_sz > 0) and (post_slot == "0") and (post_ctl == "off") and (trig_slot == slot) and continuity_ok
     return {
         "iteration": iteration,
         "mode": "S0",
@@ -137,6 +163,7 @@ def run_s0_iteration(iteration, slot, ctl, card=0, device=None):
         "size": file_sz,
         "post_slot": post_slot,
         "post_ctl": post_ctl,
+        "continuity": continuity_msg,
         "passed": passed,
     }
 
@@ -154,20 +181,12 @@ def run_d0i3_iteration(iteration, slot, ctl, card=0, device=None):
     t_start = time.clock_gettime(time.CLOCK_BOOTTIME)
     t0 = time.monotonic()
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    
-    # Poll for DSP D0I3 state between 5.7s and 6.8s
-    time.sleep(5.7)
-    d0i3_state = "UNKNOWN"
-    for _ in range(12):
-        if check_d0i3_transition(t_start):
-            d0i3_state = "D0I3"
-            break
-        time.sleep(0.1)
-    
     stdout, stderr = proc.communicate(timeout=25)
     elapsed = time.monotonic() - t0
     
+    d0i3_state = "D0I3" if check_d0i3_transition(t_start) else "UNKNOWN"
     file_sz = os.path.getsize(out_wav) if os.path.exists(out_wav) else 0
+    continuity_ok, continuity_msg = check_wav_continuity(out_wav)
     
     # Wait up to 1.5s for async control updates to settle
     post_slot = None
@@ -191,7 +210,7 @@ def run_d0i3_iteration(iteration, slot, ctl, card=0, device=None):
     if m:
         trig_slot = int(m.group(1))
 
-    passed = (proc.returncode == 0) and (file_sz > 0) and (post_slot == "0") and (post_ctl == "off") and (d0i3_state == "D0I3") and (trig_slot == slot)
+    passed = (proc.returncode == 0) and (file_sz > 0) and (post_slot == "0") and (post_ctl == "off") and (d0i3_state == "D0I3") and (trig_slot == slot) and continuity_ok
     return {
         "iteration": iteration,
         "mode": "D0i3",
@@ -204,6 +223,9 @@ def run_d0i3_iteration(iteration, slot, ctl, card=0, device=None):
         "post_slot": post_slot,
         "post_ctl": post_ctl,
         "post_pstate": post_pstate,
+        "continuity": continuity_msg,
+        "stdout": stdout,
+        "stderr": stderr,
         "passed": passed,
     }
 
@@ -220,8 +242,10 @@ def main():
     # Ensure dynamic debug is enabled for DSP power state messages
     subprocess.run('echo "file hda-dsp.c +p" > /sys/kernel/debug/dynamic_debug/control 2>/dev/null', shell=True)
     
-    # Initial cleanup
+    # Initial cleanup and enable test signal
     reset_all_controls(card=card, slots=slots)
+    set_kcontrol("ecns_kpb_test_signal", "on", card=card)
+    print("Enabled ecns_kpb_test_signal: on")
     time.sleep(1.0)
     
     s0_results = []
@@ -231,7 +255,7 @@ def main():
         res = run_s0_iteration(i, slot, ctl, card=card, device=device)
         s0_results.append(res)
         status_str = "PASS" if res["passed"] else "FAIL"
-        print(f"  [S0 Run {i:02d}/10] Slot {slot} ({ctl}): {status_str} in {res['elapsed']:.2f}s, trig_slot={res['trig_slot']}, size={res['size']}B, slot_reset={res['post_slot']}, ctl_reset={res['post_ctl']}")
+        print(f"  [S0 Run {i:02d}/10] Slot {slot} ({ctl}): {status_str} in {res['elapsed']:.2f}s, trig_slot={res['trig_slot']}, size={res['size']}B, continuity=[{res['continuity']}], slot_reset={res['post_slot']}, ctl_reset={res['post_ctl']}")
         sys.stdout.flush()
         time.sleep(3.0)
         
@@ -242,9 +266,14 @@ def main():
         res = run_d0i3_iteration(i, slot, ctl, card=card, device=device)
         d0i3_results.append(res)
         status_str = "PASS" if res["passed"] else "FAIL"
-        print(f"  [D0i3 Run {i:02d}/10] Slot {slot} ({ctl}): {status_str} in {res['elapsed']:.2f}s, trig_slot={res['trig_slot']}, d0i3={res['d0i3_state']}, size={res['size']}B, slot_reset={res['post_slot']}, ctl_reset={res['post_ctl']}")
+        print(f"  [D0i3 Run {i:02d}/10] Slot {slot} ({ctl}): {status_str} in {res['elapsed']:.2f}s, trig_slot={res['trig_slot']}, d0i3={res['d0i3_state']}, size={res['size']}B, continuity=[{res['continuity']}], slot_reset={res['post_slot']}, ctl_reset={res['post_ctl']}")
+        if not res["passed"]:
+            if res.get("stderr"):
+                print(f"      STDERR: {res['stderr'].strip()}")
+            if res.get("stdout"):
+                print(f"      STDOUT: {res['stdout'].strip()}")
         sys.stdout.flush()
-        time.sleep(6.0)
+        time.sleep(5.0)
         
     print("\n" + "=" * 70)
     print("  FINAL VALIDATION SUMMARY")

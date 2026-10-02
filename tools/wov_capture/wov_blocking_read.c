@@ -117,6 +117,18 @@ int main(int argc, char **argv)
 	printf("period_size=%lu buffer_size=%lu rate=%u\n",
 	       (unsigned long)period_size, (unsigned long)buffer_size, rate);
 
+	/* Set software params: avail_min = 160 frames (10ms) so poll() wakes on any drained audio */
+	snd_pcm_sw_params_t *sw;
+	snd_pcm_sw_params_alloca(&sw);
+	snd_pcm_sw_params_current(pcm, sw);
+	snd_pcm_sw_params_set_avail_min(pcm, sw, 160);
+	err = snd_pcm_sw_params(pcm, sw);
+	if (err < 0) {
+		fprintf(stderr, "sw_params failed: %s\n", snd_strerror(err));
+		snd_pcm_close(pcm);
+		return 1;
+	}
+
 	err = snd_pcm_prepare(pcm);
 	if (err < 0) {
 		fprintf(stderr, "prepare failed: %s\n", snd_strerror(err));
@@ -172,20 +184,20 @@ int main(int argc, char **argv)
 	fflush(stdout);
 
 	while (frames_captured < total_frames) {
-		err = snd_pcm_wait(pcm, 15000);
-		if (err <= 0) {
-			fprintf(stderr, "wait error or timeout: %d\n", err);
-			break;
-		}
-
 		snd_pcm_uframes_t to_read = sizeof(buf) / sizeof(buf[0]);
 		if (to_read > total_frames - frames_captured)
 			to_read = total_frames - frames_captured;
 
 		snd_pcm_sframes_t n = snd_pcm_readi(pcm, buf, to_read);
 		if (n < 0) {
-			if (n == -EAGAIN)
+			if (n == -EAGAIN) {
+				err = snd_pcm_wait(pcm, 15000);
+				if (err <= 0) {
+					fprintf(stderr, "wait error or timeout: %d\n", err);
+					break;
+				}
 				continue;
+			}
 			fprintf(stderr, "read error: %s\n", snd_strerror((int)n));
 			break;
 		}
