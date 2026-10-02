@@ -111,10 +111,6 @@ struct sel_test_state {
 	struct processing_module *mod;
 	struct comp_buffer *sink;
 	struct comp_buffer *source;
-	struct input_stream_buffer *input;
-	struct output_stream_buffer *output;
-	size_t size;
-	uint32_t channels;
 	void (*verify)(struct processing_module *mod, struct audio_stream *sink,
 		       struct audio_stream *source);
 };
@@ -171,7 +167,6 @@ static int setup(void **state)
 	/* allocate new sink buffer */
 	size = parameters->frames * get_frame_bytes(parameters->sink_format,
 	       parameters->out_channels) * parameters->buffer_size_ms;
-	sel_state->size = size;
 	sel_state->sink = create_test_sink(dev, 0, parameters->sink_format,
 					   parameters->out_channels, size);
 
@@ -181,11 +176,6 @@ static int setup(void **state)
 
 	sel_state->source = create_test_source(dev, 0, parameters->source_format,
 					       parameters->in_channels, size);
-
-	sel_state->input = test_malloc(sizeof(struct input_stream_buffer));
-	sel_state->input->data = &sel_state->source->stream;
-	sel_state->output = test_malloc(sizeof(struct output_stream_buffer));
-	sel_state->output->data = &sel_state->sink->stream;
 
 	/* assigns verification function */
 	sel_state->verify = parameters->verify;
@@ -205,8 +195,6 @@ static int teardown(void **state)
 	test_free(cd);
 	test_free(sel_state->mod->dev);
 	test_free(sel_state->mod);
-	test_free(sel_state->input);
-	test_free(sel_state->output);
 	free_test_sink(sel_state->sink);
 	free_test_source(sel_state->source);
 	test_free(sel_state);
@@ -419,10 +407,25 @@ static void test_audio_sel(void **state)
 {
 	struct sel_test_state *sel_state = *state;
 #if CONFIG_IPC_MAJOR_3
+	struct sof_source *source = audio_buffer_get_source(&sel_state->source->audio_buffer);
+	struct sof_sink *sink = audio_buffer_get_sink(&sel_state->sink->audio_buffer);
+	int ret;
 	struct comp_data *cd = comp_get_drvdata(sel_state->dev);
 #else
 	struct processing_module *mod = sel_state->mod;
 	struct comp_data *cd = module_get_private_data(mod);
+	const struct audio_stream *source_stream = &sel_state->source->stream;
+	struct audio_stream *sink_stream = &sel_state->sink->stream;
+	struct cir_buf_source source_buf = {
+		.buf_start = audio_stream_get_addr(source_stream),
+		.buf_end = audio_stream_get_end_addr(source_stream),
+		.ptr = audio_stream_get_rptr(source_stream),
+	};
+	struct cir_buf_sink sink_buf = {
+		.buf_start = audio_stream_get_addr(sink_stream),
+		.buf_end = audio_stream_get_end_addr(sink_stream),
+		.ptr = audio_stream_get_wptr(sink_stream),
+	};
 #endif
 
 	switch (cd->source_format) {
@@ -447,17 +450,13 @@ static void test_audio_sel(void **state)
 	}
 
 #if CONFIG_IPC_MAJOR_3
-	cd->sel_func(sel_state->dev, &sel_state->sink->stream, &sel_state->source->stream,
-		     sel_state->dev->frames);
+	ret = cd->sel_func(sel_state->dev, sink, source, sel_state->dev->frames);
+	assert_int_equal(ret, 0);
 
 	sel_state->verify(sel_state->dev, &sel_state->sink->stream, &sel_state->source->stream);
 
 #else
-	sel_state->input->consumed = 0;
-	sel_state->output->size = 0;
-
-	cd->sel_func(mod, sel_state->input, sel_state->output,
-		     mod->dev->frames);
+	cd->sel_func(mod, &source_buf, &sink_buf, mod->dev->frames);
 
 	sel_state->verify(mod, &sel_state->sink->stream, &sel_state->source->stream);
 #endif
