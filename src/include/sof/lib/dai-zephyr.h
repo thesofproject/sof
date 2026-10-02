@@ -29,6 +29,9 @@
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/component.h>
+#ifdef CONFIG_UAOL_INTEL_ADSP
+#include <sof/audio/dsrc.h>
+#endif
 #include <ipc/dai.h>
 #include <errno.h>
 #include <stddef.h>
@@ -113,6 +116,28 @@ typedef int (*channel_copy_func)(const struct audio_stream *src, unsigned int sr
 				 struct audio_stream *dst, unsigned int dst_channel,
 				 unsigned int frames);
 
+#ifdef CONFIG_UAOL_INTEL_ADSP
+struct uaol_dai_data {
+	int feedback_drift;
+	uint32_t ms_since_last_adjustment;
+
+	/* the feedback flows link to memory, unlike the playback data on dd->dma */
+	struct sof_dma *fb_dma;
+	int fb_chan_idx;
+	uint32_t *fb_dma_buf;
+	size_t fb_dma_buf_size;
+	struct dma_config *fb_z_config;
+
+	struct dsrc dsrc;
+	struct comp_buffer *dsrc_buf;
+	/* bytes DSRC wrote to dma_buffer on top of the last copy size */
+	uint32_t dma_added_bytes;
+
+	int link_id;
+	int stream_id;
+};
+#endif
+
 /**
  * \brief DAI runtime data
  */
@@ -146,6 +171,10 @@ struct dai_data {
 	void *dai_spec_config;			/* dai specific config from the host */
 
 	uint64_t wallclock;			/* wall clock at stream start */
+
+#ifdef CONFIG_UAOL_INTEL_ADSP
+	struct uaol_dai_data uaol;
+#endif
 
 	/*
 	 * flag indicating two-step stop/pause for DAI comp and DAI DMA.
@@ -245,6 +274,21 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *config,
 		   const void *spec_config, size_t size);
 
 /**
+ * \brief Get a copy of DAI properties
+ *
+ * Uses dai_get_properties_copy() when implemented by the driver, falling
+ * back to a locked dai_get_properties() in kernel LL builds.
+ *
+ * \param[in] dai DAI instance
+ * \param[in] direction Stream direction
+ * \param[in] stream_id Stream ID
+ * \param[out] props Destination for the copied properties
+ * \return 0 on success, negative error code otherwise
+ */
+int dai_get_properties_safe(struct dai *dai, int direction,
+			    int stream_id, struct dai_properties *props);
+
+/**
  * \brief Get Digital Audio interface DMA Handshake
  */
 int dai_get_handshake(struct dai *dai, int direction, int stream_id);
@@ -275,6 +319,12 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 void dai_set_link_hda_config(uint16_t *link_config,
 			     struct ipc_config_dai *common_config,
 			     const void *spec_config);
+
+/**
+ * \brief Get HD Audio link config of the UAOL feedback stream
+ * \return the link config, or 0 when the host supplied no feedback DMA link
+ */
+uint16_t dai_uaol_feedback_link_config(const struct ipc_config_dai *common_config);
 /**
  * \brief Reset DAI DMA config
  */
