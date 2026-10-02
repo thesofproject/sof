@@ -126,6 +126,25 @@ int module_ext_init_decode(const struct comp_driver *drv, struct module_ext_init
 	return 0;
 }
 
+/**
+ * \brief Check whether the entire base configuration is zeroed.
+ * \param[in] base_cfg - Base module configuration to inspect.
+ *
+ * \return: true if every byte is zero, otherwise false.
+ */
+static bool is_probe_module(struct ipc4_base_module_cfg *base_cfg)
+{
+	const unsigned char *p = (const unsigned char *)base_cfg;
+	size_t s = sizeof(*base_cfg);
+
+	for (size_t i = 0; i < s; i++) {
+		if (p[i] != 0) {
+			return false;
+		}
+	}
+	return true;
+}
+
 /*
  * \module adapter data initialize.
  * \param[in] dev - device.
@@ -158,8 +177,9 @@ int module_adapter_init_data(struct comp_dev *dev,
 	dst->size = cfgsz;
 
 	/* Host-supplied channel count indexes PLATFORM_MAX_CHANNELS arrays. */
-	if (dst->base_cfg.audio_fmt.channels_count == 0 ||
-	    dst->base_cfg.audio_fmt.channels_count > PLATFORM_MAX_CHANNELS) {
+	if ((dst->base_cfg.audio_fmt.channels_count == 0 ||
+	     dst->base_cfg.audio_fmt.channels_count > PLATFORM_MAX_CHANNELS) &&
+	    !is_probe_module(&dst->base_cfg)) {
 		comp_err(dev, "invalid channels count %u",
 			 dst->base_cfg.audio_fmt.channels_count);
 		return -EINVAL;
