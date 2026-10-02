@@ -13,6 +13,7 @@
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <ipc4/base_fw.h>
+#include <ipc4/header.h>
 #include <ipc/stream.h>
 #include <rtos/init.h>
 #include <zephyr/kernel.h>
@@ -32,6 +33,8 @@ struct ecns_comp_data {
 	uint32_t channels;
 	uint32_t sample_width;
 	uint32_t copy_count;
+	uint32_t test_signal_enabled;
+	uint16_t test_signal_val;
 };
 
 static struct comp_dev *ecns_new(const struct comp_driver *drv,
@@ -121,6 +124,7 @@ static int ecns_reset(struct comp_dev *dev)
 
 	comp_info(dev, "ecns_reset");
 	cd->copy_count = 0;
+	cd->test_signal_val = 0;
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
 
@@ -233,7 +237,10 @@ static int ecns_copy(struct comp_dev *dev)
 					snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
 
 					/* Pick Left channel (channel 0) only, copy as mono */
-					*snk_ptr = *src_ptr;
+					if (cd->test_signal_enabled)
+						*snk_ptr = (int16_t)cd->test_signal_val++;
+					else
+						*snk_ptr = *src_ptr;
 
 					for (uint32_t c = 1; c < snk0_ch; c++) {
 						int16_t *snk_c = audio_stream_wrap(&snk0->stream, snk_ptr + c);
@@ -328,6 +335,72 @@ static int ecns_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
 	return -EINVAL;
 }
 
+static int ecns_set_large_config(struct comp_dev *dev,
+				 uint32_t param_id,
+				 bool first_block,
+				 bool last_block,
+				 uint32_t data_offset,
+				 const char *data)
+{
+	struct ecns_comp_data *cd = comp_get_drvdata(dev);
+
+	switch (param_id) {
+	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID: {
+		const struct sof_ipc4_control_msg_payload *cp =
+			(const struct sof_ipc4_control_msg_payload *)data;
+
+		if (cp->num_elems < 1)
+			return -EINVAL;
+
+		cd->test_signal_enabled = cp->chanv[0].value ? 1 : 0;
+		if (cd->test_signal_enabled)
+			cd->test_signal_val = 0;
+
+		comp_info(dev, "ecns: test signal %s (kpb mono output)",
+			  cd->test_signal_enabled ? "enabled" : "disabled");
+		return 0;
+	}
+	default:
+		return -EINVAL;
+	}
+}
+
+static int ecns_get_large_config(struct comp_dev *dev,
+				 uint32_t param_id,
+				 bool first_block,
+				 bool last_block,
+				 uint32_t *data_offset,
+				 char *data)
+{
+	struct ecns_comp_data *cd = comp_get_drvdata(dev);
+
+	switch (param_id) {
+	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID: {
+		struct sof_ipc4_control_msg_payload *cp =
+			(struct sof_ipc4_control_msg_payload *)data;
+		uint16_t ctl_id = cp->id;
+		uint32_t resp_size = sizeof(struct sof_ipc4_control_msg_payload) +
+				     sizeof(struct sof_ipc4_ctrl_value_chan);
+
+		if (resp_size > *data_offset) {
+			comp_err(dev, "wrong switch control response size %u vs %u",
+				 resp_size, *data_offset);
+			return -EINVAL;
+		}
+
+		*data_offset = resp_size;
+		memset_s(cp, resp_size, 0, resp_size);
+		cp->id = ctl_id;
+		cp->num_elems = 1;
+		cp->chanv[0].channel = 0;
+		cp->chanv[0].value = cd->test_signal_enabled;
+		return 0;
+	}
+	default:
+		return -EINVAL;
+	}
+}
+
 static const struct comp_driver ecns_drv = {
 	.type	= SOF_COMP_NONE,
 	.uid	= SOF_RT_UUID(ecns_uuid),
@@ -340,6 +413,8 @@ static const struct comp_driver ecns_drv = {
 		.reset		= ecns_reset,
 		.trigger	= ecns_trigger,
 		.copy		= ecns_copy,
+		.set_large_config = ecns_set_large_config,
+		.get_large_config = ecns_get_large_config,
 		.get_attribute	= ecns_get_attribute,
 	},
 };
