@@ -37,6 +37,7 @@ __cold void tlv_value_set_uaol_caps(struct sof_tlv *tuple, uint32_t type)
 	struct uaol_capabilities dev_cap;
 	struct ipc4_uaol_capabilities *caps = (struct ipc4_uaol_capabilities *)tuple->value;
 	size_t caps_size = offsetof(struct ipc4_uaol_capabilities, link_caps[dev_count]);
+	size_t link_count = 0;
 	size_t i;
 	int ret;
 
@@ -44,18 +45,26 @@ __cold void tlv_value_set_uaol_caps(struct sof_tlv *tuple, uint32_t type)
 
 	memset(caps, 0, caps_size);
 
-	caps->link_count = dev_count;
+	/* Only advertise links that answered. uaol_get_capabilities() fails when
+	 * the host has not offloaded link control to the DSP (UAOLCTL.OFLEN), in
+	 * which case the link's segment registers are not readable here.
+	 */
 	for (i = 0; i < dev_count; i++) {
 		ret = uaol_get_capabilities(uaol_devs[i], &dev_cap);
 		if (ret)
 			continue;
 
-		caps->link_caps[i].input_streams_supported = dev_cap.input_streams;
-		caps->link_caps[i].output_streams_supported = dev_cap.output_streams;
-		caps->link_caps[i].bidirectional_streams_supported = dev_cap.bidirectional_streams;
-		caps->link_caps[i].max_tx_fifo_size = dev_cap.max_tx_fifo_size;
-		caps->link_caps[i].max_rx_fifo_size = dev_cap.max_rx_fifo_size;
+		caps->link_caps[link_count].input_streams_supported = dev_cap.input_streams;
+		caps->link_caps[link_count].output_streams_supported = dev_cap.output_streams;
+		caps->link_caps[link_count].bidirectional_streams_supported =
+			dev_cap.bidirectional_streams;
+		caps->link_caps[link_count].max_tx_fifo_size = dev_cap.max_tx_fifo_size;
+		caps->link_caps[link_count].max_rx_fifo_size = dev_cap.max_rx_fifo_size;
+		link_count++;
 	}
+
+	caps->link_count = link_count;
+	caps_size = offsetof(struct ipc4_uaol_capabilities, link_caps[link_count]);
 
 	tlv_value_set(tuple, type, caps_size, caps);
 }

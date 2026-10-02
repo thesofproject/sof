@@ -1,33 +1,25 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Makefile for wov_capture_app
-#
-# Standard Linux ALSA PCM Capture Application (zero external library dependencies).
-#
-# Examples:
-#   make                     # builds wov_capture_app locally
-#   make install DUT=root@spider # builds and installs to DUT via scp
-
-BINARY   := wov_capture_app
-SRCS     := wov_capture_app.c
-OBJS     := $(SRCS:.c=.o)
+# Makefile for wov tools (wov_capture_app, wov_blocking_read, wov_blocking_read_tinyalsa)
 
 CC       ?= gcc
 CFLAGS   += -Wall -Wextra -O2 -g -D_GNU_SOURCE
-LDFLAGS  += -lm
 
-.PHONY: all clean install
+.PHONY: all clean install wov_capture_app wov_blocking_read wov_blocking_read_tinyalsa
 
-all: $(BINARY)
+all: wov_capture_app
 
-$(BINARY): $(OBJS)
-	$(CC) $(OBJS) $(LDFLAGS) -o $@
+wov_capture_app: wov_capture_app.c
+	$(CC) $(CFLAGS) $^ -lm -o $@
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+wov_blocking_read: wov_blocking_read.c
+	$(CC) $(CFLAGS) $^ -lasound -o $@
+
+wov_blocking_read_tinyalsa: wov_blocking_read_tinyalsa.c
+	$(CC) $(CFLAGS) $^ -ltinyalsa -o $@
 
 clean:
-	rm -f $(OBJS) $(BINARY)
+	rm -f *.o wov_capture_app wov_blocking_read wov_blocking_read_tinyalsa
 
-# Install to a DUT via scp: make install DUT=root@spider
-install: $(BINARY)
-	scp $(BINARY) $(DUT):/usr/local/bin/$(BINARY)
+# Install to a DUT via scp: make install DUT=root@aphid
+install: all
+	scp wov_capture_app $(DUT):/usr/local/bin/
