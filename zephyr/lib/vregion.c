@@ -507,6 +507,22 @@ void *z_impl_vregion_alloc_align(struct vregion *vr,
 
 	k_mutex_unlock(&vr->lock);
 
+#if CONFIG_SYS_HEAP_RUNTIME_STATS
+	if (vr->type == VREGION_MEM_TYPE_LIFETIME) {
+		LOG_INF("lifetime alloc of %zu, used %zu, free %zu",
+			size, vr->lifetime.used,
+			vr->lifetime.size - vr->lifetime.used);
+	} else {
+		struct sys_memory_stats stats;
+
+		sys_heap_runtime_stats_get(&vr->interim.heap.heap, &stats);
+
+		LOG_INF("interim alloc of %zu, used %u, free %u, max %u",
+			size, stats.allocated_bytes, stats.free_bytes, stats.max_allocated_bytes);
+
+	}
+#endif
+
 	return p;
 }
 EXPORT_SYMBOL(z_impl_vregion_alloc_align);
