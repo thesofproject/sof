@@ -178,3 +178,11 @@ int sink_set_alignment_constants(struct sof_sink *sink, const uint32_t byte_alig
 	return 0;
 }
 EXPORT_SYMBOL(sink_set_alignment_constants);
+
+int sink_set_size(struct sof_sink *sink, size_t size)
+{
+	if (sink->ops->set_size)
+		return sink->ops->set_size(sink, size);
+	return -ENOSYS;
+}
+EXPORT_SYMBOL(sink_set_size);

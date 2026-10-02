@@ -106,3 +106,11 @@ size_t source_get_data_frames_available(struct sof_source *source)
 		return 0;
 }
 EXPORT_SYMBOL(source_get_data_frames_available);
+
+int source_set_size(struct sof_source *source, size_t size)
+{
+	if (source->ops->set_size)
+		return source->ops->set_size(source, size);
+	return -ENOSYS;
+}
+EXPORT_SYMBOL(source_set_size);
