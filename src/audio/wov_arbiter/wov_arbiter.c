@@ -261,6 +261,9 @@ static void wov_arb_free(struct comp_dev *dev)
 	comp_free_device(dev);
 }
 
+static int wov_arb_params(struct comp_dev *dev,
+			   struct sof_ipc_stream_params *params);
+
 static int wov_arb_prepare(struct comp_dev *dev)
 {
 	struct wov_arb_data *cd = comp_get_drvdata(dev);
@@ -280,6 +283,25 @@ static int wov_arb_prepare(struct comp_dev *dev)
 		component_set_nearest_period_frames(dev, cd->base_cfg.audio_fmt.sampling_frequency);
 		if (!dev->frames)
 			dev->frames = 160;
+	}
+
+	struct comp_buffer *sink = comp_dev_get_first_data_consumer(dev);
+	if (sink) {
+		struct sof_ipc_stream_params p;
+		wov_arb_params(dev, &p);
+		buffer_set_params(sink, &p, true);
+	}
+
+	struct comp_buffer *source;
+	struct list_item *src_item;
+	list_for_item(src_item, &dev->bsource_list) {
+		source = list_item(src_item, struct comp_buffer, sink_list);
+		if ((buf_get_id(source) >> 16) == 0) {
+			/* Pin 0 is audio from KPB: 1ch mono S16_LE */
+			struct sof_ipc_stream_params p;
+			wov_arb_params(dev, &p);
+			buffer_set_params(source, &p, true);
+		}
 	}
 
 	/* Subscribe to keyword-detected events from any WOV detector. */
@@ -443,10 +465,8 @@ static int wov_arb_copy(struct comp_dev *dev)
 	struct comp_buffer *sink;
 	struct comp_buffer *source;
 	struct list_item *src_item;
-	uint32_t slot;
 	uint32_t sink_free;
 	uint32_t active_avail = 0;
-	uint32_t copy_bytes;
 
 	comp_dbg(dev, "wov_arb_copy active=%u", cd->active_slot);
 
@@ -478,38 +498,13 @@ static int wov_arb_copy(struct comp_dev *dev)
 
 	/* Find active audio source buffer if a slot is triggered */
 	if (eff_active_slot != WOV_ARB_NO_ACTIVE) {
-		if (num_kpb_sources == 1) {
-			/* Single KPB architecture: KPB is the audio source for all slots */
-			list_for_item(src_item, &dev->bsource_list) {
-				source = list_item(src_item, struct comp_buffer, sink_list);
-				if (source->source && dev_comp_type(source->source) == SOF_COMP_KPB) {
-					active_source = source;
-					break;
-				}
-			}
-		} else if (num_kpb_sources > 1) {
-			/* Multi-KPB architecture: slot maps to the KPB instance */
-			slot = 0;
-			list_for_item(src_item, &dev->bsource_list) {
-				source = list_item(src_item, struct comp_buffer, sink_list);
-				if (source->source && dev_comp_type(source->source) == SOF_COMP_KPB) {
-					if (slot == eff_active_slot) {
-						active_source = source;
-						break;
-					}
-					slot++;
-				}
-			}
-		} else {
-			/* Fallback when no KPB source identified (pin 0 or slot-th source) */
-			slot = 0;
-			list_for_item(src_item, &dev->bsource_list) {
-				source = list_item(src_item, struct comp_buffer, sink_list);
-				if ((buf_get_id(source) >> 16) == 0 || slot == eff_active_slot) {
-					active_source = source;
-					break;
-				}
-				slot++;
+		list_for_item(src_item, &dev->bsource_list) {
+			source = list_item(src_item, struct comp_buffer, sink_list);
+			if ((source->source && (source->source->drv->type == SOF_COMP_KPB ||
+						dev_comp_type(source->source) == SOF_COMP_KPB)) ||
+			    (buf_get_id(source) >> 16) == 0) {
+				active_source = source;
+				break;
 			}
 		}
 
@@ -517,86 +512,91 @@ static int wov_arb_copy(struct comp_dev *dev)
 			active_avail = audio_stream_get_avail_bytes(&active_source->stream);
 	}
 
-	copy_bytes = MIN(active_avail, sink_free);
-
 	uint32_t copied_dst_bytes = 0;
 
 	/* Second pass: copy active audio slot, silently drain idle/detector slots. */
 	list_for_item(src_item, &dev->bsource_list) {
 		source = list_item(src_item, struct comp_buffer, sink_list);
 
-		if (source == active_source && copy_bytes > 0) {
-			uint32_t src_frame_bytes = audio_stream_frame_bytes(&source->stream);
-			uint32_t dst_frame_bytes = audio_stream_frame_bytes(&sink->stream);
-			uint32_t src_frames = copy_bytes / src_frame_bytes;
-			uint32_t dst_frames = sink_free / dst_frame_bytes;
-			uint32_t frames = MIN(src_frames, dst_frames);
+		if (source == active_source) {
+			if (active_avail > 0 && sink_free > 0) {
+				uint32_t src_frame_bytes = audio_stream_frame_bytes(&source->stream);
+				uint32_t dst_frame_bytes = audio_stream_frame_bytes(&sink->stream);
+				if (!src_frame_bytes)
+					src_frame_bytes = 2;
+				if (!dst_frame_bytes)
+					dst_frame_bytes = 2;
 
-			if (frames > 0) {
-				uint32_t src_bytes = frames * src_frame_bytes;
-				uint32_t dst_bytes = frames * dst_frame_bytes;
-				uint32_t src_ch = audio_stream_get_channels(&source->stream);
-				uint32_t dst_ch = audio_stream_get_channels(&sink->stream);
+				uint32_t src_frames = active_avail / src_frame_bytes;
+				uint32_t dst_frames = sink_free / dst_frame_bytes;
+				uint32_t frames = MIN(src_frames, dst_frames);
 
-				buffer_stream_invalidate(source, src_bytes);
+				if (frames > 0) {
+					uint32_t src_bytes = frames * src_frame_bytes;
+					uint32_t dst_bytes = frames * dst_frame_bytes;
+					uint32_t src_ch = audio_stream_get_channels(&source->stream);
+					uint32_t dst_ch = audio_stream_get_channels(&sink->stream);
 
-				if (src_ch == 1 && dst_ch == 2) {
-					if (audio_stream_sample_bytes(&source->stream) == sizeof(int16_t)) {
-						for (uint32_t i = 0; i < frames; i++) {
-							int16_t s = *(int16_t *)audio_stream_read_frag_s16(&source->stream, i);
-							*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i) = s;
-							*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i + 1) = s;
+					buffer_stream_invalidate(source, src_bytes);
+
+					if (src_ch == 1 && dst_ch == 2) {
+						if (audio_stream_sample_bytes(&source->stream) == sizeof(int16_t)) {
+							for (uint32_t i = 0; i < frames; i++) {
+								int16_t s = *(int16_t *)audio_stream_read_frag_s16(&source->stream, i);
+								*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i) = s;
+								*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i + 1) = s;
+							}
+						} else {
+							for (uint32_t i = 0; i < frames; i++) {
+								int32_t s = *(int32_t *)audio_stream_read_frag_s32(&source->stream, i);
+								*(int32_t *)audio_stream_write_frag_s32(&sink->stream, 2 * i) = s;
+								*(int32_t *)audio_stream_write_frag_s32(&sink->stream, 2 * i + 1) = s;
+							}
 						}
-					} else {
-						for (uint32_t i = 0; i < frames; i++) {
-							int32_t s = *(int32_t *)audio_stream_read_frag_s32(&source->stream, i);
-							*(int32_t *)audio_stream_write_frag_s32(&sink->stream, 2 * i) = s;
-							*(int32_t *)audio_stream_write_frag_s32(&sink->stream, 2 * i + 1) = s;
-						}
-					}
-				} else if (audio_stream_sample_bytes(&source->stream) !=
-					   audio_stream_sample_bytes(&sink->stream)) {
-					/* The KPB path may present S32 audio while the host sink is S16,
-					 * and the generic audio_stream_copy() expects identical sample widths.
-					 * Convert sample-by-sample instead of copying raw bytes to avoid the
-					 * every-other-sample drop that shows up as a 2x tone on the host.
-					 */
-					if (audio_stream_sample_bytes(&source->stream) == sizeof(int32_t) &&
-					    audio_stream_sample_bytes(&sink->stream) == sizeof(int16_t)) {
-						for (uint32_t i = 0; i < frames; i++) {
-							int32_t s = *(int32_t *)audio_stream_read_frag_s32(&source->stream, i);
-							*(int16_t *)audio_stream_write_frag_s16(&sink->stream, i) = (int16_t)s;
-						}
-					} else if (audio_stream_sample_bytes(&source->stream) == sizeof(int16_t) &&
-						   audio_stream_sample_bytes(&sink->stream) == sizeof(int32_t)) {
-						for (uint32_t i = 0; i < frames; i++) {
-							int16_t s = *(int16_t *)audio_stream_read_frag_s16(&source->stream, i);
-							*(int32_t *)audio_stream_write_frag_s32(&sink->stream, i) = (int32_t)s;
+					} else if (audio_stream_sample_bytes(&source->stream) !=
+						   audio_stream_sample_bytes(&sink->stream)) {
+						/* The KPB path may present S32 audio while the host sink is S16,
+						 * and the generic audio_stream_copy() expects identical sample widths.
+						 * Convert sample-by-sample instead of copying raw bytes to avoid the
+						 * every-other-sample drop that shows up as a 2x tone on the host.
+						 */
+						if (audio_stream_sample_bytes(&source->stream) == sizeof(int32_t) &&
+						    audio_stream_sample_bytes(&sink->stream) == sizeof(int16_t)) {
+							for (uint32_t i = 0; i < frames; i++) {
+								int32_t s = *(int32_t *)audio_stream_read_frag_s32(&source->stream, i);
+								*(int16_t *)audio_stream_write_frag_s16(&sink->stream, i) = (int16_t)s;
+							}
+						} else if (audio_stream_sample_bytes(&source->stream) == sizeof(int16_t) &&
+							   audio_stream_sample_bytes(&sink->stream) == sizeof(int32_t)) {
+							for (uint32_t i = 0; i < frames; i++) {
+								int16_t s = *(int16_t *)audio_stream_read_frag_s16(&source->stream, i);
+								*(int32_t *)audio_stream_write_frag_s32(&sink->stream, i) = (int32_t)s;
+							}
+						} else {
+							audio_stream_copy(&source->stream, 0,
+									  &sink->stream, 0,
+									  src_bytes / audio_stream_sample_bytes(&source->stream));
 						}
 					} else {
 						audio_stream_copy(&source->stream, 0,
-								 &sink->stream, 0,
-								 src_bytes / audio_stream_sample_bytes(&source->stream));
+								  &sink->stream, 0,
+								  src_bytes / audio_stream_sample_bytes(&source->stream));
 					}
-				} else {
-					audio_stream_copy(&source->stream, 0,
-							  &sink->stream, 0,
-							  src_bytes / audio_stream_sample_bytes(&source->stream));
-				}
 
-				comp_update_buffer_consume(source, src_bytes);
-				buffer_stream_writeback(sink, dst_bytes);
-				comp_update_buffer_produce(sink, dst_bytes);
-				copied_dst_bytes = dst_bytes;
+					comp_update_buffer_consume(source, src_bytes);
+					buffer_stream_writeback(sink, dst_bytes);
+					comp_update_buffer_produce(sink, dst_bytes);
+					copied_dst_bytes = dst_bytes;
 
-				bool first_data = (cd->drain_frames_total == 0);
-				cd->drain_frames_total += frames;
-				cd->drain_frames_copied += frames;
-				if (first_data || cd->drain_frames_copied >= 320) {
+					bool first_data = (cd->drain_frames_total == 0);
+					cd->drain_frames_total += frames;
+					cd->drain_frames_copied += frames;
+					if (first_data || cd->drain_frames_copied >= 320) {
 #if CONFIG_IPC_MAJOR_4
-					notify_host_detect(dev, cd->active_slot);
+						notify_host_detect(dev, cd->active_slot);
 #endif
-					cd->drain_frames_copied = 0;
+						cd->drain_frames_copied = 0;
+					}
 				}
 			}
 		} else {
@@ -607,48 +607,10 @@ static int wov_arb_copy(struct comp_dev *dev)
 		}
 	}
 
-	uint32_t fill_bytes = 0;
-	if (copied_dst_bytes == 0 && sink_free > 0 && eff_active_slot != WOV_ARB_NO_ACTIVE) {
-		/* Active drain momentarily starved of source data: top up with
-		 * silence so the host copier doesn't fall behind and hit an
-		 * -EIO rate deficit (see below). This does NOT run while
-		 * WOV_ARB_NO_ACTIVE (nothing triggered yet) -- in that case we
-		 * must produce zero bytes so the host PCM stays idle/blocked
-		 * and the platform can reach D0i3, rather than being kept busy
-		 * by a synthetic keep-alive stream.
-		 *
-		 * Fill everything the sink has free rather than one dev->frames
-		 * period. The host copier DMA is what creates free space, at the
-		 * stream rate, so topping the buffer up cannot outrun the host -
-		 * but capping the fill at a single period can and does fall
-		 * behind it: with dev->frames 32 and ~300 copies/s the arbiter
-		 * produced ~9.6k frames/s against the 16k frames/s the FE
-		 * expects, so capture starved and userspace saw -EIO.
-		 */
-		uint32_t dst_frame_bytes = audio_stream_frame_bytes(&sink->stream);
-		if (!dst_frame_bytes)
-			dst_frame_bytes = 2;
-		fill_bytes = (sink_free / dst_frame_bytes) * dst_frame_bytes;
-
-		if (fill_bytes > 0) {
-			audio_stream_set_zero(&sink->stream, fill_bytes);
-			buffer_stream_writeback(sink, fill_bytes);
-			comp_update_buffer_produce(sink, fill_bytes);
-
-			cd->drain_frames_copied += (fill_bytes / dst_frame_bytes);
-			if (cd->drain_frames_copied >= 320) {
-#if CONFIG_IPC_MAJOR_4
-				notify_host_detect(dev, cd->active_slot);
-#endif
-				cd->drain_frames_copied = 0;
-			}
-		}
-	}
-
 	cd->copy_count++;
 	if ((cd->copy_count % 100) == 1) {
-		comp_info(dev, "wov_arb_copy #%u: active=%u, num_src=%u, act_avail=%u, copied=%u, fill=%u, sink_free=%u",
-			  cd->copy_count, cd->active_slot, num_sources, active_avail, copied_dst_bytes, fill_bytes, sink_free);
+		comp_info(dev, "wov_arb_copy #%u: active=%u, num_src=%u, act_avail=%u, copied=%u, sink_free=%u",
+			  cd->copy_count, cd->active_slot, num_sources, active_avail, copied_dst_bytes, sink_free);
 	}
 
 	return 0;
