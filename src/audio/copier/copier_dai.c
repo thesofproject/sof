@@ -27,8 +27,13 @@ static uint32_t bitmask_to_nibble_channel_map(uint8_t bitmask)
 			channel_count++;
 		}
 
-	/* absent channel is represented as 0xf nibble */
-	nibble_map |= 0xFFFFFFFF << (channel_count * 4);
+	/* Absent channel is represented as 0xf nibble. With all 8 channels present the shift count
+	 * would be 32, which is undefined behavior for 32-bit types.
+	 * On Xtensa and x86 architectures this would result in returning 0xffffffff, marking all
+	 * channels absent.
+	 */
+	if (channel_count < 8)
+		nibble_map |= 0xFFFFFFFF << (channel_count * 4);
 
 	return nibble_map;
 }
