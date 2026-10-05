@@ -981,7 +981,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	}
 #endif
 
-	kpb->sync_draining_mode = true;
+	kpb->sync_draining_mode = false;
 
 	kpb_change_state(kpb, KPB_STATE_RUN);
 
