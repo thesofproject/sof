@@ -1085,48 +1085,6 @@ def main() -> int:
     )
     print_confusion_matrix_report(cm, threshold=args.threshold, consecutive_steps=args.consecutive_steps)
 
-    wov_wav = "/home/singalsu/tmp/wov.wav"
-    if os.path.exists(wov_wav):
-        print(f"\n>>> Verifying model on known glitch recording (with 33 startup warmup steps): {wov_wav}")
-        pcm_wov = load_wav_pcm16(wov_wav)
-        mel_wov = extract_pcan_features(pcm_wov)
-        interp = tf.lite.Interpreter(model_path=str(tflite_path))
-        interp.allocate_tensors()
-        in_det = interp.get_input_details()[0]
-        out_det = interp.get_output_details()[0]
-        in_scale, in_zp = in_det.get("quantization", (0.0, 0))
-        out_scale, out_zp = out_det.get("quantization", (0.0, 0))
-
-        # Warm up streaming delay lines (matches firmware MWW_WARMUP_INFERENCES = 33)
-        for _ in range(33):
-            silence_slice = np.full((1, SLICE_HOPS, HOP_BINS), in_zp if in_scale > 0 else -128.0, dtype=in_det["dtype"])
-            interp.set_tensor(in_det["index"], silence_slice)
-            interp.invoke()
-
-        wov_max_prob = 0.0
-        wov_consec = 0
-        wov_fired = False
-        for s in range(0, mel_wov.shape[0] - SLICE_HOPS + 1, SLICE_HOPS):
-            chk = mel_wov[s : s + SLICE_HOPS][np.newaxis, ...]
-            if np.issubdtype(in_det["dtype"], np.integer) and in_scale > 0:
-                chk = _quantize(chk, in_scale, in_zp, in_det["dtype"])
-            interp.set_tensor(in_det["index"], chk)
-            interp.invoke()
-            y_raw = interp.get_tensor(out_det["index"])
-            if np.issubdtype(out_det["dtype"], np.integer) and out_scale > 0:
-                p_val = float(_dequantize(y_raw, out_scale, out_zp).flatten()[0])
-            else:
-                p_val = float(y_raw.flatten()[0])
-            if p_val > wov_max_prob:
-                wov_max_prob = p_val
-            if p_val >= args.threshold:
-                wov_consec += 1
-                if wov_consec >= args.consecutive_steps:
-                    wov_fired = True
-            else:
-                wov_consec = 0
-        print(f">>> Result on {wov_wav}: Peak Prob = {wov_max_prob * 100.0:.1f}%, Triggered = {'YES (FAIL)' if wov_fired else 'NO (PASS)'}")
-
     babble_wav = os.path.expanduser("~/.cache/demand_cafeteria/PCAFETER/ch01.wav")
     if os.path.exists(babble_wav):
         print(f"\n>>> Verifying model on 60 seconds of continuous cafeteria babble (with 33 startup warmup steps): {babble_wav}")
@@ -1135,6 +1093,10 @@ def main() -> int:
         mel_b = extract_pcan_features(raw_babble)
         interp = tf.lite.Interpreter(model_path=str(tflite_path))
         interp.allocate_tensors()
+        in_det = interp.get_input_details()[0]
+        out_det = interp.get_output_details()[0]
+        in_scale, in_zp = in_det.get("quantization", (0.0, 0))
+        out_scale, out_zp = out_det.get("quantization", (0.0, 0))
 
         # Warm up streaming delay lines (matches firmware MWW_WARMUP_INFERENCES = 33)
         for _ in range(33):
