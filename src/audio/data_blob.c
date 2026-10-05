@@ -543,7 +543,15 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 	ret = memcpy_s((char *)blob_handler->data_new + blob_handler->data_pos,
 		       blob_handler->new_data_size - blob_handler->data_pos,
 		       cdata->data->data, cdata->num_elems);
-	assert(!ret);
+	if (ret) {
+		comp_err(blob_handler->dev, "memcpy_s failed with error %d", ret);
+		blob_handler->free(blob_handler, blob_handler->data_new);
+		blob_handler->data_new = NULL;
+		blob_handler->new_data_size = 0;
+		blob_handler->data_pos = 0;
+		blob_handler->data_ready = false;
+		return ret;
+	}
 
 	blob_handler->data_pos += cdata->num_elems;
 
