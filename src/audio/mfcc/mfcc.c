@@ -239,8 +239,11 @@ static int mfcc_prepare(struct processing_module *mod,
 
 	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
 
-	/* Initialize MFCC, max_frames is set to dev->frames + 4 */
-	if (cd->config && data_size > 0) {
+	/* Initialize MFCC, max_frames is set to dev->frames + 4. The blob is
+	 * dereferenced as a struct sof_mfcc_config below, in mfcc_setup() and
+	 * in the processing code, so require it to be at least that large.
+	 */
+	if (cd->config && data_size >= sizeof(struct sof_mfcc_config)) {
 		ret = mfcc_setup(mod, dev->frames + 4, audio_stream_get_rate(&sourceb->stream),
 				 audio_stream_get_channels(&sourceb->stream));
 		if (ret < 0) {
