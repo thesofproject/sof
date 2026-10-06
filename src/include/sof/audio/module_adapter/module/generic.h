@@ -263,16 +263,21 @@ static inline struct ipc_msg *mod_ipc_msg_w_ext_init(struct processing_module *m
 {
 	struct ipc_msg *msg;
 
-	msg = mod_zalloc(mod, sizeof(*msg));
+	/* msg->list is linked into ipc->msg_list and handled cross-core: must be uncached */
+	msg = mod_alloc_ext(mod, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*msg), 0);
 	if (!msg)
 		return NULL;
 
+	memset(msg, 0, sizeof(*msg));
+
 	if (size) {
-		msg->tx_data = mod_zalloc(mod, size);
+		msg->tx_data = mod_alloc_ext(mod, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					     size, 0);
 		if (!msg->tx_data) {
 			mod_free(mod, msg);
 			return NULL;
 		}
+		memset(msg->tx_data, 0, size);
 	}
 
 	msg->header = header;
