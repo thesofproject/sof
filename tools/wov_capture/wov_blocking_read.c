@@ -48,7 +48,7 @@ static int get_active_slot(int card)
 	snd_ctl_elem_value_set_id(val, id);
 
 	int slot = -1;
-	for (int retry = 0; retry < 15; retry++) {
+	for (int retry = 0; retry < 30; retry++) {
 		if (snd_ctl_elem_read(ctl_handle, val) >= 0) {
 			slot = snd_ctl_elem_value_get_enumerated(val, 0);
 			if (slot > 0)
@@ -198,21 +198,31 @@ int main(int argc, char **argv)
 				}
 				continue;
 			}
+			if (n == -EPIPE) {
+				snd_pcm_recover(pcm, n, 0);
+				continue;
+			}
 			fprintf(stderr, "read error: %s\n", snd_strerror((int)n));
 			break;
 		}
 		if (n > 0) {
-			if (triggered_slot < 0) {
-				triggered_slot = get_active_slot(card);
-				printf("t=%.3f triggered active_slot=%d (expected=%d)\n",
-				       now_s() - t0, triggered_slot, expected_slot);
-				fflush(stdout);
-			}
 			if (wav_fp)
 				fwrite(buf, sizeof(short), n, wav_fp);
 			frames_captured += n;
 		}
 	}
+
+	for (int retry = 0; retry < 25; retry++) {
+		int s = get_active_slot(card);
+		if (s > 0) {
+			triggered_slot = s;
+			break;
+		}
+		usleep(20000);
+	}
+	printf("t=%.3f triggered active_slot=%d (expected=%d)\n",
+	       now_s() - t0, triggered_slot > 0 ? triggered_slot : 0, expected_slot);
+	fflush(stdout);
 
 	double t1 = now_s();
 	printf("t=%.3f capture finished: %u frames after %.3fs\n", t1 - t0, frames_captured, t1 - t0);

@@ -164,6 +164,8 @@ def run_s0_iteration(iteration, slot, ctl, card=0, device=None):
         "post_slot": post_slot,
         "post_ctl": post_ctl,
         "continuity": continuity_msg,
+        "stdout": p.stdout,
+        "stderr": p.stderr,
         "passed": passed,
     }
 
@@ -256,6 +258,11 @@ def main():
         s0_results.append(res)
         status_str = "PASS" if res["passed"] else "FAIL"
         print(f"  [S0 Run {i:02d}/10] Slot {slot} ({ctl}): {status_str} in {res['elapsed']:.2f}s, trig_slot={res['trig_slot']}, size={res['size']}B, continuity=[{res['continuity']}], slot_reset={res['post_slot']}, ctl_reset={res['post_ctl']}")
+        if not res["passed"]:
+            if res.get("stderr"):
+                print(f"      STDERR: {res['stderr'].strip()}")
+            if res.get("stdout"):
+                print(f"      STDOUT: {res['stdout'].strip()}")
         sys.stdout.flush()
         time.sleep(3.0)
         
