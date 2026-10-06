@@ -21,7 +21,9 @@
 #include <sof/audio/wov_arbiter.h>
 #include <sof/common.h>
 #include <rtos/alloc.h>
+#include <rtos/clk.h>
 #include <rtos/init.h>
+#include <rtos/timer.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -63,6 +65,7 @@ struct wov_arb_data {
 	uint32_t copy_count;
 	uint32_t drain_frames_copied;
 	uint32_t drain_frames_total;
+	uint64_t last_notify_time;
 };
 
 #if CONFIG_IPC_MAJOR_4
@@ -160,6 +163,7 @@ static void arb_on_detect(void *arg, enum notify_id id, void *data)
 
 	comp_info(dev, "wov_arb: activating slot %u", det->slot_id);
 	cd->active_slot = det->slot_id;
+	cd->last_notify_time = 0;
 
 #if CONFIG_IPC_MAJOR_4
 	/* Notify host ALSA enum control: 1..N corresponds to Slot 1..N (0 is Listening) */
@@ -208,6 +212,7 @@ static struct comp_dev *wov_arb_new(const struct comp_driver *drv,
 
 	/* Start with no active slot; first WOV_DETECT notifier will activate one. */
 	cd->active_slot = WOV_ARB_NO_ACTIVE;
+	cd->last_notify_time = 0;
 
 	comp_set_drvdata(dev, cd);
 	/* Arbiter produces a capture stream that feeds the host PCM copier. */
@@ -274,6 +279,7 @@ static int wov_arb_prepare(struct comp_dev *dev)
 	cd->copy_count = 0;
 	cd->drain_frames_copied = 0;
 	cd->drain_frames_total = 0;
+	cd->last_notify_time = 0;
 
 #if CONFIG_IPC_MAJOR_4
 	notify_control_change(dev, cd->active_slot_ctl_id, 0);
@@ -287,9 +293,13 @@ static int wov_arb_prepare(struct comp_dev *dev)
 
 	struct comp_buffer *sink = comp_dev_get_first_data_consumer(dev);
 	if (sink) {
+#if CONFIG_IPC_MAJOR_4
+		ipc4_update_buffer_format(sink, &cd->base_cfg.audio_fmt);
+#else
 		struct sof_ipc_stream_params p;
 		wov_arb_params(dev, &p);
 		buffer_set_params(sink, &p, true);
+#endif
 	}
 
 	struct comp_buffer *source;
@@ -297,10 +307,14 @@ static int wov_arb_prepare(struct comp_dev *dev)
 	list_for_item(src_item, &dev->bsource_list) {
 		source = list_item(src_item, struct comp_buffer, sink_list);
 		if ((buf_get_id(source) >> 16) == 0) {
-			/* Pin 0 is audio from KPB: 1ch mono S16_LE */
+			/* Pin 0 is audio from KPB: 1ch mono S32_LE */
+#if CONFIG_IPC_MAJOR_4
+			ipc4_update_buffer_format(source, &cd->base_cfg.audio_fmt);
+#else
 			struct sof_ipc_stream_params p;
 			wov_arb_params(dev, &p);
 			buffer_set_params(source, &p, true);
+#endif
 		}
 	}
 
@@ -332,6 +346,7 @@ static int wov_arb_reset(struct comp_dev *dev)
 
 	cd->drain_frames_copied = 0;
 	cd->drain_frames_total = 0;
+	cd->last_notify_time = 0;
 
 	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_DETECT);
 
@@ -356,6 +371,7 @@ static int wov_arb_trigger(struct comp_dev *dev, int cmd)
 	if (cmd == COMP_TRIGGER_STOP || cmd == COMP_TRIGGER_PAUSE) {
 		cd->drain_frames_copied = 0;
 		cd->drain_frames_total = 0;
+		cd->last_notify_time = 0;
 		if (cd->active_slot != WOV_ARB_NO_ACTIVE) {
 			comp_info(dev, "wov_arb: stream stopped, resuming all slots");
 			cd->active_slot = WOV_ARB_NO_ACTIVE;
@@ -377,6 +393,9 @@ static int wov_arb_params(struct comp_dev *dev,
 {
 	struct wov_arb_data *cd = comp_get_drvdata(dev);
 
+#if CONFIG_IPC_MAJOR_4
+	ipc4_base_module_cfg_to_stream_params(&cd->base_cfg, params);
+#else
 	/* Translate IPC4 base_cfg audio_fmt to IPC3-style stream params. */
 	memset(params, 0, sizeof(*params));
 	params->channels = cd->base_cfg.audio_fmt.channels_count;
@@ -385,6 +404,7 @@ static int wov_arb_params(struct comp_dev *dev,
 	params->sample_valid_bytes =
 		cd->base_cfg.audio_fmt.valid_bit_depth / 8;
 	params->buffer_fmt = cd->base_cfg.audio_fmt.interleaving_style;
+#endif
 	component_set_nearest_period_frames(dev, params->rate);
 
 	return 0;
@@ -415,12 +435,14 @@ static int wov_arb_set_large_config(struct comp_dev *dev,
 			if (val == 0) {
 				comp_info(dev, "wov_arb: reset active_slot to listening (0)");
 				cd->active_slot = WOV_ARB_NO_ACTIVE;
+				cd->last_notify_time = 0;
 				struct wov_ctrl_notif c = { .cmd = WOV_ARB_CMD_RESUME };
 				notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
 					       NOTIFIER_TARGET_CORE_ALL_MASK,
 					       &c, sizeof(c));
 			} else {
 				cd->active_slot = (uint8_t)(val - 1);
+				cd->last_notify_time = 0;
 				comp_info(dev, "wov_arb: set active_slot=%u via kcontrol", cd->active_slot);
 			}
 		}
@@ -431,6 +453,7 @@ static int wov_arb_set_large_config(struct comp_dev *dev,
 		return 0;
 	case IPC4_WOV_ARB_SET_ACTIVE_SLOT:
 		cd->active_slot = *(const uint8_t *)data;
+		cd->last_notify_time = 0;
 		comp_info(dev, "wov_arb: force active_slot=%u", cd->active_slot);
 		return 0;
 	default:
@@ -523,9 +546,11 @@ static int wov_arb_copy(struct comp_dev *dev)
 				uint32_t src_frame_bytes = audio_stream_frame_bytes(&source->stream);
 				uint32_t dst_frame_bytes = audio_stream_frame_bytes(&sink->stream);
 				if (!src_frame_bytes)
-					src_frame_bytes = 2;
+					src_frame_bytes = cd->base_cfg.audio_fmt.depth ?
+						(cd->base_cfg.audio_fmt.channels_count * cd->base_cfg.audio_fmt.depth / 8) : 4;
 				if (!dst_frame_bytes)
-					dst_frame_bytes = 2;
+					dst_frame_bytes = cd->base_cfg.audio_fmt.depth ?
+						(cd->base_cfg.audio_fmt.channels_count * cd->base_cfg.audio_fmt.depth / 8) : 4;
 
 				uint32_t src_frames = active_avail / src_frame_bytes;
 				uint32_t dst_frames = sink_free / dst_frame_bytes;
@@ -536,51 +561,45 @@ static int wov_arb_copy(struct comp_dev *dev)
 					uint32_t dst_bytes = frames * dst_frame_bytes;
 					uint32_t src_ch = audio_stream_get_channels(&source->stream);
 					uint32_t dst_ch = audio_stream_get_channels(&sink->stream);
+					uint32_t src_sb = audio_stream_sample_bytes(&source->stream);
+					uint32_t dst_sb = audio_stream_sample_bytes(&sink->stream);
 
 					buffer_stream_invalidate(source, src_bytes);
 
 					if (src_ch == 1 && dst_ch == 2) {
-						if (audio_stream_sample_bytes(&source->stream) == sizeof(int16_t)) {
-							for (uint32_t i = 0; i < frames; i++) {
-								int16_t s = *(int16_t *)audio_stream_read_frag_s16(&source->stream, i);
-								*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i) = s;
-								*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i + 1) = s;
-							}
-						} else {
-							for (uint32_t i = 0; i < frames; i++) {
-								int32_t s = *(int32_t *)audio_stream_read_frag_s32(&source->stream, i);
+						for (uint32_t i = 0; i < frames; i++) {
+							int32_t s = (src_sb == sizeof(int32_t)) ?
+								*(int32_t *)audio_stream_read_frag_s32(&source->stream, i) :
+								(((int32_t)*(int16_t *)audio_stream_read_frag_s16(&source->stream, i)) << 16);
+							if (dst_sb == sizeof(int32_t)) {
 								*(int32_t *)audio_stream_write_frag_s32(&sink->stream, 2 * i) = s;
 								*(int32_t *)audio_stream_write_frag_s32(&sink->stream, 2 * i + 1) = s;
+							} else {
+								int16_t s16 = (int16_t)(s >> 16);
+								*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i) = s16;
+								*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i + 1) = s16;
 							}
 						}
-					} else if (audio_stream_sample_bytes(&source->stream) !=
-						   audio_stream_sample_bytes(&sink->stream)) {
-						/* The KPB path may present S32 audio while the host sink is S16,
-						 * and the generic audio_stream_copy() expects identical sample widths.
-						 * Convert sample-by-sample instead of copying raw bytes to avoid the
-						 * every-other-sample drop that shows up as a 2x tone on the host.
-						 */
-						if (audio_stream_sample_bytes(&source->stream) == sizeof(int32_t) &&
-						    audio_stream_sample_bytes(&sink->stream) == sizeof(int16_t)) {
-							for (uint32_t i = 0; i < frames; i++) {
+					} else if (src_sb != dst_sb) {
+						if (src_sb == sizeof(int32_t) && dst_sb == sizeof(int16_t)) {
+							for (uint32_t i = 0; i < frames * src_ch; i++) {
 								int32_t s = *(int32_t *)audio_stream_read_frag_s32(&source->stream, i);
-								*(int16_t *)audio_stream_write_frag_s16(&sink->stream, i) = (int16_t)s;
+								*(int16_t *)audio_stream_write_frag_s16(&sink->stream, i) = (int16_t)(s >> 16);
 							}
-						} else if (audio_stream_sample_bytes(&source->stream) == sizeof(int16_t) &&
-							   audio_stream_sample_bytes(&sink->stream) == sizeof(int32_t)) {
-							for (uint32_t i = 0; i < frames; i++) {
+						} else if (src_sb == sizeof(int16_t) && dst_sb == sizeof(int32_t)) {
+							for (uint32_t i = 0; i < frames * src_ch; i++) {
 								int16_t s = *(int16_t *)audio_stream_read_frag_s16(&source->stream, i);
-								*(int32_t *)audio_stream_write_frag_s32(&sink->stream, i) = (int32_t)s;
+								*(int32_t *)audio_stream_write_frag_s32(&sink->stream, i) = ((int32_t)s) << 16;
 							}
 						} else {
 							audio_stream_copy(&source->stream, 0,
 									  &sink->stream, 0,
-									  src_bytes / audio_stream_sample_bytes(&source->stream));
+									  frames * src_ch);
 						}
 					} else {
 						audio_stream_copy(&source->stream, 0,
 								  &sink->stream, 0,
-								  src_bytes / audio_stream_sample_bytes(&source->stream));
+								  frames * src_ch);
 					}
 
 					comp_update_buffer_consume(source, src_bytes);
@@ -588,14 +607,15 @@ static int wov_arb_copy(struct comp_dev *dev)
 					comp_update_buffer_produce(sink, dst_bytes);
 					copied_dst_bytes = dst_bytes;
 
-					bool first_data = (cd->drain_frames_total == 0);
 					cd->drain_frames_total += frames;
-					cd->drain_frames_copied += frames;
-					if (first_data || cd->drain_frames_copied >= 320) {
+
+					uint64_t now = sof_cycle_get_64();
+					if (!cd->last_notify_time ||
+					    (now - cd->last_notify_time >= k_ms_to_cyc_ceil64(10))) {
 #if CONFIG_IPC_MAJOR_4
 						notify_host_detect(dev, cd->active_slot);
 #endif
-						cd->drain_frames_copied = 0;
+						cd->last_notify_time = now;
 					}
 				}
 			}
