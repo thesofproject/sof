@@ -3,6 +3,8 @@
 // Copyright(c) 2024 Intel Corporation.
 //
 
+#include <stdint.h>
+
 #include <sof/audio/component.h>
 #include <sof/ut.h>
 #include <sof/tlv.h>
@@ -532,10 +534,16 @@ __cold static int basefw_pipeline_list_info_get(uint32_t *data_offset, char *dat
 	pipeline_data = ipc4_get_pipeline_data_wrapper();
 	ppl_data->pipelines_count = 0;
 
-	for (int ppl = 0; ppl < pipeline_data->pipelines_count; ppl++) {
+	if (pipeline_data->pipelines_count > UINT8_MAX + 1U) {
+		tr_err(&ipc_tr, "pipelines_count %u exceeds instance ID scan limit %u",
+		       pipeline_data->pipelines_count, UINT8_MAX + 1U);
+		return IPC4_ERROR_INVALID_PARAM;
+	}
+
+	for (uint32_t ppl = 0; ppl < pipeline_data->pipelines_count; ppl++) {
 		ipc_pipe = ipc_get_pipeline_by_id(ipc, ppl);
 		if (!ipc_pipe)
-			tr_err(&ipc_tr, "No pipeline with instance_id = %d", ppl);
+			tr_err(&ipc_tr, "No pipeline with instance_id = %u", ppl);
 		else
 			ppl_data->ppl_id[ppl_data->pipelines_count++] =
 				ipc_pipe->pipeline->pipeline_id;
