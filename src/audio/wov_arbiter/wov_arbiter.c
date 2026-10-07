@@ -190,7 +190,7 @@ static struct comp_dev *wov_arb_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	struct wov_arb_data *cd;
 
-	comp_cl_info(&drv->tctx, "wov_arb_new");
+	comp_cl_info(drv, "wov_arb_new");
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -441,9 +441,34 @@ static int wov_arb_set_large_config(struct comp_dev *dev,
 					       NOTIFIER_TARGET_CORE_ALL_MASK,
 					       &c, sizeof(c));
 			} else {
-				cd->active_slot = (uint8_t)(val - 1);
+				uint8_t selected_slot = (uint8_t)(val - 1);
+
+				comp_info(dev, "wov_arb: filter listening to slot=%u via kcontrol",
+					  selected_slot);
+				/*
+				 * Do not force cd->active_slot: the arbiter must remain
+				 * in listening mode (WOV_ARB_NO_ACTIVE) so the selected
+				 * detector can still trigger when the keyword is spoken,
+				 * and so the host PCM stays idle until actual detection.
+				 *
+				 * Broadcast RESUME so the target slot unpauses even if
+				 * it was previously paused, then broadcast PAUSE with
+				 * slot_id = selected_slot so every OTHER slot suspends
+				 * inference and yields CPU time to the selected detector.
+				 */
+				cd->active_slot = WOV_ARB_NO_ACTIVE;
 				cd->last_notify_time = 0;
-				comp_info(dev, "wov_arb: set active_slot=%u via kcontrol", cd->active_slot);
+				struct wov_ctrl_notif r = { .cmd = WOV_ARB_CMD_RESUME };
+				notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
+					       NOTIFIER_TARGET_CORE_ALL_MASK,
+					       &r, sizeof(r));
+				struct wov_ctrl_notif p = {
+					.cmd = WOV_ARB_CMD_PAUSE,
+					.slot_id = selected_slot,
+				};
+				notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
+					       NOTIFIER_TARGET_CORE_ALL_MASK,
+					       &p, sizeof(p));
 			}
 		}
 		return 0;

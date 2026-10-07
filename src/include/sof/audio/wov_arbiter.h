@@ -43,8 +43,6 @@ struct wov_ctrl_notif {
 /* Sentinel value matching WOV_SLOT_INVALID in ams_msg.h */
 #define WOV_SLOT_INVALID 0xff
 
-#ifdef UNIT_TEST
 void sys_comp_wov_arbiter_init(void);
-#endif
 
 #endif /* __SOF_AUDIO_WOV_ARBITER_H__ */
