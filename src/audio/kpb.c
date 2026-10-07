@@ -130,7 +130,6 @@ static int kpb_buffer_data(struct comp_dev *dev,
 			   const struct comp_buffer *source, size_t size);
 static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 					  size_t hb_size_req);
-static void kpb_clear_history_buffer(struct history_buffer *buff);
 static void kpb_free_history_buffer(struct history_buffer *buff);
 static inline bool kpb_is_sample_width_supported(uint32_t sampling_width);
 static void kpb_copy_samples(struct comp_buffer *sink,
@@ -1402,43 +1401,44 @@ static int kpb_copy(struct comp_dev *dev)
 			break;
 		}
 
-		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
-		if (!copy_bytes) {
-			comp_warn(dev, "nothing to copy sink->free %u source->avail %u",
-				 audio_stream_get_free_bytes(&sink->stream),
-				 audio_stream_get_avail_bytes(&source->stream));
+		uint32_t src_avail = audio_stream_get_avail_bytes(&source->stream);
+		uint32_t snk_free = audio_stream_get_free_bytes(&sink->stream);
+		size_t frame_bytes = (sample_width >> 3) * channels;
+		size_t consume_bytes = 0;
+
+		if (!src_avail) {
 			ret = PPL_STATUS_PATH_STOP;
 			break;
 		}
 
-		if (kpb->num_of_sel_mic == 0) {
-			kpb_copy_samples(sink, source, copy_bytes, sample_width, channels);
-		} else {
-			uint32_t avail = audio_stream_get_avail_bytes(&source->stream);
-			uint32_t free = audio_stream_get_free_bytes(&sink->stream);
+		copy_bytes = MIN(src_avail, snk_free);
+		if (frame_bytes)
+			copy_bytes = ROUND_DOWN(copy_bytes, frame_bytes);
 
-			copy_bytes = MIN(avail, free * channels / kpb->num_of_sel_mic);
+		if (kpb->num_of_sel_mic == 0) {
+			if (copy_bytes)
+				kpb_copy_samples(sink, source, copy_bytes, sample_width, channels);
+			consume_bytes = copy_bytes ? copy_bytes : (frame_bytes ? ROUND_DOWN(src_avail, frame_bytes) : 0);
+		} else {
+			uint32_t free = snk_free;
+
+			copy_bytes = MIN(src_avail, free * channels / kpb->num_of_sel_mic);
 			copy_bytes = ROUND_DOWN(copy_bytes, (sample_width >> 3) * channels);
 			unsigned int total_bytes_per_sample =
 					(sample_width >> 3) * kpb->num_of_sel_mic;
 
 			produced_bytes = copy_bytes * kpb->num_of_sel_mic / channels;
 			produced_bytes = ROUND_DOWN(produced_bytes, total_bytes_per_sample);
-			if (!copy_bytes) {
-				comp_warn(dev, "nothing to copy sink->free %u source->avail %u",
-					 free,
-					 avail);
-				ret = PPL_STATUS_PATH_STOP;
-				break;
-			}
-			kpb_micselect_copy(dev, sink, source, produced_bytes, channels);
+			if (copy_bytes)
+				kpb_micselect_copy(dev, sink, source, produced_bytes, channels);
+			consume_bytes = copy_bytes ? copy_bytes : (frame_bytes ? ROUND_DOWN(src_avail, frame_bytes) : 0);
 		}
-		/* Buffer the FULL multi-channel source frame (copy_bytes, not produced_bytes)
-		 * so all KPB clients get the complete channel-count history, regardless of
-		 * which channels kpb_micselect_copy() forwarded to sel_sink.
+
+		/* Buffer into history buffer (consume_bytes ensures history ring keeps filling
+		 * and upstream ECNS never stalls even if downstream sel_sink is full).
 		 */
-		if (copy_bytes <= kpb->hd.buffer_size) {
-			ret = kpb_buffer_data(dev, source, copy_bytes);
+		if (consume_bytes && consume_bytes <= kpb->hd.buffer_size) {
+			ret = kpb_buffer_data(dev, source, consume_bytes);
 
 			if (ret) {
 				comp_err(dev, "internal buffering failed.");
@@ -1451,26 +1451,29 @@ static int kpb_copy(struct comp_dev *dev)
 			 */
 			kpb->hd.buffered += MIN(kpb->hd.buffer_size -
 						kpb->hd.buffered,
-						copy_bytes);
-		} else {
+						consume_bytes);
+		} else if (consume_bytes > kpb->hd.buffer_size) {
 			comp_err(dev, "too much data to buffer.");
 		}
 
-		if (kpb->num_of_sel_mic == 0)
-			comp_update_buffer_produce(sink, copy_bytes);
-		else
-			comp_update_buffer_produce(sink, produced_bytes);
+		if (copy_bytes) {
+			if (kpb->num_of_sel_mic == 0)
+				comp_update_buffer_produce(sink, copy_bytes);
+			else
+				comp_update_buffer_produce(sink, produced_bytes);
 
-		struct comp_dev *wov_comp = sink ? comp_buffer_get_sink_component(sink) : NULL;
-		if (wov_comp) {
-			comp_dbg(dev, "kpb_copy: produced=%u bytes, triggering wov=0x%x",
-				 copy_bytes, dev_comp_id(wov_comp));
-			comp_copy(wov_comp);
-		} else {
-			comp_warn(dev, "kpb_copy: downstream sink_comp returned NULL!");
+			struct comp_dev *wov_comp = sink ? comp_buffer_get_sink_component(sink) : NULL;
+			if (wov_comp) {
+				comp_dbg(dev, "kpb_copy: produced=%u bytes, triggering wov=0x%x",
+					 copy_bytes, dev_comp_id(wov_comp));
+				comp_copy(wov_comp);
+			} else {
+				comp_warn(dev, "kpb_copy: downstream sink_comp returned NULL!");
+			}
 		}
 
-		comp_update_buffer_consume(source, copy_bytes);
+		if (consume_bytes)
+			comp_update_buffer_consume(source, consume_bytes);
 
 		break;
 	case KPB_STATE_HOST_COPY:
@@ -2444,30 +2447,6 @@ static void kpb_buffer_samples(const struct audio_stream *source,
 		comp_cl_err(&comp_kpb, "KPB: An attempt to copy not supported format!");
 		return;
 	}
-}
-
-/**
- * \brief Initialize history buffer by zeroing its memory.
- * \param[in] buff - pointer to current history buffer.
- *
- * \return: none.
- */
-static void kpb_clear_history_buffer(struct history_buffer *buff)
-{
-	struct history_buffer *first_buff = buff;
-	void *start_addr;
-	size_t size;
-
-	comp_cl_info(&comp_kpb, "entry");
-
-	do {
-		start_addr = buff->start_addr;
-		size = (uintptr_t)buff->end_addr - (uintptr_t)start_addr;
-
-		bzero(start_addr, size);
-
-		buff = buff->next;
-	} while (buff != first_buff);
 }
 
 static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)
