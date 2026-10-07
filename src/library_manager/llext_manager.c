@@ -548,6 +548,12 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 			n_mod++;
 		}
 
+	if (!n_mod) {
+		tr_err(&lib_manager_tr, "no module segments in %u entries",
+		       desc->header.num_module_entries);
+		return -EINVAL;
+	}
+
 	/*
 	 * Loadable modules are loaded to DRAM once and never unloaded from it.
 	 * Context, related to them, is never freed
