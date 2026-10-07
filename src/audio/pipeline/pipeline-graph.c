@@ -699,9 +699,20 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 		if (ret < 0)
 			return NULL;
 
-		if (input_data && output_data && input_base_cfg.ibs && output_base_cfg.obs)
-			*latency += input_data / input_base_cfg.ibs -
-				output_data / output_base_cfg.obs;
+		if (input_data && output_data && input_base_cfg.ibs && output_base_cfg.obs) {
+			uint64_t in_blocks = input_data / input_base_cfg.ibs;
+			uint64_t out_blocks = output_data / output_base_cfg.obs;
+
+			/* The latency is a count of blocks buffered between the
+			 * source and the sink and cannot be negative. The sink may
+			 * legitimately lead the source, e.g. when the dai is started
+			 * before the host because they are in different pipelines,
+			 * so clamp instead of letting the unsigned subtraction wrap
+			 * into a huge value.
+			 */
+			if (in_blocks > out_blocks)
+				*latency += in_blocks - out_blocks;
+		}
 
 		/* If the component doesn't have a sink buffer, it can be a dai. */
 		if (list_is_empty(&ipc_sink->cd->bsink_list))
