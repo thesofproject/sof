@@ -5,6 +5,7 @@ config COMP_MWW
 	depends on SOF_STAGING
 	depends on CPP
 	depends on STD_CPP17
+	depends on IPC_MAJOR_4
 	help
 	  Select for microWakeWord component support. This module runs a
 	  TensorFlow Lite Micro streaming keyword-spotting model (based on
@@ -37,5 +38,18 @@ config COMP_MWW_FAKE_WAKE_MS
 	  duration (or 5000ms if set to 0) after the pipeline is active/triggered.
 	  Upon expiration, it fires a synthetic keyword detection to wake the host
 	  and drain the KPB buffer, then auto-clears the wovdebug kcontrol back to 0.
+
+config COMP_MWW_PCAN
+	bool "Expect PCAN-normalized MFCC input"
+	default y if COMP_MFCC_PCAN
+	depends on COMP_MFCC_PCAN
+	help
+	  Select when the upstream MFCC component runs with PCAN
+	  (Per-Channel AGC Normalization) enabled. In that mode the Mel
+	  filterbank energies arriving at MWW are already normalized to the
+	  int8 dynamic range, so the in-component peak-tracking AGC and the
+	  Q9.23->Q1.7 requantization step are compiled out and each Mel value
+	  is clamped and cast directly to int8. Leave disabled for the
+	  classic non-PCAN MFCC pipeline that relies on MWW's built-in AGC.
 
 endif # COMP_MWW

@@ -15,7 +15,7 @@
 #include "tensorflow/lite/micro/micro_resource_variable.h"
 #include "mww_model.h"
 
-#include "mww_model_data.h"
+#include "mww_model_data_strawberry.h"
 #include "mww_model_data_banana.h"
 #include "mww_model_data_orange.h"
 

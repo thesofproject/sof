@@ -77,11 +77,20 @@ void __assert_func(const char *file, int line, const char *func,
 #include <ipc4/ams_helpers.h>
 #endif
 
+#if CONFIG_COMP_MWW_PCAN && !CONFIG_COMP_MFCC_PCAN
+#error "CONFIG_COMP_MWW_PCAN requires CONFIG_COMP_MFCC_PCAN; MFCC must produce int8 PCAN features"
+#endif
+
+#if CONFIG_COMP_MWW_PCAN
+/* 8-bit PCAN features: 24-byte header + 40 mel bins * 1 byte */
+#define MWW_HOP_BYTES (sizeof(struct mfcc_data_header) + MWW_FEATURE_SIZE * sizeof(int8_t))
+#else
 /* MFCC's non-compress output prepends a struct mfcc_data_header (24 bytes)
  * to each hop, followed by MWW_FEATURE_SIZE int32_t Q9.23 mel-log values.
  * This must match the frame size configured in the mww capture pipeline.
  */
 #define MWW_HOP_BYTES (sizeof(struct mfcc_data_header) + MWW_FEATURE_SIZE * sizeof(int32_t))
+#endif
 
 /* Pre-roll history in ms that KPB drains to host on wake-word trigger. */
 #define MWW_KPB_DRAIN_REQ_MS 2000
@@ -92,11 +101,11 @@ void __assert_func(const char *file, int line, const char *func,
 /* Wake-word probability threshold above which KPB draining is triggered. */
 #define MWW_DETECT_THRESHOLD 0.85f
 
-/* Consecutive inferences above threshold required to confirm detection (~90 ms). */
-#define MWW_CONSECUTIVE_DETECTS_REQUIRED 3
+/* Consecutive inferences above threshold required to confirm detection (~60 ms). */
+#define MWW_CONSECUTIVE_DETECTS_REQUIRED 2
 
-/* Number of startup inferences to warm up the temporal ring buffers before enabling triggers (~1 sec). */
-#define MWW_WARMUP_INFERENCES 33
+/* Number of startup inferences to warm up the temporal ring buffers before enabling triggers. */
+#define MWW_WARMUP_INFERENCES 3
 
 /* Hop interval for live scoring kcontrol updates (50 hops @ 10ms = 500 ms = 2 Hz). */
 #define MWW_SCORE_UPDATE_HOPS 50
@@ -153,8 +162,10 @@ struct mww_comp_data {
 
 	/* Bitmask of VAD flags for the MWW_FEATURE_SLICE_COUNT frames */
 	uint32_t vad_history;
+#if !CONFIG_COMP_MWW_PCAN
 	/* Persistent AGC gain applied to every Q9.23 mel value */
 	int32_t agc_gain_q23;
+#endif
 
 	/* Hop buffer for assembling contiguous data when circular buffer wraps */
 	uint8_t hop_buf[MWW_HOP_BYTES] __aligned(4);
@@ -430,7 +441,10 @@ __cold static int mww_init(struct processing_module *mod)
 	cd->fake_wake_armed = false;
 
 	cd->drain_req_ms = MWW_KPB_DRAIN_REQ_MS;
+#if !CONFIG_COMP_MWW_PCAN
 	cd->agc_gain_q23 = MWW_AGC_GAIN_TARGET_Q23;
+#endif
+	mod->max_sinks = 0;
 	cd->window_peak_prob = 0.0f;
 	cd->current_score_idx = 0;
 	cd->last_notified_score_idx = 0;
@@ -536,8 +550,13 @@ static int mww_process(struct processing_module *mod,
 		}
 		size_t avail = source_get_data_available(sources[0]);
 
-		if (avail > 0)
-			source_release_data(sources[0], avail);
+		if (avail > 0) {
+			const void *dp, *bs;
+			size_t bsz;
+
+			if (source_get_data(sources[0], avail, &dp, &bs, &bsz) == 0)
+				source_release_data(sources[0], avail);
+		}
 		return 0;
 	}
 
@@ -545,7 +564,6 @@ static int mww_process(struct processing_module *mod,
 
 	while (bytes_to_process >= MWW_HOP_BYTES) {
 		const struct mfcc_data_header *hdr;
-		const int32_t *mel;
 		const uint8_t *hop_src;
 		size_t bytes_to_end;
 		int8_t *slice;
@@ -567,12 +585,37 @@ static int mww_process(struct processing_module *mod,
 		}
 
 		hdr = (const struct mfcc_data_header *)hop_src;
-		mel = (const int32_t *)(hop_src + sizeof(struct mfcc_data_header));
 		slice = &cd->feature_buf[cd->feature_slices_filled * MWW_FEATURE_SIZE];
 
 		/* Update VAD history bitmask across MWW_FEATURE_SLICE_COUNT slices */
 		cd->vad_history = ((cd->vad_history << 1) | (hdr->vad_flag ? 1U : 0U)) &
 				  ((1U << MWW_FEATURE_SLICE_COUNT) - 1);
+
+#if CONFIG_COMP_MWW_PCAN
+		/* PCAN mode: MFCC has already normalized and quantized Mel energies
+		 * to int8_t (Q1.7). Copy directly into the feature buffer slice.
+		 */
+		memcpy(slice, hop_src + sizeof(struct mfcc_data_header), MWW_FEATURE_SIZE);
+
+#if CONFIG_COMP_MWW_DEBUG_TRACE
+		{
+			static int dbg_hop_count;
+			int8_t f_min = slice[0], f_max = slice[0];
+
+			dbg_hop_count++;
+			for (i = 1; i < MWW_FEATURE_SIZE; i++) {
+				if (slice[i] < f_min) f_min = slice[i];
+				if (slice[i] > f_max) f_max = slice[i];
+			}
+			if (f_max > -128 || hdr->vad_flag)
+				comp_info(dev, "[MWW DBG hop %d] vad=%d E=%d Ne=%d f_min=%d f_max=%d (pcan)",
+					  dbg_hop_count, (int)hdr->vad_flag,
+					  (int)hdr->energy, (int)hdr->noise_energy,
+					  f_min, f_max);
+		}
+#endif
+#else
+		const int32_t *mel = (const int32_t *)(hop_src + sizeof(struct mfcc_data_header));
 
 		/* AGC: attack on this hop's peak (always track energy) */
 		int32_t hop_peak_q23 = mel[0];
@@ -635,11 +678,13 @@ static int mww_process(struct processing_module *mod,
 				if (slice[i] < f_min) f_min = slice[i];
 				if (slice[i] > f_max) f_max = slice[i];
 			}
-			comp_info(dev, "[MWW DBG hop %d] vad=%d E=%d Ne=%d mel_min=%d mel_max=%d f_min=%d f_max=%d agc_q23=%d",
-				  dbg_hop_count, (int)hdr->vad_flag,
-				  (int)hdr->energy, (int)hdr->noise_energy,
-				  mel_min, mel_max, f_min, f_max, (int)cd->agc_gain_q23);
+			if (f_max > -128 || hdr->vad_flag)
+				comp_info(dev, "[MWW DBG hop %d] vad=%d E=%d Ne=%d mel_min=%d mel_max=%d f_min=%d f_max=%d agc_q23=%d",
+					  dbg_hop_count, (int)hdr->vad_flag,
+					  (int)hdr->energy, (int)hdr->noise_energy,
+					  mel_min, mel_max, f_min, f_max, (int)cd->agc_gain_q23);
 		}
+#endif
 #endif
 
 		/* Copy source data to sink so downstream stages keep seeing raw MFCC hops */
@@ -758,7 +803,9 @@ static int mww_reset(struct processing_module *mod)
 	cd->current_score_idx = 0;
 	cd->last_notified_score_idx = 0;
 	cd->in_d0ix = false;
+#if !CONFIG_COMP_MWW_PCAN
 	cd->agc_gain_q23 = MWW_AGC_GAIN_TARGET_Q23;
+#endif
 	memset(cd->feature_buf, 0, sizeof(cd->feature_buf));
 	MWW_Reset(&cd->mwc);
 	return 0;
