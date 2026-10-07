@@ -993,18 +993,22 @@ static void probe_cb_produce(void *arg, struct buffer_cb_transact *cb_data)
 		struct dma_status stat;
 
 		ret = dma_get_status(dma->dc.dmac->z_dev, dma->dc.chan->index, &stat);
+		if (ret < 0) {
+			tr_err(&pr_tr, "dma_get_status() failed, ret = %d", ret);
+			goto err;
+		}
 		dma->dmapb.avail = stat.pending_length;
 		free_bytes = stat.free;
 #else
 		ret = dma_get_data_size_legacy(dma->dc.chan,
 					       &dma->dmapb.avail,
 					       &free_bytes);
-#endif
 		if (ret < 0) {
-			tr_err(&pr_tr, "dma_get_data_size() failed, ret = %u",
+			tr_err(&pr_tr, "dma_get_data_size() failed, ret = %d",
 			       ret);
 			goto err;
 		}
+#endif
 
 		/* check if transaction amount exceeds component buffer end addr */
 		/* if yes: divide copying into two stages, head and tail */
