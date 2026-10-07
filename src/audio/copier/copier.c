@@ -494,8 +494,8 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		}
 
 		buffer = comp_dev_get_first_data_producer(dai_copier);
-		pipe_reg.stream_start_offset = posn.dai_posn +
-			latency * audio_stream_period_bytes(&buffer->stream, dev->frames);
+		pipe_reg.stream_start_offset = posn.dai_posn + (uint64_t)latency *
+			audio_stream_period_bytes(&buffer->stream, dev->frames);
 		pipe_reg.stream_end_offset = 0;
 		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
 	} else if (cmd == COMP_TRIGGER_PAUSE) {
@@ -518,7 +518,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		}
 
 		buffer = comp_dev_get_first_data_producer(dai_copier);
-		pipe_reg.stream_start_offset += latency *
+		pipe_reg.stream_start_offset += (uint64_t)latency *
 			audio_stream_period_bytes(&buffer->stream, dev->frames);
 		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg.stream_start_offset,
 				      sizeof(pipe_reg.stream_start_offset));
