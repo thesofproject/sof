@@ -101,11 +101,11 @@ void __assert_func(const char *file, int line, const char *func,
 /* Wake-word probability threshold above which KPB draining is triggered. */
 #define MWW_DETECT_THRESHOLD 0.85f
 
-/* Consecutive inferences above threshold required to confirm detection (~60 ms). */
-#define MWW_CONSECUTIVE_DETECTS_REQUIRED 2
+/* Consecutive inferences above threshold required to confirm detection (~90 ms). */
+#define MWW_CONSECUTIVE_DETECTS_REQUIRED 3
 
-/* Number of startup inferences to warm up the temporal ring buffers before enabling triggers. */
-#define MWW_WARMUP_INFERENCES 3
+/* Number of startup inferences to warm up the temporal ring buffers before enabling triggers (~1 sec). */
+#define MWW_WARMUP_INFERENCES 33
 
 /* Hop interval for live scoring kcontrol updates (50 hops @ 10ms = 500 ms = 2 Hz). */
 #define MWW_SCORE_UPDATE_HOPS 50
