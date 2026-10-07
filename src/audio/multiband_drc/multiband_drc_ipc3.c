@@ -69,6 +69,11 @@ static int multiband_drc_cmd_get_value(struct processing_module *mod,
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_SWITCH:
 		comp_dbg(dev, "SOF_CTRL_CMD_SWITCH");
+		if (cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
+			comp_err(dev, "num_elems %u out of range", cdata->num_elems);
+			return -EINVAL;
+		}
+
 		for (j = 0; j < cdata->num_elems; j++)
 			cdata->chanv[j].value = cd->process_enabled;
 		if (cdata->num_elems == 1)
