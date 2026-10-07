@@ -14,6 +14,9 @@
 # stop on most errors
 set -e
 
+# Prevent snap or desktop environment from breaking octave
+unset GTK_PATH
+
 function filesize() {
   du -b "$1" | awk '{print $1}'
 }
