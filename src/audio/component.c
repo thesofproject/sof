@@ -691,6 +691,7 @@ void comp_update_ibs_obs_cpc(struct comp_dev *dev)
 		dev->cpc = 0;
 		dev->obs = 0;
 		dev->ibs = 0;
+		return;
 	}
 	dev->ll_chunk_size = get_one_ms_in_bytes(dev_cfg.audio_fmt);
 	dev->obs = dev_cfg.obs;
