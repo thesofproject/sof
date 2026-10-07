@@ -123,6 +123,36 @@ config COMP_ECNS
 	  4 DMIC channels (2 mics + 2 echo references) and outputs clean mono
 	  to KPB and clean stereo to host capture.
 
+if COMP_ECNS
+
+choice
+	prompt "ECNS mono downmix source channels for KPB output"
+	default ECNS_KPB_MONO_AVG_ALL
+	help
+	  Selects which pin0 input channels ECNS averages into the mono
+	  detection output sent to KPB. Channel indices out of range for the
+	  current input stream are skipped, falling back to all channels.
+
+config ECNS_KPB_MONO_AVG_ALL
+	bool "Average all available input channels"
+	help
+	  Average every available pin0 input channel into the mono output.
+
+config ECNS_KPB_MONO_AVG_CH_1_2
+	bool "Average input channels 1 and 2"
+	help
+	  Average the first two input channels (indices 0 and 1).
+
+config ECNS_KPB_MONO_AVG_CH_3_4
+	bool "Average input channels 3 and 4"
+	help
+	  Average the third and fourth input channels (indices 2 and 3).
+	  Useful when the first mic pair is poor quality.
+
+endchoice
+
+endif # COMP_ECNS
+
 config COMP_KPB
 	bool "KPB component"
 	default y

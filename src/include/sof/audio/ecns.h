@@ -23,8 +23,6 @@
 #define ECNS_FRAME_SAMPLES_48K	960	/* 20ms @ 48 kHz */
 #define ECNS_FRAME_SAMPLES	ECNS_FRAME_SAMPLES_16K
 
-#ifdef UNIT_TEST
 void sys_comp_ecns_init(void);
-#endif
 
 #endif /* __SOF_AUDIO_ECNS_H__ */
