@@ -1688,6 +1688,7 @@ static int parse_scheduling(const toml_table_t *mod_entry, struct parse_ctx *ctx
 static int parse_pin(const toml_table_t *mod_entry, struct parse_ctx *ctx,
 		     struct fw_image_ext_mod_config *ext_mod_config, int *ext_length)
 {
+	int num_pins, nelem;
 	toml_array_t *arr;
 	toml_raw_t raw;
 	int64_t val;
@@ -1708,15 +1709,19 @@ static int parse_pin(const toml_table_t *mod_entry, struct parse_ctx *ctx,
 	ctx->array_cnt++;
 
 	/* Pin definitions contain 6 elements */
-	ext_mod_config->header.num_pin_entries = toml_array_nelem(arr) / 6;
-	ext_mod_config->pin_desc = calloc(sizeof(struct fw_pin_description),
-					  toml_array_nelem(arr) / 6);
+	nelem = toml_array_nelem(arr);
+	if (nelem % 6)
+		return err_key_parse("pin", "array length %d is not a multiple of 6", nelem);
+
+	num_pins = nelem / 6;
+	ext_mod_config->header.num_pin_entries = num_pins;
+	ext_mod_config->pin_desc = calloc(sizeof(struct fw_pin_description), num_pins);
 
 	if(!ext_mod_config->pin_desc)
 		return err_malloc("pin");
 
 	j = 0;
-	for (i = 0; ; i += 6, j++) {
+	for (i = 0; j < num_pins; i += 6, j++) {
 		raw = toml_raw_at(arr, i);
 		if (raw == 0)
 			break;
@@ -1763,9 +1768,10 @@ static int parse_pin(const toml_table_t *mod_entry, struct parse_ctx *ctx,
 }
 
 static int parse_mod_config(const toml_table_t *mod_entry, struct parse_ctx *ctx,
-			    struct fw_image_manifest_module *modules,
+			    struct fw_image_manifest_module *modules, uint32_t cfg_capacity,
 			    struct sof_man_module *mod_man)
 {
+	int cfg_count, nelem;
 	toml_array_t *arr;
 	toml_raw_t raw;
 	int *cfg_data;
@@ -1785,14 +1791,23 @@ static int parse_mod_config(const toml_table_t *mod_entry, struct parse_ctx *ctx
 
 	ctx->array_cnt++;
 
+	/* 11 integers per configuration entry */
+	nelem = toml_array_nelem(arr);
+	if (nelem % 11)
+		return err_key_parse("mod_cfg", "array length %d is not a multiple of 11", nelem);
+
+	cfg_count = nelem / 11;
+	if (cfg_count > cfg_capacity - modules->mod_cfg_count)
+		return err_key_parse("mod_cfg", "%d cfgs exceed the %u entries left in mod_cfg",
+				     cfg_count, cfg_capacity - modules->mod_cfg_count);
+
 	cfg_data = (int *)(modules->mod_cfg + modules->mod_cfg_count);
 	mod_man->cfg_offset = modules->mod_cfg_count;
-	/* 11 integers per configuration entry */
-	mod_man->cfg_count = toml_array_nelem(arr) / 11;
-	modules->mod_cfg_count += mod_man->cfg_count;
+	mod_man->cfg_count = cfg_count;
+	modules->mod_cfg_count += cfg_count;
 
-	/* parse "mod_cfg" array elements: the loop runs 11 * modules->mod_cfg_count times */
-	for (i = 0; ; ++i) {
+	/* parse "mod_cfg" array elements */
+	for (i = 0; i < nelem; ++i) {
 		raw = toml_raw_at(arr, i);
 		if (raw == 0)
 			break;
@@ -1972,7 +1987,7 @@ static int parse_module(const toml_table_t *toml, struct parse_ctx *pctx,
 			return err_key_parse("pin", NULL);
 		header->ext_module_config_length += ext_length;
 
-		ret = parse_mod_config(mod_entry, &ctx_entry, modules, mod_man);
+		ret = parse_mod_config(mod_entry, &ctx_entry, modules, tmp_cfg_count, mod_man);
 		if (ret < 0)
 			return err_key_parse("mod_cfg", NULL);
 
