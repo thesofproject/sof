@@ -101,8 +101,8 @@ void __assert_func(const char *file, int line, const char *func,
 /* Wake-word probability threshold above which KPB draining is triggered. */
 #define MWW_DETECT_THRESHOLD 0.85f
 
-/* Consecutive inferences above threshold required to confirm detection (~90 ms). */
-#define MWW_CONSECUTIVE_DETECTS_REQUIRED 3
+/* Consecutive inferences above threshold required to confirm detection (~60 ms). */
+#define MWW_CONSECUTIVE_DETECTS_REQUIRED 2
 
 /* Number of startup inferences to warm up the temporal ring buffers before enabling triggers (~1 sec). */
 #define MWW_WARMUP_INFERENCES 33
@@ -169,6 +169,14 @@ struct mww_comp_data {
 
 	/* Hop buffer for assembling contiguous data when circular buffer wraps */
 	uint8_t hop_buf[MWW_HOP_BYTES] __aligned(4);
+
+#if CONFIG_COMP_MWW_DEBUG_TRACE
+	uint32_t dbg_hop_count;
+	uint32_t dbg_active_hops;
+	int32_t dbg_max_f_max;
+	int32_t dbg_max_energy;
+	int32_t dbg_peak_prob;
+#endif
 
 	/* Consecutive inferences with probability >= MWW_DETECT_THRESHOLD */
 	uint32_t consecutive_detects;
@@ -344,15 +352,28 @@ __cold static void mww_log_summary_at_shutdown(struct processing_module *mod)
 		return;
 
 	snprintk(summary_buf, sizeof(summary_buf),
-		 "[MWW STREAM SHUTDOWN SUMMARY Slot %u] Total Inferences=%u | VAD Gated=%u | Detections=%u | KPB Triggers=%u | Arena Used=%zu/%zu B",
-		 cd->wov_slot_id,
+		 "[MWW STREAM SHUTDOWN SUMMARY] Total Inferences=%u | VAD Gated=%u | Detections=%u | KPB Triggers=%u | Arena Used=%zu/%zu B (slot %u)",
 		 cd->total_inferences, cd->vad_gated_inferences,
 		 cd->detections, cd->kpb_trigger_events,
-		 MWW_ArenaUsedBytes(&cd->mwc), MWW_ArenaCapacity(&cd->mwc));
+		 MWW_ArenaUsedBytes(&cd->mwc), MWW_ArenaCapacity(&cd->mwc),
+		 cd->wov_slot_id);
 
 	if (dev)
 		comp_info(dev, "%s", summary_buf);
 	printk("%s\n", summary_buf);
+
+#if CONFIG_COMP_MWW_DEBUG_TRACE
+	char stats_buf[256];
+
+	snprintk(stats_buf, sizeof(stats_buf),
+		 "[MWW STATS Slot %u] total_hops=%u active_hops=%u max_f_max=%d max_E=%d peak_prob=%d%%",
+		 cd->wov_slot_id, cd->dbg_hop_count, cd->dbg_active_hops,
+		 cd->dbg_max_f_max, cd->dbg_max_energy, cd->dbg_peak_prob);
+
+	if (dev)
+		comp_info(dev, "%s", stats_buf);
+	printk("%s\n", stats_buf);
+#endif
 }
 
 #if CONFIG_IPC_MAJOR_4
@@ -443,6 +464,13 @@ __cold static int mww_init(struct processing_module *mod)
 	cd->drain_req_ms = MWW_KPB_DRAIN_REQ_MS;
 #if !CONFIG_COMP_MWW_PCAN
 	cd->agc_gain_q23 = MWW_AGC_GAIN_TARGET_Q23;
+#endif
+#if CONFIG_COMP_MWW_DEBUG_TRACE
+	cd->dbg_hop_count = 0;
+	cd->dbg_active_hops = 0;
+	cd->dbg_max_f_max = -128;
+	cd->dbg_max_energy = 0;
+	cd->dbg_peak_prob = 0;
 #endif
 	mod->max_sinks = 0;
 	cd->window_peak_prob = 0.0f;
@@ -599,19 +627,33 @@ static int mww_process(struct processing_module *mod,
 
 #if CONFIG_COMP_MWW_DEBUG_TRACE
 		{
-			static int dbg_hop_count;
 			int8_t f_min = slice[0], f_max = slice[0];
 
-			dbg_hop_count++;
+			cd->dbg_hop_count++;
 			for (i = 1; i < MWW_FEATURE_SIZE; i++) {
 				if (slice[i] < f_min) f_min = slice[i];
 				if (slice[i] > f_max) f_max = slice[i];
 			}
-			if (f_max > -128 || hdr->vad_flag)
-				comp_info(dev, "[MWW DBG hop %d] vad=%d E=%d Ne=%d f_min=%d f_max=%d (pcan)",
-					  dbg_hop_count, (int)hdr->vad_flag,
+
+			if (f_max > cd->dbg_max_f_max)
+				cd->dbg_max_f_max = f_max;
+			if ((int32_t)hdr->energy > cd->dbg_max_energy)
+				cd->dbg_max_energy = (int32_t)hdr->energy;
+			if (f_max > -128)
+				cd->dbg_active_hops++;
+
+			/* Log every hop while VAD reports speech (or features rise
+			 * clearly above the noise floor, f_max > 0) so the keyword
+			 * window is captured in full. Otherwise log every 32nd hop
+			 * (~3 Hz heartbeat) so mtrace does not overflow during the
+			 * long listening period before a keyword.
+			 */
+			if (hdr->vad_flag || f_max > 0 || (cd->dbg_hop_count % 32) == 1) {
+				comp_info(dev, "[MWW DBG hop %u] vad=%d E=%d Ne=%d f_min=%d f_max=%d (pcan)",
+					  cd->dbg_hop_count, (int)hdr->vad_flag,
 					  (int)hdr->energy, (int)hdr->noise_energy,
 					  f_min, f_max);
+			}
 		}
 #endif
 #else
@@ -667,22 +709,20 @@ static int mww_process(struct processing_module *mod,
 
 #if CONFIG_COMP_MWW_DEBUG_TRACE
 		{
-			static int dbg_hop_count;
 			int32_t mel_min = mel[0], mel_max = mel[0];
 			int8_t f_min = slice[0], f_max = slice[0];
 
-			dbg_hop_count++;
+			cd->dbg_hop_count++;
 			for (i = 1; i < MWW_FEATURE_SIZE; i++) {
 				if (mel[i] < mel_min) mel_min = mel[i];
 				if (mel[i] > mel_max) mel_max = mel[i];
 				if (slice[i] < f_min) f_min = slice[i];
 				if (slice[i] > f_max) f_max = slice[i];
 			}
-			if (f_max > -128 || hdr->vad_flag)
-				comp_info(dev, "[MWW DBG hop %d] vad=%d E=%d Ne=%d mel_min=%d mel_max=%d f_min=%d f_max=%d agc_q23=%d",
-					  dbg_hop_count, (int)hdr->vad_flag,
-					  (int)hdr->energy, (int)hdr->noise_energy,
-					  mel_min, mel_max, f_min, f_max, (int)cd->agc_gain_q23);
+			comp_info(dev, "[MWW DBG hop %u] vad=%d E=%d Ne=%d mel_min=%d mel_max=%d f_min=%d f_max=%d agc_q23=%d",
+				  cd->dbg_hop_count, (int)hdr->vad_flag,
+				  (int)hdr->energy, (int)hdr->noise_energy,
+				  mel_min, mel_max, f_min, f_max, (int)cd->agc_gain_q23);
 		}
 #endif
 #endif
@@ -733,10 +773,27 @@ static int mww_process(struct processing_module *mod,
 			}
 
 #if CONFIG_COMP_MWW_DEBUG_TRACE
-			comp_info(dev, "MWW probability=%d raw=%u (th=%p prio=%d cycles=%u)",
-				  (int)(cd->mwc.probability * 100.0f), cd->mwc.raw_output,
-				  k_current_get(), k_thread_priority_get(k_current_get()),
-				  c1 - c0);
+			int prob_pct = (int)(cd->mwc.probability * 100.0f);
+			/* 0.01% resolution so sub-1% model output is visible */
+			int prob_bp = (int)(cd->mwc.probability * 10000.0f);
+
+			if (prob_pct > cd->dbg_peak_prob)
+				cd->dbg_peak_prob = prob_pct;
+
+			/* Log every inference whose window saw VAD speech (vad_history != 0)
+			 * or scored above 0, so the keyword window is always captured;
+			 * otherwise a ~1 Hz heartbeat keeps mtrace from overflowing.
+			 */
+			if (cd->vad_history || prob_pct > 0 || (cd->total_inferences % 32) == 1) {
+				comp_info(dev, "MWW prob=%d.%02d%% raw=%d vadh=0x%x in[0..7]=[%d,%d,%d,%d,%d,%d,%d,%d] (cycles=%u)",
+					  prob_bp / 100, prob_bp % 100, (int)cd->mwc.raw_output,
+					  cd->vad_history,
+					  (int)cd->feature_buf[0], (int)cd->feature_buf[1],
+					  (int)cd->feature_buf[2], (int)cd->feature_buf[3],
+					  (int)cd->feature_buf[4], (int)cd->feature_buf[5],
+					  (int)cd->feature_buf[6], (int)cd->feature_buf[7],
+					  c1 - c0);
+			}
 #endif
 
 			if (cd->mwc.probability > cd->window_peak_prob)
@@ -747,9 +804,9 @@ static int mww_process(struct processing_module *mod,
 				if (cd->total_inferences > MWW_WARMUP_INFERENCES &&
 				    cd->consecutive_detects >= MWW_CONSECUTIVE_DETECTS_REQUIRED) {
 					cd->detections++;
-					comp_info(dev, "MWW keyword detected (slot %u): probability=%d pct (consecutive=%u, total=%u)",
-						  cd->wov_slot_id,
+					comp_info(dev, "MWW keyword detected: probability=%d pct (slot %u, consecutive=%u, total=%u)",
 						  (int)(cd->mwc.probability * 100.0f),
+						  cd->wov_slot_id,
 						  cd->consecutive_detects, cd->detections);
 					cd->kpb_trigger_events++;
 					mww_notify_kpb(mod);
@@ -803,6 +860,13 @@ static int mww_reset(struct processing_module *mod)
 	cd->current_score_idx = 0;
 	cd->last_notified_score_idx = 0;
 	cd->in_d0ix = false;
+#if CONFIG_COMP_MWW_DEBUG_TRACE
+	cd->dbg_hop_count = 0;
+	cd->dbg_active_hops = 0;
+	cd->dbg_max_f_max = -128;
+	cd->dbg_max_energy = 0;
+	cd->dbg_peak_prob = 0;
+#endif
 #if !CONFIG_COMP_MWW_PCAN
 	cd->agc_gain_q23 = MWW_AGC_GAIN_TARGET_Q23;
 #endif
