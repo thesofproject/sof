@@ -61,7 +61,7 @@ PROB_RE = re.compile(
 )
 
 DETECT_RE = re.compile(
-    r"\[\s*([0-9.]+)\]\s*.*MWW keyword detected:\s*probability=(\d+)"
+    r"\[\s*([0-9.]+)\]\s*.*MWW keyword detected(?:\s*\([^)]*\))?:\s*(?:slot \d+,\s*)?probability=(\d+)"
 )
 
 KPB_TRIGGER_RE = re.compile(
@@ -69,9 +69,17 @@ KPB_TRIGGER_RE = re.compile(
 )
 
 SUMMARY_RE = re.compile(
-    r"\[MWW STREAM SHUTDOWN SUMMARY\]\s+Total Inferences=(\d+)\s*\|\s*"
+    r"\[MWW STREAM SHUTDOWN SUMMARY(?:\s+Slot\s+(\d+))?\]\s+(?:Slot\s+\d+\s*\|\s*)?Total Inferences=(\d+)\s*\|\s*"
     r"VAD Gated=(\d+)\s*\|\s*Detections=(\d+)\s*\|\s*KPB Triggers=(\d+)\s*\|\s*"
-    r"Arena Used=(\d+)/(\d+)\s*B"
+    r"Arena Used=(\d+)/(\d+)\s*B(?:\s+\(slot\s+(\d+)\))?"
+)
+
+STATS_RE = re.compile(
+    r"\[MWW STATS Slot\s+(\d+)\]\s+total_hops=(\d+)\s+active_hops=(\d+)\s+max_f_max=(-?\d+)\s+max_E=(-?\d+)\s+peak_prob=(\d+)%"
+)
+
+DROPPED_RE = re.compile(
+    r"---\s*(\d+)\s+messages dropped\s*---"
 )
 
 
@@ -82,6 +90,7 @@ def parse_mtrace(file_path):
     detects = []
     kpb_triggers = []
     summaries = []
+    dropped_count = 0
 
     if file_path == "-":
         f = sys.stdin
@@ -93,6 +102,11 @@ def parse_mtrace(file_path):
 
     try:
         for line in f:
+            m = DROPPED_RE.search(line)
+            if m:
+                dropped_count += int(m.group(1))
+                continue
+
             m = HOP_RE.search(line)
             if m:
                 t, hop, vad, e, ne, m_min, m_max, f_min, f_max, agc = m.groups()
@@ -149,18 +163,47 @@ def parse_mtrace(file_path):
 
             m = SUMMARY_RE.search(line)
             if m:
-                inf, vad_gated, det, kpb_trig, arena_used, arena_cap = m.groups()
-                summaries.append({
-                    "inferences": int(inf),
-                    "vad_gated": int(vad_gated),
-                    "detections": int(det),
-                    "kpb_triggers": int(kpb_trig),
-                    "arena_used": int(arena_used),
-                    "arena_cap": int(arena_cap),
-                })
+                s_pre, inf, vad_gated, det, kpb_trig, arena_used, arena_cap, s_post = m.groups()
+                slot_val = int(s_post if s_post is not None else (s_pre if s_pre is not None else 0))
+                key = (slot_val, int(inf), int(det))
+                if not any((s.get("slot"), s["inferences"], s["detections"]) == key for s in summaries):
+                    summaries.append({
+                        "slot": slot_val,
+                        "inferences": int(inf),
+                        "vad_gated": int(vad_gated),
+                        "detections": int(det),
+                        "kpb_triggers": int(kpb_trig),
+                        "arena_used": int(arena_used),
+                        "arena_cap": int(arena_cap),
+                    })
+                continue
+
+            m = STATS_RE.search(line)
+            if m:
+                slot_id, thops, act_hops, max_f, max_e, pk_p = m.groups()
+                slot_int = int(slot_id)
+                # Attach to existing summary for this slot
+                for s in summaries:
+                    if s.get("slot") == slot_int:
+                        s["stats"] = {
+                            "total_hops": int(thops),
+                            "active_hops": int(act_hops),
+                            "max_f_max": int(max_f),
+                            "max_E": int(max_e),
+                            "peak_prob": int(pk_p),
+                        }
+                        break
+                continue
     finally:
         if file_path != "-":
             f.close()
+
+    # If dropped messages occurred, attach count to summaries metadata
+    if dropped_count > 0:
+        if summaries:
+            summaries[0]["dropped_messages"] = dropped_count
+        else:
+            summaries.append({"dropped_messages": dropped_count, "inferences": 0, "detections": 0, "arena_used": 0, "arena_cap": 0})
 
     return hops, probs, detects, kpb_triggers, summaries
 
@@ -267,16 +310,19 @@ def plot_mww_diagnostics(hops, probs, detects, kpb_triggers, summaries,
     stats_str = f"Hops: {len(hops)} | Inferences: {len(probs)} | Detections: {len(detects)}"
     ax1.set_title(f"{title}\n({stats_str})", fontsize=12, fontweight="bold", pad=28)
 
-    # Secondary x-axis for Hop counter on top
-    ax_top = ax1.twiny()
-    ax_top.set_xlim(t_hops[0], t_hops[-1])
-    step = max(1, len(hop_idx) // 10)
-    tick_indices = list(range(0, len(hop_idx), step))
-    if tick_indices[-1] != len(hop_idx) - 1:
-        tick_indices.append(len(hop_idx) - 1)
-    ax_top.set_xticks([t_hops[i] for i in tick_indices])
-    ax_top.set_xticklabels([str(hop_idx[i]) for i in tick_indices])
-    ax_top.set_xlabel("Hop Index", fontweight="bold", fontsize=10, labelpad=8)
+    # Secondary x-axis for Hop counter on top (only if hops cover the time span)
+    t_end = max(t_hops[-1] if len(t_hops) > 0 else 0.0,
+                t_probs[-1] if len(t_probs) > 0 else 0.0)
+    if len(t_hops) > 1 and (t_hops[-1] - t_hops[0]) >= 0.75 * t_end:
+        ax_top = ax1.twiny()
+        ax_top.set_xlim(t_hops[0], t_hops[-1])
+        step = max(1, len(hop_idx) // 10)
+        tick_indices = list(range(0, len(hop_idx), step))
+        if tick_indices[-1] != len(hop_idx) - 1:
+            tick_indices.append(len(hop_idx) - 1)
+        ax_top.set_xticks([t_hops[i] for i in tick_indices])
+        ax_top.set_xticklabels([str(hop_idx[i]) for i in tick_indices])
+        ax_top.set_xlabel("Hop Index", fontweight="bold", fontsize=10, labelpad=8)
 
     # -------------------------------------------------------------
     # Subplot 2: Energy & Noise Estimate
@@ -408,8 +454,20 @@ def main():
     print(f"Parsed {len(hops)} hops ({mode_str}), {len(probs)} inferences, {len(detects)} detections from {args.input}")
     for d in detects:
         print(f"  [Detection Event] timestamp={d['t']}s, probability={d['prob']}%")
+    dropped = summaries[0].get("dropped_messages", 0) if summaries else 0
+    if dropped > 0:
+        print(f"  [Transport Warning] {dropped} mtrace log messages were dropped by kernel/FW ring buffer overflow.")
+
     for s in summaries:
-        print(f"  [Shutdown Summary] inferences={s['inferences']}, detections={s['detections']}, arena={s['arena_used']}/{s['arena_cap']} B")
+        if s.get("inferences", 0) == 0 and s.get("arena_cap", 0) == 0:
+            continue
+        slot_str = f"Slot {s['slot']} " if "slot" in s else ""
+        print(f"  [Shutdown Summary] {slot_str}inferences={s['inferences']}, detections={s['detections']}, arena={s['arena_used']}/{s['arena_cap']} B")
+        if "stats" in s:
+            st = s["stats"]
+            print(f"  [Feature Stats] {slot_str}total_hops={st['total_hops']}, active_hops={st['active_hops']}, max_f_max={st['max_f_max']}, max_E={st['max_E']}, peak_prob={st['peak_prob']}%")
+        if s["inferences"] > len(probs) and dropped > 0:
+            print(f"    Notice: FW executed {s['inferences']} inferences (0 VAD-gated); {s['inferences'] - len(probs)} were lost in dropped log messages.")
 
     plot_mww_diagnostics(
         hops=hops,
