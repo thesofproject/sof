@@ -125,6 +125,10 @@ set(TPLGS
 	"sof-acp_7_x_sdw\;sof-acp7x-rt721-l0"
 	"sof-acp_7_x_i2s\;sof-acp7x"
 	"sof-acp_7_x_i2s_24bit\;sof-acp7x-24bit"
+	"sof-acp_7_x_sdw_pdm\;sof-acp7x-sdw-pdm-48k\;-DPDM_INDEX=0\;-DPDM_RATE=48000"
+	"sof-acp_7_x_sdw_pdm\;sof-acp7x-sdw-pdm1-16k\;-DPDM_INDEX=1\;-DPDM_RATE=16000"
+	"sof-acp_7_x_sdw_pdm\;sof-acp7x-sdw-pdm1-48k\;-DPDM_INDEX=1\;-DPDM_RATE=48000"
+	"sof-acp_7_x_sdw_pdm\;sof-acp7x-sdw-pdm1-96k\;-DPDM_INDEX=1\;-DPDM_RATE=96000"
 )
 
 # This empty 'production/' source subdirectory exists only to create the
