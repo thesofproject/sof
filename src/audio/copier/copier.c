@@ -510,7 +510,15 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 		pipe_reg.stream_start_offset = mailbox_sw_reg_read64(cd->pipeline_reg_offset);
 		pipe_reg.stream_end_offset = mailbox_sw_reg_read64(cd->pipeline_reg_offset +
 			sizeof(pipe_reg.stream_start_offset));
-		pipe_reg.stream_start_offset += posn.dai_posn - pipe_reg.stream_end_offset;
+
+		/* stream_end_offset was sampled from the dai position when the pipeline
+		 * was paused, so the current position should be ahead of it. The value
+		 * is read back from the host visible mailbox and cannot be trusted: a
+		 * stale or out of order one would make the unsigned subtraction wrap
+		 * and corrupt the offset reported to the host driver.
+		 */
+		if (posn.dai_posn > pipe_reg.stream_end_offset)
+			pipe_reg.stream_start_offset += posn.dai_posn - pipe_reg.stream_end_offset;
 
 		if (list_is_empty(&dai_copier->bsource_list)) {
 			comp_err(dev, "No source buffer bound to dai_copier");
