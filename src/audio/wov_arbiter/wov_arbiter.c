@@ -654,8 +654,8 @@ static int wov_arb_copy(struct comp_dev *dev)
 
 	cd->copy_count++;
 	if ((cd->copy_count % 100) == 1) {
-		comp_info(dev, "wov_arb_copy #%u: active=%u, num_src=%u, act_avail=%u, copied=%u, sink_free=%u",
-			  cd->copy_count, cd->active_slot, num_sources, active_avail, copied_dst_bytes, sink_free);
+		comp_dbg(dev, "wov_arb_copy #%u: active=%u, num_src=%u, act_avail=%u, copied=%u, sink_free=%u",
+			 cd->copy_count, cd->active_slot, num_sources, active_avail, copied_dst_bytes, sink_free);
 	}
 
 	return 0;
