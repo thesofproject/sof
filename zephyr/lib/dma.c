@@ -261,6 +261,19 @@ APP_SYSUSER_DATA struct sof_dma dma[] = {
 	},
 	.z_dev = DEVICE_DT_GET(DT_NODELABEL(acp_tdm_dma)),
 },
+{
+	.plat_data = {
+		.dir		= SOF_DMA_DIR_MEM_TO_DEV |
+				  SOF_DMA_DIR_DEV_TO_MEM,
+		.devs		= SOF_DMA_DEV_DMIC,
+		.caps		= SOF_DMA_CAP_DMIC,
+		.base		= DMA0_BASE,
+		.chan_size	= DMA0_SIZE,
+		.channels	= 8,
+		.period_count	= 2,
+	},
+	.z_dev = DEVICE_DT_GET(DT_NODELABEL(acp_dmic_dma)),
+},
 #endif
 #if DT_HAS_COMPAT_STATUS_OKAY(mediatek_afe_memif_dma)
 {
