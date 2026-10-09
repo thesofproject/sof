@@ -216,7 +216,7 @@ target_compile_options(mww_tflm_lib PRIVATE
 )
 
 # tflite-micro trees differ here: upstream (the commit pinned by
-# scripts/tensorflow-clone.sh) declares IBufferAllocator's methods pure virtual in
+# submanifests/tflm.yml) declares IBufferAllocator's methods pure virtual in
 # the header only, while trees carrying the Xtensa ICF vtable-folding fix move them
 # out of line into ibuffer_allocator.cc. Compile the file when it is present so both
 # layouts link.

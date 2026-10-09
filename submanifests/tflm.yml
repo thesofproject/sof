@@ -8,8 +8,8 @@
 manifest:
   projects:
     - name: tflite-micro
-      url: https://github.com/thesofproject/tflite-micro
-      revision: 8dddd051ce31fb9df5c2bdcf37329a03e3c3080b
+      url: https://github.com/tensorflow/tflite-micro
+      revision: e86d97b6237f88ab5925c0b41e3e3589a1560d86
       path: tflite-micro
 
     - name: flatbuffers
