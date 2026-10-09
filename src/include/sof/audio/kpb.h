@@ -21,17 +21,12 @@
 
 #endif
 struct comp_buffer;
+struct comp_dev *get_wov_detector_comp(uint32_t ppl_id);
 
 /* KPB internal defines */
 
-#if CONFIG_TIGERLAKE
-#define KPB_MAX_BUFF_TIME 3000 /**< time of buffering in miliseconds */
-#define HOST_WAKEUP_TIME 1000 /* aprox. time of host DMA wakup from suspend [ms] */
-#else
-/** Due to memory constraints on non-TGL platforms, the buffers are smaller. */
-#define KPB_MAX_BUFF_TIME 2100 /**< time of buffering in miliseconds */
-#define HOST_WAKEUP_TIME 0 /* aprox. time of host DMA wakup from suspend [ms] */
-#endif
+#define KPB_MAX_BUFF_TIME CONFIG_KPB_MAX_BUFF_TIME /**< time of buffering in miliseconds */
+#define HOST_WAKEUP_TIME 0 /* host DMA already live; see CONFIG_KPB_MAX_BUFF_TIME */
 
 #define KPB_MAX_DRAINING_REQ (KPB_MAX_BUFF_TIME - HOST_WAKEUP_TIME)
 #define KPB_MAX_SUPPORTED_CHANNELS 6 /**< number of supported channels */
@@ -42,7 +37,7 @@ struct comp_buffer;
 #define KPB_MAX_BUFFER_SIZE(sw, channels_number) ((KPB_SAMPLNG_FREQUENCY / 1000) * \
 	(KPB_SAMPLE_CONTAINER_SIZE(sw) / 8) * KPB_MAX_BUFF_TIME * \
 	 (channels_number))
-#define KPB_MAX_NO_OF_CLIENTS 4
+#define KPB_MAX_NO_OF_CLIENTS CONFIG_KPB_MAX_NO_OF_CLIENTS
 #define KPB_MAX_SINK_CNT (1 + KPB_MAX_NO_OF_CLIENTS)
 #define KPB_NO_OF_HISTORY_BUFFERS 2 /**< no of internal buffers */
 #define KPB_ALLOCATION_STEP 0x100
@@ -113,8 +108,6 @@ enum kpb_client_state {
 };
 
 struct kpb_client {
-	struct comp_dev *dev;
-	struct k_queue *queue;
 	uint8_t id; /**< id associated with output sink */
 	uint32_t drain_req; /**< normalized value of buffered bytes */
 	enum kpb_client_state state; /**< current state of a client */
@@ -254,17 +247,6 @@ struct kpb_fmt_dev_list {
 	struct comp_dev *modules_list_item[FAST_MODE_TASK_MAX_MODULES_COUNT];
 	struct comp_dev *kpb_mi_ptr;
 };
-
-#if CONFIG_KPB_CLI_Q
-void kpb_notifier_schedule(struct kpb_client *cli);
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
-#include <sof/compiler_attributes.h>
-__syscall void kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli);
-#include <zephyr/syscalls/kpb.h>
-#else
-#define kpb_notifier_init z_impl_kpb_notifier_init
-#endif
-#endif
 
 #ifdef UNIT_TEST
 void sys_comp_kpb_init(void);
