@@ -135,7 +135,7 @@ int MWW_InitOps(struct mww_classify *mwc)
 		inst->interpreter = nullptr;
 	}
 	if (inst->op_resolver) {
-		inst->op_resolver->~MicroOpResolver();
+		inst->op_resolver->~MwwOpResolver();
 		inst->op_resolver = nullptr;
 	}
 
@@ -143,7 +143,7 @@ int MWW_InitOps(struct mww_classify *mwc)
 
 	if (RegisterOps(inst->op_resolver) != 0) {
 		mwc->error = "register ops failed";
-		inst->op_resolver->~MicroOpResolver();
+		inst->op_resolver->~MwwOpResolver();
 		inst->op_resolver = nullptr;
 		return -EINVAL;
 	}
@@ -154,7 +154,7 @@ int MWW_InitOps(struct mww_classify *mwc)
 	inst->allocator = tflite::MicroAllocator::Create(inst->arena, inst->arena_size);
 	if (!inst->allocator) {
 		mwc->error = "allocator alloc failed (OOM)";
-		inst->op_resolver->~MicroOpResolver();
+		inst->op_resolver->~MwwOpResolver();
 		inst->op_resolver = nullptr;
 		return -ENOMEM;
 	}
@@ -162,7 +162,7 @@ int MWW_InitOps(struct mww_classify *mwc)
 	inst->resource_variables = tflite::MicroResourceVariables::Create(inst->allocator, kNumResourceVariables);
 	if (!inst->resource_variables) {
 		mwc->error = "resource_variables alloc failed (OOM)";
-		inst->op_resolver->~MicroOpResolver();
+		inst->op_resolver->~MwwOpResolver();
 		inst->op_resolver = nullptr;
 		return -ENOMEM;
 	}
@@ -174,7 +174,7 @@ int MWW_InitOps(struct mww_classify *mwc)
 	if (inst->interpreter->AllocateTensors() != kTfLiteOk) {
 		mwc->error = "interpreter tensor allocate failed";
 		inst->interpreter->~MicroInterpreter();
-		inst->op_resolver->~MicroOpResolver();
+		inst->op_resolver->~MwwOpResolver();
 		inst->interpreter = nullptr;
 		inst->op_resolver = nullptr;
 		return -EINVAL;
@@ -271,7 +271,7 @@ void MWW_Free(struct mww_classify *mwc)
 		inst->interpreter = nullptr;
 	}
 	if (inst->op_resolver) {
-		inst->op_resolver->~MicroOpResolver();
+		inst->op_resolver->~MwwOpResolver();
 		inst->op_resolver = nullptr;
 	}
 	inst->allocator = nullptr;
