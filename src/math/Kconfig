@@ -279,6 +279,7 @@ config MATH_16BIT_MEL_FILTERBANK
 config MATH_32BIT_MEL_FILTERBANK
 	bool "icomplex32 data support"
 	default n
+	select SQRT_FIXED
 	help
 	  This option enables function psy_apply_mel_filterbank_32().
 	  It takes as input an array of icomplex32
@@ -286,6 +287,17 @@ config MATH_32BIT_MEL_FILTERBANK
 	  logarithmic Mel spectrum.
 
 endmenu
+
+config MATH_PCAN
+	bool "PCAN (Per-Channel AGC Normalization) library"
+	default n
+	select BINARY_LOGARITHM_FIXED
+	select MATH_EXP
+	select NATURAL_LOGARITHM_FIXED
+	help
+	  Select this to build PCAN (Per-Channel Automatic Gain Control Normalization)
+	  library. PCAN performs dynamic per-channel gain control and piecewise polynomial
+	  root compression across time to suppress stationary noise and enhance acoustic transients.
 
 config MATH_DCT
 	bool "DCT transform library"
