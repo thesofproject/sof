@@ -18,6 +18,7 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/kpb.h>
+#include <sof/audio/wov_arbiter.h>
 #define SOF_MODULE_API_PRIVATE
 #include <sof/audio/module_adapter/module/generic.h>
 #include <module/module/base.h>
@@ -120,6 +121,7 @@ struct comp_data {
 /*! KPB private functions */
 #ifndef CONFIG_AMS
 static void kpb_event_handler(void *arg, enum notify_id type, void *event_data);
+static void kpb_on_wov_ctrl(void *arg, enum notify_id id, void *data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 #endif
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli);
@@ -128,7 +130,6 @@ static int kpb_buffer_data(struct comp_dev *dev,
 			   const struct comp_buffer *source, size_t size);
 static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 					  size_t hb_size_req);
-static void kpb_clear_history_buffer(struct history_buffer *buff);
 static void kpb_free_history_buffer(struct history_buffer *buff);
 static inline bool kpb_is_sample_width_supported(uint32_t sampling_width);
 static void kpb_copy_samples(struct comp_buffer *sink,
@@ -725,6 +726,7 @@ static void kpb_free(struct comp_dev *dev)
 #else
 	/* Unregister KPB from notifications */
 	notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
+	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_CTRL);
 #endif/* CONFIG_AMS */
 
 	/* Reclaim memory occupied by history buffer */
@@ -840,6 +842,11 @@ static int kpb_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
+	if (kpb->sel_sink)
+		buffer_set_params(kpb->sel_sink, &params, true);
+	if (kpb->host_sink)
+		buffer_set_params(kpb->host_sink, &params, true);
+
 	if (kpb->state == KPB_STATE_RESETTING ||
 	    kpb->state == KPB_STATE_RESET_FINISHING) {
 		comp_cl_err(&comp_kpb, "can not prepare KPB due to ongoing reset, state log %x",
@@ -901,9 +908,14 @@ static int kpb_prepare(struct comp_dev *dev)
 					   ams_kpd_msg_uuid,
 					   kpb_ams_kpd_notification);
 #else
-	/* Register KPB for notification */
+	/* Register KPB for notification (ensure no duplicate registrations) */
+	notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
+	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_CTRL);
 	ret = notifier_register(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT,
 				kpb_event_handler, 0);
+	if (ret >= 0)
+		ret = notifier_register(dev, NULL, NOTIFIER_ID_WOV_CTRL,
+					kpb_on_wov_ctrl, 0);
 #endif /* CONFIG_AMS */
 
 	if (ret < 0) {
@@ -1044,7 +1056,7 @@ static int kpb_prepare(struct comp_dev *dev)
 		}
 	}
 
-	kpb->sync_draining_mode = true;
+	kpb->sync_draining_mode = false;
 
 	kpb_change_state(kpb, KPB_STATE_RUN);
 
@@ -1080,9 +1092,16 @@ static int kpb_reset(struct comp_dev *dev)
 	comp_cl_info(&comp_kpb, "resetting from state %d, state log %x",
 		     kpb->state, kpb->state_log);
 
+#ifndef CONFIG_AMS
+	/* Unregister KPB from notifications */
+	notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
+	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_CTRL);
+#endif
+
 	switch (kpb->state) {
 	case KPB_STATE_BUFFERING:
 	case KPB_STATE_DRAINING:
+	case KPB_STATE_HOST_COPY:
 		/* Cancel any scheduled draining task immediately on reset */
 		schedule_task_cancel(&kpb->draining_task);
 
@@ -1090,13 +1109,18 @@ static int kpb_reset(struct comp_dev *dev)
 		 * let kpb_copy complete the reset once scheduled.
 		 * If host_sink is NULL or same as sel_sink (unified WOV pipeline),
 		 * or state is BUFFERING, reset immediately.
+		 * Under IPC4, pipeline triggers and resets are synchronous;
+		 * returning -EBUSY breaks the pipeline state machine and causes
+		 * host teardown to fail.
 		 */
+#if !CONFIG_IPC_MAJOR_4
 		if (kpb->host_sink && kpb->host_sink != kpb->sel_sink &&
 		    kpb->state == KPB_STATE_DRAINING) {
 			kpb_change_state(kpb, KPB_STATE_RESETTING);
 			ret = -EBUSY;
 			break;
 		}
+#endif
 		/* host_sink == NULL or unified WOV path: immediate full reset */
 		kpb->hd.buffered = 0;
 		kpb->sel_sink = NULL;
@@ -1140,10 +1164,6 @@ static int kpb_reset(struct comp_dev *dev)
 			kpb_reset_history_buffer(kpb->hd.c_hb);
 		}
 
-#ifndef CONFIG_AMS
-		/* Unregister KPB from notifications */
-		notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
-#endif
 		/* Finally KPB is ready after reset */
 		kpb_change_state(kpb, KPB_STATE_PREPARING);
 
@@ -1381,43 +1401,44 @@ static int kpb_copy(struct comp_dev *dev)
 			break;
 		}
 
-		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
-		if (!copy_bytes) {
-			comp_warn(dev, "nothing to copy sink->free %u source->avail %u",
-				 audio_stream_get_free_bytes(&sink->stream),
-				 audio_stream_get_avail_bytes(&source->stream));
+		uint32_t src_avail = audio_stream_get_avail_bytes(&source->stream);
+		uint32_t snk_free = audio_stream_get_free_bytes(&sink->stream);
+		size_t frame_bytes = (sample_width >> 3) * channels;
+		size_t consume_bytes = 0;
+
+		if (!src_avail) {
 			ret = PPL_STATUS_PATH_STOP;
 			break;
 		}
 
-		if (kpb->num_of_sel_mic == 0) {
-			kpb_copy_samples(sink, source, copy_bytes, sample_width, channels);
-		} else {
-			uint32_t avail = audio_stream_get_avail_bytes(&source->stream);
-			uint32_t free = audio_stream_get_free_bytes(&sink->stream);
+		copy_bytes = MIN(src_avail, snk_free);
+		if (frame_bytes)
+			copy_bytes = ROUND_DOWN(copy_bytes, frame_bytes);
 
-			copy_bytes = MIN(avail, free * channels / kpb->num_of_sel_mic);
+		if (kpb->num_of_sel_mic == 0) {
+			if (copy_bytes)
+				kpb_copy_samples(sink, source, copy_bytes, sample_width, channels);
+			consume_bytes = copy_bytes ? copy_bytes : (frame_bytes ? ROUND_DOWN(src_avail, frame_bytes) : 0);
+		} else {
+			uint32_t free = snk_free;
+
+			copy_bytes = MIN(src_avail, free * channels / kpb->num_of_sel_mic);
 			copy_bytes = ROUND_DOWN(copy_bytes, (sample_width >> 3) * channels);
 			unsigned int total_bytes_per_sample =
 					(sample_width >> 3) * kpb->num_of_sel_mic;
 
 			produced_bytes = copy_bytes * kpb->num_of_sel_mic / channels;
 			produced_bytes = ROUND_DOWN(produced_bytes, total_bytes_per_sample);
-			if (!copy_bytes) {
-				comp_warn(dev, "nothing to copy sink->free %u source->avail %u",
-					 free,
-					 avail);
-				ret = PPL_STATUS_PATH_STOP;
-				break;
-			}
-			kpb_micselect_copy(dev, sink, source, produced_bytes, channels);
+			if (copy_bytes)
+				kpb_micselect_copy(dev, sink, source, produced_bytes, channels);
+			consume_bytes = copy_bytes ? copy_bytes : (frame_bytes ? ROUND_DOWN(src_avail, frame_bytes) : 0);
 		}
-		/* Buffer the FULL multi-channel source frame (copy_bytes, not produced_bytes)
-		 * so all KPB clients get the complete channel-count history, regardless of
-		 * which channels kpb_micselect_copy() forwarded to sel_sink.
+
+		/* Buffer into history buffer (consume_bytes ensures history ring keeps filling
+		 * and upstream ECNS never stalls even if downstream sel_sink is full).
 		 */
-		if (copy_bytes <= kpb->hd.buffer_size) {
-			ret = kpb_buffer_data(dev, source, copy_bytes);
+		if (consume_bytes && consume_bytes <= kpb->hd.buffer_size) {
+			ret = kpb_buffer_data(dev, source, consume_bytes);
 
 			if (ret) {
 				comp_err(dev, "internal buffering failed.");
@@ -1430,26 +1451,29 @@ static int kpb_copy(struct comp_dev *dev)
 			 */
 			kpb->hd.buffered += MIN(kpb->hd.buffer_size -
 						kpb->hd.buffered,
-						copy_bytes);
-		} else {
+						consume_bytes);
+		} else if (consume_bytes > kpb->hd.buffer_size) {
 			comp_err(dev, "too much data to buffer.");
 		}
 
-		if (kpb->num_of_sel_mic == 0)
-			comp_update_buffer_produce(sink, copy_bytes);
-		else
-			comp_update_buffer_produce(sink, produced_bytes);
+		if (copy_bytes) {
+			if (kpb->num_of_sel_mic == 0)
+				comp_update_buffer_produce(sink, copy_bytes);
+			else
+				comp_update_buffer_produce(sink, produced_bytes);
 
-		struct comp_dev *wov_comp = sink ? comp_buffer_get_sink_component(sink) : NULL;
-		if (wov_comp) {
-			comp_dbg(dev, "kpb_copy: produced=%u bytes, triggering wov=0x%x",
-				 copy_bytes, dev_comp_id(wov_comp));
-			comp_copy(wov_comp);
-		} else {
-			comp_warn(dev, "kpb_copy: downstream sink_comp returned NULL!");
+			struct comp_dev *wov_comp = sink ? comp_buffer_get_sink_component(sink) : NULL;
+			if (wov_comp) {
+				comp_dbg(dev, "kpb_copy: produced=%u bytes, triggering wov=0x%x",
+					 copy_bytes, dev_comp_id(wov_comp));
+				comp_copy(wov_comp);
+			} else {
+				comp_warn(dev, "kpb_copy: downstream sink_comp returned NULL!");
+			}
 		}
 
-		comp_update_buffer_consume(source, copy_bytes);
+		if (consume_bytes)
+			comp_update_buffer_consume(source, consume_bytes);
 
 		break;
 	case KPB_STATE_HOST_COPY:
@@ -1479,13 +1503,22 @@ static int kpb_copy(struct comp_dev *dev)
 			 * (no HOST DMA IRQs) we need to call host copy
 			 * anyway so it can update its pointers.
 			 */
+			struct comp_dev *host_comp = sink ? comp_buffer_get_sink_component(sink) : NULL;
+			if (host_comp)
+				comp_copy(host_comp);
+			ret = PPL_STATUS_PATH_STOP;
 			break;
 		}
 
 		kpb_copy_samples(sink, source, copy_bytes, sample_width, channels);
 
+		buffer_stream_writeback(sink, copy_bytes);
 		comp_update_buffer_produce(sink, copy_bytes);
+		struct comp_dev *host_comp = sink ? comp_buffer_get_sink_component(sink) : NULL;
+		if (host_comp)
+			comp_copy(host_comp);
 		comp_update_buffer_consume(source, copy_bytes);
+		ret = PPL_STATUS_PATH_STOP;
 
 		break;
 	case KPB_STATE_INIT_DRAINING:
@@ -1544,7 +1577,6 @@ static int kpb_buffer_data(struct comp_dev *dev,
 	uint32_t offset = 0;
 	uint64_t timeout = 0;
 	uint64_t current_time;
-	enum kpb_state state_preserved = kpb->state;
 	size_t sample_width = kpb->config.sampling_width;
 
 	comp_dbg(dev, "entry");
@@ -1560,8 +1592,6 @@ static int kpb_buffer_data(struct comp_dev *dev,
 			 kpb->state, kpb->state_log);
 		return PPL_STATUS_PATH_STOP;
 	}
-
-	kpb_change_state(kpb, KPB_STATE_BUFFERING);
 
 	timeout = sof_cycle_get_64() + k_ms_to_cyc_ceil64(1);
 	/* Let's store audio stream data in internal history buffer */
@@ -1647,11 +1677,35 @@ static int kpb_buffer_data(struct comp_dev *dev,
 		}
 	}
 
-	kpb_change_state(kpb, state_preserved);
 	return ret;
 }
 
 #ifndef CONFIG_AMS
+static void kpb_on_wov_ctrl(void *arg, enum notify_id id, void *data)
+{
+	struct comp_dev *dev = arg;
+	struct comp_data *kpb = comp_get_drvdata(dev);
+	const struct wov_ctrl_notif *n = data;
+
+	if (n->cmd == WOV_ARB_CMD_RESUME) {
+		comp_info(dev, "kpb: received WOV_ARB_CMD_RESUME, current state=%d", kpb->state);
+		kpb_lock(kpb);
+		if (kpb->state == KPB_STATE_DRAINING ||
+		    kpb->state == KPB_STATE_INIT_DRAINING ||
+		    kpb->state == KPB_STATE_HOST_COPY) {
+			schedule_task_cancel(&kpb->draining_task);
+			kpb->draining_task_data.drain_req = 0;
+			if (kpb->hd.c_hb)
+				kpb_reset_history_buffer(kpb->hd.c_hb);
+			kpb->hd.buffered = 0;
+			kpb->hd.free = kpb->hd.buffer_size;
+			kpb_change_state(kpb, KPB_STATE_RUN);
+			comp_info(dev, "kpb: resumed to RUN state");
+		}
+		kpb_unlock(kpb);
+	}
+}
+
 /**
  * \brief Main event dispatcher.
  * \param[in] arg - KPB component internal data.
@@ -1749,23 +1803,23 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			comp_warn(dev, "kpb_init_draining: no drain path, skipping");
 			return;
 		}
-		/* WOV-only path: no dedicated host PCM sink.  Route history drain
-		 * through sel_sink so wov passthrough delivers it to the arbiter.
-		 * Set host_period_size to one real-time period so sync_draining_mode
-		 * throttles the EDF drain task to match the LL pipeline rate.
-		 */
 		comp_warn(dev, "kpb_init_draining: no host_sink, draining via sel_sink");
 		kpb->host_sink = kpb->sel_sink;
-		if (!kpb->host_period_size) {
-			size_t bpm = (size_t)(kpb->config.sampling_freq / 1000) *
-				     (KPB_SAMPLE_CONTAINER_SIZE(kpb->config.sampling_width) / 8) *
-				     kpb->config.channels;
-			kpb->host_period_size = bpm;
-			kpb->host_buffer_size = audio_stream_get_size(&kpb->sel_sink->stream);
-		}
 	}
 
-	bool is_sink_ready = (comp_buffer_get_sink_state(kpb->host_sink) == COMP_STATE_ACTIVE);
+	if (!kpb->host_period_size) {
+		size_t bpm = (size_t)(kpb->config.sampling_freq / 1000) *
+			     (KPB_SAMPLE_CONTAINER_SIZE(kpb->config.sampling_width) / 8) *
+			     kpb->config.channels;
+		kpb->host_period_size = bpm;
+		if (kpb->host_sink)
+			kpb->host_buffer_size = audio_stream_get_size(&kpb->host_sink->stream);
+		else if (kpb->sel_sink)
+			kpb->host_buffer_size = audio_stream_get_size(&kpb->sel_sink->stream);
+	}
+
+	bool is_sink_ready = (comp_buffer_get_sink_state(kpb->host_sink) == COMP_STATE_ACTIVE ||
+			      comp_buffer_get_sink_state(kpb->host_sink) == COMP_STATE_PREPARE);
 	size_t sample_width = kpb->config.sampling_width;
 	size_t drain_req = (size_t)cli->drain_req * kpb->config.channels *
 			       (kpb->config.sampling_freq / 1000) *
@@ -1785,12 +1839,13 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		  cli->drain_req);
 
 	if (kpb->state != KPB_STATE_RUN) {
-		comp_err(dev, "wrong KPB state");
+		comp_err(dev, "wrong KPB state: %d", kpb->state);
 	} else if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
-		comp_err(dev, "wrong client id");
+		comp_err(dev, "wrong client id: %u", cli->id);
 	/* TODO: check also if client is registered */
 	} else if (!is_sink_ready) {
-		comp_err(dev, "sink not ready for draining");
+		comp_err(dev, "sink not ready for draining (sink_state=%d)",
+			 comp_buffer_get_sink_state(kpb->host_sink));
 	} else if (cli->drain_req > kpb_get_buff_time_ms(kpb)) {
 		comp_cl_err(&comp_kpb, "drain request exceeds max");
 	} else {
@@ -1871,8 +1926,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			 * shall take place. This time will be used to
 			 * synchronize us with application interrupts.
 			 */
-			drain_interval = k_ms_to_cyc_ceil64(host_period_size / bytes_per_ms) /
-					 KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE;
+			drain_interval = k_ms_to_cyc_ceil64(host_period_size / bytes_per_ms);
 			period_bytes_limit = host_period_size;
 			comp_info(dev, "sync_draining_mode selected with interval %u [uS].",
 				  (unsigned int)k_cyc_to_us_near64(drain_interval));
@@ -1910,11 +1964,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			comp_set_attribute(comp_buffer_get_sink_component(kpb->host_sink),
 					   COMP_ATTR_COPY_TYPE, &kpb->force_copy_type);
 
-		/* Pause selector copy to stop detection on stale drain data.
-		 * Skip when sel_sink IS the drain path (wov passthrough needed).
-		 */
-		if (kpb->host_sink != kpb->sel_sink)
-			comp_buffer_get_sink_component(kpb->sel_sink)->state = COMP_STATE_PAUSED;
+		/* Do not pause selector copy; downstream detectors manage their own pause states */
 
 		if (!pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID))
 			pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
@@ -1956,7 +2006,7 @@ static void adjust_drain_interval(struct comp_data *kpb, struct draining_data *d
 		pipeline_period = (size_t)(kpb->config.sampling_freq / 1000) *
 			(KPB_SAMPLE_CONTAINER_SIZE(dd->sample_width) / 8) * kpb->config.channels;
 		/* desired draining pace in bytes per second */
-		optimal_pace = pipeline_period * KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE * 1000;
+		optimal_pace = pipeline_period * 1000;
 
 		/* just in case to prevent div by 0 if draining is stuck (e.g. because of host) */
 		if (actual_pace) {
@@ -2021,6 +2071,11 @@ static enum task_state kpb_draining_task(void *arg)
 		goto out;
 	}
 
+	if (kpb->state != KPB_STATE_DRAINING) {
+		draining_data->drain_req = 0;
+		goto out;
+	}
+
 	adjust_drain_interval(kpb, draining_data);
 
 	if (draining_data->drain_req > 0) {
@@ -2063,42 +2118,73 @@ static enum task_state kpb_draining_task(void *arg)
 		}
 
 		if (size_to_copy) {
+			buffer_stream_writeback(sink, size_to_copy);
 			comp_update_buffer_produce(sink, size_to_copy);
-			comp_copy(comp_buffer_get_sink_component(sink));
-		} else if (!audio_stream_get_free_bytes(&sink->stream)) {
-			/* There is no free space in sink buffer.
-			 * Call .copy() on sink component so it can
-			 * process its data further.
-			 */
-			comp_copy(comp_buffer_get_sink_component(sink));
+			struct comp_dev *host_comp = sink ? comp_buffer_get_sink_component(sink) : NULL;
+			if (host_comp)
+				comp_copy(host_comp);
 		}
 
 		if (sync_mode_on && draining_data->period_bytes >= period_bytes_limit) {
 			draining_data->next_copy_time = draining_data->period_copy_start +
 				draining_data->drain_interval;
 			draining_data->period_copy_start = 0;
+		} else if (size_to_copy == 0 && draining_data->drain_req > 0) {
+			struct comp_dev *host_comp = sink ? comp_buffer_get_sink_component(sink) : NULL;
+			if (host_comp)
+				comp_copy(host_comp);
+			draining_data->next_copy_time = sof_cycle_get_64() +
+				(draining_data->drain_interval ? draining_data->drain_interval : k_ms_to_cyc_ceil64(1));
 		} else {
 			draining_data->next_copy_time = 0;
 		}
 
 		if (draining_data->drain_req == 0) {
-		/* We have finished draining of requested data however
-		 * while we were draining real time stream could provided
-		 * new data which needs to be copy to host.
-		 */
-			comp_cl_info(&comp_kpb, "kpb: update drain_req by %zu",
-				     *rt_stream_update);
 			kpb_lock(kpb);
-			draining_data->drain_req += *rt_stream_update;
-			*rt_stream_update = 0;
-			if (!draining_data->drain_req && kpb->state == KPB_STATE_DRAINING) {
-			/* Draining is done. Now switch KPB to copy real time
-			 * stream to client's sink. This state is called
-			 * "draining on demand"
-			 * Note! If KPB state changed during draining due to
-			 * i.e reset request we should not change that state.
+			/*
+			 * While draining of pre-roll history was underway, the real-time
+			 * stream buffered newly arrived frames into the history buffer
+			 * (*rt_stream_update). Drain them directly into the sink before
+			 * transitioning to HOST_COPY so no frames are lost at the boundary.
 			 */
+			while (*rt_stream_update > 0) {
+				buff = draining_data->hb;
+				avail = (uintptr_t)buff->end_addr - (uintptr_t)buff->r_ptr;
+				size_to_copy = MIN(avail,
+						   MIN(*rt_stream_update,
+						       audio_stream_get_free_bytes(&sink->stream)));
+				if (!size_to_copy)
+					break;
+
+				kpb_drain_samples(buff->r_ptr, &sink->stream, size_to_copy,
+						  sample_width);
+
+				buff->r_ptr = (char *)buff->r_ptr + (uint32_t)size_to_copy;
+				*rt_stream_update -= size_to_copy;
+				draining_data->drained += size_to_copy;
+				kpb->hd.free += MIN(kpb->hd.buffer_size -
+						    kpb->hd.free, size_to_copy);
+
+				if (size_to_copy == avail) {
+					buff->r_ptr = buff->start_addr;
+					draining_data->hb = buff->next;
+				}
+
+				buffer_stream_writeback(sink, size_to_copy);
+				comp_update_buffer_produce(sink, size_to_copy);
+				struct comp_dev *host_comp = sink ? comp_buffer_get_sink_component(sink) : NULL;
+				if (host_comp)
+					comp_copy(host_comp);
+			}
+
+			if (*rt_stream_update == 0 && kpb->state == KPB_STATE_DRAINING) {
+				/* Draining is completely done. Switch KPB to copy real time
+				 * stream to client's sink (HOST_COPY state).
+				 */
 				kpb_change_state(kpb, KPB_STATE_HOST_COPY);
+			} else if (*rt_stream_update > 0) {
+				draining_data->drain_req = *rt_stream_update;
+				*rt_stream_update = 0;
 			}
 			kpb_unlock(kpb);
 		}
@@ -2361,30 +2447,6 @@ static void kpb_buffer_samples(const struct audio_stream *source,
 		comp_cl_err(&comp_kpb, "KPB: An attempt to copy not supported format!");
 		return;
 	}
-}
-
-/**
- * \brief Initialize history buffer by zeroing its memory.
- * \param[in] buff - pointer to current history buffer.
- *
- * \return: none.
- */
-static void kpb_clear_history_buffer(struct history_buffer *buff)
-{
-	struct history_buffer *first_buff = buff;
-	void *start_addr;
-	size_t size;
-
-	comp_cl_info(&comp_kpb, "entry");
-
-	do {
-		start_addr = buff->start_addr;
-		size = (uintptr_t)buff->end_addr - (uintptr_t)start_addr;
-
-		bzero(start_addr, size);
-
-		buff = buff->next;
-	} while (buff != first_buff);
 }
 
 static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)

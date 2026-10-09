@@ -41,6 +41,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 
 /* TFLM error strings land here. Route to printk/mtrace so AllocateTensors()
@@ -57,6 +58,16 @@ int DebugVsnprintf(char *buffer, size_t buf_size, const char *format,
 	return vsnprintk(buffer, buf_size, format, vlist);
 }
 
+void __assert_func(const char *file, int line, const char *func,
+		   const char *failedexpr)
+{
+	(void)file;
+	(void)line;
+	(void)func;
+	(void)failedexpr;
+	sof_panic(0);
+}
+
 #include <sof/lib/notifier.h>
 #include <sof/audio/wov_arbiter.h>
 
@@ -66,11 +77,20 @@ int DebugVsnprintf(char *buffer, size_t buf_size, const char *format,
 #include <ipc4/ams_helpers.h>
 #endif
 
+#if CONFIG_COMP_MWW_PCAN && !CONFIG_COMP_MFCC_PCAN
+#error "CONFIG_COMP_MWW_PCAN requires CONFIG_COMP_MFCC_PCAN; MFCC must produce int8 PCAN features"
+#endif
+
+#if CONFIG_COMP_MWW_PCAN
+/* 8-bit PCAN features: 24-byte header + 40 mel bins * 1 byte */
+#define MWW_HOP_BYTES (sizeof(struct mfcc_data_header) + MWW_FEATURE_SIZE * sizeof(int8_t))
+#else
 /* MFCC's non-compress output prepends a struct mfcc_data_header (24 bytes)
  * to each hop, followed by MWW_FEATURE_SIZE int32_t Q9.23 mel-log values.
  * This must match the frame size configured in the mww capture pipeline.
  */
 #define MWW_HOP_BYTES (sizeof(struct mfcc_data_header) + MWW_FEATURE_SIZE * sizeof(int32_t))
+#endif
 
 /* Pre-roll history in ms that KPB drains to host on wake-word trigger. */
 #define MWW_KPB_DRAIN_REQ_MS 2000
@@ -79,7 +99,7 @@ int DebugVsnprintf(char *buffer, size_t buf_size, const char *format,
 #define MWW_MFCC_HOP_MS 10
 
 /* Wake-word probability threshold above which KPB draining is triggered. */
-#define MWW_DETECT_THRESHOLD 0.65f
+#define MWW_DETECT_THRESHOLD 0.85f
 
 /* Consecutive inferences above threshold required to confirm detection (~60 ms). */
 #define MWW_CONSECUTIVE_DETECTS_REQUIRED 2
@@ -89,6 +109,13 @@ int DebugVsnprintf(char *buffer, size_t buf_size, const char *format,
 
 /* Hop interval for live scoring kcontrol updates (50 hops @ 10ms = 500 ms = 2 Hz). */
 #define MWW_SCORE_UPDATE_HOPS 50
+
+/* Fake wake timer delay when wovdebug kcontrol is armed (default 5000 ms = 5 sec). */
+#if CONFIG_COMP_MWW_FAKE_WAKE_MS > 0
+#define MWW_FAKE_WAKE_DELAY_MS CONFIG_COMP_MWW_FAKE_WAKE_MS
+#else
+#define MWW_FAKE_WAKE_DELAY_MS 5000
+#endif
 
 /* Soft mel-log AGC (units: Q9.23, matches MFCC output). One decade = +10 dB.
  * Target +2.5 dB (+0.25 in Q9.23), floor -20 dB. Attack: instant clamp so peak+gain
@@ -142,11 +169,21 @@ struct mww_comp_data {
 
 	/* Bitmask of VAD flags for the MWW_FEATURE_SLICE_COUNT frames */
 	uint32_t vad_history;
+#if !CONFIG_COMP_MWW_PCAN
 	/* Persistent AGC gain applied to every Q9.23 mel value */
 	int32_t agc_gain_q23;
+#endif
 
 	/* Hop buffer for assembling contiguous data when circular buffer wraps */
 	uint8_t hop_buf[MWW_HOP_BYTES] __aligned(4);
+
+#if CONFIG_COMP_MWW_DEBUG_TRACE
+	uint32_t dbg_hop_count;
+	uint32_t dbg_active_hops;
+	int32_t dbg_max_f_max;
+	int32_t dbg_max_energy;
+	int32_t dbg_peak_prob;
+#endif
 
 	/* Consecutive inferences with probability >= MWW_DETECT_THRESHOLD */
 	uint32_t consecutive_detects;
@@ -162,6 +199,19 @@ struct mww_comp_data {
 	uint32_t vad_gated_inferences;
 	uint32_t detections;
 	uint32_t kpb_trigger_events;
+
+	/* D0ix power state: true when host is in D0i3 (sleeping), false in D0i0 */
+	bool in_d0ix;
+
+	/* wovdebug volatile switch kcontrol and fake wake test timer.
+	 * Armed when wovdebug mixer switch is set to 1; fires fake wake
+	 * after pipeline is active/triggered, then auto-clears to 0 and
+	 * notifies host via ALSA control change event.
+	 */
+	uint32_t wovdebug;
+	uint16_t wovdebug_ctl_id;
+	bool fake_wake_armed;
+	int64_t fake_wake_deadline_ms;
 } __attribute__((aligned(8)));
 
 #if CONFIG_AMS
@@ -216,14 +266,94 @@ static void on_wov_ctrl(void *arg, enum notify_id id, void *data)
 	struct mww_comp_data *cd = module_get_private_data(mod);
 	const struct wov_ctrl_notif *n = data;
 
-	if (n->cmd == WOV_ARB_CMD_PAUSE && n->slot_id != cd->wov_slot_id) {
-		comp_info(dev, "mww slot %u: paused (slot %u active)", cd->wov_slot_id, n->slot_id);
-		cd->paused = true;
-	} else {
+	if (n->cmd == WOV_ARB_CMD_PAUSE) {
+		if (n->slot_id != cd->wov_slot_id) {
+			comp_info(dev, "mww slot %u: paused (slot %u active)", cd->wov_slot_id, n->slot_id);
+			cd->paused = true;
+			cd->fake_wake_armed = false;
+			cd->wovdebug = 0;
+		}
+	} else if (n->cmd == WOV_ARB_CMD_RESUME) {
 		comp_info(dev, "mww slot %u: resumed by arbiter", cd->wov_slot_id);
 		cd->paused = false;
 		cd->consecutive_detects = 0;
 		MWW_Reset(&cd->mwc);
+	}
+}
+
+/* Raise exactly what a real detection raises: drain the KPB history, then tell
+ * the arbiter, which notifies the host and pauses the sibling slots. Called
+ * directly from mww_set_config() when host triggers test switch kcontrol.
+ */
+static void mww_fake_wake_fire(struct processing_module *mod, struct comp_dev *dev,
+				struct mww_comp_data *cd)
+{
+	struct wov_detect_notif payload = { .slot_id = cd->wov_slot_id };
+
+	comp_info(dev, "mww slot %u: test trigger wake fired", cd->wov_slot_id);
+
+	cd->paused = false;
+	cd->detections++;
+	cd->kpb_trigger_events++;
+	mww_notify_kpb(mod);
+	notifier_event(dev, NOTIFIER_ID_WOV_DETECT, NOTIFIER_TARGET_CORE_ALL_MASK,
+		       &payload, sizeof(payload));
+}
+
+#if CONFIG_IPC_MAJOR_4
+static void mww_notify_wovdebug(const struct comp_dev *dev, struct mww_comp_data *cd, uint32_t val)
+{
+	struct sof_ipc4_notify_module_data *msg_module_data;
+	struct sof_ipc4_control_msg_payload *msg_payload;
+	struct ipc_msg *msg;
+	uint32_t data_size = sizeof(struct sof_ipc4_notify_module_data) +
+			     sizeof(struct sof_ipc4_control_msg_payload) +
+			     sizeof(struct sof_ipc4_ctrl_value_chan);
+	struct ipc4_voice_cmd_notification notif;
+
+	memset_s(&notif, sizeof(notif), 0, sizeof(notif));
+	notif.primary.r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
+	notif.primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
+	notif.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	notif.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+
+	msg = ipc_msg_w_ext_init(NULL, notif.primary.dat, 0, data_size);
+	if (!msg)
+		return;
+
+	msg_module_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
+	msg_module_data->instance_id = IPC4_INST_ID(dev->ipc_config.id);
+	msg_module_data->module_id = IPC4_MOD_ID(dev->ipc_config.id);
+	msg_module_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL |
+				    SOF_IPC4_SWITCH_CONTROL_PARAM_ID;
+	msg_module_data->event_data_size = sizeof(struct sof_ipc4_control_msg_payload) +
+					   sizeof(struct sof_ipc4_ctrl_value_chan);
+
+	msg_payload = (struct sof_ipc4_control_msg_payload *)msg_module_data->event_data;
+	msg_payload->id = cd->wovdebug_ctl_id;
+	msg_payload->num_elems = 1;
+	msg_payload->chanv[0].channel = 0;
+	msg_payload->chanv[0].value = val;
+
+	ipc_msg_send(msg, NULL, true);
+}
+#endif
+
+static void on_d0ix_state(void *arg, enum notify_id id, void *data)
+{
+	struct comp_dev *dev = arg;
+	struct processing_module *mod = comp_mod(dev);
+	struct mww_comp_data *cd = module_get_private_data(mod);
+	const struct d0ix_state_notif *notif = data;
+
+	cd->in_d0ix = notif->entering;
+	comp_info(dev, "MWW slot %u: D0ix state %s", cd->wov_slot_id,
+		  notif->entering ? "entering (D0i3)" : "exiting (D0i0)");
+
+	if (notif->entering && cd->fake_wake_armed) {
+		cd->fake_wake_deadline_ms = k_uptime_get() + MWW_FAKE_WAKE_DELAY_MS;
+		comp_info(dev, "MWW slot %u: test trigger re-armed for %d ms from D0i3 entry",
+			  cd->wov_slot_id, (int)MWW_FAKE_WAKE_DELAY_MS);
 	}
 }
 
@@ -237,19 +367,32 @@ __cold static void mww_log_summary_at_shutdown(struct processing_module *mod)
 		return;
 
 	snprintk(summary_buf, sizeof(summary_buf),
-		 "[MWW STREAM SHUTDOWN SUMMARY Slot %u] Total Inferences=%u | VAD Gated=%u | Detections=%u | KPB Triggers=%u | Arena Used=%zu/%zu B",
-		 cd->wov_slot_id,
+		 "[MWW STREAM SHUTDOWN SUMMARY] Total Inferences=%u | VAD Gated=%u | Detections=%u | KPB Triggers=%u | Arena Used=%zu/%zu B (slot %u)",
 		 cd->total_inferences, cd->vad_gated_inferences,
 		 cd->detections, cd->kpb_trigger_events,
-		 MWW_ArenaUsedBytes(&cd->mwc), MWW_ArenaCapacity(&cd->mwc));
+		 MWW_ArenaUsedBytes(&cd->mwc), MWW_ArenaCapacity(&cd->mwc),
+		 cd->wov_slot_id);
 
 	if (dev)
 		comp_info(dev, "%s", summary_buf);
 	printk("%s\n", summary_buf);
+
+#if CONFIG_COMP_MWW_DEBUG_TRACE
+	char stats_buf[256];
+
+	snprintk(stats_buf, sizeof(stats_buf),
+		 "[MWW STATS Slot %u] total_hops=%u active_hops=%u max_f_max=%d max_E=%d peak_prob=%d%%",
+		 cd->wov_slot_id, cd->dbg_hop_count, cd->dbg_active_hops,
+		 cd->dbg_max_f_max, cd->dbg_max_energy, cd->dbg_peak_prob);
+
+	if (dev)
+		comp_info(dev, "%s", stats_buf);
+	printk("%s\n", stats_buf);
+#endif
 }
 
 #if CONFIG_IPC_MAJOR_4
-static void mww_notify_score(const struct comp_dev *dev, uint32_t score_idx)
+static void mww_notify_score(const struct comp_dev *dev, struct mww_comp_data *cd, uint32_t score_idx)
 {
 	struct sof_ipc4_notify_module_data *msg_module_data;
 	struct sof_ipc4_control_msg_payload *msg_payload;
@@ -258,6 +401,12 @@ static void mww_notify_score(const struct comp_dev *dev, uint32_t score_idx)
 			     sizeof(struct sof_ipc4_control_msg_payload) +
 			     sizeof(struct sof_ipc4_ctrl_value_chan);
 	struct ipc4_voice_cmd_notification notif;
+
+	/* Do not send telemetry score notifications to host while host is in D0i3 (suspended),
+	 * as any IPC notification would prematurely wake the host up.
+	 */
+	if (cd->in_d0ix)
+		return;
 
 	memset_s(&notif, sizeof(notif), 0, sizeof(notif));
 	notif.primary.r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
@@ -311,14 +460,34 @@ __cold static int mww_init(struct processing_module *mod)
 	/* Derive slot_id: e.g. pipeline 101 -> slot 0, 102 -> slot 1, 103 -> slot 2 */
 	if (dev->ipc_config.pipeline_id >= 101 && dev->ipc_config.pipeline_id <= 103)
 		cd->wov_slot_id = (uint8_t)(dev->ipc_config.pipeline_id - 101);
+	else if (dev->ipc_config.pipeline_id >= 111 && dev->ipc_config.pipeline_id <= 113)
+		cd->wov_slot_id = (uint8_t)(dev->ipc_config.pipeline_id - 111);
 	else
-		cd->wov_slot_id = (uint8_t)(IPC4_INST_ID(dev->ipc_config.id) % 3);
+		/* In IPC4, kernel IDA assigns module instance IDs in reverse DAPM
+		 * traversal order (mww.103 -> 0, mww.102 -> 1, mww.101 -> 2).
+		 * Invert so instance 2 -> slot 0 (Slot 1), instance 1 -> slot 1
+		 * (Slot 2), instance 0 -> slot 2 (Slot 3), matching detect_test.c.
+		 */
+		cd->wov_slot_id = (uint8_t)(2 - (IPC4_INST_ID(dev->ipc_config.id) % 3));
 
 	cd->mwc.slot_id = cd->wov_slot_id;
 	cd->paused = false;
+	cd->wovdebug = 0;
+	cd->wovdebug_ctl_id = 0;
+	cd->fake_wake_armed = false;
 
 	cd->drain_req_ms = MWW_KPB_DRAIN_REQ_MS;
+#if !CONFIG_COMP_MWW_PCAN
 	cd->agc_gain_q23 = MWW_AGC_GAIN_TARGET_Q23;
+#endif
+#if CONFIG_COMP_MWW_DEBUG_TRACE
+	cd->dbg_hop_count = 0;
+	cd->dbg_active_hops = 0;
+	cd->dbg_max_f_max = -128;
+	cd->dbg_max_energy = 0;
+	cd->dbg_peak_prob = 0;
+#endif
+	mod->max_sinks = 0;
 	cd->window_peak_prob = 0.0f;
 	cd->current_score_idx = 0;
 	cd->last_notified_score_idx = 0;
@@ -340,47 +509,56 @@ static int mww_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "entry slot %u", cd->wov_slot_id);
 
-	if (cd->initialized)
-		return 0;
+	if (!cd->initialized) {
+		const unsigned char *model_ptr = NULL;
+		size_t blob_size = 0;
 
-	const unsigned char *model_ptr = NULL;
-	size_t blob_size = 0;
+		model_ptr = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
+		if (model_ptr && blob_size > 0) {
+			comp_info(dev, "MWW: loaded model from control blob, size=%zu", blob_size);
+		} else {
+			model_ptr = NULL;
+			blob_size = 0;
+		}
 
-	model_ptr = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
-	if (model_ptr && blob_size > 0) {
-		comp_info(dev, "MWW: loaded model from control blob, size=%zu", blob_size);
-	} else {
-		model_ptr = NULL;
-		blob_size = 0;
-	}
+		ret = MWW_SetModel(&cd->mwc, model_ptr, blob_size);
+		if (ret < 0) {
+			comp_err(dev, "MWW_SetModel failed: %d (%s)", ret, cd->mwc.error);
+			return ret;
+		}
 
-	ret = MWW_SetModel(&cd->mwc, model_ptr, blob_size);
-	if (ret < 0) {
-		comp_err(dev, "MWW_SetModel failed: %d (%s)", ret, cd->mwc.error);
-		return ret;
-	}
-
-	ret = MWW_InitOps(&cd->mwc);
-	if (ret < 0) {
-		comp_err(dev, "MWW_InitOps failed: %d (%s)", ret, cd->mwc.error);
-		return ret;
-	}
+		ret = MWW_InitOps(&cd->mwc);
+		if (ret < 0) {
+			comp_err(dev, "MWW_InitOps failed: %d (%s)", ret, cd->mwc.error);
+			return ret;
+		}
 
 #if CONFIG_AMS
-	/* Register KD as AMS producer */
-	ret = ams_helper_register_producer(dev, &cd->kpd_uuid_id, ams_kpd_msg_uuid);
-	if (ret)
-		return ret;
+		/* Register KD as AMS producer */
+		ret = ams_helper_register_producer(dev, &cd->kpd_uuid_id, ams_kpd_msg_uuid);
+		if (ret)
+			return ret;
 #endif
 
-	notifier_register(dev, NULL, NOTIFIER_ID_WOV_CTRL, on_wov_ctrl, 0);
+		notifier_register(dev, NULL, NOTIFIER_ID_WOV_CTRL, on_wov_ctrl, 0);
+		notifier_register(dev, NULL, NOTIFIER_ID_D0IX_STATE, on_d0ix_state, 0);
+		cd->initialized = true;
+		comp_info(dev, "MWW slot %u model initialized: arena_used=%zu / capacity=%zu bytes",
+			  cd->wov_slot_id, MWW_ArenaUsedBytes(&cd->mwc), MWW_ArenaCapacity(&cd->mwc));
+	}
 
-	cd->initialized = true;
+	if (cd->fake_wake_armed) {
+		cd->fake_wake_deadline_ms = k_uptime_get() + MWW_FAKE_WAKE_DELAY_MS;
+		comp_info(dev, "MWW slot %u: test trigger armed, delay %d ms from prepare",
+			  cd->wov_slot_id, (int)MWW_FAKE_WAKE_DELAY_MS);
+	} else {
+		cd->wovdebug = 0;
+		cd->fake_wake_armed = false;
+	}
+
 	cd->feature_slices_filled = 0;
 	cd->vad_history = 0;
 	cd->consecutive_detects = 0;
-	comp_info(dev, "MWW slot %u model initialized: arena_used=%zu / capacity=%zu bytes",
-		  cd->wov_slot_id, MWW_ArenaUsedBytes(&cd->mwc), MWW_ArenaCapacity(&cd->mwc));
 
 	return 0;
 }
@@ -409,6 +587,17 @@ static int mww_process(struct processing_module *mod,
 		return 0;
 	}
 
+	if (cd->fake_wake_armed && !cd->paused && k_uptime_get() >= cd->fake_wake_deadline_ms) {
+		comp_info(dev, "MWW slot %u: test trigger timer expired (%d ms), firing detection",
+			  cd->wov_slot_id, (int)MWW_FAKE_WAKE_DELAY_MS);
+		cd->fake_wake_armed = false;
+		cd->wovdebug = 0;
+		mww_fake_wake_fire(mod, dev, cd);
+#if CONFIG_IPC_MAJOR_4
+		mww_notify_wovdebug(dev, cd, 0);
+#endif
+	}
+
 	if (cd->paused) {
 		cd->window_peak_prob = 0.0f;
 		cd->score_hop_counter = 0;
@@ -416,13 +605,18 @@ static int mww_process(struct processing_module *mod,
 			cd->current_score_idx = 0;
 			cd->last_notified_score_idx = 0;
 #if CONFIG_IPC_MAJOR_4
-			mww_notify_score(dev, 0);
+			mww_notify_score(dev, cd, 0);
 #endif
 		}
 		size_t avail = source_get_data_available(sources[0]);
 
-		if (avail > 0)
-			source_release_data(sources[0], avail);
+		if (avail > 0) {
+			const void *dp, *bs;
+			size_t bsz;
+
+			if (source_get_data(sources[0], avail, &dp, &bs, &bsz) == 0)
+				source_release_data(sources[0], avail);
+		}
 		return 0;
 	}
 
@@ -430,7 +624,6 @@ static int mww_process(struct processing_module *mod,
 
 	while (bytes_to_process >= MWW_HOP_BYTES) {
 		const struct mfcc_data_header *hdr;
-		const int32_t *mel;
 		const uint8_t *hop_src;
 		size_t bytes_to_end;
 		int8_t *slice;
@@ -452,12 +645,51 @@ static int mww_process(struct processing_module *mod,
 		}
 
 		hdr = (const struct mfcc_data_header *)hop_src;
-		mel = (const int32_t *)(hop_src + sizeof(struct mfcc_data_header));
 		slice = &cd->feature_buf[cd->feature_slices_filled * MWW_FEATURE_SIZE];
 
 		/* Update VAD history bitmask across MWW_FEATURE_SLICE_COUNT slices */
 		cd->vad_history = ((cd->vad_history << 1) | (hdr->vad_flag ? 1U : 0U)) &
 				  ((1U << MWW_FEATURE_SLICE_COUNT) - 1);
+
+#if CONFIG_COMP_MWW_PCAN
+		/* PCAN mode: MFCC has already normalized and quantized Mel energies
+		 * to int8_t (Q1.7). Copy directly into the feature buffer slice.
+		 */
+		memcpy(slice, hop_src + sizeof(struct mfcc_data_header), MWW_FEATURE_SIZE);
+
+#if CONFIG_COMP_MWW_DEBUG_TRACE
+		{
+			int8_t f_min = slice[0], f_max = slice[0];
+
+			cd->dbg_hop_count++;
+			for (i = 1; i < MWW_FEATURE_SIZE; i++) {
+				if (slice[i] < f_min) f_min = slice[i];
+				if (slice[i] > f_max) f_max = slice[i];
+			}
+
+			if (f_max > cd->dbg_max_f_max)
+				cd->dbg_max_f_max = f_max;
+			if ((int32_t)hdr->energy > cd->dbg_max_energy)
+				cd->dbg_max_energy = (int32_t)hdr->energy;
+			if (f_max > -128)
+				cd->dbg_active_hops++;
+
+			/* Log every hop while VAD reports speech (or features rise
+			 * clearly above the noise floor, f_max > 0) so the keyword
+			 * window is captured in full. Otherwise log every 32nd hop
+			 * (~3 Hz heartbeat) so mtrace does not overflow during the
+			 * long listening period before a keyword.
+			 */
+			if (hdr->vad_flag || f_max > 0 || (cd->dbg_hop_count % 32) == 1) {
+				comp_info(dev, "[MWW DBG hop %u] vad=%d E=%d Ne=%d f_min=%d f_max=%d (pcan)",
+					  cd->dbg_hop_count, (int)hdr->vad_flag,
+					  (int)hdr->energy, (int)hdr->noise_energy,
+					  f_min, f_max);
+			}
+		}
+#endif
+#else
+		const int32_t *mel = (const int32_t *)(hop_src + sizeof(struct mfcc_data_header));
 
 		/* AGC: attack on this hop's peak (always track energy) */
 		int32_t hop_peak_q23 = mel[0];
@@ -509,22 +741,22 @@ static int mww_process(struct processing_module *mod,
 
 #if CONFIG_COMP_MWW_DEBUG_TRACE
 		{
-			static int dbg_hop_count;
 			int32_t mel_min = mel[0], mel_max = mel[0];
 			int8_t f_min = slice[0], f_max = slice[0];
 
-			dbg_hop_count++;
+			cd->dbg_hop_count++;
 			for (i = 1; i < MWW_FEATURE_SIZE; i++) {
 				if (mel[i] < mel_min) mel_min = mel[i];
 				if (mel[i] > mel_max) mel_max = mel[i];
 				if (slice[i] < f_min) f_min = slice[i];
 				if (slice[i] > f_max) f_max = slice[i];
 			}
-			comp_info(dev, "[MWW DBG hop %d] vad=%d E=%d Ne=%d mel_min=%d mel_max=%d f_min=%d f_max=%d agc_q23=%d",
-				  dbg_hop_count, (int)hdr->vad_flag,
+			comp_info(dev, "[MWW DBG hop %u] vad=%d E=%d Ne=%d mel_min=%d mel_max=%d f_min=%d f_max=%d agc_q23=%d",
+				  cd->dbg_hop_count, (int)hdr->vad_flag,
 				  (int)hdr->energy, (int)hdr->noise_energy,
 				  mel_min, mel_max, f_min, f_max, (int)cd->agc_gain_q23);
 		}
+#endif
 #endif
 
 		/* Copy source data to sink so downstream stages keep seeing raw MFCC hops */
@@ -573,10 +805,25 @@ static int mww_process(struct processing_module *mod,
 			}
 
 #if CONFIG_COMP_MWW_DEBUG_TRACE
-			comp_info(dev, "MWW probability=%d raw=%u (th=%p prio=%d cycles=%u)",
-				  (int)(cd->mwc.probability * 100.0f), cd->mwc.raw_output,
-				  k_current_get(), k_thread_priority_get(k_current_get()),
-				  c1 - c0);
+			int prob_pct = (int)(cd->mwc.probability * 100.0f);
+
+			if (prob_pct > cd->dbg_peak_prob)
+				cd->dbg_peak_prob = prob_pct;
+
+			/* Log every inference whose window saw VAD speech (vad_history != 0)
+			 * or scored above 0, so the keyword window is always captured;
+			 * otherwise a ~1 Hz heartbeat keeps mtrace from overflowing.
+			 */
+			if (cd->vad_history || prob_pct > 0 || (cd->total_inferences % 32) == 1) {
+				comp_info(dev, "MWW prob=%d%% raw=%d vadh=0x%x in[0..7]=[%d,%d,%d,%d,%d,%d,%d,%d] (cycles=%u)",
+					  prob_pct, (int)cd->mwc.raw_output,
+					  cd->vad_history,
+					  (int)cd->feature_buf[0], (int)cd->feature_buf[1],
+					  (int)cd->feature_buf[2], (int)cd->feature_buf[3],
+					  (int)cd->feature_buf[4], (int)cd->feature_buf[5],
+					  (int)cd->feature_buf[6], (int)cd->feature_buf[7],
+					  c1 - c0);
+			}
 #endif
 
 			if (cd->mwc.probability > cd->window_peak_prob)
@@ -587,9 +834,9 @@ static int mww_process(struct processing_module *mod,
 				if (cd->total_inferences > MWW_WARMUP_INFERENCES &&
 				    cd->consecutive_detects >= MWW_CONSECUTIVE_DETECTS_REQUIRED) {
 					cd->detections++;
-					comp_info(dev, "MWW keyword detected (slot %u): probability=%d pct (consecutive=%u, total=%u)",
-						  cd->wov_slot_id,
+					comp_info(dev, "MWW keyword detected: probability=%d pct (slot %u, consecutive=%u, total=%u)",
 						  (int)(cd->mwc.probability * 100.0f),
+						  cd->wov_slot_id,
 						  cd->consecutive_detects, cd->detections);
 					cd->kpb_trigger_events++;
 					mww_notify_kpb(mod);
@@ -615,9 +862,9 @@ static int mww_process(struct processing_module *mod,
 			cd->window_peak_prob = 0.0f;
 
 #if CONFIG_IPC_MAJOR_4
-			if (cd->current_score_idx != cd->last_notified_score_idx || cd->current_score_idx > 0) {
+			if (!cd->in_d0ix && (cd->current_score_idx != cd->last_notified_score_idx || cd->current_score_idx > 0)) {
 				cd->last_notified_score_idx = cd->current_score_idx;
-				mww_notify_score(dev, cd->current_score_idx);
+				mww_notify_score(dev, cd, cd->current_score_idx);
 			}
 #endif
 		}
@@ -632,6 +879,8 @@ static int mww_reset(struct processing_module *mod)
 
 	comp_dbg(mod->dev, "entry slot %u", cd->wov_slot_id);
 	mww_log_summary_at_shutdown(mod);
+	cd->fake_wake_armed = false;
+	cd->wovdebug = 0;
 	cd->feature_slices_filled = 0;
 	cd->vad_history = 0;
 	cd->consecutive_detects = 0;
@@ -640,12 +889,19 @@ static int mww_reset(struct processing_module *mod)
 	cd->window_peak_prob = 0.0f;
 	cd->current_score_idx = 0;
 	cd->last_notified_score_idx = 0;
+	cd->in_d0ix = false;
+#if CONFIG_COMP_MWW_DEBUG_TRACE
+	cd->dbg_hop_count = 0;
+	cd->dbg_active_hops = 0;
+	cd->dbg_max_f_max = -128;
+	cd->dbg_max_energy = 0;
+	cd->dbg_peak_prob = 0;
+#endif
+#if !CONFIG_COMP_MWW_PCAN
 	cd->agc_gain_q23 = MWW_AGC_GAIN_TARGET_Q23;
+#endif
 	memset(cd->feature_buf, 0, sizeof(cd->feature_buf));
 	MWW_Reset(&cd->mwc);
-#if CONFIG_IPC_MAJOR_4
-	mww_notify_score(mod->dev, 0);
-#endif
 	return 0;
 }
 
@@ -659,6 +915,10 @@ __cold static int mww_free(struct processing_module *mod)
 	mww_log_summary_at_shutdown(mod);
 
 	notifier_unregister(mod->dev, NULL, NOTIFIER_ID_WOV_CTRL);
+	notifier_unregister(mod->dev, NULL, NOTIFIER_ID_D0IX_STATE);
+
+	cd->fake_wake_armed = false;
+	cd->wovdebug = 0;
 
 #if CONFIG_AMS
 	if (cd->kpd_uuid_id != AMS_INVALID_MSG_TYPE) {
@@ -687,6 +947,33 @@ __cold static int mww_set_config(struct processing_module *mod, uint32_t param_i
 	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
 		/* Score enum is read-only */
 		return 0;
+	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID: {
+		const struct sof_ipc4_control_msg_payload *cp =
+			(const struct sof_ipc4_control_msg_payload *)fragment;
+
+		if (fragment_size < sizeof(struct sof_ipc4_control_msg_payload) +
+				    sizeof(struct sof_ipc4_ctrl_value_chan)) {
+			comp_err(mod->dev, "mww_set_config(): invalid switch payload size %zu",
+				 fragment_size);
+			return -EINVAL;
+		}
+		if (cp->num_elems < 1)
+			return -EINVAL;
+
+		cd->wovdebug_ctl_id = cp->id;
+		if (cp->chanv[0].value != 0) {
+			cd->wovdebug = 1;
+			cd->fake_wake_armed = true;
+			cd->fake_wake_deadline_ms = k_uptime_get() + MWW_FAKE_WAKE_DELAY_MS;
+			comp_info(mod->dev, "MWW slot %u: test trigger switch activated, armed for %d ms delay",
+				  cd->wov_slot_id, (int)MWW_FAKE_WAKE_DELAY_MS);
+		} else {
+			cd->wovdebug = 0;
+			cd->fake_wake_armed = false;
+			comp_info(mod->dev, "MWW slot %u: wovdebug disabled", cd->wov_slot_id);
+		}
+		return 0;
+	}
 	default:
 		if (mod->dev->state != COMP_STATE_INIT && mod->dev->state != COMP_STATE_READY) {
 			comp_warn(mod->dev, "mww_set_config(): model update ignored while not idle (state %d)",
@@ -716,6 +1003,27 @@ __cold static int mww_get_config(struct processing_module *mod,
 			return 0;
 		}
 		return -EINVAL;
+	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID: {
+		struct sof_ipc4_control_msg_payload *cp =
+			(struct sof_ipc4_control_msg_payload *)fragment;
+		uint16_t ctl_id = cp->id;
+		uint32_t resp_size = sizeof(struct sof_ipc4_control_msg_payload) +
+				     sizeof(struct sof_ipc4_ctrl_value_chan);
+
+		if (resp_size > *data_offset_size) {
+			comp_err(mod->dev, "wrong switch control response size %u vs %u",
+				 resp_size, *data_offset_size);
+			return -EINVAL;
+		}
+
+		*data_offset_size = resp_size;
+		memset_s(cp, resp_size, 0, resp_size);
+		cp->id = ctl_id;
+		cp->num_elems = 1;
+		cp->chanv[0].channel = 0;
+		cp->chanv[0].value = cd->wovdebug;
+		return 0;
+	}
 	default:
 		return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 	}

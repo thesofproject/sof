@@ -42,16 +42,16 @@ MFCC_MAGIC = 0x6D666363  # 'ccfm' on disk, matches struct mfcc_data_header.magic
 # runtime AGC in mww.c: gain target +0.25 (=+2.5 dB), floor -2.0 (=-20 dB),
 # instant attack against MEL_CLIP_MAX=+1.0 (+10 dB).
 # Dual-rate release recovery:
-#   - Normal release during silence (vad == 0): 0.5 dB/sec
-#   - Super-slow leak during speech (vad == 1): 0.05 dB/sec (1/10th speed)
+#   - Normal release during silence (vad == 0): 1.0 dB/sec
+#   - Super-slow leak during speech (vad == 1): 0.05 dB/sec (1/20th speed)
 # Features are clamped to [AGC_CLIP_MIN, AGC_CLIP_MAX] ([-1.0, +1.0]) to match
 # the Q1.7 dynamic range of mww.c and maximize int8 quantization precision.
 AGC_GAIN_TARGET = 0.25
 AGC_GAIN_FLOOR = -2.0
 AGC_CLIP_MIN = -1.0
 AGC_CLIP_MAX = 1.0
-AGC_RELEASE_STEP_PER_HOP = 0.0005         # 0.5 dB/s / (100 hops/s * 10 dB/unit)
-AGC_RELEASE_STEP_SPEECH_PER_HOP = 0.00005 # 0.05 dB/s (1/10th rate)
+AGC_RELEASE_STEP_PER_HOP = 0.001          # 1.0 dB/s / (100 hops/s * 10 dB/unit)
+AGC_RELEASE_STEP_SPEECH_PER_HOP = 0.00005 # 0.05 dB/s (1/20th rate)
 
 
 def apply_soft_agc(X: np.ndarray, vad: np.ndarray | None = None) -> np.ndarray:
@@ -231,8 +231,8 @@ def load_dataset(
             print(f"Warning: no .raw feature files found in {label_dir}", file=sys.stderr)
             continue
 
-        is_keyword = (label not in ("silence", "unknown", "noise", "background"))
-        is_silence = (label in ("silence", "noise", "background"))
+        is_keyword = (label not in ("ambient", "silence", "unknown", "noise", "background", "babble"))
+        is_silence = (label in ("ambient", "silence", "noise", "background", "babble"))
 
         for f in raw_files:
             mel, _ = load_raw_hops(f)

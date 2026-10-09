@@ -59,7 +59,10 @@ struct wov_arb_data {
 	uint8_t active_slot;
 	/* Number of input pins (= KPB slots); read from nb_input_pins at init. */
 	uint8_t num_slots;
+	uint16_t active_slot_ctl_id;
 	uint32_t copy_count;
+	uint32_t drain_frames_copied;
+	uint32_t drain_frames_total;
 };
 
 #if CONFIG_IPC_MAJOR_4
@@ -99,6 +102,38 @@ static void notify_control_change(const struct comp_dev *dev, uint16_t control_i
 
 	ipc_msg_send(msg, NULL, true);
 }
+
+/* Wake the host: a blocking read() on the WOV capture PCM has no other way
+ * to learn that a detection just pushed a burst of drained KPB data into the
+ * host DMA buffer (the stream runs with SNDRV_PCM_INFO_NO_PERIOD_WAKEUP so
+ * ALSA's normal period-elapsed IRQ path is not relied on here). This mirrors
+ * detect_test.c's notify_host() so the kernel's sof_ipc4_rx_msg() can key off
+ * SOF_IPC4_NOTIFY_PHRASE_DETECTED and call snd_sof_pcm_period_elapsed().
+ * Sent once per detection (from arb_on_detect()), not repeated per copy():
+ * it is a one-shot simulated interrupt, not a substitute for the host's own
+ * period-elapsed mechanism on streams that never requested no-period-wakeup.
+ */
+static void notify_host_detect(const struct comp_dev *dev, uint32_t slot_id)
+{
+	struct ipc4_voice_cmd_notification notif;
+	struct ipc_msg *msg;
+
+	memset_s(&notif, sizeof(notif), 0, sizeof(notif));
+	notif.primary.r.word_id = slot_id;
+	notif.primary.r.notif_type = SOF_IPC4_NOTIFY_PHRASE_DETECTED;
+	notif.primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
+	notif.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	notif.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+
+	notif.extension.r.sv_score = (uint16_t)(dev_comp_id(dev) & 0xffff);
+	notif.extension.r.rsvd1 = (uint32_t)(dev_comp_id(dev) >> 16);
+
+	msg = ipc_msg_w_ext_init(NULL, notif.primary.dat, notif.extension.dat, 0);
+	if (!msg)
+		return;
+
+	ipc_msg_send(msg, NULL, true);
+}
 #endif
 
 /* -------------------------------------------------------------------------
@@ -131,7 +166,9 @@ static void arb_on_detect(void *arg, enum notify_id id, void *data)
 
 #if CONFIG_IPC_MAJOR_4
 	/* Notify host ALSA enum control: 1..N corresponds to Slot 1..N (0 is Listening) */
-	notify_control_change(dev, 0, (uint32_t)cd->active_slot + 1);
+	notify_control_change(dev, cd->active_slot_ctl_id, (uint32_t)cd->active_slot + 1);
+	/* Wake a blocking read() on the host WOV capture PCM - see notify_host_detect(). */
+	notify_host_detect(dev, det->slot_id);
 #endif
 
 	/* Broadcast PAUSE to all detectors. The winning slot continues draining
@@ -152,7 +189,7 @@ static struct comp_dev *wov_arb_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	struct wov_arb_data *cd;
 
-	comp_cl_info(&drv->tctx, "wov_arb_new");
+	comp_cl_info(drv, "wov_arb_new");
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -170,7 +207,7 @@ static struct comp_dev *wov_arb_new(const struct comp_driver *drv,
 
 	/* Detection notifications arrive via notifier bus across pipelines, so support up to MAX_SLOTS */
 	cd->num_slots = WOV_ARB_MAX_SLOTS;
-
+	cd->active_slot_ctl_id = 1;
 
 	/* Start with no active slot; first WOV_DETECT notifier will activate one. */
 	cd->active_slot = WOV_ARB_NO_ACTIVE;
@@ -211,12 +248,24 @@ static void wov_arb_free(struct comp_dev *dev)
 {
 	comp_info(dev, "wov_arb_free");
 
+	struct wov_arb_data *cd = comp_get_drvdata(dev);
+
+	if (cd && cd->active_slot != WOV_ARB_NO_ACTIVE) {
+		cd->active_slot = WOV_ARB_NO_ACTIVE;
+		struct wov_ctrl_notif c = { .cmd = WOV_ARB_CMD_RESUME };
+		notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
+			       NOTIFIER_TARGET_CORE_ALL_MASK,
+			       &c, sizeof(c));
+	}
+
 	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_DETECT);
 
-	struct wov_arb_data *cd = comp_get_drvdata(dev);
 	rfree(cd);
 	comp_free_device(dev);
 }
+
+static int wov_arb_params(struct comp_dev *dev,
+			   struct sof_ipc_stream_params *params);
 
 static int wov_arb_prepare(struct comp_dev *dev)
 {
@@ -226,11 +275,44 @@ static int wov_arb_prepare(struct comp_dev *dev)
 
 	cd->active_slot = WOV_ARB_NO_ACTIVE;
 	cd->copy_count = 0;
+	cd->drain_frames_copied = 0;
+	cd->drain_frames_total = 0;
+
+#if CONFIG_IPC_MAJOR_4
+	notify_control_change(dev, cd->active_slot_ctl_id, 0);
+#endif
 
 	if (!dev->frames) {
 		component_set_nearest_period_frames(dev, cd->base_cfg.audio_fmt.sampling_frequency);
 		if (!dev->frames)
 			dev->frames = 160;
+	}
+
+	struct comp_buffer *sink = comp_dev_get_first_data_consumer(dev);
+	if (sink) {
+#if CONFIG_IPC_MAJOR_4
+		ipc4_update_buffer_format(sink, &cd->base_cfg.audio_fmt);
+#else
+		struct sof_ipc_stream_params p;
+		wov_arb_params(dev, &p);
+		buffer_set_params(sink, &p, true);
+#endif
+	}
+
+	struct comp_buffer *source;
+	struct list_item *src_item;
+	list_for_item(src_item, &dev->bsource_list) {
+		source = list_item(src_item, struct comp_buffer, sink_list);
+		if ((buf_get_id(source) >> 16) == 0) {
+			/* Pin 0 is audio from KPB: 1ch mono S32_LE */
+#if CONFIG_IPC_MAJOR_4
+			ipc4_update_buffer_format(source, &cd->base_cfg.audio_fmt);
+#else
+			struct sof_ipc_stream_params p;
+			wov_arb_params(dev, &p);
+			buffer_set_params(source, &p, true);
+#endif
+		}
 	}
 
 	/* Subscribe to keyword-detected events from any WOV detector. */
@@ -251,7 +333,16 @@ static int wov_arb_reset(struct comp_dev *dev)
 
 	comp_info(dev, "wov_arb_reset");
 
-	cd->active_slot = WOV_ARB_NO_ACTIVE;
+	if (cd && cd->active_slot != WOV_ARB_NO_ACTIVE) {
+		cd->active_slot = WOV_ARB_NO_ACTIVE;
+		struct wov_ctrl_notif c = { .cmd = WOV_ARB_CMD_RESUME };
+		notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
+			       NOTIFIER_TARGET_CORE_ALL_MASK,
+			       &c, sizeof(c));
+	}
+
+	cd->drain_frames_copied = 0;
+	cd->drain_frames_total = 0;
 
 	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_DETECT);
 
@@ -274,11 +365,13 @@ static int wov_arb_trigger(struct comp_dev *dev, int cmd)
 	 * all detectors so they return to listening mode.
 	 */
 	if (cmd == COMP_TRIGGER_STOP || cmd == COMP_TRIGGER_PAUSE) {
+		cd->drain_frames_copied = 0;
+		cd->drain_frames_total = 0;
 		if (cd->active_slot != WOV_ARB_NO_ACTIVE) {
 			comp_info(dev, "wov_arb: stream stopped, resuming all slots");
 			cd->active_slot = WOV_ARB_NO_ACTIVE;
 #if CONFIG_IPC_MAJOR_4
-			notify_control_change(dev, 0, 0);
+			notify_control_change(dev, cd->active_slot_ctl_id, 0);
 #endif
 			struct wov_ctrl_notif c = { .cmd = WOV_ARB_CMD_RESUME };
 			notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
@@ -295,6 +388,9 @@ static int wov_arb_params(struct comp_dev *dev,
 {
 	struct wov_arb_data *cd = comp_get_drvdata(dev);
 
+#if CONFIG_IPC_MAJOR_4
+	ipc4_base_module_cfg_to_stream_params(&cd->base_cfg, params);
+#else
 	/* Translate IPC4 base_cfg audio_fmt to IPC3-style stream params. */
 	memset(params, 0, sizeof(*params));
 	params->channels = cd->base_cfg.audio_fmt.channels_count;
@@ -303,6 +399,7 @@ static int wov_arb_params(struct comp_dev *dev,
 	params->sample_valid_bytes =
 		cd->base_cfg.audio_fmt.valid_bit_depth / 8;
 	params->buffer_fmt = cd->base_cfg.audio_fmt.interleaving_style;
+#endif
 	component_set_nearest_period_frames(dev, params->rate);
 
 	return 0;
@@ -322,7 +419,53 @@ static int wov_arb_set_large_config(struct comp_dev *dev,
 	struct wov_arb_data *cd = comp_get_drvdata(dev);
 
 	switch (param_id) {
-	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
+	case SOF_IPC4_ENUM_CONTROL_PARAM_ID: {
+		const struct sof_ipc4_control_msg_payload *cp =
+			(const struct sof_ipc4_control_msg_payload *)data;
+
+		cd->active_slot_ctl_id = cp->id;
+		if (cp->num_elems > 0) {
+			uint32_t val = cp->chanv[0].value;
+
+			if (val == 0) {
+				comp_info(dev, "wov_arb: reset active_slot to listening (0)");
+				cd->active_slot = WOV_ARB_NO_ACTIVE;
+				struct wov_ctrl_notif c = { .cmd = WOV_ARB_CMD_RESUME };
+				notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
+					       NOTIFIER_TARGET_CORE_ALL_MASK,
+					       &c, sizeof(c));
+			} else {
+				uint8_t selected_slot = (uint8_t)(val - 1);
+
+				comp_info(dev, "wov_arb: filter listening to slot=%u via kcontrol",
+					  selected_slot);
+				/*
+				 * Do not force cd->active_slot: the arbiter must remain
+				 * in listening mode (WOV_ARB_NO_ACTIVE) so the selected
+				 * detector can still trigger when the keyword is spoken,
+				 * and so the host PCM stays idle until actual detection.
+				 *
+				 * Broadcast RESUME so the target slot unpauses even if
+				 * it was previously paused, then broadcast PAUSE with
+				 * slot_id = selected_slot so every OTHER slot suspends
+				 * inference and yields CPU time to the selected detector.
+				 */
+				cd->active_slot = WOV_ARB_NO_ACTIVE;
+				struct wov_ctrl_notif r = { .cmd = WOV_ARB_CMD_RESUME };
+				notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
+					       NOTIFIER_TARGET_CORE_ALL_MASK,
+					       &r, sizeof(r));
+				struct wov_ctrl_notif p = {
+					.cmd = WOV_ARB_CMD_PAUSE,
+					.slot_id = selected_slot,
+				};
+				notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
+					       NOTIFIER_TARGET_CORE_ALL_MASK,
+					       &p, sizeof(p));
+			}
+		}
+		return 0;
+	}
 	case SOF_IPC4_BYTES_CONTROL_PARAM_ID:
 	case IPC4_WOV_ARB_GET_ACTIVE_SLOT:
 		return 0;
@@ -362,10 +505,8 @@ static int wov_arb_copy(struct comp_dev *dev)
 	struct comp_buffer *sink;
 	struct comp_buffer *source;
 	struct list_item *src_item;
-	uint32_t slot;
 	uint32_t sink_free;
 	uint32_t active_avail = 0;
-	uint32_t copy_bytes;
 
 	comp_dbg(dev, "wov_arb_copy active=%u", cd->active_slot);
 
@@ -376,74 +517,115 @@ static int wov_arb_copy(struct comp_dev *dev)
 	sink_free = audio_stream_get_free_bytes(&sink->stream);
 
 	uint32_t num_sources = 0;
-	list_for_item(src_item, &dev->bsource_list) {
-		num_sources++;
-	}
-
-	uint32_t eff_active_slot = cd->active_slot;
-	if (eff_active_slot == WOV_ARB_NO_ACTIVE && num_sources <= 1)
-		eff_active_slot = 0;
-
-	/* First pass: find how many bytes the active source has available. */
-	slot = 0;
+	uint32_t num_kpb_sources = 0;
 	list_for_item(src_item, &dev->bsource_list) {
 		source = list_item(src_item, struct comp_buffer, sink_list);
-		if (slot == eff_active_slot) {
-			active_avail = audio_stream_get_avail_bytes(&source->stream);
-			break;
-		}
-		if (++slot >= cd->num_slots)
-			break;
+		num_sources++;
+		if (source->source && dev_comp_type(source->source) == SOF_COMP_KPB)
+			num_kpb_sources++;
 	}
 
-	copy_bytes = MIN(active_avail, sink_free);
+	/*
+	 * Do NOT force a lone source "active" while listening: the host PCM must
+	 * stay silent/idle (no data, no host-copier IRQs) until a real WOV
+	 * detection (or the fake-wake test path) sets cd->active_slot via
+	 * on_wov_detect(). That is what lets the host block in read() and the
+	 * platform actually reach D0i3/suspend instead of being kept awake by a
+	 * continuous keep-alive stream.
+	 */
+	uint32_t eff_active_slot = cd->active_slot;
+	struct comp_buffer *active_source = NULL;
+
+	/* Find active audio source buffer if a slot is triggered */
+	if (eff_active_slot != WOV_ARB_NO_ACTIVE) {
+		list_for_item(src_item, &dev->bsource_list) {
+			source = list_item(src_item, struct comp_buffer, sink_list);
+			if ((source->source && (source->source->drv->type == SOF_COMP_KPB ||
+						dev_comp_type(source->source) == SOF_COMP_KPB)) ||
+			    (buf_get_id(source) >> 16) == 0) {
+				active_source = source;
+				break;
+			}
+		}
+
+		if (active_source)
+			active_avail = audio_stream_get_avail_bytes(&active_source->stream);
+	}
 
 	uint32_t copied_dst_bytes = 0;
 
-	/* Second pass: copy active slot, silently drain idle slots. */
-	slot = 0;
+	/* Second pass: copy active audio slot, silently drain idle/detector slots. */
 	list_for_item(src_item, &dev->bsource_list) {
 		source = list_item(src_item, struct comp_buffer, sink_list);
 
-		if (slot == eff_active_slot && copy_bytes > 0) {
-			uint32_t src_frame_bytes = audio_stream_frame_bytes(&source->stream);
-			uint32_t dst_frame_bytes = audio_stream_frame_bytes(&sink->stream);
-			uint32_t src_frames = copy_bytes / src_frame_bytes;
-			uint32_t dst_frames = sink_free / dst_frame_bytes;
-			uint32_t frames = MIN(src_frames, dst_frames);
+		if (source == active_source) {
+			if (active_avail > 0 && sink_free > 0) {
+				uint32_t src_frame_bytes = audio_stream_frame_bytes(&source->stream);
+				uint32_t dst_frame_bytes = audio_stream_frame_bytes(&sink->stream);
+				if (!src_frame_bytes)
+					src_frame_bytes = cd->base_cfg.audio_fmt.depth ?
+						(cd->base_cfg.audio_fmt.channels_count * cd->base_cfg.audio_fmt.depth / 8) : 4;
+				if (!dst_frame_bytes)
+					dst_frame_bytes = cd->base_cfg.audio_fmt.depth ?
+						(cd->base_cfg.audio_fmt.channels_count * cd->base_cfg.audio_fmt.depth / 8) : 4;
 
-			if (frames > 0) {
-				uint32_t src_bytes = frames * src_frame_bytes;
-				uint32_t dst_bytes = frames * dst_frame_bytes;
-				uint32_t src_ch = audio_stream_get_channels(&source->stream);
-				uint32_t dst_ch = audio_stream_get_channels(&sink->stream);
+				uint32_t src_frames = active_avail / src_frame_bytes;
+				uint32_t dst_frames = sink_free / dst_frame_bytes;
+				uint32_t frames = MIN(src_frames, dst_frames);
 
-				buffer_stream_invalidate(source, src_bytes);
+				if (frames > 0) {
+					uint32_t src_bytes = frames * src_frame_bytes;
+					uint32_t dst_bytes = frames * dst_frame_bytes;
+					uint32_t src_ch = audio_stream_get_channels(&source->stream);
+					uint32_t dst_ch = audio_stream_get_channels(&sink->stream);
+					uint32_t src_sb = audio_stream_sample_bytes(&source->stream);
+					uint32_t dst_sb = audio_stream_sample_bytes(&sink->stream);
 
-				if (src_ch == 1 && dst_ch == 2) {
-					if (audio_stream_sample_bytes(&source->stream) == sizeof(int16_t)) {
+					buffer_stream_invalidate(source, src_bytes);
+
+					if (src_ch == 1 && dst_ch == 2) {
 						for (uint32_t i = 0; i < frames; i++) {
-							int16_t s = *(int16_t *)audio_stream_read_frag_s16(&source->stream, i);
-							*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i) = s;
-							*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i + 1) = s;
+							int32_t s = (src_sb == sizeof(int32_t)) ?
+								*(int32_t *)audio_stream_read_frag_s32(&source->stream, i) :
+								(((int32_t)*(int16_t *)audio_stream_read_frag_s16(&source->stream, i)) << 16);
+							if (dst_sb == sizeof(int32_t)) {
+								*(int32_t *)audio_stream_write_frag_s32(&sink->stream, 2 * i) = s;
+								*(int32_t *)audio_stream_write_frag_s32(&sink->stream, 2 * i + 1) = s;
+							} else {
+								int16_t s16 = (int16_t)(s >> 16);
+								*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i) = s16;
+								*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i + 1) = s16;
+							}
+						}
+					} else if (src_sb != dst_sb) {
+						if (src_sb == sizeof(int32_t) && dst_sb == sizeof(int16_t)) {
+							for (uint32_t i = 0; i < frames * src_ch; i++) {
+								int32_t s = *(int32_t *)audio_stream_read_frag_s32(&source->stream, i);
+								*(int16_t *)audio_stream_write_frag_s16(&sink->stream, i) = (int16_t)(s >> 16);
+							}
+						} else if (src_sb == sizeof(int16_t) && dst_sb == sizeof(int32_t)) {
+							for (uint32_t i = 0; i < frames * src_ch; i++) {
+								int16_t s = *(int16_t *)audio_stream_read_frag_s16(&source->stream, i);
+								*(int32_t *)audio_stream_write_frag_s32(&sink->stream, i) = ((int32_t)s) << 16;
+							}
+						} else {
+							audio_stream_copy(&source->stream, 0,
+									  &sink->stream, 0,
+									  frames * src_ch);
 						}
 					} else {
-						for (uint32_t i = 0; i < frames; i++) {
-							int32_t s = *(int32_t *)audio_stream_read_frag_s32(&source->stream, i);
-							*(int32_t *)audio_stream_write_frag_s32(&sink->stream, 2 * i) = s;
-							*(int32_t *)audio_stream_write_frag_s32(&sink->stream, 2 * i + 1) = s;
-						}
+						audio_stream_copy(&source->stream, 0,
+								  &sink->stream, 0,
+								  frames * src_ch);
 					}
-				} else {
-					audio_stream_copy(&source->stream, 0,
-							  &sink->stream, 0,
-							  src_bytes / audio_stream_sample_bytes(&source->stream));
-				}
 
-				comp_update_buffer_consume(source, src_bytes);
-				buffer_stream_writeback(sink, dst_bytes);
-				comp_update_buffer_produce(sink, dst_bytes);
-				copied_dst_bytes = dst_bytes;
+					comp_update_buffer_consume(source, src_bytes);
+					buffer_stream_writeback(sink, dst_bytes);
+					comp_update_buffer_produce(sink, dst_bytes);
+					copied_dst_bytes = dst_bytes;
+
+					cd->drain_frames_total += frames;
+				}
 			}
 		} else {
 			uint32_t avail = audio_stream_get_avail_bytes(&source->stream);
@@ -451,32 +633,12 @@ static int wov_arb_copy(struct comp_dev *dev)
 			if (avail > 0)
 				comp_update_buffer_consume(source, avail);
 		}
-
-		if (++slot >= cd->num_slots)
-			break;
-	}
-
-	uint32_t fill_bytes = 0;
-	if (copied_dst_bytes == 0 && sink_free > 0) {
-		/* No active audio copied: push period-sized silence so the host copier stays fed. */
-		uint32_t dst_frame_bytes = audio_stream_frame_bytes(&sink->stream);
-		if (!dst_frame_bytes)
-			dst_frame_bytes = 2;
-		uint32_t period_dst_bytes = dev->frames * dst_frame_bytes;
-		fill_bytes = MIN(sink_free, period_dst_bytes ? period_dst_bytes : 320);
-		fill_bytes = (fill_bytes / dst_frame_bytes) * dst_frame_bytes;
-
-		if (fill_bytes > 0) {
-			audio_stream_set_zero(&sink->stream, fill_bytes);
-			buffer_stream_writeback(sink, fill_bytes);
-			comp_update_buffer_produce(sink, fill_bytes);
-		}
 	}
 
 	cd->copy_count++;
 	if ((cd->copy_count % 100) == 1) {
-		comp_info(dev, "wov_arb_copy #%u: active=%u, num_src=%u, act_avail=%u, copied=%u, fill=%u, sink_free=%u",
-			  cd->copy_count, cd->active_slot, num_sources, active_avail, copied_dst_bytes, fill_bytes, sink_free);
+		comp_dbg(dev, "wov_arb_copy #%u: active=%u, num_src=%u, act_avail=%u, copied=%u, sink_free=%u",
+			 cd->copy_count, cd->active_slot, num_sources, active_avail, copied_dst_bytes, sink_free);
 	}
 
 	return 0;
@@ -510,6 +672,7 @@ static int wov_arb_get_large_config(struct comp_dev *dev,
 			return -EINVAL;
 		}
 
+		cd->active_slot_ctl_id = ctl_id;
 		*data_offset = resp_size;
 		memset_s(cp, resp_size, 0, resp_size);
 		cp->id = ctl_id;

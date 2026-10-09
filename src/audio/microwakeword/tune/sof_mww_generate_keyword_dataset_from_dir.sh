@@ -38,6 +38,8 @@
 #   NOISE_SNR_MAX_DB   Max SNR in dB for noise mixing (default 30.0).
 #   NOISE_DIR          Directory containing background noise WAVs (default:
 #                      $SC_CACHE/_background_noise_ or ~/.cache/speech_commands_v2/_background_noise_).
+#   NOISE_STATIONARY_BIAS Probability of picking from the stationary-noise subset
+#                      (white/pink/exercise_bike/running_tap) when it exists (default 0.7).
 #   GAIN_NORM          1 = peak-normalize all clean WAVs to GAIN_PEAK_DBFS, 0 = keep input level (default 1).
 #   GAIN_PEAK_DBFS     Peak-normalization target in dBFS (default -10).
 
@@ -139,6 +141,7 @@ fi
 : "${NOISE_SNR_MIN_DB:=12.0}"
 : "${NOISE_SNR_MAX_DB:=30.0}"
 : "${NOISE_DIR:=}"
+: "${NOISE_STATIONARY_BIAS:=0.7}"
 : "${GAIN_NORM:=1}"
 : "${GAIN_PEAK_DBFS:=-10}"
 : "${SC_CACHE:=$HOME/.cache/speech_commands_v2}"
@@ -185,46 +188,64 @@ apply_peak_norm() {
 	rm -f "$tmp"
 }
 
+# Curate unique labels and map each label to its list of source directories
+declare -A LABEL_SRCS
+ORDERED_LABELS=()
+for i in "${!SRC_DIRS[@]}"; do
+	sdir="${SRC_DIRS[$i]}"
+	lbl="${LABELS[$i]}"
+	if [[ -z "${LABEL_SRCS[$lbl]}" ]]; then
+		ORDERED_LABELS+=("$lbl")
+		LABEL_SRCS["$lbl"]="$sdir"
+	else
+		LABEL_SRCS["$lbl"]="${LABEL_SRCS[$lbl]}|$sdir"
+	fi
+done
+
 RESULTS=()
 
-for i in "${!SRC_DIRS[@]}"; do
-	SRC_DIR="${SRC_DIRS[$i]}"
-	LABEL="${LABELS[$i]}"
-
-	if [[ ! -d "$SRC_DIR" ]]; then
-		echo "Error: Source directory does not exist: $SRC_DIR" >&2
-		exit 1
-	fi
-
+for lbl in "${ORDERED_LABELS[@]}"; do
+	LABEL="$lbl"
 	RAW_DIR="$OUT_ROOT/_raw/$LABEL"
 	PERT_DIR="$OUT_ROOT/_perturbed/$LABEL"
 	FINAL_DIR="$OUT_ROOT/$LABEL"
 	mkdir -p "$RAW_DIR" "$FINAL_DIR"
 	rm -f "$RAW_DIR"/*.wav "$FINAL_DIR"/*.wav
 
-	# Find input wavs
+	IFS='|' read -r -a cur_src_dirs <<< "${LABEL_SRCS[$LABEL]}"
+
+	# Find input wavs across all source directories for this label
 	raw_src_wavs=()
-	while IFS= read -r -d '' f; do
-		raw_src_wavs+=("$f")
-	done < <(find "$SRC_DIR" -maxdepth 2 \( -name '*.wav' -o -name '*.WAV' \) -print0 | sort -z)
+	for s_idx in "${!cur_src_dirs[@]}"; do
+		sdir="${cur_src_dirs[$s_idx]}"
+		if [[ ! -d "$sdir" ]]; then
+			echo "Error: Source directory does not exist: $sdir" >&2
+			exit 1
+		fi
+		while IFS= read -r -d '' f; do
+			raw_src_wavs+=("${s_idx}:${f}")
+		done < <(find "$sdir" -maxdepth 2 \( -name '*.wav' -o -name '*.WAV' \) -print0 | sort -z)
+	done
 
 	n_src=${#raw_src_wavs[@]}
 	if [[ $n_src -eq 0 ]]; then
-		echo "Error: No WAV files found in $SRC_DIR" >&2
+		echo "Error: No WAV files found for label '$LABEL'" >&2
 		exit 1
 	fi
 
-	echo ">>> [$((i + 1))/${#SRC_DIRS[@]}] Processing $n_src real speech WAVs for '$LABEL' from $SRC_DIR"
+	echo ">>> Processing $n_src real speech WAVs for '$LABEL' from ${#cur_src_dirs[@]} directories"
 
 	# 1. Convert/resample clean files to 16 kHz 16-bit mono
-	for idx in "${!raw_src_wavs[@]}"; do
-		f="${raw_src_wavs[$idx]}"
+	for item in "${raw_src_wavs[@]}"; do
+		s_idx="${item%%:*}"
+		f="${item#*:}"
 		base="$(basename "$f" .wav)"
 		base="$(basename "$base" .WAV)"
-		out_clean="$RAW_DIR/${base}.wav"
+		# Include directory index to prevent collisions between datasets with same speaker IDs
+		out_clean="$RAW_DIR/src${s_idx}_${base}.wav"
 		sox "$f" -r 16000 -c 1 -b 16 "$out_clean"
 		# Place clean baseline into final output dir
-		cp "$out_clean" "$FINAL_DIR/${base}_clean.wav"
+		cp "$out_clean" "$FINAL_DIR/src${s_idx}_${base}_clean.wav"
 	done
 
 	echo "    Wrote $n_src clean 16 kHz mono reference clips into $RAW_DIR and $FINAL_DIR"
@@ -236,7 +257,7 @@ for i in "${!SRC_DIRS[@]}"; do
 		if (( n_src < MAX_SAMPLES )); then
 			n_copies=$(( (MAX_SAMPLES - n_src + n_src - 1) / n_src ))
 		else
-			n_copies=5
+			n_copies=1
 		fi
 	fi
 	(( n_copies < 1 )) && n_copies=1
@@ -265,7 +286,7 @@ for i in "${!SRC_DIRS[@]}"; do
 
 	# 3. Acoustic augmentations: RIR convolution & Additive Noise
 	export IR_AUG IR_PROB IR_WET IR_DIR
-	export NOISE_AUG NOISE_PROB NOISE_SNR_MIN_DB NOISE_SNR_MAX_DB NOISE_DIR
+	export NOISE_AUG NOISE_PROB NOISE_SNR_MIN_DB NOISE_SNR_MAX_DB NOISE_DIR NOISE_STATIONARY_BIAS
 
 	echo "    Applying acoustic augmentations (RIR: prob=$IR_PROB, Noise: prob=$NOISE_PROB SNR=[$NOISE_SNR_MIN_DB,$NOISE_SNR_MAX_DB] dB)"
 
@@ -292,6 +313,14 @@ noise_prob = float(os.environ.get("NOISE_PROB", "0.60"))
 noise_snr_min = float(os.environ.get("NOISE_SNR_MIN_DB", "12.0"))
 noise_snr_max = float(os.environ.get("NOISE_SNR_MAX_DB", "30.0"))
 noise_dir = os.environ.get("NOISE_DIR", "").strip()
+noise_stationary_bias = float(os.environ.get("NOISE_STATIONARY_BIAS", "0.7"))
+
+# Broadband, near-stationary noise files in Google Speech Commands v2 _background_noise_.
+# Bias the mix toward these to match the runtime microphone floor.
+STATIONARY_NOISE_NAMES = {
+    "white_noise.wav", "pink_noise.wav",
+    "exercise_bike.wav", "running_tap.wav",
+}
 
 # Try importing scipy for fast FFT convolution and high-quality resampling
 try:
@@ -373,10 +402,19 @@ for ir_p in ir_files:
 
 # Pre-load noise waveforms resampled to 16 kHz
 noise_cache = []
+stationary_indices = []
 for n_p in noise_files:
     n_samp = read_wav_float(n_p, target_sr=16000)
     if n_samp.size > 0:
         noise_cache.append(n_samp)
+        if os.path.basename(n_p) in STATIONARY_NOISE_NAMES:
+            stationary_indices.append(len(noise_cache) - 1)
+
+if noise_cache and stationary_indices:
+    print(
+        f"      Stationary-noise bias: {len(stationary_indices)}/{len(noise_cache)} files, prob={noise_stationary_bias}",
+        file=sys.stderr,
+    )
 
 def write_wav_int16(path, samples, sr=16000):
     samples = np.clip(samples, -1.0, 1.0)
@@ -389,6 +427,11 @@ def write_wav_int16(path, samples, sr=16000):
 
 rng = random.Random(42)
 np_rng = np.random.default_rng(42)
+
+def pick_noise_index():
+    if stationary_indices and rng.random() < noise_stationary_bias:
+        return rng.choice(stationary_indices)
+    return rng.randrange(len(noise_cache))
 
 perturbed_files = sorted(glob.glob(os.path.join(src_dir, "*.wav")))
 for f in perturbed_files:
@@ -420,7 +463,7 @@ for f in perturbed_files:
 
     # B. Apply Additive Background Noise (sliced exactly to match speech duration)
     if noise_cache and rng.random() < noise_prob:
-        n_audio = rng.choice(noise_cache)
+        n_audio = noise_cache[pick_noise_index()]
         if n_audio.size >= x.size:
             start = np_rng.integers(0, n_audio.size - x.size + 1)
             n_slice = n_audio[start : start + x.size]
