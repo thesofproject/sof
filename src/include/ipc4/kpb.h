@@ -24,6 +24,8 @@ struct ipc4_kpb_module_cfg {
 enum ipc4_kpb_module_config_params {
 	/*! Configure the module ID's which would be part of the Fast mode tasks */
 	KP_BUF_CFG_FM_MODULE = 1,
+	/*! Set history ring-buffer duration; 0 = use CONFIG_KPB_MAX_BUFF_TIME */
+	KP_BUF_CFG_BUFF_TIME_MS = 2,
 	/* Mic selector for client - sets microphone id for real time sink mic selector
 	 * IPC4-compatible ID - please do not change the number
 	 */

@@ -103,7 +103,8 @@ __cold int dai_assign_group(struct dai_data *dd, struct comp_dev *dev, uint32_t 
 		 group_id, dd->group->num_dais);
 
 	/* Register for the atomic trigger event */
-	notifier_register(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER, dai_atomic_trigger);
+	notifier_register(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER,
+			  dai_atomic_trigger, 0);
 
 	return 0;
 }
@@ -681,25 +682,40 @@ __cold void dai_common_free(struct dai_data *dd)
 {
 	assert_can_be_cold();
 
+	if (!dd)
+		return;
+
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	io_perf_monitor_release_slot(dd->io_perf_dai_byte_count);
 #endif
 
-	if (dd->group)
+	if (dd->group) {
 		dai_group_put(dd->group);
+		dd->group = NULL;
+	}
 
 	if (dd->chan_index >= 0) {
-		sof_dma_release_channel(dd->dma, dd->chan_index);
+		if (dd->dma)
+			sof_dma_release_channel(dd->dma, dd->chan_index);
 		dd->chan_index = -EINVAL;
 	}
 
-	sof_dma_put(dd->dma);
+	if (dd->dma) {
+		sof_dma_put(dd->dma);
+		dd->dma = NULL;
+	}
 
 	dai_release_llp_slot(dd);
 
-	dai_put(dd->dai);
+	if (dd->dai) {
+		dai_put(dd->dai);
+		dd->dai = NULL;
+	}
 
-	sof_heap_free(dd->alloc_ctx.heap, dd->dai_spec_config);
+	if (dd->dai_spec_config) {
+		sof_heap_free(dd->alloc_ctx.heap, dd->dai_spec_config);
+		dd->dai_spec_config = NULL;
+	}
 }
 
 __cold static void dai_free(struct comp_dev *dev)
@@ -707,6 +723,11 @@ __cold static void dai_free(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	assert_can_be_cold();
+
+	if (!dd) {
+		comp_free_device(dev);
+		return;
+	}
 
 	if (dd->group)
 		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
@@ -2065,15 +2086,12 @@ __cold int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev,
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
 
-/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(dai_comp_tr, SOF_UUID(dai_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
 	.uid	= SOF_RT_UUID(dai_uuid),
-#if !CONFIG_ZEPHYR_LOG
 	.tctx	= &dai_comp_tr,
-#endif
 	.ops	= {
 		.create				= dai_new,
 		.free				= dai_free,

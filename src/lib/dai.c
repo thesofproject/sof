@@ -27,7 +27,6 @@ LOG_MODULE_REGISTER(dai, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(dai_lib);
 
-/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(dai_tr, SOF_UUID(dai_lib_uuid), LOG_LEVEL_INFO);
 
 struct dai_group_list {
@@ -376,6 +375,9 @@ void dai_put(struct dai *dai)
 	int ret;
 	struct k_heap *heap = NULL;
 
+	if (!dai)
+		return;
+
 #ifdef CONFIG_SOF_USERSPACE_LL
 	heap = zephyr_ll_user_heap();
 #endif
@@ -443,6 +445,9 @@ void dai_put(struct dai *dai)
 {
 	int ret;
 	k_spinlock_key_t key;
+
+	if (!dai)
+		return;
 
 	key = k_spin_lock(&dai->lock);
 	if (--dai->sref == 0) {
