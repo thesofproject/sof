@@ -1,5 +1,23 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
+if(CONFIG_COMP_MFCC_PCAN)
+  if(NOT DEFINED TFLM_PATH)
+    if(DEFINED SOF_ROOT_SOURCE_DIRECTORY AND EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/../tflite-micro")
+      set(TFLM_PATH "${SOF_ROOT_SOURCE_DIRECTORY}/../tflite-micro")
+    elseif(DEFINED sof_top_dir AND EXISTS "${sof_top_dir}/../tflite-micro")
+      set(TFLM_PATH "${sof_top_dir}/../tflite-micro")
+    elseif(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../../tflite-micro")
+      set(TFLM_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../../tflite-micro")
+    endif()
+  endif()
+  is_zephyr(zephyr)
+  if(zephyr)
+    zephyr_include_directories(${TFLM_PATH})
+  else()
+    target_include_directories(sof PRIVATE ${TFLM_PATH})
+  endif()
+endif()
+
 if(CONFIG_COMP_MFCC STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   add_subdirectory(llext ${PROJECT_BINARY_DIR}/mfcc_llext)
   add_dependencies(app mfcc)
