@@ -131,15 +131,6 @@ add_library(mww_tflm_lib STATIC
 	${TFLM_PATH}/tensorflow/lite/micro/kernels/reshape_common.cc
 	${TFLM_PATH}/tensorflow/lite/micro/kernels/strided_slice_common.cc
 	${TFLM_PATH}/tensorflow/lite/micro/kernels/dequantize_common.cc
-	# reference kernel implementations for the ops above
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/conv.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/depthwise_conv.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/fully_connected.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/logistic.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/quantize.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/reshape.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/strided_slice.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/dequantize.cc
 	${TFLM_PATH}/tensorflow/lite/micro/mock_micro_graph.cc
 	${TFLM_PATH}/tensorflow/lite/micro/flatbuffer_utils.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter_graph.cc
@@ -225,9 +216,99 @@ if(EXISTS "${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/ibuffer_allocator.
 		${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/ibuffer_allocator.cc)
 endif()
 
+if(CONFIG_COMP_MWW_PROFILE)
+	target_compile_definitions(mww_tflm_lib PRIVATE MWW_PROFILE=1)
+endif()
+
+# nnlib uses HiFi intrinsics, which only the Cadence toolchain provides.
+set(MWW_NN_HIFI_LIB "")
+if(CONFIG_COMP_MWW_HIFI_NNLIB AND ZEPHYR_TOOLCHAIN_VARIANT STREQUAL "xt-clang")
+	set(NN_HIFI_PATH ${sof_top_dir}/../nnlib-hifi4/xa_nnlib)
+	set(MWW_XTENSA_KERNELS ${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa)
+
+	target_sources(mww_tflm_lib PRIVATE
+		${MWW_XTENSA_KERNELS}/conv.cc
+		${MWW_XTENSA_KERNELS}/conv_common_xtensa.cc
+		${MWW_XTENSA_KERNELS}/conv_hifi.cc
+		${MWW_XTENSA_KERNELS}/conv_int8_int16.cc
+		${MWW_XTENSA_KERNELS}/conv_int8_reference.cc
+		${MWW_XTENSA_KERNELS}/conv_int16_reference.cc
+		${MWW_XTENSA_KERNELS}/conv_vision.cc
+		${MWW_XTENSA_KERNELS}/depthwise_conv.cc
+		${MWW_XTENSA_KERNELS}/depthwise_conv_hifi.cc
+		${MWW_XTENSA_KERNELS}/depthwise_conv_vision.cc
+		${MWW_XTENSA_KERNELS}/fully_connected.cc
+		${MWW_XTENSA_KERNELS}/fully_connected_common_xtensa.cc
+		${MWW_XTENSA_KERNELS}/fully_connected_int8.cc
+		${MWW_XTENSA_KERNELS}/fully_connected_vision.cc
+		${MWW_XTENSA_KERNELS}/logistic.cc
+		${MWW_XTENSA_KERNELS}/quantize.cc
+		${MWW_XTENSA_KERNELS}/dequantize.cc
+		${MWW_XTENSA_KERNELS}/reshape.cc
+		${MWW_XTENSA_KERNELS}/reshape_vision.cc
+		${MWW_XTENSA_KERNELS}/strided_slice.cc
+	)
+	target_include_directories(mww_tflm_lib PRIVATE
+		${NN_HIFI_PATH}
+		${NN_HIFI_PATH}/include
+	)
+	target_compile_options(mww_tflm_lib PRIVATE
+		-mcoproc
+		-DHIFI4
+		-DNNLIB_V2
+		-DKERNELS_OPTIMIZED_FOR_SPEED
+	)
+
+	# All HiFi4 nnlib sources, the linker drops what the kernels don't use.
+	file(GLOB MWW_NN_HIFI_SOURCES
+		${NN_HIFI_PATH}/algo/common/src/*.c
+		${NN_HIFI_PATH}/algo/kernels/*/hifi4/*.c
+		${NN_HIFI_PATH}/algo/ndsp/hifi4/src/*.c
+	)
+
+	add_library(mww_nn_hifi_lib STATIC ${MWW_NN_HIFI_SOURCES})
+	target_include_directories(mww_nn_hifi_lib PRIVATE
+		${NN_HIFI_PATH}/include
+		${NN_HIFI_PATH}/algo/common/include/
+		${NN_HIFI_PATH}/include/nnlib/
+		${NN_HIFI_PATH}/algo/ndsp/hifi4/include
+	)
+	target_compile_options(mww_nn_hifi_lib PRIVATE
+		-fsigned-char
+		-fno-exceptions
+		-mlongcalls
+		-INLINE:requested
+		-mcoproc
+		-fno-zero-initialized-in-bss
+		-mtext-section-literals
+		-Wsign-compare
+		-m32
+		-DMODEL_INT16
+		-DNNLIB_V2
+		-Dhifi4
+		-DTFLITE_SINGLE_ROUNDING=1
+		# nnlib exports a global gcd() that clashes with SOF's
+		-Dgcd=xa_nn_gcd
+		-ffunction-sections
+		-fdata-sections
+	)
+	set(MWW_NN_HIFI_LIB mww_nn_hifi_lib)
+else()
+	target_sources(mww_tflm_lib PRIVATE
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/conv.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/depthwise_conv.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/fully_connected.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/logistic.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/quantize.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/reshape.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/strided_slice.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/dequantize.cc
+	)
+endif()
+
 add_local_sources(sof mww.c)
 
-zephyr_link_libraries(mww_tflm_lib)
+zephyr_link_libraries(mww_tflm_lib ${MWW_NN_HIFI_LIB})
 
 # Same libc-shim rationale as src/audio/tensorflow/CMakeLists.txt: SOF's
 # default CONFIG_MINIMAL_LIBC is missing abs()/libm symbols TFLM needs in a
@@ -284,6 +365,7 @@ if(NOT CONFIG_COMP_MWW STREQUAL "m")
 			libm_common_sf_fmin.c.o
 			libm_common_sf_round.c.o
 			libm_common_sf_isnan.c.o
+			libm_common_sf_fpclassify.c.o
 			libm_common_sf_issignaling.c.o
 			libm_common_math_errf_uflowf.c.o
 			libm_common_math_errf_oflowf.c.o
