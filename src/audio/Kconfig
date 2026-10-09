@@ -152,6 +152,15 @@ config ECNS_KPB_MONO_AVG_CH_3_4
 
 endchoice
 
+config ECNS_TEST_SIGNAL
+	bool "ECNS test signal generator support"
+	default n
+	help
+	  Enable support for the test signal generator on the ECNS clean mono
+	  output pin (Pin 0 to KPB). When enabled, a monotonic incrementing
+	  counter can be selected via ALSA control instead of microphone audio
+	  to verify data continuity through the detection path.
+
 endif # COMP_ECNS
 
 config COMP_KPB

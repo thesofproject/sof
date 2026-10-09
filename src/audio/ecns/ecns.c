@@ -266,6 +266,7 @@ static int ecns_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
+#if CONFIG_ECNS_TEST_SIGNAL
 /**
  * \brief Generate 32-bit test signal on Pin 0 (KPB)
  */
@@ -317,6 +318,7 @@ static void ecns_kpb_test_signal_s16(struct ecns_comp_data *cd,
 		snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
 	}
 }
+#endif
 
 /**
  * \brief Process 32-bit DMIC input to 32-bit KPB mono output
@@ -518,12 +520,15 @@ static uint32_t ecns_process_kpb(struct ecns_comp_data *cd,
 
 	ecns_mono_window(src0_ch, &avg_start, &avg_cnt);
 
+#if CONFIG_ECNS_TEST_SIGNAL
 	if (cd->test_signal_enabled) {
 		if (snk_sample_bytes0 == sizeof(int32_t))
 			ecns_kpb_test_signal_s32(cd, snk0, snk0_ch, frames0);
 		else
 			ecns_kpb_test_signal_s16(cd, snk0, snk0_ch, frames0);
-	} else if (snk_sample_bytes0 == sizeof(int32_t)) {
+	} else
+#endif
+	if (snk_sample_bytes0 == sizeof(int32_t)) {
 		if (src_sample_bytes == sizeof(int32_t))
 			ecns_kpb_s32_to_s32(cd, src0, src0_ch, snk0, snk0_ch, frames0,
 					    avg_start, avg_cnt);
@@ -895,12 +900,17 @@ static int ecns_set_large_config(struct comp_dev *dev,
 		if (cp->num_elems < 1)
 			return -EINVAL;
 
+#if CONFIG_ECNS_TEST_SIGNAL
 		cd->test_signal_enabled = cp->chanv[0].value ? 1 : 0;
 		if (cd->test_signal_enabled)
 			cd->test_signal_val = 0;
 
 		comp_info(dev, "ecns: test signal %s (kpb mono output)",
 			  cd->test_signal_enabled ? "enabled" : "disabled");
+#else
+		if (cp->chanv[0].value)
+			comp_warn(dev, "ecns: test signal not supported (CONFIG_ECNS_TEST_SIGNAL=n)");
+#endif
 		return 0;
 	}
 	default:
