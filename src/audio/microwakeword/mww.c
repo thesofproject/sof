@@ -110,6 +110,13 @@ void __assert_func(const char *file, int line, const char *func,
 /* Hop interval for live scoring kcontrol updates (50 hops @ 10ms = 500 ms = 2 Hz). */
 #define MWW_SCORE_UPDATE_HOPS 50
 
+/* Fake wake timer delay when wovdebug kcontrol is armed (default 5000 ms = 5 sec). */
+#if CONFIG_COMP_MWW_FAKE_WAKE_MS > 0
+#define MWW_FAKE_WAKE_DELAY_MS CONFIG_COMP_MWW_FAKE_WAKE_MS
+#else
+#define MWW_FAKE_WAKE_DELAY_MS 5000
+#endif
+
 /* Soft mel-log AGC (units: Q9.23, matches MFCC output). One decade = +10 dB.
  * Target +2.5 dB (+0.25 in Q9.23), floor -20 dB. Attack: instant clamp so peak+gain
  * never exceeds MEL_CLIP_MAX_Q23 (+1.0, +10 dB). Release: dual-rate additive recovery:
@@ -263,6 +270,8 @@ static void on_wov_ctrl(void *arg, enum notify_id id, void *data)
 		if (n->slot_id != cd->wov_slot_id) {
 			comp_info(dev, "mww slot %u: paused (slot %u active)", cd->wov_slot_id, n->slot_id);
 			cd->paused = true;
+			cd->fake_wake_armed = false;
+			cd->wovdebug = 0;
 		}
 	} else if (n->cmd == WOV_ARB_CMD_RESUME) {
 		comp_info(dev, "mww slot %u: resumed by arbiter", cd->wov_slot_id);
@@ -340,6 +349,12 @@ static void on_d0ix_state(void *arg, enum notify_id id, void *data)
 	cd->in_d0ix = notif->entering;
 	comp_info(dev, "MWW slot %u: D0ix state %s", cd->wov_slot_id,
 		  notif->entering ? "entering (D0i3)" : "exiting (D0i0)");
+
+	if (notif->entering && cd->fake_wake_armed) {
+		cd->fake_wake_deadline_ms = k_uptime_get() + MWW_FAKE_WAKE_DELAY_MS;
+		comp_info(dev, "MWW slot %u: test trigger re-armed for %d ms from D0i3 entry",
+			  cd->wov_slot_id, (int)MWW_FAKE_WAKE_DELAY_MS);
+	}
 }
 
 __cold static void mww_log_summary_at_shutdown(struct processing_module *mod)
@@ -532,8 +547,14 @@ static int mww_prepare(struct processing_module *mod,
 			  cd->wov_slot_id, MWW_ArenaUsedBytes(&cd->mwc), MWW_ArenaCapacity(&cd->mwc));
 	}
 
-	cd->wovdebug = 0;
-	cd->fake_wake_armed = false;
+	if (cd->fake_wake_armed) {
+		cd->fake_wake_deadline_ms = k_uptime_get() + MWW_FAKE_WAKE_DELAY_MS;
+		comp_info(dev, "MWW slot %u: test trigger armed, delay %d ms from prepare",
+			  cd->wov_slot_id, (int)MWW_FAKE_WAKE_DELAY_MS);
+	} else {
+		cd->wovdebug = 0;
+		cd->fake_wake_armed = false;
+	}
 
 	cd->feature_slices_filled = 0;
 	cd->vad_history = 0;
@@ -564,6 +585,17 @@ static int mww_process(struct processing_module *mod,
 				source_release_data(sources[0], avail);
 		}
 		return 0;
+	}
+
+	if (cd->fake_wake_armed && !cd->paused && k_uptime_get() >= cd->fake_wake_deadline_ms) {
+		comp_info(dev, "MWW slot %u: test trigger timer expired (%d ms), firing detection",
+			  cd->wov_slot_id, (int)MWW_FAKE_WAKE_DELAY_MS);
+		cd->fake_wake_armed = false;
+		cd->wovdebug = 0;
+		mww_fake_wake_fire(mod, dev, cd);
+#if CONFIG_IPC_MAJOR_4
+		mww_notify_wovdebug(dev, cd, 0);
+#endif
 	}
 
 	if (cd->paused) {
@@ -932,14 +964,11 @@ __cold static int mww_set_config(struct processing_module *mod, uint32_t param_i
 
 		cd->wovdebug_ctl_id = cp->id;
 		if (cp->chanv[0].value != 0) {
-			comp_info(mod->dev, "MWW slot %u: test trigger switch activated, firing detection",
-				  cd->wov_slot_id);
-			cd->wovdebug = 0;
-			cd->fake_wake_armed = false;
-			mww_fake_wake_fire(mod, mod->dev, cd);
-#if CONFIG_IPC_MAJOR_4
-			mww_notify_wovdebug(mod->dev, cd, 0);
-#endif
+			cd->wovdebug = 1;
+			cd->fake_wake_armed = true;
+			cd->fake_wake_deadline_ms = k_uptime_get() + MWW_FAKE_WAKE_DELAY_MS;
+			comp_info(mod->dev, "MWW slot %u: test trigger switch activated, armed for %d ms delay",
+				  cd->wov_slot_id, (int)MWW_FAKE_WAKE_DELAY_MS);
 		} else {
 			cd->wovdebug = 0;
 			cd->fake_wake_armed = false;
