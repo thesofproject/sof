@@ -10,12 +10,14 @@
 #include <sof/audio/ecns.h>
 #include <sof/common.h>
 #include <sof/lib/memory.h>
+#include <sof/math/iir_df1.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <ipc4/base_fw.h>
 #include <ipc4/header.h>
 #include <ipc/stream.h>
 #include <ipc4/base-config.h>
+#include <user/eq.h>
 #include <rtos/init.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -70,6 +72,23 @@ static inline int16_t ecns_mono_s16(const int16_t *frame, uint32_t start, uint32
 	return (int16_t)(acc / (int32_t)cnt);
 }
 
+/**
+ * \brief 100 Hz second-order high-pass filter with +20 dB gain at 16 kHz.
+ *
+ * Built-in coefficient set for the KPB detection path (Pin 0 mono mix).
+ * Converted from tools/topology/topology2/include/components/eqiir/highpass_100hz_20db_16khz.conf
+ * consisting of struct sof_eq_iir_header (6 words) followed by one
+ * struct sof_eq_iir_biquad (7 words):
+ *   header: num_sections=1, num_sections_in_series=1, reserved[4]={0,0,0,0}
+ *   biquad: a2, a1, b2, b1, b0 in Q2.30, shift=-4, gain=0x4fd0 (20432 in Q2.14)
+ */
+static const uint32_t hp_100hz_20db_16k[13] = {
+	0x00000001, 0x00000001, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0xc37518f5, 0x7c72526b,
+	0x1f32926e, 0xc19adb24, 0x1f32926e, 0xfffffffc,
+	0x00004fd0
+};
+
 struct ecns_comp_data {
 	struct ipc4_base_module_cfg base_cfg;
 	uint32_t sample_rate;
@@ -77,6 +96,8 @@ struct ecns_comp_data {
 	uint32_t sample_width;
 	uint32_t test_signal_enabled;
 	uint16_t test_signal_val;
+	struct iir_state_df1 hp_iir;
+	int32_t *hp_delay;
 };
 
 static struct comp_dev *ecns_new(const struct comp_driver *drv,
@@ -117,6 +138,27 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 	dev->direction_set = true;
 	dev->state         = COMP_STATE_READY;
 
+	struct sof_eq_iir_header *hp_hdr = (struct sof_eq_iir_header *)hp_100hz_20db_16k;
+	int hp_size = iir_delay_size_df1(hp_hdr);
+	int32_t *delay;
+
+	if (hp_size < 0) {
+		rfree(cd);
+		comp_free_device(dev);
+		return NULL;
+	}
+
+	cd->hp_delay = rzalloc(SOF_MEM_FLAG_USER, hp_size);
+	if (!cd->hp_delay) {
+		rfree(cd);
+		comp_free_device(dev);
+		return NULL;
+	}
+
+	delay = cd->hp_delay;
+	iir_init_coef_df1(&cd->hp_iir, hp_hdr);
+	iir_init_delay_df1(&cd->hp_iir, &delay);
+
 	comp_info(dev, "ecns_new: rate=%u in_ch=%u sample_width=%u",
 		  cd->sample_rate, cd->channels, cd->sample_width);
 
@@ -128,6 +170,7 @@ static void ecns_free(struct comp_dev *dev)
 	struct ecns_comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "ecns_free");
+	rfree(cd->hp_delay);
 	rfree(cd);
 	comp_free_device(dev);
 }
@@ -221,6 +264,13 @@ static int ecns_reset(struct comp_dev *dev)
 
 	comp_info(dev, "ecns_reset");
 	cd->test_signal_val = 0;
+	if (cd->hp_delay) {
+		struct sof_eq_iir_header *hp_hdr = (struct sof_eq_iir_header *)hp_100hz_20db_16k;
+		int hp_size = iir_delay_size_df1(hp_hdr);
+
+		if (hp_size > 0)
+			memset_s(cd->hp_delay, hp_size, 0, hp_size);
+	}
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
 
@@ -329,7 +379,9 @@ static int ecns_copy(struct comp_dev *dev)
 					for (uint32_t i = 0; i < frames0; i++) {
 						src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
 						snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-						*snk_ptr++ = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
+						int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
+						mono = iir_df1(&cd->hp_iir, mono);
+						*snk_ptr++ = mono;
 						for (uint32_t c = 1; c < snk0_ch; c++)
 							*snk_ptr++ = 0;
 						src_ptr += src0_ch;
@@ -339,7 +391,9 @@ static int ecns_copy(struct comp_dev *dev)
 					for (uint32_t i = 0; i < frames0; i++) {
 						src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
 						snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-						*snk_ptr++ = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
+						int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
+						mono = iir_df1(&cd->hp_iir, mono);
+						*snk_ptr++ = mono;
 						for (uint32_t c = 1; c < snk0_ch; c++)
 							*snk_ptr++ = 0;
 						src_ptr += src0_ch;
@@ -360,7 +414,9 @@ static int ecns_copy(struct comp_dev *dev)
 					for (uint32_t i = 0; i < frames0; i++) {
 						src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
 						snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-						*snk_ptr++ = sat_int16(Q_SHIFT_RND(ecns_mono_s32(src_ptr, avg_start, avg_cnt), 31, 15));
+						int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
+						mono = iir_df1(&cd->hp_iir, mono);
+						*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
 						for (uint32_t c = 1; c < snk0_ch; c++)
 							*snk_ptr++ = 0;
 						src_ptr += src0_ch;
@@ -370,7 +426,9 @@ static int ecns_copy(struct comp_dev *dev)
 					for (uint32_t i = 0; i < frames0; i++) {
 						src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
 						snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-						*snk_ptr++ = ecns_mono_s16(src_ptr, avg_start, avg_cnt);
+						int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
+						mono = iir_df1(&cd->hp_iir, mono);
+						*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
 						for (uint32_t c = 1; c < snk0_ch; c++)
 							*snk_ptr++ = 0;
 						src_ptr += src0_ch;

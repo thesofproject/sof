@@ -117,6 +117,7 @@ config COMP_ECNS
 	bool "ECNS data processing component"
 	default y
 	depends on IPC_MAJOR_4
+	select MATH_IIR_DF1
 	help
 	  Select to build the ECNS (Echo Cancellation and Noise Suppression)
 	  Data Processing (DP) component. Operates with a 20ms period to process
