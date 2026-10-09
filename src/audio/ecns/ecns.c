@@ -181,21 +181,7 @@ static int ecns_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 
 	comp_info(dev, "ecns_params");
 
-#if CONFIG_IPC_MAJOR_4
 	ipc4_base_module_cfg_to_stream_params(&cd->base_cfg, params);
-#else
-	memset_s(params, sizeof(*params), 0, sizeof(*params));
-	params->channels = cd->base_cfg.audio_fmt.channels_count ?
-			   cd->base_cfg.audio_fmt.channels_count : ECNS_IN_CHANNELS;
-	params->rate     = cd->base_cfg.audio_fmt.sampling_frequency ?
-			   cd->base_cfg.audio_fmt.sampling_frequency : 48000;
-	params->sample_container_bytes = cd->base_cfg.audio_fmt.depth ?
-					 cd->base_cfg.audio_fmt.depth / 8 : 2;
-	params->sample_valid_bytes     = cd->base_cfg.audio_fmt.valid_bit_depth ?
-					 cd->base_cfg.audio_fmt.valid_bit_depth / 8 : 2;
-	params->buffer_fmt = cd->base_cfg.audio_fmt.interleaving_style;
-#endif
-
 	component_set_nearest_period_frames(dev, params->rate);
 
 	return 0;
@@ -203,22 +189,21 @@ static int ecns_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 
 static int ecns_prepare(struct comp_dev *dev)
 {
+	struct comp_buffer *src0 = NULL;
+	struct comp_buffer *src1 = NULL;
+	struct comp_buffer *source;
 	struct comp_buffer *sink;
 
 	comp_info(dev, "ecns_prepare");
 
-#if CONFIG_IPC_MAJOR_4
 	/* Output buffer formats must match the topology-declared pins:
 	 * pin0 -> KPB mono 16 kHz, pin1 -> host.
 	 * When src1 (48 kHz producer) is present, use dual-rate 16-bit formats.
 	 * When src1 is absent (single 16 kHz DMIC input), use 32-bit formats matching the manifest.
 	 */
-	struct comp_buffer *src0 = NULL;
-	struct comp_buffer *src1 = NULL;
-	struct comp_buffer *source;
-
 	comp_dev_for_each_producer(dev, source) {
 		uint32_t pin = IPC4_SINK_QUEUE_ID(buf_get_id(source));
+
 		if (pin == ECNS_PIN_16K_IN && !src0)
 			src0 = source;
 		else if (pin == ECNS_PIN_48K_IN && !src1)
@@ -248,12 +233,12 @@ static int ecns_prepare(struct comp_dev *dev)
 
 	comp_dev_for_each_consumer(dev, sink) {
 		uint32_t pin = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
+
 		if (pin == ECNS_PIN_16K_OUT)
 			ipc4_update_buffer_format(sink, &pin0_fmt);
 		else if (pin == ECNS_PIN_48K_OUT)
 			ipc4_update_buffer_format(sink, &pin1_fmt);
 	}
-#endif
 
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }
