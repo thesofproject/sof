@@ -29,7 +29,6 @@
 LOG_MODULE_REGISTER(buffer, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(buffer);
-/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(buffer_tr, SOF_UUID(buffer_uuid), LOG_LEVEL_INFO);
 
 static size_t comp_buffer_get_data_available(struct sof_source *source)
@@ -95,7 +94,7 @@ static int comp_buffer_commit_buffer(struct sof_sink *sink, size_t commit_size)
 
 	if (commit_size) {
 		buffer_stream_writeback(buffer, commit_size);
-		comp_update_buffer_produce(buffer, commit_size);
+		audio_stream_produce(&buffer->stream, commit_size);
 	}
 
 	return 0;
