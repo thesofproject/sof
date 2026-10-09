@@ -212,7 +212,7 @@ def main():
 	command.extend(['-o', f'{args.file}.tmp'])
 	command.extend(args.params)
 
-	subprocess.run(command)
+	subprocess.run(command, check=True)
 
 	copy_command = [args.copy]
 
@@ -222,7 +222,7 @@ def main():
 		copy_command.extend(['--set-section-alignment', f'{first_dram_rodata}=4096'])
 
 	copy_command.extend([f'{args.file}.tmp', f'{args.output}'])
-	subprocess.run(copy_command)
+	subprocess.run(copy_command, check=True)
 
 if __name__ == "__main__":
 	main()
