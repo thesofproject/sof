@@ -73,10 +73,10 @@ struct mux_stream_data {
 typedef int(*demux_func)(struct comp_dev *dev, struct sof_sink *sink,
 			  struct sof_source *source, const void *source_data,
 			  const void *source_start, size_t source_size,
-			  uint32_t frames, struct mux_look_up *look_up);
+			  size_t frames, struct mux_look_up *look_up);
 typedef void(*mux_func)(struct comp_dev *dev, struct sof_sink *sink,
 			struct cir_buf_sink *sink_buf, struct sof_source **sources,
-			struct cir_buf_source *source_bufs, uint32_t frames,
+			struct cir_buf_source *source_bufs, size_t frames,
 			struct mux_look_up *look_up);
 
 /**
