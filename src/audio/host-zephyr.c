@@ -388,7 +388,7 @@ static int host_get_status(struct comp_dev *dev, struct host_data *hd, struct dm
 }
 
 /* Minimum time between 2 consecutive "no bytes to copy" messages in milliseconds */
-#define SOF_MIN_NO_BYTES_INTERVAL_MS 20
+#define SOF_MIN_NO_BYTES_INTERVAL_MS 1000
 
 static inline bool host_handle_eos(struct host_data *hd, struct comp_dev *dev,
 				   uint32_t avail_samples)
@@ -396,7 +396,7 @@ static inline bool host_handle_eos(struct host_data *hd, struct comp_dev *dev,
 	struct sof_audio_buffer *buffer = &hd->local_buffer->audio_buffer;
 	enum sof_audio_buffer_state state = audio_buffer_get_state(buffer);
 
-	if (!dev->expect_eos)
+	if (!dev->pipeline->expect_eos)
 		return false;
 
 	if (!avail_samples) {
@@ -1310,15 +1310,12 @@ static uint64_t host_get_processed_data(struct comp_dev *dev, uint32_t stream_no
 	return ret;
 }
 
-/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(host_tr, SOF_UUID(host_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver comp_host = {
 	.type	= SOF_COMP_HOST,
 	.uid	= SOF_RT_UUID(host_uuid),
-#if !CONFIG_ZEPHYR_LOG
 	.tctx	= &host_tr,
-#endif
 	.ops	= {
 		.create				= host_new,
 		.free				= host_free,

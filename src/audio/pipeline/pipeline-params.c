@@ -283,8 +283,13 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 	}
 
 	err = comp_prepare(current);
-	if (err < 0 || err == PPL_STATUS_PATH_STOP)
+	if (err < 0 || err == PPL_STATUS_PATH_STOP) {
+		if (err < 0) {
+			pipe_err(current->pipeline, "comp_prepare for comp 0x%x failed %d",
+				 dev_comp_id(current), err);
+		}
 		return err;
+	}
 
 	return pipeline_for_each_comp(current, ctx, dir);
 }

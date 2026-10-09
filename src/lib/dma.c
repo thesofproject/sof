@@ -31,7 +31,6 @@ LOG_MODULE_REGISTER(dma, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(dma);
 
-/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(dma_tr, SOF_UUID(dma_uuid), LOG_LEVEL_INFO);
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
@@ -133,6 +132,9 @@ out:
 void z_impl_sof_dma_put(struct sof_dma *dma)
 {
 	k_spinlock_key_t key;
+
+	if (!dma)
+		return;
 
 	key = k_spin_lock(&dma->lock);
 	if (--dma->sref == 0) {
