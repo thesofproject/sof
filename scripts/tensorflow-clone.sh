@@ -8,7 +8,7 @@ set -e
 # Array of TFLM Git repository URLs.  Add or remove repositories as needed.
 declare -a REPOS=(
     "https://github.com/thesofproject/nnlib-hifi4"
-    "https://github.com/tensorflow/tflite-micro"
+    "https://github.com/thesofproject/tflite-micro"
     "https://github.com/thesofproject/flatbuffers"
     "https://github.com/google/gemmlowp"
     "https://github.com/google/ruy"
@@ -18,7 +18,7 @@ declare -a REPOS=(
 # the repository if this commit ID is not found.  Leave empty to skip.
 declare -a COMMIT_ID=(
     "cdedfb1a1044eb774915de21b63a1b6aa93276f6"
-    "e86d97b6237f88ab5925c0b41e3e3589a1560d86"
+    "8dddd051ce31fb9df5c2bdcf37329a03e3c3080b"
     "f5acabf4e1a3fcba024081bb1871a2ed59aa1c28"
     "719139ce755a0f31cbf1c37f7f98adcc7fc9f425"
     "d37128311b445e758136b8602d1bbd2a755e115d"
@@ -67,9 +67,12 @@ for ((i = 0; i < ${#REPOS[@]}; i++)); do
         git clone "$repo_url" "$repo_dir" || { echo "git clone failed for $repo_url"; exit 1; }
     elif ! check_commit "$repo_dir" "${COMMIT_ID[i]}"; then
         update_repo "$repo_dir"
-    else
-        echo "Repository $repo_name is up to date."
     fi
+
+    if [ -n "${COMMIT_ID[i]}" ]; then
+        git -C "$repo_dir" checkout "${COMMIT_ID[i]}"
+    fi
+    echo "Repository $repo_name is up to date."
 done
 
 echo "All repositories processed."
