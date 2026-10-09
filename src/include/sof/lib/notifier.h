@@ -12,12 +12,27 @@
 #include <sof/list.h>
 #include <rtos/spinlock.h>
 #include <rtos/sof.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 /* notifier target core masks */
 #define NOTIFIER_TARGET_CORE_MASK(x)	(1 << (x))
 #define NOTIFIER_TARGET_CORE_LOCAL	NOTIFIER_TARGET_CORE_MASK(cpu_get_id())
 #define NOTIFIER_TARGET_CORE_ALL_MASK	0xFFFFFFFF
+
+/** \brief Notifier flags. */
+#define NOTIFIER_FLAG_AGGREGATE		BIT(0)
+
+/**
+ * \brief NOTIFIER_ID_D0IX_STATE payload.
+ *
+ * Raised when the host changes the DSP D0 substate via SOF_IPC4_MOD_SET_D0IX.
+ * Components that must keep working while the host is in S0iX can use this to
+ * tell "host asleep, DSP still running" from normal operation.
+ */
+struct d0ix_state_notif {
+	bool entering;	/**< true: entering D0i3, false: returning to D0i0 */
+};
 
 enum notify_id {
 	NOTIFIER_ID_CPU_FREQ = 0,		/* struct clock_notify_data * */
@@ -28,6 +43,9 @@ enum notify_id {
 	NOTIFIER_ID_DMA_IRQ,			/* struct dma_chan_data * */
 	NOTIFIER_ID_DAI_TRIGGER,		/* struct dai_group * */
 	NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE,	/* struct mic_privacy_settings * */
+	NOTIFIER_ID_WOV_DETECT,		/* struct wov_detect_notif *: keyword detected */
+	NOTIFIER_ID_WOV_CTRL,			/* struct wov_ctrl_notif *: pause/resume detectors */
+	NOTIFIER_ID_D0IX_STATE,		/* struct d0ix_state_notif *: host D0i3 entry/exit */
 	NOTIFIER_ID_COUNT
 };
 
@@ -68,9 +86,10 @@ typedef void (*notifier_callback_t)(void *receiver_data, enum notify_id event_ty
  * some specific notifier_event() calls when not NULL.
  * @param event_type list of callbacks to be added to
  * @param callback callback function
+ * @param flags see NOTIFIER_FLAG_* above
  */
 int notifier_register(void *receiver_data, void *caller_id_filter, enum notify_id event_type,
-		      notifier_callback_t callback);
+		      notifier_callback_t callback, uint32_t flags);
 
 /** Unregister all callbacks matching that arguments tuple. NULL acts
  * as a wildcard.
