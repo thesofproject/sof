@@ -308,11 +308,6 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-crossover.bin,EFX_CROSSOVE
 "development/cavs-nocodec-rtcaec\;sof-tgl-nocodec-rtcaec\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-rtcaec.bin"
 
-# Topology to test the USB audio offload on an HDA machine, load it with
-# snd_sof.tplg_filename=sof-hda-generic-uaol.tplg
-"development/sof-hda-generic-uaol\;sof-hda-generic-uaol\;HDA_CONFIG=mix,HDA_MIC_ENHANCED_CAPTURE=true,\
-EFX_HDA_MIC_TDFB_PARAMS=line2_pass,EFX_HDA_MIC_DRC_PARAMS=passthrough"
-
 # SSP test topology for Data Processing SRC on MTL
 "cavs-nocodec\;sof-mtl-nocodec-dp-test\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec.bin,SRC_DOMAIN=DP"
@@ -399,6 +394,19 @@ NHLT_BIN=nhlt-sof-tgl-cs35l56-ssp2.bin"
 PDM1_MIC_B_ENABLE=1,DMIC0_PCM_ID=99,PREPROCESS_PLUGINS=nhlt,NUM_HDMIS=4,\
 NHLT_BIN=nhlt-sof-adl-max98357a-rt5682.bin,SPK_ID=7,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
 INCLUDE_BT_OFFLOAD=false,DEEP_BUF_SPK=true,SPEAKER_CODEC_NAME=SSP2-Codec,SPEAKER_SSP_DAI_INDEX=2"
+
+# Google Brya with raw dmic16k 4ch passthrough capture (no ECNS) for mic diagnostics
+"cavs-rt5682\;sof-adl-max98357a-rt5682-dmic16k\;PLATFORM=adl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
+PDM1_MIC_B_ENABLE=1,DMIC0_PCM_ID=99,DMIC1_ENABLE=passthrough,PREPROCESS_PLUGINS=nhlt,NUM_HDMIS=4,\
+NHLT_BIN=nhlt-sof-adl-max98357a-rt5682-dmic16k.bin,SPK_ID=7,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
+INCLUDE_BT_OFFLOAD=false,DEEP_BUF_SPK=true,SPEAKER_CODEC_NAME=SSP2-Codec,SPEAKER_SSP_DAI_INDEX=2"
+
+# Google Brya with integrated multi-slot WoV feature on PDM DMICs
+"cavs-rt5682\;sof-adl-max98357a-rt5682-wov-multi\;PLATFORM=adl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
+PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,NUM_HDMIS=4,DMIC_WOV_DAI_CHANNELS=4,\
+NHLT_BIN=nhlt-sof-adl-max98357a-rt5682-wov-multi.bin,SPK_ID=7,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
+INCLUDE_BT_OFFLOAD=false,DEEP_BUF_SPK=true,SPEAKER_CODEC_NAME=SSP2-Codec,SPEAKER_SSP_DAI_INDEX=2,\
+INCLUDE_WOV=multi"
 
 # RT721 eval board with PCH-DMIC, sof_sdw_quirk_table with SOC_SDW_PCH_DMIC
 # Enable FLOAT_LE and U8 PCM formats
