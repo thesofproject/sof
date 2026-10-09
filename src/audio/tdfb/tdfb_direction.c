@@ -82,7 +82,8 @@ static const uint32_t iir_emphasis_16k[20] = {
  *					and reset to zero after channel_count -1.
  * \param[in]		x		Input PCM sample
  */
-void tdfb_direction_copy_emphasis(struct tdfb_comp_data *cd, int ch_count, int *ch, int32_t x)
+void tdfb_direction_copy_emphasis(struct tdfb_comp_data *cd, unsigned int ch_count,
+				  unsigned int *ch, int32_t x)
 {
 	int32_t y;
 
