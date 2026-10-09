@@ -4,6 +4,7 @@
  */
 
 #include <sof/audio/component_ext.h>
+#include <sof/audio/audio_stream.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
@@ -266,6 +267,206 @@ static int ecns_trigger(struct comp_dev *dev, int cmd)
 }
 
 /**
+ * \brief Generate 32-bit test signal on Pin 0 (KPB)
+ */
+static void ecns_kpb_test_signal_s32(struct ecns_comp_data *cd,
+				     struct comp_buffer *snk0,
+				     uint32_t snk0_ch,
+				     uint32_t frames)
+{
+	int32_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
+	uint32_t remaining = frames;
+
+	while (remaining > 0) {
+		uint32_t f_snk = audio_stream_frames_without_wrap(&snk0->stream, snk_ptr);
+		uint32_t n = MIN(remaining, f_snk);
+
+		for (uint32_t i = 0; i < n; i++) {
+			*snk_ptr++ = ((int32_t)cd->test_signal_val++) << 16;
+			for (uint32_t c = 1; c < snk0_ch; c++)
+				*snk_ptr++ = 0;
+		}
+
+		remaining -= n;
+		snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
+	}
+}
+
+/**
+ * \brief Generate 16-bit test signal on Pin 0 (KPB)
+ */
+static void ecns_kpb_test_signal_s16(struct ecns_comp_data *cd,
+				     struct comp_buffer *snk0,
+				     uint32_t snk0_ch,
+				     uint32_t frames)
+{
+	int16_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
+	uint32_t remaining = frames;
+
+	while (remaining > 0) {
+		uint32_t f_snk = audio_stream_frames_without_wrap(&snk0->stream, snk_ptr);
+		uint32_t n = MIN(remaining, f_snk);
+
+		for (uint32_t i = 0; i < n; i++) {
+			*snk_ptr++ = (int16_t)cd->test_signal_val++;
+			for (uint32_t c = 1; c < snk0_ch; c++)
+				*snk_ptr++ = 0;
+		}
+
+		remaining -= n;
+		snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
+	}
+}
+
+/**
+ * \brief Process 32-bit DMIC input to 32-bit KPB mono output
+ */
+static void ecns_kpb_s32_to_s32(struct ecns_comp_data *cd,
+				struct comp_buffer *src0,
+				uint32_t src0_ch,
+				struct comp_buffer *snk0,
+				uint32_t snk0_ch,
+				uint32_t frames,
+				uint32_t avg_start,
+				uint32_t avg_cnt)
+{
+	int32_t *src_ptr = audio_stream_get_rptr(&src0->stream);
+	int32_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
+	uint32_t remaining = frames;
+
+	while (remaining > 0) {
+		uint32_t f_src = audio_stream_frames_without_wrap(&src0->stream, src_ptr);
+		uint32_t f_snk = audio_stream_frames_without_wrap(&snk0->stream, snk_ptr);
+		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
+
+		for (uint32_t i = 0; i < n; i++) {
+			int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
+
+			mono = iir_df1(&cd->hp_iir, mono);
+			*snk_ptr++ = mono;
+			for (uint32_t c = 1; c < snk0_ch; c++)
+				*snk_ptr++ = 0;
+			src_ptr += src0_ch;
+		}
+
+		remaining -= n;
+		src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
+		snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
+	}
+}
+
+/**
+ * \brief Process 16-bit DMIC input to 32-bit KPB mono output
+ */
+static void ecns_kpb_s16_to_s32(struct ecns_comp_data *cd,
+				struct comp_buffer *src0,
+				uint32_t src0_ch,
+				struct comp_buffer *snk0,
+				uint32_t snk0_ch,
+				uint32_t frames,
+				uint32_t avg_start,
+				uint32_t avg_cnt)
+{
+	int16_t *src_ptr = audio_stream_get_rptr(&src0->stream);
+	int32_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
+	uint32_t remaining = frames;
+
+	while (remaining > 0) {
+		uint32_t f_src = audio_stream_frames_without_wrap(&src0->stream, src_ptr);
+		uint32_t f_snk = audio_stream_frames_without_wrap(&snk0->stream, snk_ptr);
+		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
+
+		for (uint32_t i = 0; i < n; i++) {
+			int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
+
+			mono = iir_df1(&cd->hp_iir, mono);
+			*snk_ptr++ = mono;
+			for (uint32_t c = 1; c < snk0_ch; c++)
+				*snk_ptr++ = 0;
+			src_ptr += src0_ch;
+		}
+
+		remaining -= n;
+		src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
+		snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
+	}
+}
+
+/**
+ * \brief Process 32-bit DMIC input to 16-bit KPB mono output
+ */
+static void ecns_kpb_s32_to_s16(struct ecns_comp_data *cd,
+				struct comp_buffer *src0,
+				uint32_t src0_ch,
+				struct comp_buffer *snk0,
+				uint32_t snk0_ch,
+				uint32_t frames,
+				uint32_t avg_start,
+				uint32_t avg_cnt)
+{
+	int32_t *src_ptr = audio_stream_get_rptr(&src0->stream);
+	int16_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
+	uint32_t remaining = frames;
+
+	while (remaining > 0) {
+		uint32_t f_src = audio_stream_frames_without_wrap(&src0->stream, src_ptr);
+		uint32_t f_snk = audio_stream_frames_without_wrap(&snk0->stream, snk_ptr);
+		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
+
+		for (uint32_t i = 0; i < n; i++) {
+			int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
+
+			mono = iir_df1(&cd->hp_iir, mono);
+			*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
+			for (uint32_t c = 1; c < snk0_ch; c++)
+				*snk_ptr++ = 0;
+			src_ptr += src0_ch;
+		}
+
+		remaining -= n;
+		src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
+		snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
+	}
+}
+
+/**
+ * \brief Process 16-bit DMIC input to 16-bit KPB mono output
+ */
+static void ecns_kpb_s16_to_s16(struct ecns_comp_data *cd,
+				struct comp_buffer *src0,
+				uint32_t src0_ch,
+				struct comp_buffer *snk0,
+				uint32_t snk0_ch,
+				uint32_t frames,
+				uint32_t avg_start,
+				uint32_t avg_cnt)
+{
+	int16_t *src_ptr = audio_stream_get_rptr(&src0->stream);
+	int16_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
+	uint32_t remaining = frames;
+
+	while (remaining > 0) {
+		uint32_t f_src = audio_stream_frames_without_wrap(&src0->stream, src_ptr);
+		uint32_t f_snk = audio_stream_frames_without_wrap(&snk0->stream, snk_ptr);
+		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
+
+		for (uint32_t i = 0; i < n; i++) {
+			int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
+
+			mono = iir_df1(&cd->hp_iir, mono);
+			*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
+			for (uint32_t c = 1; c < snk0_ch; c++)
+				*snk_ptr++ = 0;
+			src_ptr += src0_ch;
+		}
+
+		remaining -= n;
+		src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
+		snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
+	}
+}
+
+/**
  * \brief Process Pin 0: 16 kHz detection stream -> Mono clean to KPB
  *
  * Averages selected source channels into a mono stream, filters with the
@@ -317,90 +518,157 @@ static uint32_t ecns_process_kpb(struct ecns_comp_data *cd,
 
 	ecns_mono_window(src0_ch, &avg_start, &avg_cnt);
 
-	if (snk_sample_bytes0 == sizeof(int32_t)) {
-		int32_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
-
-		if (cd->test_signal_enabled) {
-			for (uint32_t i = 0; i < frames0; i++) {
-				snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-				*snk_ptr++ = ((int32_t)cd->test_signal_val++) << 16;
-				for (uint32_t c = 1; c < snk0_ch; c++)
-					*snk_ptr++ = 0;
-			}
-		} else if (src_sample_bytes == sizeof(int32_t)) {
-			int32_t *src_ptr = audio_stream_get_rptr(&src0->stream);
-
-			for (uint32_t i = 0; i < frames0; i++) {
-				src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
-				snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-				int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
-
-				mono = iir_df1(&cd->hp_iir, mono);
-				*snk_ptr++ = mono;
-				for (uint32_t c = 1; c < snk0_ch; c++)
-					*snk_ptr++ = 0;
-				src_ptr += src0_ch;
-			}
-		} else {
-			int16_t *src_ptr = audio_stream_get_rptr(&src0->stream);
-
-			for (uint32_t i = 0; i < frames0; i++) {
-				src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
-				snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-				int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
-
-				mono = iir_df1(&cd->hp_iir, mono);
-				*snk_ptr++ = mono;
-				for (uint32_t c = 1; c < snk0_ch; c++)
-					*snk_ptr++ = 0;
-				src_ptr += src0_ch;
-			}
-		}
+	if (cd->test_signal_enabled) {
+		if (snk_sample_bytes0 == sizeof(int32_t))
+			ecns_kpb_test_signal_s32(cd, snk0, snk0_ch, frames0);
+		else
+			ecns_kpb_test_signal_s16(cd, snk0, snk0_ch, frames0);
+	} else if (snk_sample_bytes0 == sizeof(int32_t)) {
+		if (src_sample_bytes == sizeof(int32_t))
+			ecns_kpb_s32_to_s32(cd, src0, src0_ch, snk0, snk0_ch, frames0,
+					    avg_start, avg_cnt);
+		else
+			ecns_kpb_s16_to_s32(cd, src0, src0_ch, snk0, snk0_ch, frames0,
+					    avg_start, avg_cnt);
 	} else {
-		int16_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
-
-		if (cd->test_signal_enabled) {
-			for (uint32_t i = 0; i < frames0; i++) {
-				snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-				*snk_ptr++ = (int16_t)cd->test_signal_val++;
-				for (uint32_t c = 1; c < snk0_ch; c++)
-					*snk_ptr++ = 0;
-			}
-		} else if (src_sample_bytes == sizeof(int32_t)) {
-			int32_t *src_ptr = audio_stream_get_rptr(&src0->stream);
-
-			for (uint32_t i = 0; i < frames0; i++) {
-				src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
-				snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-				int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
-
-				mono = iir_df1(&cd->hp_iir, mono);
-				*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
-				for (uint32_t c = 1; c < snk0_ch; c++)
-					*snk_ptr++ = 0;
-				src_ptr += src0_ch;
-			}
-		} else {
-			int16_t *src_ptr = audio_stream_get_rptr(&src0->stream);
-
-			for (uint32_t i = 0; i < frames0; i++) {
-				src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
-				snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-				int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
-
-				mono = iir_df1(&cd->hp_iir, mono);
-				*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
-				for (uint32_t c = 1; c < snk0_ch; c++)
-					*snk_ptr++ = 0;
-				src_ptr += src0_ch;
-			}
-		}
+		if (src_sample_bytes == sizeof(int32_t))
+			ecns_kpb_s32_to_s16(cd, src0, src0_ch, snk0, snk0_ch, frames0,
+					    avg_start, avg_cnt);
+		else
+			ecns_kpb_s16_to_s16(cd, src0, src0_ch, snk0, snk0_ch, frames0,
+					    avg_start, avg_cnt);
 	}
 
 	buffer_stream_writeback(snk0, snk_bytes);
 	comp_update_buffer_produce(snk0, snk_bytes);
 
 	return frames0;
+}
+
+/**
+ * \brief Copy 32-bit input to 32-bit host capture sink
+ */
+static void ecns_host_s32_to_s32(struct comp_buffer *in1,
+				 uint32_t in1_ch,
+				 struct comp_buffer *snk1,
+				 uint32_t snk1_ch,
+				 uint32_t frames)
+{
+	int32_t *src_ptr = audio_stream_get_rptr(&in1->stream);
+	int32_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
+	uint32_t remaining = frames;
+
+	while (remaining > 0) {
+		uint32_t f_src = audio_stream_frames_without_wrap(&in1->stream, src_ptr);
+		uint32_t f_snk = audio_stream_frames_without_wrap(&snk1->stream, snk_ptr);
+		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
+
+		for (uint32_t i = 0; i < n; i++) {
+			for (uint32_t c = 0; c < snk1_ch; c++)
+				snk_ptr[c] = (c < in1_ch) ? src_ptr[c] : 0;
+			snk_ptr += snk1_ch;
+			src_ptr += in1_ch;
+		}
+
+		remaining -= n;
+		src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
+		snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
+	}
+}
+
+/**
+ * \brief Convert 16-bit input to 32-bit host capture sink
+ */
+static void ecns_host_s16_to_s32(struct comp_buffer *in1,
+				 uint32_t in1_ch,
+				 struct comp_buffer *snk1,
+				 uint32_t snk1_ch,
+				 uint32_t frames)
+{
+	int16_t *src_ptr = audio_stream_get_rptr(&in1->stream);
+	int32_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
+	uint32_t remaining = frames;
+
+	while (remaining > 0) {
+		uint32_t f_src = audio_stream_frames_without_wrap(&in1->stream, src_ptr);
+		uint32_t f_snk = audio_stream_frames_without_wrap(&snk1->stream, snk_ptr);
+		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
+
+		for (uint32_t i = 0; i < n; i++) {
+			for (uint32_t c = 0; c < snk1_ch; c++)
+				snk_ptr[c] = (c < in1_ch) ?
+					(((int32_t)src_ptr[c]) << 16) : 0;
+			snk_ptr += snk1_ch;
+			src_ptr += in1_ch;
+		}
+
+		remaining -= n;
+		src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
+		snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
+	}
+}
+
+/**
+ * \brief Convert 32-bit input to 16-bit host capture sink
+ */
+static void ecns_host_s32_to_s16(struct comp_buffer *in1,
+				 uint32_t in1_ch,
+				 struct comp_buffer *snk1,
+				 uint32_t snk1_ch,
+				 uint32_t frames)
+{
+	int32_t *src_ptr = audio_stream_get_rptr(&in1->stream);
+	int16_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
+	uint32_t remaining = frames;
+
+	while (remaining > 0) {
+		uint32_t f_src = audio_stream_frames_without_wrap(&in1->stream, src_ptr);
+		uint32_t f_snk = audio_stream_frames_without_wrap(&snk1->stream, snk_ptr);
+		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
+
+		for (uint32_t i = 0; i < n; i++) {
+			for (uint32_t c = 0; c < snk1_ch; c++)
+				snk_ptr[c] = (c < in1_ch) ?
+					sat_int16(Q_SHIFT_RND(src_ptr[c], 31, 15)) : 0;
+			snk_ptr += snk1_ch;
+			src_ptr += in1_ch;
+		}
+
+		remaining -= n;
+		src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
+		snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
+	}
+}
+
+/**
+ * \brief Copy 16-bit input to 16-bit host capture sink
+ */
+static void ecns_host_s16_to_s16(struct comp_buffer *in1,
+				 uint32_t in1_ch,
+				 struct comp_buffer *snk1,
+				 uint32_t snk1_ch,
+				 uint32_t frames)
+{
+	int16_t *src_ptr = audio_stream_get_rptr(&in1->stream);
+	int16_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
+	uint32_t remaining = frames;
+
+	while (remaining > 0) {
+		uint32_t f_src = audio_stream_frames_without_wrap(&in1->stream, src_ptr);
+		uint32_t f_snk = audio_stream_frames_without_wrap(&snk1->stream, snk_ptr);
+		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
+
+		for (uint32_t i = 0; i < n; i++) {
+			for (uint32_t c = 0; c < snk1_ch; c++)
+				snk_ptr[c] = (c < in1_ch) ? src_ptr[c] : 0;
+			snk_ptr += snk1_ch;
+			src_ptr += in1_ch;
+		}
+
+		remaining -= n;
+		src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
+		snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
+	}
 }
 
 /**
@@ -449,59 +717,15 @@ static uint32_t ecns_process_host(struct comp_buffer *in1,
 	buffer_stream_invalidate(in1, in1_bytes);
 
 	if (snk_sample_bytes1 == sizeof(int32_t)) {
-		int32_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
-
-		if (in1_sample_bytes == sizeof(int32_t)) {
-			int32_t *src_ptr = audio_stream_get_rptr(&in1->stream);
-
-			for (uint32_t i = 0; i < frames1; i++) {
-				src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
-				snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
-				for (uint32_t c = 0; c < snk1_ch; c++)
-					snk_ptr[c] = (c < in1_ch) ? src_ptr[c] : 0;
-				snk_ptr += snk1_ch;
-				src_ptr += in1_ch;
-			}
-		} else {
-			int16_t *src_ptr = audio_stream_get_rptr(&in1->stream);
-
-			for (uint32_t i = 0; i < frames1; i++) {
-				src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
-				snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
-				for (uint32_t c = 0; c < snk1_ch; c++)
-					snk_ptr[c] = (c < in1_ch) ?
-						(((int32_t)src_ptr[c]) << 16) : 0;
-				snk_ptr += snk1_ch;
-				src_ptr += in1_ch;
-			}
-		}
+		if (in1_sample_bytes == sizeof(int32_t))
+			ecns_host_s32_to_s32(in1, in1_ch, snk1, snk1_ch, frames1);
+		else
+			ecns_host_s16_to_s32(in1, in1_ch, snk1, snk1_ch, frames1);
 	} else {
-		int16_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
-
-		if (in1_sample_bytes == sizeof(int32_t)) {
-			int32_t *src_ptr = audio_stream_get_rptr(&in1->stream);
-
-			for (uint32_t i = 0; i < frames1; i++) {
-				src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
-				snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
-				for (uint32_t c = 0; c < snk1_ch; c++)
-					snk_ptr[c] = (c < in1_ch) ?
-						sat_int16(Q_SHIFT_RND(src_ptr[c], 31, 15)) : 0;
-				snk_ptr += snk1_ch;
-				src_ptr += in1_ch;
-			}
-		} else {
-			int16_t *src_ptr = audio_stream_get_rptr(&in1->stream);
-
-			for (uint32_t i = 0; i < frames1; i++) {
-				src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
-				snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
-				for (uint32_t c = 0; c < snk1_ch; c++)
-					snk_ptr[c] = (c < in1_ch) ? src_ptr[c] : 0;
-				snk_ptr += snk1_ch;
-				src_ptr += in1_ch;
-			}
-		}
+		if (in1_sample_bytes == sizeof(int32_t))
+			ecns_host_s32_to_s16(in1, in1_ch, snk1, snk1_ch, frames1);
+		else
+			ecns_host_s16_to_s16(in1, in1_ch, snk1, snk1_ch, frames1);
 	}
 
 	buffer_stream_writeback(snk1, snk_bytes);
