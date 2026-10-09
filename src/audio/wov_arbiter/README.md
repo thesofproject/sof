@@ -159,7 +159,7 @@ The dual-rate DMIC architecture is deployed across **Panther Lake (PTL)**, **Tig
 | Channels | 2 (Stereo clean mic) | 1 (Mono clean mic) |
 | Sample Format | S16_LE / S32_LE | S16_LE / S32_LE |
 | History / Pre-roll | Live streaming | 2.0 s (64 KB mono buffer in KPB) |
-| Keyword Spotters | N/A | 3 concurrent slots: 0="strawberry", 1="banana", 2="orange" |
+| Keyword Spotters | N/A | 3 concurrent slots: 0="strawberry", 1="hi intel", 2="orange" |
 | Keyword Control | N/A | `wov_active_slot` enum (0=Listening, 1=Slot 0, 2=Slot 1, 3=Slot 2) |
 | Scheduling | Core 0 (LL 1ms) | Core 0 (LL 1ms arbiter + DP 20ms KPB + DP 10ms MWW) |
 | Processing Source | ECNS Pin 1 (1-to-1 copy of 48k `dmic01`) | ECNS Pin 0 (mono Left ch of 16k `dmic16k`) via KPB & WOV Arbiter |
