@@ -387,9 +387,9 @@ int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_data *cd)
 						mel_max = MAX(mel_max, v);
 					}
 					if (mel_max > 0 || (pcan_dbg % 4096) == 1)
-						comp_info(dev,
-							  "pcan[%u] bins=%d mel_max=%u mel_sum=%u noise0=%u",
-							  pcan_dbg, nb, mel_max, (uint32_t)mel_sum, ne0);
+						comp_dbg(dev,
+							 "pcan[%u] bins=%d mel_max=%u mel_sum=%u noise0=%u",
+							 pcan_dbg, nb, mel_max, (uint32_t)mel_sum, ne0);
 				}
 			}
 		} else {

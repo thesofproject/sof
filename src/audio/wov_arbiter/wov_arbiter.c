@@ -21,9 +21,7 @@
 #include <sof/audio/wov_arbiter.h>
 #include <sof/common.h>
 #include <rtos/alloc.h>
-#include <rtos/clk.h>
 #include <rtos/init.h>
-#include <rtos/timer.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -65,7 +63,6 @@ struct wov_arb_data {
 	uint32_t copy_count;
 	uint32_t drain_frames_copied;
 	uint32_t drain_frames_total;
-	uint64_t last_notify_time;
 };
 
 #if CONFIG_IPC_MAJOR_4
@@ -112,6 +109,9 @@ static void notify_control_change(const struct comp_dev *dev, uint16_t control_i
  * ALSA's normal period-elapsed IRQ path is not relied on here). This mirrors
  * detect_test.c's notify_host() so the kernel's sof_ipc4_rx_msg() can key off
  * SOF_IPC4_NOTIFY_PHRASE_DETECTED and call snd_sof_pcm_period_elapsed().
+ * Sent once per detection (from arb_on_detect()), not repeated per copy():
+ * it is a one-shot simulated interrupt, not a substitute for the host's own
+ * period-elapsed mechanism on streams that never requested no-period-wakeup.
  */
 static void notify_host_detect(const struct comp_dev *dev, uint32_t slot_id)
 {
@@ -163,7 +163,6 @@ static void arb_on_detect(void *arg, enum notify_id id, void *data)
 
 	comp_info(dev, "wov_arb: activating slot %u", det->slot_id);
 	cd->active_slot = det->slot_id;
-	cd->last_notify_time = 0;
 
 #if CONFIG_IPC_MAJOR_4
 	/* Notify host ALSA enum control: 1..N corresponds to Slot 1..N (0 is Listening) */
@@ -212,7 +211,6 @@ static struct comp_dev *wov_arb_new(const struct comp_driver *drv,
 
 	/* Start with no active slot; first WOV_DETECT notifier will activate one. */
 	cd->active_slot = WOV_ARB_NO_ACTIVE;
-	cd->last_notify_time = 0;
 
 	comp_set_drvdata(dev, cd);
 	/* Arbiter produces a capture stream that feeds the host PCM copier. */
@@ -279,7 +277,6 @@ static int wov_arb_prepare(struct comp_dev *dev)
 	cd->copy_count = 0;
 	cd->drain_frames_copied = 0;
 	cd->drain_frames_total = 0;
-	cd->last_notify_time = 0;
 
 #if CONFIG_IPC_MAJOR_4
 	notify_control_change(dev, cd->active_slot_ctl_id, 0);
@@ -346,7 +343,6 @@ static int wov_arb_reset(struct comp_dev *dev)
 
 	cd->drain_frames_copied = 0;
 	cd->drain_frames_total = 0;
-	cd->last_notify_time = 0;
 
 	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_DETECT);
 
@@ -371,7 +367,6 @@ static int wov_arb_trigger(struct comp_dev *dev, int cmd)
 	if (cmd == COMP_TRIGGER_STOP || cmd == COMP_TRIGGER_PAUSE) {
 		cd->drain_frames_copied = 0;
 		cd->drain_frames_total = 0;
-		cd->last_notify_time = 0;
 		if (cd->active_slot != WOV_ARB_NO_ACTIVE) {
 			comp_info(dev, "wov_arb: stream stopped, resuming all slots");
 			cd->active_slot = WOV_ARB_NO_ACTIVE;
@@ -435,7 +430,6 @@ static int wov_arb_set_large_config(struct comp_dev *dev,
 			if (val == 0) {
 				comp_info(dev, "wov_arb: reset active_slot to listening (0)");
 				cd->active_slot = WOV_ARB_NO_ACTIVE;
-				cd->last_notify_time = 0;
 				struct wov_ctrl_notif c = { .cmd = WOV_ARB_CMD_RESUME };
 				notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
 					       NOTIFIER_TARGET_CORE_ALL_MASK,
@@ -457,7 +451,6 @@ static int wov_arb_set_large_config(struct comp_dev *dev,
 				 * inference and yields CPU time to the selected detector.
 				 */
 				cd->active_slot = WOV_ARB_NO_ACTIVE;
-				cd->last_notify_time = 0;
 				struct wov_ctrl_notif r = { .cmd = WOV_ARB_CMD_RESUME };
 				notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
 					       NOTIFIER_TARGET_CORE_ALL_MASK,
@@ -478,7 +471,6 @@ static int wov_arb_set_large_config(struct comp_dev *dev,
 		return 0;
 	case IPC4_WOV_ARB_SET_ACTIVE_SLOT:
 		cd->active_slot = *(const uint8_t *)data;
-		cd->last_notify_time = 0;
 		comp_info(dev, "wov_arb: force active_slot=%u", cd->active_slot);
 		return 0;
 	default:
@@ -633,15 +625,6 @@ static int wov_arb_copy(struct comp_dev *dev)
 					copied_dst_bytes = dst_bytes;
 
 					cd->drain_frames_total += frames;
-
-					uint64_t now = sof_cycle_get_64();
-					if (!cd->last_notify_time ||
-					    (now - cd->last_notify_time >= k_ms_to_cyc_ceil64(10))) {
-#if CONFIG_IPC_MAJOR_4
-						notify_host_detect(dev, cd->active_slot);
-#endif
-						cd->last_notify_time = now;
-					}
 				}
 			}
 		} else {
@@ -654,8 +637,8 @@ static int wov_arb_copy(struct comp_dev *dev)
 
 	cd->copy_count++;
 	if ((cd->copy_count % 100) == 1) {
-		comp_info(dev, "wov_arb_copy #%u: active=%u, num_src=%u, act_avail=%u, copied=%u, sink_free=%u",
-			  cd->copy_count, cd->active_slot, num_sources, active_avail, copied_dst_bytes, sink_free);
+		comp_dbg(dev, "wov_arb_copy #%u: active=%u, num_src=%u, act_avail=%u, copied=%u, sink_free=%u",
+			 cd->copy_count, cd->active_slot, num_sources, active_avail, copied_dst_bytes, sink_free);
 	}
 
 	return 0;

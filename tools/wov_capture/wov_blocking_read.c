@@ -97,13 +97,6 @@ int main(int argc, char **argv)
 	snd_pcm_hw_params_set_channels(pcm, hw, 1);
 	snd_pcm_hw_params_set_rate_near(pcm, hw, &rate, 0);
 
-	err = snd_pcm_hw_params_set_period_wakeup(pcm, hw, 0);
-	if (err < 0) {
-		fprintf(stderr, "set_period_wakeup(0) failed: %s\n", snd_strerror(err));
-		snd_pcm_close(pcm);
-		return 1;
-	}
-
 	err = snd_pcm_hw_params(pcm, hw);
 	if (err < 0) {
 		fprintf(stderr, "hw_params failed: %s\n", snd_strerror(err));

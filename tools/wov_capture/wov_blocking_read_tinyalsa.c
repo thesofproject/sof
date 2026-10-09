@@ -2,9 +2,8 @@
  *
  * WOV Blocking Read Utility using tinyalsa.
  *
- * Demonstrates Wake-on-Voice gated capture using tinyalsa's PCM_MMAP and
- * PCM_NOIRQ (SNDRV_PCM_HW_PARAMS_NO_PERIOD_WAKEUP) to perform blocking
- * capture without hitting the kernel's 500ms wait timeout.
+ * Demonstrates Wake-on-Voice gated capture using tinyalsa's PCM_MMAP
+ * with normal period wakeups.
  *
  * Usage: wov_blocking_read_tinyalsa [hw:CARD,DEV] [KCONTROL_NAME]
  * Example: wov_blocking_read_tinyalsa hw:0,12 wovdebug_111
@@ -53,8 +52,8 @@ int main(int argc, char **argv)
 	config.stop_threshold = 0;
 	config.silence_threshold = 0;
 
-	/* Open with PCM_IN, PCM_MMAP, and PCM_NOIRQ */
-	unsigned int flags = PCM_IN | PCM_MMAP | PCM_NOIRQ;
+	/* Open with PCM_IN and PCM_MMAP */
+	unsigned int flags = PCM_IN | PCM_MMAP;
 	struct pcm *pcm = pcm_open(card, device, flags, &config);
 	if (!pcm || !pcm_is_ready(pcm)) {
 		fprintf(stderr, "pcm_open(card=%u, dev=%u) failed: %s\n",
@@ -66,6 +65,19 @@ int main(int argc, char **argv)
 
 	printf("period_size=%u buffer_size=%u rate=%u (tinyalsa)\n",
 	       config.period_size, pcm_get_buffer_size(pcm), config.rate);
+
+	/*
+	 * Trigger the stream into RUNNING now: with start_threshold=1
+	 * tinyalsa would otherwise defer SNDRV_PCM_IOCTL_START to the first
+	 * pcm_readi() call, so arming the fake-wake control first (below) would
+	 * race the DSP's detect/drain/PHRASE_DETECTED sequence ahead of the host
+	 * pipeline actually running.
+	 */
+	if (pcm_start(pcm) != 0) {
+		fprintf(stderr, "pcm_start failed: %s\n", pcm_get_error(pcm));
+		pcm_close(pcm);
+		return 1;
+	}
 
 	/* Arm control if specified */
 	if (ctl) {
