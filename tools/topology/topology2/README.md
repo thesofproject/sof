@@ -1125,11 +1125,11 @@ alsatplg -I $PWD/tools/topology/topology2 -p \
 # 1. Assemble config template with ABI header
 cat tools/topology/topology2/abi.conf tools/topology/topology2/cavs-sdw.conf > /tmp/sof-ptl-rt721-4ch-wov-multi.conf
 
-# 2. Compile via alsatplg with NHLT plugin
+# 2. Compile via alsatplg (uses system BIOS ACPI NHLT)
 ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
 ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
 alsatplg -I $PWD/tools/topology/topology2 -p \
-    -D 'PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt721-4ch.bin,DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,INCLUDE_WOV=multi' \
+    -D 'PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,INCLUDE_WOV=multi' \
     -c /tmp/sof-ptl-rt721-4ch-wov-multi.conf \
     -o build/sof-ptl-rt721-4ch-wov-multi.tplg
 ```
