@@ -15,6 +15,8 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/fir_generic.h>
@@ -76,36 +78,33 @@ static inline int set_func(struct processing_module *mod, enum sof_ipc_frame fmt
  * Pass-through processing functions
  */
 
-static void tdfb_pass_same_format(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
-				  struct output_stream_buffer *bsink, int frames)
+static void tdfb_pass_same_format(struct tdfb_comp_data *cd, struct cir_buf_source *source,
+				  unsigned int in_nch, struct cir_buf_sink *sink,
+				  unsigned int out_nch, size_t frames)
 {
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-
-	audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
+	cir_buf_copy(source->ptr, source->buf_start, source->buf_end,
+		     sink->ptr, sink->buf_start, sink->buf_end,
+		     frames * in_nch * cd->sample_bytes);
 }
 
 #if CONFIG_FORMAT_S16LE
-static void tdfb_pass_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
-			  struct output_stream_buffer *bsink, int frames)
+static void tdfb_pass_s16(struct tdfb_comp_data *cd, struct cir_buf_source *source,
+			  unsigned int in_nch, struct cir_buf_sink *sink,
+			  unsigned int out_nch, size_t frames)
 {
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-	int16_t *x = audio_stream_get_rptr(source);
-	int16_t *y = audio_stream_get_wptr(sink);
+	const int16_t *x = source->ptr;
+	int16_t *y = sink->ptr;
 	int16_t s0, s1;
-	int fmax;
-	int is, om;
-	int f, i, j, k;
-	const int in_nch = audio_stream_get_channels(source);
-	const int out_nch = audio_stream_get_channels(sink);
+	int i, is, om;
+	size_t f, fmax, j;
+	unsigned int k;
 	const int num_filters = cd->config->num_filters;
-	int remaining_frames = frames;
+	size_t remaining_frames = frames;
 
 	while (remaining_frames) {
-		fmax = audio_stream_frames_without_wrap(source, x);
+		fmax = circ_buf_frames_without_wrap(x, source->buf_end, sizeof(int16_t), in_nch);
 		f = MIN(remaining_frames, fmax);
-		fmax = audio_stream_frames_without_wrap(sink, y);
+		fmax = circ_buf_frames_without_wrap(y, sink->buf_end, sizeof(int16_t), out_nch);
 		f = MIN(f, fmax);
 		for (j = 0; j < f; j += 2) {
 			for (i = 0; i < num_filters; i++) {
@@ -125,33 +124,30 @@ static void tdfb_pass_s16(struct tdfb_comp_data *cd, struct input_stream_buffer 
 			y += 2 * out_nch;
 		}
 		remaining_frames -= f;
-		x = audio_stream_wrap(source, x);
-		y = audio_stream_wrap(sink, y);
+		x = source_cir_buf_wrap(x, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
 	}
 }
 #endif
 
 #if CONFIG_FORMAT_S24LE
-static void tdfb_pass_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
-			  struct output_stream_buffer *bsink, int frames)
+static void tdfb_pass_s24(struct tdfb_comp_data *cd, struct cir_buf_source *source,
+			  unsigned int in_nch, struct cir_buf_sink *sink,
+			  unsigned int out_nch, size_t frames)
 {
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-	int32_t *x = audio_stream_get_rptr(source);
-	int32_t *y = audio_stream_get_wptr(sink);
+	const int32_t *x = source->ptr;
+	int32_t *y = sink->ptr;
 	int32_t s0, s1;
-	int fmax;
-	int is, om;
-	int f, i, j, k;
-	const int in_nch = audio_stream_get_channels(source);
-	const int out_nch = audio_stream_get_channels(sink);
+	int i, is, om;
+	size_t f, fmax, j;
+	unsigned int k;
 	const int num_filters = cd->config->num_filters;
-	int remaining_frames = frames;
+	size_t remaining_frames = frames;
 
 	while (remaining_frames) {
-		fmax = audio_stream_frames_without_wrap(source, x);
+		fmax = circ_buf_frames_without_wrap(x, source->buf_end, sizeof(int32_t), in_nch);
 		f = MIN(remaining_frames, fmax);
-		fmax = audio_stream_frames_without_wrap(sink, y);
+		fmax = circ_buf_frames_without_wrap(y, sink->buf_end, sizeof(int32_t), out_nch);
 		f = MIN(f, fmax);
 		for (j = 0; j < f; j += 2) {
 			for (i = 0; i < num_filters; i++) {
@@ -171,33 +167,30 @@ static void tdfb_pass_s24(struct tdfb_comp_data *cd, struct input_stream_buffer 
 			y += 2 * out_nch;
 		}
 		remaining_frames -= f;
-		x = audio_stream_wrap(source, x);
-		y = audio_stream_wrap(sink, y);
+		x = source_cir_buf_wrap(x, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
 	}
 }
 #endif
 
 #if CONFIG_FORMAT_S32LE
-static void tdfb_pass_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
-			  struct output_stream_buffer *bsink, int frames)
+static void tdfb_pass_s32(struct tdfb_comp_data *cd, struct cir_buf_source *source,
+			  unsigned int in_nch, struct cir_buf_sink *sink,
+			  unsigned int out_nch, size_t frames)
 {
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-	int32_t *x = audio_stream_get_rptr(source);
-	int32_t *y = audio_stream_get_wptr(sink);
+	const int32_t *x = source->ptr;
+	int32_t *y = sink->ptr;
 	int32_t s0, s1;
-	int fmax;
-	int is, om;
-	int f, i, j, k;
-	const int in_nch = audio_stream_get_channels(source);
-	const int out_nch = audio_stream_get_channels(sink);
+	int i, is, om;
+	size_t f, fmax, j;
+	unsigned int k;
 	const int num_filters = cd->config->num_filters;
-	int remaining_frames = frames;
+	size_t remaining_frames = frames;
 
 	while (remaining_frames) {
-		fmax = audio_stream_frames_without_wrap(source, x);
+		fmax = circ_buf_frames_without_wrap(x, source->buf_end, sizeof(int32_t), in_nch);
 		f = MIN(remaining_frames, fmax);
-		fmax = audio_stream_frames_without_wrap(sink, y);
+		fmax = circ_buf_frames_without_wrap(y, sink->buf_end, sizeof(int32_t), out_nch);
 		f = MIN(f, fmax);
 		for (j = 0; j < f; j += 2) {
 			for (i = 0; i < num_filters; i++) {
@@ -217,8 +210,8 @@ static void tdfb_pass_s32(struct tdfb_comp_data *cd, struct input_stream_buffer 
 			y += 2 * out_nch;
 		}
 		remaining_frames -= f;
-		x = audio_stream_wrap(source, x);
-		y = audio_stream_wrap(sink, y);
+		x = source_cir_buf_wrap(x, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
 	}
 }
 #endif
@@ -563,11 +556,13 @@ static void tdfb_init_delay(struct tdfb_comp_data *cd)
 	}
 }
 
-static int tdfb_setup(struct processing_module *mod, int source_nch, int sink_nch,
-		      enum sof_ipc_frame fmt)
+static int tdfb_setup(struct processing_module *mod, unsigned int source_nch,
+		      unsigned int sink_nch, enum sof_ipc_frame fmt)
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	int delay_size;
+
+	cd->sample_bytes = get_sample_bytes(fmt);
 
 	/* If beam on, restore processing function. If off, use for same source and
 	 * sink format the efficient 1:1 copy, otherwise faster pass-through processing
@@ -720,14 +715,20 @@ static int tdfb_set_config(struct processing_module *mod, uint32_t param_id,
  */
 
 static int tdfb_process(struct processing_module *mod,
-			struct input_stream_buffer *input_buffers, int num_input_buffers,
-			struct output_stream_buffer *output_buffers, int num_output_buffers)
+			struct sof_source **sources, int num_of_sources,
+			struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_dev *dev = mod->dev;
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = input_buffers[0].data;
-	struct audio_stream *sink = output_buffers[0].data;
-	int frame_count = input_buffers[0].size;
+	struct sof_source *source = sources[0];
+	struct sof_sink *sink = sinks[0];
+	const unsigned int in_nch = source_get_channels(source);
+	const unsigned int out_nch = sink_get_channels(sink);
+	const size_t src_frame_bytes = source_get_frame_bytes(source);
+	const size_t snk_frame_bytes = sink_get_frame_bytes(sink);
+	struct cir_buf_source source_buf;
+	struct cir_buf_sink sink_buf;
+	size_t frame_count, bytes;
 	int ret;
 
 	comp_dbg(dev, "entry");
@@ -740,9 +741,7 @@ static int tdfb_process(struct processing_module *mod,
 		cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
 		if (!cd->config)
 			return -EINVAL;
-		ret = tdfb_setup(mod, audio_stream_get_channels(source),
-				 audio_stream_get_channels(sink),
-				 audio_stream_get_frm_fmt(source));
+		ret = tdfb_setup(mod, in_nch, out_nch, source_get_frm_fmt(source));
 		if (ret < 0) {
 			comp_err(dev, "failed FIR setup");
 			return ret;
@@ -752,9 +751,7 @@ static int tdfb_process(struct processing_module *mod,
 	/* Handle enum controls */
 	if (cd->update) {
 		cd->update = false;
-		ret = tdfb_setup(mod, audio_stream_get_channels(source),
-				 audio_stream_get_channels(sink),
-				 audio_stream_get_frm_fmt(source));
+		ret = tdfb_setup(mod, in_nch, out_nch, source_get_frm_fmt(source));
 		if (ret < 0) {
 			comp_err(dev, "failed FIR setup");
 			return ret;
@@ -766,33 +763,52 @@ static int tdfb_process(struct processing_module *mod,
 	 * optimized filter function loads the successive input samples from
 	 * internal delay line with a 64 bit load operation.
 	 */
-	frame_count = MIN(frame_count, cd->max_frames) & ~0x1;
-	if (frame_count) {
-		cd->tdfb_func(cd, input_buffers, output_buffers, frame_count);
-		module_update_buffer_position(input_buffers, output_buffers, frame_count);
+	frame_count = MIN(source_get_data_frames_available(source),
+			  sink_get_free_frames(sink));
+	frame_count = MIN(frame_count, cd->max_frames) & ~(size_t)1;
+	if (!frame_count)
+		return 0;
 
-		/* Update sound direction estimate */
-		tdfb_direction_estimate(cd, frame_count, audio_stream_get_channels(source));
-		comp_dbg(dev, "tdfb_dint %u %d %d %d", cd->direction.trigger, cd->direction.level,
-			 (int32_t)(cd->direction.level_ambient >> 32), cd->direction.az_slow);
+	ret = source_get_data(source, frame_count * src_frame_bytes,
+			      &source_buf.ptr, &source_buf.buf_start, &bytes);
+	if (ret)
+		return ret;
+	source_buf.buf_end = (const char *)source_buf.buf_start + bytes;
 
-		if (cd->direction_updates && cd->direction_change) {
-			tdfb_send_ipc_notification(mod);
-			cd->direction_change = false;
-			comp_dbg(dev, "tdfb_dupd %d %d",
-				 cd->az_value_estimate, cd->direction.az_slow);
-		}
+	ret = sink_get_buffer(sink, frame_count * snk_frame_bytes,
+			      &sink_buf.ptr, &sink_buf.buf_start, &bytes);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
+	}
+	sink_buf.buf_end = (char *)sink_buf.buf_start + bytes;
+
+	cd->tdfb_func(cd, &source_buf, in_nch, &sink_buf, out_nch, frame_count);
+
+	source_release_data(source, frame_count * src_frame_bytes);
+	sink_commit_buffer(sink, frame_count * snk_frame_bytes);
+
+	/* Update sound direction estimate */
+	tdfb_direction_estimate(cd, frame_count, in_nch);
+	comp_dbg(dev, "tdfb_dint %u %d %d %d", cd->direction.trigger, cd->direction.level,
+		 (int32_t)(cd->direction.level_ambient >> 32), cd->direction.az_slow);
+
+	if (cd->direction_updates && cd->direction_change) {
+		tdfb_send_ipc_notification(mod);
+		cd->direction_change = false;
+		comp_dbg(dev, "tdfb_dupd %d %d",
+			 cd->az_value_estimate, cd->direction.az_slow);
 	}
 
 	return 0;
 }
 
-static void tdfb_set_alignment(struct audio_stream *source)
+static void tdfb_set_alignment(struct sof_source *source)
 {
 	const uint32_t byte_align = SOF_FRAME_BYTE_ALIGN;
 	const uint32_t frame_align_req = 2; /* Process multiples of 2 frames */
 
-	audio_stream_set_align(byte_align, frame_align_req, source);
+	source_set_alignment_constants(source, byte_align, frame_align_req);
 }
 
 static int tdfb_prepare(struct processing_module *mod,
@@ -800,36 +816,38 @@ static int tdfb_prepare(struct processing_module *mod,
 			struct sof_sink **sinks, int num_of_sinks)
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer *sourceb, *sinkb;
+	struct sof_source *source;
+	struct sof_sink *sink;
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame frame_fmt;
-	int source_channels;
-	int sink_channels;
+	unsigned int source_channels;
+	unsigned int sink_channels;
 	int rate;
 	int ret;
 
 	comp_info(dev, "entry");
 
 	/* Find source and sink buffers */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	sinkb = comp_dev_get_first_data_consumer(dev);
-	if (!sourceb || !sinkb) {
+	if (!num_of_sources || !num_of_sinks) {
 		comp_err(dev, "no source or sink buffer");
 		return -ENOTCONN;
 	}
 
-	ret = tdfb_params(mod);
+	source = sources[0];
+	sink = sinks[0];
+
+	ret = tdfb_params(mod, source, sink);
 	if (ret) {
 		comp_err(dev, "Failed tdfb_params()");
 		return ret;
 	}
 
-	tdfb_set_alignment(&sourceb->stream);
+	tdfb_set_alignment(source);
 
-	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
-	source_channels = audio_stream_get_channels(&sourceb->stream);
-	sink_channels = audio_stream_get_channels(&sinkb->stream);
-	rate = audio_stream_get_rate(&sourceb->stream);
+	frame_fmt = source_get_frm_fmt(source);
+	source_channels = source_get_channels(source);
+	sink_channels = sink_get_channels(sink);
+	rate = source_get_rate(source);
 
 	/* Cache stream channel counts for the blob validator before any
 	 * validate_config() call runs.
@@ -921,7 +939,7 @@ static const struct module_interface tdfb_interface = {
 	.free = tdfb_free,
 	.set_configuration = tdfb_set_config,
 	.get_configuration = tdfb_get_config,
-	.process_audio_stream = tdfb_process,
+	.process = tdfb_process,
 	.prepare = tdfb_prepare,
 	.reset = tdfb_reset,
 };

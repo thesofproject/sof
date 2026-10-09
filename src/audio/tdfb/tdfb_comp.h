@@ -84,44 +84,46 @@ struct tdfb_comp_data {
 	int32_t *fir_delay;		    /**< pointer to allocated RAM */
 	int16_t *input_channel_select;	    /**< For each FIR define in ch */
 	int16_t *output_channel_mix;	    /**< For each FIR define out ch */
-	int16_t *output_stream_mix;         /**< for each FIR define stream */
+	int16_t *output_stream_mix;	    /**< for each FIR define stream */
 	int16_t az_value;		    /**< beam steer azimuth as in control enum */
 	int16_t az_value_estimate;	    /**< beam steer azimuth as in control enum */
 	int16_t source_channels;	    /**< source channel count cached for validator */
 	int16_t sink_channels;		    /**< sink channel count cached for validator */
+	size_t sample_bytes;		    /**< sample container size in bytes */
 	size_t config_size;		    /**< size of the configuration blob */
-	size_t fir_delay_size;              /**< allocated size */
+	size_t fir_delay_size;		    /**< allocated size */
 	unsigned int max_frames;	    /**< max frames to process */
 	bool direction_updates:1;	    /**< set true if direction angle control is updated */
 	bool direction_change:1;	    /**< set if direction value has significant change */
 	bool beam_on:1;			    /**< set true if beam is off */
 	bool update:1;			    /**< set true if control enum has been received */
 	void (*tdfb_func)(struct tdfb_comp_data *cd,
-			  struct input_stream_buffer *bsource,
-			  struct output_stream_buffer *bsink,
-			  int frames);
+			  struct cir_buf_source *source, unsigned int in_nch,
+			  struct cir_buf_sink *sink, unsigned int out_nch,
+			  size_t frames);
 };
 
 #if CONFIG_FORMAT_S16LE
 void tdfb_fir_s16(struct tdfb_comp_data *cd,
-		  struct input_stream_buffer *bsource,
-		  struct output_stream_buffer *bsink, int frames);
+		  struct cir_buf_source *source, unsigned int in_nch,
+		  struct cir_buf_sink *sink, unsigned int out_nch, size_t frames);
 #endif
 
 #if CONFIG_FORMAT_S24LE
 void tdfb_fir_s24(struct tdfb_comp_data *cd,
-		  struct input_stream_buffer *bsource,
-		  struct output_stream_buffer *bsink, int frames);
+		  struct cir_buf_source *source, unsigned int in_nch,
+		  struct cir_buf_sink *sink, unsigned int out_nch, size_t frames);
 #endif
 
 #if CONFIG_FORMAT_S32LE
 void tdfb_fir_s32(struct tdfb_comp_data *cd,
-		  struct input_stream_buffer *bsource,
-		  struct output_stream_buffer *bsink, int frames);
+		  struct cir_buf_source *source, unsigned int in_nch,
+		  struct cir_buf_sink *sink, unsigned int out_nch, size_t frames);
 #endif
 
 int tdfb_direction_init(struct processing_module *mod, int32_t fs, int channels);
-void tdfb_direction_copy_emphasis(struct tdfb_comp_data *cd, int channels, int *channel, int32_t x);
+void tdfb_direction_copy_emphasis(struct tdfb_comp_data *cd, unsigned int channels,
+				  unsigned int *channel, int32_t x);
 void tdfb_direction_estimate(struct tdfb_comp_data *cd, int frames, int channels);
 void tdfb_direction_free(struct processing_module *mod);
 
@@ -146,7 +148,8 @@ int tdfb_set_ipc_config(struct processing_module *mod, uint32_t param_id,
 			enum module_cfg_fragment_position pos, uint32_t data_offset_size,
 			const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			size_t response_size);
-int tdfb_params(struct processing_module *mod);
+int tdfb_params(struct processing_module *mod, struct sof_source *source,
+		struct sof_sink *sink);
 
 #ifdef UNIT_TEST
 void sys_comp_module_tdfb_interface_init(void);

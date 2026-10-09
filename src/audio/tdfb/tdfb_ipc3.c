@@ -226,7 +226,8 @@ int tdfb_set_ipc_config(struct processing_module *mod, uint32_t param_id,
 	return ret;
 }
 
-int tdfb_params(struct processing_module *mod)
+int tdfb_params(struct processing_module *mod, struct sof_source *source,
+		struct sof_sink *sink)
 {
 	return 0;
 }
