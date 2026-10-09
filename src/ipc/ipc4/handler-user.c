@@ -86,7 +86,7 @@ static inline const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data(
 
 	return ppl_data;
 }
-#endif /* CONFIG_LIBRARY */
+#endif
 /*
  * Global IPC Operations.
  */
@@ -114,7 +114,7 @@ static unsigned int ipc4_user_target_core_module(struct ipc4_message_request *ip
 
 	return cpu_get_id();
 }
-#else /* CONFIG_SOF_USERSPACE_LL */
+#else
 __cold static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc *ipc = ipc_get();
@@ -136,7 +136,7 @@ __cold static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 
 	return ipc_pipeline_free(ipc, pipe->primary.r.instance_id);
 }
-#endif /* CONFIG_SOF_USERSPACE_LL */
+#endif
 
 static int ipc4_pcm_params(struct ipc_comp_dev *pcm_dev)
 {
@@ -169,16 +169,41 @@ error:
 	return err;
 }
 
+static struct comp_dev *pipeline_get_endpoint_comp(struct ipc_comp_dev *ppl_icd)
+{
+	if (!ppl_icd || !ppl_icd->pipeline)
+		return NULL;
+
+	struct pipeline *p = ppl_icd->pipeline;
+
+	if (p->source_comp && p->source_comp->direction == SOF_IPC_STREAM_PLAYBACK)
+		return p->source_comp;
+
+	if (p->sink_comp)
+		return p->sink_comp;
+
+	return p->source_comp;
+}
+
+static bool pipeline_is_endpoint(struct pipeline *p)
+{
+	return (p->source_comp && (dev_comp_type(p->source_comp) == SOF_COMP_HOST ||
+				   dev_comp_type(p->source_comp) == SOF_COMP_DAI)) ||
+	       (p->sink_comp && (dev_comp_type(p->sink_comp) == SOF_COMP_HOST ||
+				 dev_comp_type(p->sink_comp) == SOF_COMP_DAI));
+}
+
 static struct ipc_comp_dev *pipeline_get_host_dev(struct ipc_comp_dev *ppl_icd)
 {
 	struct ipc_comp_dev *host_dev;
 	struct ipc *ipc = ipc_get();
 	int host_id;
 
-	if (!ppl_icd->pipeline->source_comp || !ppl_icd->pipeline->sink_comp) {
-		ipc_cmd_err(&ipc_tr, "pipeline %d: source/sink comp freed", ppl_icd->id);
+	if (!ppl_icd || !ppl_icd->pipeline)
 		return NULL;
-	}
+
+	if (!ppl_icd->pipeline->source_comp || !ppl_icd->pipeline->sink_comp)
+		return NULL;
 
 	/* If the source component's direction is not set but the sink's direction is,
 	 * this block will copy the direction from the sink to the source component and
@@ -208,8 +233,8 @@ static struct ipc_comp_dev *pipeline_get_host_dev(struct ipc_comp_dev *ppl_icd)
 		host_id = ppl_icd->pipeline->sink_comp->ipc_config.id;
 
 	host_dev = ipc_get_comp_by_id(ipc, host_id);
-	if (!host_dev)
-		ipc_cmd_err(&ipc_tr, "comp host with ID %d not found", host_id);
+	if (!host_dev || dev_comp_type(host_dev->cd) != SOF_COMP_HOST)
+		return NULL;
 
 	return host_dev;
 }
@@ -256,7 +281,7 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 
 	switch (cmd) {
 	case SOF_IPC4_PIPELINE_STATE_RUNNING:
-		if (ppl_icd->pipeline->source_comp && ppl_icd->pipeline->source_comp->expect_eos) {
+		if (ppl_icd->pipeline->expect_eos) {
 			ipc_cmd_err(&ipc_tr, "pipeline %d: Can't transition from EOS to RUNNING",
 				    ppl_icd->id);
 			return IPC4_INVALID_REQUEST;
@@ -264,20 +289,57 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 
 		/* init params when pipeline is complete or reset */
 		switch (status) {
+		case COMP_STATE_INIT:
+			tr_dbg(&ipc_tr, "pipeline %d: running from init", ppl_icd->id);
+			ret = ipc4_pipeline_complete(ipc, ppl_icd->id, cmd);
+			if (ret < 0)
+				return IPC4_INVALID_REQUEST;
+			host = pipeline_get_host_dev(ppl_icd);
+			if (host) {
+				ret = ipc4_pcm_params(host);
+				if (ret < 0)
+					tr_err(&ipc_tr, "pipeline %d: ipc4_pcm_params failed %d", ppl_icd->id, ret);
+			} else {
+				struct comp_dev *cd = pipeline_get_endpoint_comp(ppl_icd);
+
+				if (cd && cd->pipeline) {
+					ret = pipeline_prepare(cd->pipeline, cd);
+					if (ret < 0)
+						tr_err(&ipc_tr, "pipeline %d: prepare failed %d", ppl_icd->id, ret);
+					else
+						ret = 0;
+				}
+			}
+			break;
 		case COMP_STATE_ACTIVE:
 		case COMP_STATE_PAUSED:
+		case COMP_STATE_PREPARE:
+		case COMP_STATE_PRE_ACTIVE:
+		case COMP_STATE_SUSPEND:
 			/* No action needed */
 			break;
 		case COMP_STATE_READY:
 			host = pipeline_get_host_dev(ppl_icd);
-			if (!host)
-				return IPC4_INVALID_RESOURCE_ID;
+			if (host) {
+				tr_info(&ipc_tr, "pipeline %d: set params host comp 0x%x", ppl_icd->id, host->id);
+				ret = ipc4_pcm_params(host);
+				if (ret < 0) {
+					tr_err(&ipc_tr, "pipeline %d: ipc4_pcm_params failed %d", ppl_icd->id, ret);
+				}
+			} else {
+				struct comp_dev *cd = pipeline_get_endpoint_comp(ppl_icd);
 
-			tr_dbg(&ipc_tr, "pipeline %d: set params", ppl_icd->id);
-			ret = ipc4_pcm_params(host);
+				if (cd && cd->pipeline) {
+					ret = pipeline_prepare(cd->pipeline, cd);
+					if (ret < 0)
+						tr_err(&ipc_tr, "pipeline %d: prepare failed %d", ppl_icd->id, ret);
+					else
+						ret = 0;
+				}
+			}
 			break;
 		default:
-			ipc_cmd_err(&ipc_tr,
+			tr_err(&ipc_tr,
 				    "pipeline %d: Invalid state for RUNNING: %d",
 				    ppl_icd->id, status);
 			return IPC4_INVALID_REQUEST;
@@ -292,6 +354,9 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 		case COMP_STATE_READY:
 		case COMP_STATE_ACTIVE:
 		case COMP_STATE_PAUSED:
+		case COMP_STATE_PREPARE:
+		case COMP_STATE_PRE_ACTIVE:
+		case COMP_STATE_SUSPEND:
 			/* No action needed */
 			break;
 		default:
@@ -320,7 +385,7 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 				    ppl_icd->id, status);
 			return IPC4_INVALID_REQUEST;
 		}
-		pipeline_set_eos(ppl_icd->pipeline, true);
+		ppl_icd->pipeline->expect_eos = true;
 		return 0; /* Must return here. Any other transition clears expect_eos. */
 	/* special case - TODO */
 	case SOF_IPC4_PIPELINE_STATE_SAVED:
@@ -334,14 +399,15 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 	if (ret < 0)
 		return IPC4_INVALID_REQUEST;
 
-	pipeline_set_eos(ppl_icd->pipeline, false);
+	ppl_icd->pipeline->expect_eos = false;
 
-	return ret;
+	return 0;
 }
 
 int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *delayed)
 {
 	struct ipc_comp_dev *host;
+	struct comp_dev *trigger_cd = NULL;
 	int status;
 	int ret;
 
@@ -352,19 +418,24 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 	if (status == COMP_STATE_INIT)
 		return 0;
 
-	host = pipeline_get_host_dev(ppl_icd);
-	if (!host)
+	trigger_cd = pipeline_get_endpoint_comp(ppl_icd);
+	if (!trigger_cd)
 		return IPC4_INVALID_RESOURCE_ID;
+
+	host = pipeline_get_host_dev(ppl_icd);
 
 	switch (cmd) {
 	case SOF_IPC4_PIPELINE_STATE_RUNNING:
 		/* init params when pipeline is complete or reset */
 		switch (status) {
 		case COMP_STATE_ACTIVE:
+		case COMP_STATE_PRE_ACTIVE:
 			/* nothing to do if the pipeline is already running */
 			return 0;
+		case COMP_STATE_INIT:
 		case COMP_STATE_READY:
 		case COMP_STATE_PREPARE:
+		case COMP_STATE_SUSPEND:
 			cmd = COMP_TRIGGER_PRE_START;
 			break;
 		case COMP_STATE_PAUSED:
@@ -381,6 +452,9 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 		switch (status) {
 		case COMP_STATE_ACTIVE:
 		case COMP_STATE_PAUSED:
+		case COMP_STATE_PREPARE:
+		case COMP_STATE_PRE_ACTIVE:
+		case COMP_STATE_SUSPEND:
 			cmd = COMP_TRIGGER_STOP;
 			break;
 		default:
@@ -392,6 +466,7 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 		case COMP_STATE_INIT:
 		case COMP_STATE_READY:
 		case COMP_STATE_PAUSED:
+		case COMP_STATE_SUSPEND:
 			return 0;
 		default:
 			cmd = COMP_TRIGGER_PAUSE;
@@ -417,8 +492,51 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 	 */
 	dbg_path_hot_confirm();
 
-	/* trigger the component */
-	ret = pipeline_trigger(host->cd->pipeline, host->cd, cmd);
+	bool is_endpoint = pipeline_is_endpoint(trigger_cd->pipeline);
+
+	if (!is_endpoint) {
+		/*
+		 * Hostless internal pipelines (e.g. background keyword detection or internal
+		 * processing chains feeding arbiters or modules without a host or DAI copier)
+		 * have no host DMA or DAI hardware to delay IPC replies.
+		 * Execute the trigger and reset synchronously inline.
+		 */
+		ret = pipeline_trigger_run(trigger_cd->pipeline, trigger_cd, cmd);
+		if (ret < 0) {
+			ipc_cmd_err(&ipc_tr, "pipeline %d: trigger cmd %d failed with: %d",
+				    ppl_icd->id, cmd, ret);
+			return IPC4_PIPELINE_STATE_NOT_SET;
+		}
+
+		switch (cmd) {
+		case COMP_TRIGGER_PRE_START:
+		case COMP_TRIGGER_START:
+		case COMP_TRIGGER_PRE_RELEASE:
+		case COMP_TRIGGER_RELEASE:
+			trigger_cd->pipeline->status = COMP_STATE_ACTIVE;
+			pipeline_schedule_copy(trigger_cd->pipeline, 0);
+			break;
+		case COMP_TRIGGER_PAUSE:
+			pipeline_schedule_cancel(trigger_cd->pipeline);
+			trigger_cd->pipeline->status = COMP_STATE_PAUSED;
+			break;
+		case COMP_TRIGGER_STOP:
+			pipeline_schedule_cancel(trigger_cd->pipeline);
+			trigger_cd->pipeline->status = COMP_STATE_READY;
+			ret = pipeline_reset(trigger_cd->pipeline, trigger_cd);
+			if (ret < 0 && ret != PPL_STATUS_PATH_STOP)
+				return IPC4_INVALID_REQUEST;
+			break;
+		default:
+			break;
+		}
+
+		*delayed = false;
+		return 0;
+	}
+
+	/* trigger the endpoint component (host or DAI) */
+	ret = pipeline_trigger(trigger_cd->pipeline, trigger_cd, cmd);
 	if (ret < 0) {
 		ipc_cmd_err(&ipc_tr, "pipeline %d: trigger cmd %d failed with: %d",
 			    ppl_icd->id, cmd, ret);
@@ -435,9 +553,15 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 		 * Otherwise, the pipeline will be reset after the STOP trigger
 		 * has finished executing in the pipeline task.
 		 */
-		ret = pipeline_reset(host->cd->pipeline, host->cd);
-		if (ret < 0)
+		struct comp_dev *reset_cd = host ? host->cd : trigger_cd;
+
+		ret = pipeline_reset(reset_cd->pipeline, reset_cd);
+		if (ret < 0 && ret != PPL_STATUS_PATH_STOP)
 			ret = IPC4_INVALID_REQUEST;
+		else
+			ret = 0;
+	} else {
+		ret = 0;
 	}
 
 	return ret;
@@ -653,9 +777,9 @@ __cold static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 		return IPC4_INVALID_CHAIN_STATE_TRANSITION;
 
 	return IPC4_SUCCESS;
-#else /* CONFIG_COMP_CHAIN_DMA */
+#else
 	return IPC4_UNAVAILABLE;
-#endif /* CONFIG_COMP_CHAIN_DMA */
+#endif
 }
 
 __cold static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
@@ -678,10 +802,10 @@ __cold static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
 	}
 
 	return err < 0 ? IPC4_FAILURE : IPC4_SUCCESS;
-#else /* CONFIG_IPC4_GATEWAY */
+#else
 	ipc_cmd_err(&ipc_tr, "CONFIG_IPC4_GATEWAY is disabled");
 	return IPC4_UNAVAILABLE;
-#endif /* CONFIG_IPC4_GATEWAY */
+#endif
 }
 
 static int ipc_glb_gdb_debug(struct ipc4_message_request *ipc4)
@@ -774,9 +898,9 @@ int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4,
 		}
 		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat, ppl->core);
 	}
-#else /* CONFIG_SOF_USERSPACE_LL */
+#else
 		ret = ipc4_set_pipeline_state(ipc4);
-#endif /* CONFIG_SOF_USERSPACE_LL */
+#endif
 		break;
 
 	case SOF_IPC4_GLB_GET_PIPELINE_STATE:
@@ -1091,11 +1215,10 @@ __cold static int ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 	return IPC4_SUCCESS;
 }
 
-#ifdef CONFIG_SOF_USERSPACE_LL
-__cold static int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
-						uint32_t *reply_ext,
-						uint32_t *reply_tx_size,
-						void **reply_tx_data)
+__cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
+					uint32_t *reply_ext,
+					uint32_t *reply_tx_size,
+					void **reply_tx_data)
 {
 	struct ipc4_module_large_config_reply reply;
 	const struct ipc4_module_large_config *config =
@@ -1190,7 +1313,6 @@ __cold static int ipc4_process_large_config_get(struct ipc4_message_request *ipc
 	*reply_tx_data = data;
 	return ret;
 }
-#endif
 
 __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
@@ -1601,7 +1723,7 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 			ipc_get()->ipc_user_pdata->init_drv = drv;
 			ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat,
 						   mi->extension.r.core_id);
-#endif /* CONFIG_SOF_USERSPACE_LL */
+#endif
 		} else {
 			/*
 			 * DP module creation starts running in kernel mode and
@@ -1661,9 +1783,9 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 			ret = ipc4_get_large_config_module_instance(ipc4);
 		}
 	}
-#else /* CONFIG_SOF_USERSPACE_LL */
+#else
 		ret = ipc4_get_large_config_module_instance(ipc4);
-#endif /* CONFIG_SOF_USERSPACE_LL */
+#endif
 		break;
 	case SOF_IPC4_MOD_LARGE_CONFIG_SET:
 #ifdef CONFIG_SOF_USERSPACE_LL
@@ -1685,13 +1807,6 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 		break;
 	case SOF_IPC4_MOD_BIND:
 #ifdef CONFIG_SOF_USERSPACE_LL
-		/*
-		 * bind and unbind can connect LL with DP. In that case it isn't
-		 * immediately clear whether the handler should run in the DP
-		 * thread context or in the LL IPC thread context. The LL IPC
-		 * thread has access to DP modules, so we have to perform
-		 * binding in the LL IPC thread context
-		 */
 		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat,
 					   ipc4_user_target_core_module(ipc4));
 #else
@@ -1700,7 +1815,6 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 		break;
 	case SOF_IPC4_MOD_UNBIND:
 #ifdef CONFIG_SOF_USERSPACE_LL
-		/* DP / LL: see comment above */
 		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat,
 					   ipc4_user_target_core_module(ipc4));
 #else

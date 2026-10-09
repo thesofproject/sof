@@ -88,8 +88,7 @@ __cold struct comp_buffer *buffer_new(struct mod_alloc_ctx *alloc,
 		buffer->stream.runtime_stream_params.pipeline_id = desc->comp.pipeline_id;
 		buffer->core = desc->comp.core;
 
-/* Zephyr's tr_*() macros ignore the trace context, no need to copy it */
-#if !CONFIG_ZEPHYR_LOG
+#if !defined(CONFIG_SOF_USERSPACE_LL)
 		memcpy_s(&buffer->tctx, sizeof(struct tr_ctx),
 			 &buffer_tr, sizeof(struct tr_ctx));
 #endif
@@ -310,7 +309,14 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	if (!cpu_is_me(icd->core))
 		return ipc_process_on_core(icd->core, false);
 
-	/* check state */
+	/* check state: if not ready, stop and reset to release resources before freeing */
+	if (icd->cd->state != COMP_STATE_READY) {
+		if (icd->cd->state == COMP_STATE_ACTIVE)
+			comp_trigger(icd->cd, COMP_TRIGGER_STOP);
+		comp_reset(icd->cd);
+		comp_set_state(icd->cd, COMP_TRIGGER_RESET);
+	}
+
 	if (icd->cd->state != COMP_STATE_READY) {
 		tr_err(&ipc_tr, "comp id: 0x%x state is %d cannot be freed",
 		       comp_id, icd->cd->state);
