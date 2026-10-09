@@ -33,6 +33,13 @@
 #define PCAN_WIDE_DYNAMIC_BITS		kWideDynamicFunctionBits /* 32 */
 #define PCAN_LUT_SIZE			kWideDynamicFunctionLUTSize /* 125 */
 
+/* Google derives this as log2(fft_size) - 1 - kFilterbankBits / 2 because its
+ * fixed-point FFT keeps a 1/N scale. SOF compensates the FFT length in the Mel
+ * filter bank and scales mel_linear to Google's 512-point range, so it is 3 for
+ * every FFT size.
+ */
+#define PCAN_INPUT_CORRECTION_BITS	3
+
 /**
  * \brief SOF PCAN configuration structure.
  */
