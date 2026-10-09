@@ -86,6 +86,7 @@ static int schedule_edf_task_running(void *data, struct task *task)
 
 static int schedule_edf_task_free(void *data, struct task *task)
 {
+	k_work_cancel_delayable(&task->z_delayed_work);
 	task->state = SOF_TASK_STATE_FREE;
 	task->ops.run = NULL;
 	task->data = NULL;

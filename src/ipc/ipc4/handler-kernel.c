@@ -98,7 +98,7 @@ static inline void ipc4_send_reply(struct ipc4_message_reply *reply)
 	ret = memcpy_s(ipc->comp_data, sizeof(*reply), reply, sizeof(*reply));
 	assert(!ret);
 }
-#else /* CONFIG_LIBRARY */
+#else
 static inline struct ipc4_message_request *ipc4_get_message_request(void)
 {
 	/* ignoring _hdr as it does not contain valid data in IPC4/IDC case */
@@ -113,7 +113,7 @@ static inline void ipc4_send_reply(struct ipc4_message_reply *reply)
 	ipc_msg_send(&msg_reply, data, true);
 }
 
-#endif /* CONFIG_LIBRARY */
+#endif
 
 __cold static bool is_any_ppl_active(void)
 {
@@ -187,7 +187,7 @@ void z_vrfy_ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
 	z_impl_ipc_compound_post_start(msg_id, ret, delayed);
 }
 #include <zephyr/syscalls/ipc_compound_post_start_mrsh.c>
-#endif /* CONFIG_USERSPACE */
+#endif
 
 void ipc_compound_msg_done(uint32_t msg_id, int error)
 {
@@ -248,7 +248,7 @@ int z_vrfy_ipc_wait_for_compound_msg(void)
 }
 #include <zephyr/syscalls/ipc_wait_for_compound_msg_mrsh.c>
 #endif
-#endif /* CONFIG_LIBRARY */
+#endif
 
 #if CONFIG_LIBRARY_MANAGER
 __cold static int ipc4_load_library(struct ipc4_message_request *ipc4)
@@ -267,7 +267,7 @@ __cold static int ipc4_load_library(struct ipc4_message_request *ipc4)
 
 	return IPC4_SUCCESS;
 }
-#endif /* CONFIG_LIBRARY_MANAGER */
+#endif
 
 static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 {
@@ -340,23 +340,6 @@ __cold static int ipc4_module_process_d0ix(struct ipc4_message_request *ipc4)
 	return 0;
 }
 
-/* block until core has powered-up (in user-ll builds) */
-__cold static void ipc_sec_core_sync_boot(uint32_t core_id)
-{
-#ifdef CONFIG_SOF_USERSPACE_LL
-	struct ipc *ipc = ipc_get();
-	struct ipc_user *ipc_user = ipc->ipc_user_pdata;
-
-	assert(core_id != PLATFORM_PRIMARY_CORE_ID);
-
-	if (ipc_user->init_needed[core_id]) {
-		/* wait for IPC thread (ipc_user_thread_fn()) */
-		k_sem_take(ipc_user->sem, K_FOREVER);
-		ipc_user->init_needed[core_id] = false;
-	}
-#endif
-}
-
 /* enable/disable cores according to the state mask */
 __cold static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 {
@@ -414,7 +397,6 @@ __cold static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 				ipc_cmd_err(&ipc_tr, "failed to enable core %d", core_id);
 				return IPC4_FAILURE;
 			}
-			ipc_sec_core_sync_boot(core_id);
 		} else {
 			cpu_disable_core(core_id);
 			if (cpu_is_core_enabled(core_id)) {
@@ -458,9 +440,7 @@ __cold static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 		arch_irq_lock();
 		platform_timer_stop(timer_get());
 #endif
-#if defined(CONFIG_PM)
 		ipc_get()->pm_prepare_D3 = 1;
-#endif
 	}
 
 	return IPC4_SUCCESS;
@@ -594,7 +574,7 @@ void ipc_send_buffer_status_notify(void)
 
 	ipc_msg_send(&msg_notify, NULL, true);
 }
-#endif /* CONFIG_LOG_BACKEND_ADSP_MTRACE */
+#endif
 
 void z_impl_ipc_msg_reply(struct sof_ipc_reply *reply)
 {

@@ -169,7 +169,6 @@ config COMP_KPB
 	default y
 	help
 	  Select for KPB component
-
 if COMP_KPB
 
 config KPB_MAX_NO_OF_CLIENTS
