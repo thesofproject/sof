@@ -123,4 +123,11 @@ EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-2ch-dax.bin,\
 DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,\
 EFX_DMIC0_DRC_PARAMS=dmic_default,DOLBY_DAX_CORE_ID=1"
+
+# HDA generic with multi-slot WoV feature for PTL and WCL
+"sof-hda-generic\;sof-ptl-hda-generic-4ch-wov-multi\;PLATFORM=ptl,HDA_CONFIG=mix,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,INCLUDE_WOV=multi"
+
+"sof-hda-generic\;sof-wcl-hda-generic-4ch-wov-multi\;PLATFORM=wcl,HDA_CONFIG=mix,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,INCLUDE_WOV=multi"
 )
