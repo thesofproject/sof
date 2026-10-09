@@ -265,259 +265,275 @@ static int ecns_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
-/*
- * Main 20ms DP processing function:
- * Consumes:
- *   - Pin 0 in: 16 kHz stream from dmic16k (2 channels, 16-bit)
- *   - Pin 1 in: 48 kHz stream from dmic01 (2 channels, 16-bit)
- * Produces:
- *   - Pin 0 out: 16 kHz mono clean stream to KPB (averaged mono per Kconfig, 320 frames per 20ms)
- *   - Pin 1 out: 48 kHz stereo clean stream to Host PCM 11 (Straight copy, 960 frames per 20ms)
- * Sampling rates remain identical between input and output on each pin.
+/**
+ * \brief Process Pin 0: 16 kHz detection stream -> Mono clean to KPB
+ *
+ * Averages selected source channels into a mono stream, filters with the
+ * built-in 100 Hz HPF (+20 dB gain), and writes to the sink buffer (either
+ * 16-bit or 32-bit container). Supports test signal generation when enabled.
+ *
+ * \param[in,out] cd   ECNS component data
+ * \param[in]     src0 Input buffer from 16 kHz DMIC
+ * \param[in,out] snk0 Output buffer to KPB
+ * \return Number of frames produced to snk0
  */
-static int ecns_copy(struct comp_dev *dev)
+static uint32_t ecns_process_kpb(struct ecns_comp_data *cd,
+				 struct comp_buffer *src0,
+				 struct comp_buffer *snk0)
 {
-	struct ecns_comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
-	struct comp_buffer *src0 = NULL;
-	struct comp_buffer *src1 = NULL;
-	struct comp_buffer *snk0 = NULL;
-	struct comp_buffer *snk1 = NULL;
+	uint32_t src0_ch = audio_stream_get_channels(&src0->stream);
+	if (!src0_ch)
+		src0_ch = 4;
+	uint32_t src_sample_bytes = audio_stream_sample_bytes(&src0->stream);
+	if (!src_sample_bytes)
+		src_sample_bytes = sizeof(int32_t);
+	uint32_t src0_frame_bytes = src0_ch * src_sample_bytes;
+	uint32_t avail0_bytes = audio_stream_get_avail_bytes(&src0->stream);
+	uint32_t avail0_frames = avail0_bytes / src0_frame_bytes;
 
-	if (list_is_empty(&dev->bsource_list))
+	uint32_t snk0_ch = audio_stream_get_channels(&snk0->stream);
+	if (!snk0_ch)
+		snk0_ch = 1;
+	uint32_t snk_sample_bytes0 = audio_stream_sample_bytes(&snk0->stream);
+	if (!snk_sample_bytes0)
+		snk_sample_bytes0 = sizeof(int32_t);
+	uint32_t snk0_frame_bytes = snk0_ch * snk_sample_bytes0;
+	uint32_t free0_bytes = audio_stream_get_free_bytes(&snk0->stream);
+	uint32_t free0_frames = free0_bytes / snk0_frame_bytes;
+
+	/* Drain all available input bounded by sink space; a one-period cap
+	 * would let the source ring overflow under DMIC vs DSP clock drift.
+	 */
+	uint32_t frames0 = MIN(avail0_frames, free0_frames);
+	if (!frames0)
 		return 0;
 
-	/* Identify input pins (producers to ECNS) */
-	comp_dev_for_each_producer(dev, source) {
-		uint32_t pin = IPC4_SINK_QUEUE_ID(buf_get_id(source));
-		if (pin == ECNS_PIN_16K_IN && !src0)
-			src0 = source;
-		else if (pin == ECNS_PIN_48K_IN && !src1)
-			src1 = source;
+	uint32_t src_bytes = frames0 * src0_frame_bytes;
+	uint32_t snk_bytes = frames0 * snk0_frame_bytes;
+
+	buffer_stream_invalidate(src0, src_bytes);
+
+	uint32_t avg_start, avg_cnt;
+
+	ecns_mono_window(src0_ch, &avg_start, &avg_cnt);
+
+	if (snk_sample_bytes0 == sizeof(int32_t)) {
+		int32_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
+
+		if (cd->test_signal_enabled) {
+			for (uint32_t i = 0; i < frames0; i++) {
+				snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
+				*snk_ptr++ = ((int32_t)cd->test_signal_val++) << 16;
+				for (uint32_t c = 1; c < snk0_ch; c++)
+					*snk_ptr++ = 0;
+			}
+		} else if (src_sample_bytes == sizeof(int32_t)) {
+			int32_t *src_ptr = audio_stream_get_rptr(&src0->stream);
+
+			for (uint32_t i = 0; i < frames0; i++) {
+				src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
+				snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
+				int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
+
+				mono = iir_df1(&cd->hp_iir, mono);
+				*snk_ptr++ = mono;
+				for (uint32_t c = 1; c < snk0_ch; c++)
+					*snk_ptr++ = 0;
+				src_ptr += src0_ch;
+			}
+		} else {
+			int16_t *src_ptr = audio_stream_get_rptr(&src0->stream);
+
+			for (uint32_t i = 0; i < frames0; i++) {
+				src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
+				snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
+				int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
+
+				mono = iir_df1(&cd->hp_iir, mono);
+				*snk_ptr++ = mono;
+				for (uint32_t c = 1; c < snk0_ch; c++)
+					*snk_ptr++ = 0;
+				src_ptr += src0_ch;
+			}
+		}
+	} else {
+		int16_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
+
+		if (cd->test_signal_enabled) {
+			for (uint32_t i = 0; i < frames0; i++) {
+				snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
+				*snk_ptr++ = (int16_t)cd->test_signal_val++;
+				for (uint32_t c = 1; c < snk0_ch; c++)
+					*snk_ptr++ = 0;
+			}
+		} else if (src_sample_bytes == sizeof(int32_t)) {
+			int32_t *src_ptr = audio_stream_get_rptr(&src0->stream);
+
+			for (uint32_t i = 0; i < frames0; i++) {
+				src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
+				snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
+				int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
+
+				mono = iir_df1(&cd->hp_iir, mono);
+				*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
+				for (uint32_t c = 1; c < snk0_ch; c++)
+					*snk_ptr++ = 0;
+				src_ptr += src0_ch;
+			}
+		} else {
+			int16_t *src_ptr = audio_stream_get_rptr(&src0->stream);
+
+			for (uint32_t i = 0; i < frames0; i++) {
+				src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
+				snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
+				int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
+
+				mono = iir_df1(&cd->hp_iir, mono);
+				*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
+				for (uint32_t c = 1; c < snk0_ch; c++)
+					*snk_ptr++ = 0;
+				src_ptr += src0_ch;
+			}
+		}
 	}
 
-	/* Identify output pins (consumers from ECNS) */
-	comp_dev_for_each_consumer(dev, sink) {
-		uint32_t pin = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
-		if (pin == ECNS_PIN_16K_OUT && !snk0)
-			snk0 = sink;
-		else if (pin == ECNS_PIN_48K_OUT && !snk1)
-			snk1 = sink;
+	buffer_stream_writeback(snk0, snk_bytes);
+	comp_update_buffer_produce(snk0, snk_bytes);
+
+	return frames0;
+}
+
+/**
+ * \brief Process Pin 1: 48 kHz host capture stream
+ *
+ * Copies and converts audio samples from the input producer (48 kHz dmic01
+ * or fallback src0) to the host sink buffer (supporting s16 or s32).
+ *
+ * \param[in]     in1  Input buffer
+ * \param[in,out] snk1 Output buffer to host
+ * \return Number of frames produced to snk1
+ */
+static uint32_t ecns_process_host(struct comp_buffer *in1,
+				  struct comp_buffer *snk1)
+{
+	uint32_t in1_ch = audio_stream_get_channels(&in1->stream);
+	if (!in1_ch)
+		in1_ch = 2;
+	uint32_t in1_sample_bytes = audio_stream_sample_bytes(&in1->stream);
+	if (!in1_sample_bytes)
+		in1_sample_bytes = sizeof(int32_t);
+	uint32_t in1_frame_bytes = in1_ch * in1_sample_bytes;
+	uint32_t avail1_bytes = audio_stream_get_avail_bytes(&in1->stream);
+	uint32_t avail1_frames = avail1_bytes / in1_frame_bytes;
+
+	uint32_t snk1_ch = audio_stream_get_channels(&snk1->stream);
+	if (!snk1_ch)
+		snk1_ch = 2;
+	uint32_t snk_sample_bytes1 = audio_stream_sample_bytes(&snk1->stream);
+	if (!snk_sample_bytes1)
+		snk_sample_bytes1 = sizeof(int32_t);
+	uint32_t snk1_frame_bytes = snk1_ch * snk_sample_bytes1;
+	uint32_t free1_bytes = audio_stream_get_free_bytes(&snk1->stream);
+	uint32_t free1_frames = free1_bytes / snk1_frame_bytes;
+
+	/* Drain all available input bounded by sink space; a one-period cap
+	 * would let the source ring overflow under DMIC vs DSP clock drift.
+	 */
+	uint32_t frames1 = MIN(avail1_frames, free1_frames);
+	if (!frames1)
+		return 0;
+
+	uint32_t in1_bytes = frames1 * in1_frame_bytes;
+	uint32_t snk_bytes = frames1 * snk1_frame_bytes;
+
+	buffer_stream_invalidate(in1, in1_bytes);
+
+	if (snk_sample_bytes1 == sizeof(int32_t)) {
+		int32_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
+
+		if (in1_sample_bytes == sizeof(int32_t)) {
+			int32_t *src_ptr = audio_stream_get_rptr(&in1->stream);
+
+			for (uint32_t i = 0; i < frames1; i++) {
+				src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
+				snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
+				for (uint32_t c = 0; c < snk1_ch; c++)
+					snk_ptr[c] = (c < in1_ch) ? src_ptr[c] : 0;
+				snk_ptr += snk1_ch;
+				src_ptr += in1_ch;
+			}
+		} else {
+			int16_t *src_ptr = audio_stream_get_rptr(&in1->stream);
+
+			for (uint32_t i = 0; i < frames1; i++) {
+				src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
+				snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
+				for (uint32_t c = 0; c < snk1_ch; c++)
+					snk_ptr[c] = (c < in1_ch) ?
+						(((int32_t)src_ptr[c]) << 16) : 0;
+				snk_ptr += snk1_ch;
+				src_ptr += in1_ch;
+			}
+		}
+	} else {
+		int16_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
+
+		if (in1_sample_bytes == sizeof(int32_t)) {
+			int32_t *src_ptr = audio_stream_get_rptr(&in1->stream);
+
+			for (uint32_t i = 0; i < frames1; i++) {
+				src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
+				snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
+				for (uint32_t c = 0; c < snk1_ch; c++)
+					snk_ptr[c] = (c < in1_ch) ?
+						sat_int16(Q_SHIFT_RND(src_ptr[c], 31, 15)) : 0;
+				snk_ptr += snk1_ch;
+				src_ptr += in1_ch;
+			}
+		} else {
+			int16_t *src_ptr = audio_stream_get_rptr(&in1->stream);
+
+			for (uint32_t i = 0; i < frames1; i++) {
+				src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
+				snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
+				for (uint32_t c = 0; c < snk1_ch; c++)
+					snk_ptr[c] = (c < in1_ch) ? src_ptr[c] : 0;
+				snk_ptr += snk1_ch;
+				src_ptr += in1_ch;
+			}
+		}
 	}
 
-	uint32_t frames0_produced = 0;
-	uint32_t frames1_produced = 0;
+	buffer_stream_writeback(snk1, snk_bytes);
+	comp_update_buffer_produce(snk1, snk_bytes);
 
+	return frames1;
+}
+
+/**
+ * \brief Consume from ECNS source buffers and drain inactive inputs
+ *
+ * Updates consumption for produced audio frames and drains unconsumed
+ * input data when downstream consumer sinks are inactive or full to
+ * prevent upstream DAI FIFO overruns.
+ *
+ * \param[in,out] src0             16 kHz input buffer
+ * \param[in,out] src1             48 kHz input buffer
+ * \param[in]     snk0             Pin 0 (KPB) output buffer
+ * \param[in]     snk1             Pin 1 (Host) output buffer
+ * \param[in]     frames0_produced Frames produced to snk0
+ * \param[in]     frames1_produced Frames produced to snk1
+ */
+static void ecns_consume_sources(struct comp_buffer *src0,
+				 struct comp_buffer *src1,
+				 struct comp_buffer *snk0,
+				 struct comp_buffer *snk1,
+				 uint32_t frames0_produced,
+				 uint32_t frames1_produced)
+{
 	uint32_t snk0_free = snk0 ? audio_stream_get_free_bytes(&snk0->stream) : 0;
 	uint32_t snk1_free = snk1 ? audio_stream_get_free_bytes(&snk1->stream) : 0;
 
-	/* Process Pin 0: 16 kHz stream -> Mono clean to KPB */
-	if (src0 && snk0) {
-		uint32_t src0_ch = audio_stream_get_channels(&src0->stream);
-		if (!src0_ch)
-			src0_ch = 4;
-		uint32_t src_sample_bytes = audio_stream_sample_bytes(&src0->stream);
-		if (!src_sample_bytes)
-			src_sample_bytes = sizeof(int32_t);
-		uint32_t src0_frame_bytes = src0_ch * src_sample_bytes;
-		uint32_t avail0_bytes = audio_stream_get_avail_bytes(&src0->stream);
-		uint32_t avail0_frames = avail0_bytes / src0_frame_bytes;
-
-		uint32_t snk0_ch = audio_stream_get_channels(&snk0->stream);
-		if (!snk0_ch)
-			snk0_ch = 1;
-		uint32_t snk_sample_bytes0 = audio_stream_sample_bytes(&snk0->stream);
-		if (!snk_sample_bytes0)
-			snk_sample_bytes0 = sizeof(int32_t);
-		uint32_t snk0_frame_bytes = snk0_ch * snk_sample_bytes0;
-		uint32_t free0_bytes = audio_stream_get_free_bytes(&snk0->stream);
-		uint32_t free0_frames = free0_bytes / snk0_frame_bytes;
-
-		/* Drain all available input bounded by sink space; a one-period cap
-		 * would let the source ring overflow under DMIC vs DSP clock drift.
-		 */
-		uint32_t frames0 = MIN(avail0_frames, free0_frames);
-
-		if (frames0 > 0) {
-			uint32_t src_bytes = frames0 * src0_frame_bytes;
-			uint32_t snk_bytes = frames0 * snk0_frame_bytes;
-
-			buffer_stream_invalidate(src0, src_bytes);
-
-			uint32_t avg_start, avg_cnt;
-
-			ecns_mono_window(src0_ch, &avg_start, &avg_cnt);
-
-			if (snk_sample_bytes0 == sizeof(int32_t)) {
-				int32_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
-
-				if (cd->test_signal_enabled) {
-					for (uint32_t i = 0; i < frames0; i++) {
-						snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-						*snk_ptr++ = ((int32_t)cd->test_signal_val++) << 16;
-						for (uint32_t c = 1; c < snk0_ch; c++)
-							*snk_ptr++ = 0;
-					}
-				} else if (src_sample_bytes == sizeof(int32_t)) {
-					int32_t *src_ptr = audio_stream_get_rptr(&src0->stream);
-					for (uint32_t i = 0; i < frames0; i++) {
-						src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
-						snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-						int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
-						mono = iir_df1(&cd->hp_iir, mono);
-						*snk_ptr++ = mono;
-						for (uint32_t c = 1; c < snk0_ch; c++)
-							*snk_ptr++ = 0;
-						src_ptr += src0_ch;
-					}
-				} else {
-					int16_t *src_ptr = audio_stream_get_rptr(&src0->stream);
-					for (uint32_t i = 0; i < frames0; i++) {
-						src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
-						snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-						int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
-						mono = iir_df1(&cd->hp_iir, mono);
-						*snk_ptr++ = mono;
-						for (uint32_t c = 1; c < snk0_ch; c++)
-							*snk_ptr++ = 0;
-						src_ptr += src0_ch;
-					}
-				}
-			} else {
-				int16_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
-
-				if (cd->test_signal_enabled) {
-					for (uint32_t i = 0; i < frames0; i++) {
-						snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-						*snk_ptr++ = (int16_t)cd->test_signal_val++;
-						for (uint32_t c = 1; c < snk0_ch; c++)
-							*snk_ptr++ = 0;
-					}
-				} else if (src_sample_bytes == sizeof(int32_t)) {
-					int32_t *src_ptr = audio_stream_get_rptr(&src0->stream);
-					for (uint32_t i = 0; i < frames0; i++) {
-						src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
-						snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-						int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
-						mono = iir_df1(&cd->hp_iir, mono);
-						*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
-						for (uint32_t c = 1; c < snk0_ch; c++)
-							*snk_ptr++ = 0;
-						src_ptr += src0_ch;
-					}
-				} else {
-					int16_t *src_ptr = audio_stream_get_rptr(&src0->stream);
-					for (uint32_t i = 0; i < frames0; i++) {
-						src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
-						snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-						int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
-						mono = iir_df1(&cd->hp_iir, mono);
-						*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
-						for (uint32_t c = 1; c < snk0_ch; c++)
-							*snk_ptr++ = 0;
-						src_ptr += src0_ch;
-					}
-				}
-			}
-
-			buffer_stream_writeback(snk0, snk_bytes);
-			comp_update_buffer_produce(snk0, snk_bytes);
-			frames0_produced = frames0;
-		}
-	}
-
-	/* Process Pin 1 from its own 48 kHz producer if present, otherwise fallback to src0 */
-	struct comp_buffer *in1 = src1 ? src1 : src0;
-	if (in1 && snk1) {
-		uint32_t in1_ch = audio_stream_get_channels(&in1->stream);
-		if (!in1_ch)
-			in1_ch = 2;
-		uint32_t in1_sample_bytes = audio_stream_sample_bytes(&in1->stream);
-		if (!in1_sample_bytes)
-			in1_sample_bytes = sizeof(int32_t);
-		uint32_t in1_frame_bytes = in1_ch * in1_sample_bytes;
-		uint32_t avail1_bytes = audio_stream_get_avail_bytes(&in1->stream);
-		uint32_t avail1_frames = avail1_bytes / in1_frame_bytes;
-
-		uint32_t snk1_ch = audio_stream_get_channels(&snk1->stream);
-		if (!snk1_ch)
-			snk1_ch = 2;
-		uint32_t snk_sample_bytes1 = audio_stream_sample_bytes(&snk1->stream);
-		if (!snk_sample_bytes1)
-			snk_sample_bytes1 = sizeof(int32_t);
-		uint32_t snk1_frame_bytes = snk1_ch * snk_sample_bytes1;
-		uint32_t free1_bytes = audio_stream_get_free_bytes(&snk1->stream);
-		uint32_t free1_frames = free1_bytes / snk1_frame_bytes;
-
-		/* Drain all available input bounded by sink space; a one-period cap
-		 * would let the source ring overflow under DMIC vs DSP clock drift.
-		 */
-		uint32_t frames1 = MIN(avail1_frames, free1_frames);
-
-		if (frames1 > 0) {
-			uint32_t in1_bytes = frames1 * in1_frame_bytes;
-			uint32_t snk_bytes = frames1 * snk1_frame_bytes;
-
-			buffer_stream_invalidate(in1, in1_bytes);
-
-			if (snk_sample_bytes1 == sizeof(int32_t)) {
-				int32_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
-				if (in1_sample_bytes == sizeof(int32_t)) {
-					int32_t *src_ptr = audio_stream_get_rptr(&in1->stream);
-					for (uint32_t i = 0; i < frames1; i++) {
-						src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
-						snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
-						for (uint32_t c = 0; c < snk1_ch; c++)
-							snk_ptr[c] = (c < in1_ch) ? src_ptr[c] : 0;
-						snk_ptr += snk1_ch;
-						src_ptr += in1_ch;
-					}
-				} else {
-					int16_t *src_ptr = audio_stream_get_rptr(&in1->stream);
-					for (uint32_t i = 0; i < frames1; i++) {
-						src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
-						snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
-						for (uint32_t c = 0; c < snk1_ch; c++)
-							snk_ptr[c] = (c < in1_ch) ?
-								(((int32_t)src_ptr[c]) << 16) : 0;
-						snk_ptr += snk1_ch;
-						src_ptr += in1_ch;
-					}
-				}
-			} else {
-				int16_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
-				if (in1_sample_bytes == sizeof(int32_t)) {
-					int32_t *src_ptr = audio_stream_get_rptr(&in1->stream);
-					for (uint32_t i = 0; i < frames1; i++) {
-						src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
-						snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
-						for (uint32_t c = 0; c < snk1_ch; c++)
-							snk_ptr[c] = (c < in1_ch) ?
-								sat_int16(Q_SHIFT_RND(src_ptr[c], 31, 15)) : 0;
-						snk_ptr += snk1_ch;
-						src_ptr += in1_ch;
-					}
-				} else {
-					int16_t *src_ptr = audio_stream_get_rptr(&in1->stream);
-					for (uint32_t i = 0; i < frames1; i++) {
-						src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
-						snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
-						for (uint32_t c = 0; c < snk1_ch; c++)
-							snk_ptr[c] = (c < in1_ch) ? src_ptr[c] : 0;
-						snk_ptr += snk1_ch;
-						src_ptr += in1_ch;
-					}
-				}
-			}
-
-			buffer_stream_writeback(snk1, snk_bytes);
-			comp_update_buffer_produce(snk1, snk_bytes);
-			frames1_produced = frames1;
-		}
-	}
-
-	/* Consume from source buffers */
 	if (src1) {
 		uint32_t src1_ch = audio_stream_get_channels(&src1->stream);
 		if (!src1_ch)
@@ -564,6 +580,65 @@ static int ecns_copy(struct comp_dev *dev)
 			}
 		}
 	}
+}
+
+/*
+ * Main 20ms DP processing function:
+ * Consumes:
+ *   - Pin 0 in: 16 kHz stream from dmic16k (2 or 4 channels, 16/32-bit)
+ *   - Pin 1 in: 48 kHz stream from dmic01 (2 or 4 channels, 16/32-bit)
+ * Produces:
+ *   - Pin 0 out: 16 kHz mono clean stream to KPB (averaged mono per Kconfig, 320 frames per 20ms)
+ *   - Pin 1 out: 48 kHz stereo/4ch clean stream to Host PCM 11 (Straight copy, 960 frames per 20ms)
+ * Sampling rates remain identical between input and output on each pin.
+ */
+static int ecns_copy(struct comp_dev *dev)
+{
+	struct ecns_comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *source;
+	struct comp_buffer *sink;
+	struct comp_buffer *src0 = NULL;
+	struct comp_buffer *src1 = NULL;
+	struct comp_buffer *snk0 = NULL;
+	struct comp_buffer *snk1 = NULL;
+	uint32_t frames0_produced = 0;
+	uint32_t frames1_produced = 0;
+
+	if (list_is_empty(&dev->bsource_list))
+		return 0;
+
+	/* Identify input pins (producers to ECNS) */
+	comp_dev_for_each_producer(dev, source) {
+		uint32_t pin = IPC4_SINK_QUEUE_ID(buf_get_id(source));
+
+		if (pin == ECNS_PIN_16K_IN && !src0)
+			src0 = source;
+		else if (pin == ECNS_PIN_48K_IN && !src1)
+			src1 = source;
+	}
+
+	/* Identify output pins (consumers from ECNS) */
+	comp_dev_for_each_consumer(dev, sink) {
+		uint32_t pin = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
+
+		if (pin == ECNS_PIN_16K_OUT && !snk0)
+			snk0 = sink;
+		else if (pin == ECNS_PIN_48K_OUT && !snk1)
+			snk1 = sink;
+	}
+
+	/* Process Pin 0: 16 kHz stream -> Mono clean to KPB */
+	if (src0 && snk0)
+		frames0_produced = ecns_process_kpb(cd, src0, snk0);
+
+	/* Process Pin 1: 48 kHz stream -> Host capture */
+	struct comp_buffer *in1 = src1 ? src1 : src0;
+
+	if (in1 && snk1)
+		frames1_produced = ecns_process_host(in1, snk1);
+
+	/* Consume from source buffers */
+	ecns_consume_sources(src0, src1, snk0, snk1, frames0_produced, frames1_produced);
 
 	return 0;
 }
