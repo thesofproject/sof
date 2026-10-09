@@ -71,6 +71,7 @@ b36ee4da-006f-47f9-a06dfecbe2d8b6ce drc
 d95fc34f-370f-4ac7-bc86bfdc5be241e6 dts
 f6d15ad3-b122-458c-ae9b0ab0b5867aa0 dummy_dma
 298873bc-d532-4d93-a54095ee6bcf3456 dw_dma
+214f8a6c-493a-4b1e-8b1e0d3b6f8a2c15 ecns
 77de2074-828c-4044-a40b420b72749e8b edf_sched
 5dbc3672-e290-43d8-91f881aafe453d5b edf_sched_lib
 3d73a110-0930-457f-be5134453e56287b edma
@@ -127,6 +128,7 @@ ee2585f2-e7d8-43dc-90ab4224e00c3e84 modules
 0d9f2256-8e4f-47b3-8448239a334f1191 multiband_drc
 c607ff4d-9cb6-49dc-b6787da3c63ea557 mux
 64ce6e35-857a-4878-ace8e2a2f42e3069 mux4
+4067fe1d-cd63-4877-966ba06ded1719ce mww
 f36BF24B-9AAF-83f4-8677E072E8AEADB7 notification_pool
 1fb15a7a-83cd-4c2e-8b324da1b2adeeaf notifier
 7ae671a7-4617-4a09-bf6d9d29c998dbc1 ns
@@ -182,6 +184,7 @@ b77e677e-5ff4-4188-af14fba8bdbf8682 volume
 1028070e-04e8-46ab-8d8110a0116ce738 wait
 d944281a-afe9-4695-a043d7f62b89538e waves
 13c8bc59-c4fa-4ad1-b93ace97cd30acc7 wdt
+4a5b6c7d-8e9f-4a1b-2c3d4e5f60718293 wov_arbiter
 300aaad4-45d2-8313-25d05e1d6086cdd1 zephyr
 5f1ec3f8-faaf-4099-903ccee98351f169 zephyr_idc
 8fa1d42f-bc6f-464b-867f547af08834da zipc_task
