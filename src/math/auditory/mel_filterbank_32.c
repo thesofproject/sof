@@ -9,10 +9,23 @@
 #include <sof/math/icomplex32.h>
 #include <sof/math/log.h>
 #include <sof/math/numbers.h>
+#include <sof/math/sqrt.h>
 #include <stdint.h>
 
-void psy_apply_mel_filterbank_32(struct psy_mel_filterbank *fb, struct icomplex32 *fft_out,
-				 int32_t *power_spectra, int32_t *mel_log, int bitshift)
+static inline uint32_t mel_sqrt32(uint32_t num)
+{
+	if (num == 0)
+		return 0;
+
+	/* sofm_sqrt_int32 treats input as Q2.30, returning sqrt(n)*2^15.
+	 * Scale down by 2^15 with rounding to obtain integer sqrt(num).
+	 */
+	return (uint32_t)((sofm_sqrt_int32((int32_t)num) + (1 << 14)) >> 15);
+}
+
+void psy_apply_mel_filterbank_with_linear_32(struct psy_mel_filterbank *fb, struct icomplex32 *fft_out,
+					    int32_t *power_spectra, int32_t *mel_log,
+					    uint32_t *mel_linear, int bitshift)
 {
 	int64_t pmax;
 	int64_t p;
@@ -67,20 +80,56 @@ void psy_apply_mel_filterbank_32(struct psy_mel_filterbank *fb, struct icomplex3
 		 */
 		log_arg = sat_int32(Q_SHIFT_RND(p, 45, 25));
 		log_arg = MAX(log_arg, AUDITORY_EPS_Q31);
-		log = base2_logarithm((uint32_t)log_arg);
-		log -= AUDITORY_LOG2_2P25_Q16;
 
-		/* Compensate Mel triangles scale */
-		log += fb->scale_log2;
+		if (mel_linear) {
+			/* Compensate dynamic lshift and FFT bitshift so mel_linear reflects
+			 * true acoustic magnitude calibrated to Google microfrontend range.
+			 */
+			uint32_t s = mel_sqrt32((uint32_t)log_arg);
+			/* Total power shift applied was: lshift + 2 * bitshift */
+			int neg_shift = -((int32_t)lshift + 2 * bitshift);
+			int int_shift = neg_shift >> 1;
+			int frac_shift = neg_shift & 1;
 
-		/* Subtract the applied lshift for power spectra
-		 * log2(x * 2^(-n)) = log2(x) - n. Note that the bitshift need to be subtracted
-		 * as doubled because it was applied in linear domain, from log(x * 2^(-2 * n))
-		 */
-		log -= ((int32_t)lshift + 2 * bitshift) << 16;
+			uint64_t s_comp = s;
+			if (frac_shift)
+				s_comp = (s_comp * 46341U) >> 15; /* 46341 / 32768 ~= sqrt(2) */
 
-		/* Scale for desired log, output as Q9.23 */
-		log = Q_MULTSR_32X32((int64_t)log, fb->log_mult, 16, 29, 23);
-		mel_log[i] = log; /* Q9.23 */
+			if (int_shift > 0)
+				s_comp <<= int_shift;
+			else if (int_shift < 0)
+				s_comp >>= -int_shift;
+
+			/* Scale to Google microfrontend range: 25826 / 32768 ~= 0.788 */
+			s_comp = (s_comp * 25826U) >> 15;
+			if (s_comp > 65535U)
+				s_comp = 65535U;
+
+			mel_linear[i] = (uint32_t)s_comp;
+		}
+
+		if (mel_log) {
+			log = base2_logarithm((uint32_t)log_arg);
+			log -= AUDITORY_LOG2_2P25_Q16;
+
+			/* Compensate Mel triangles scale */
+			log += fb->scale_log2;
+
+			/* Subtract the applied lshift for power spectra
+			 * log2(x * 2^(-n)) = log2(x) - n. Note that the bitshift need to be subtracted
+			 * as doubled because it was applied in linear domain, from log(x * 2^(-2 * n))
+			 */
+			log -= ((int32_t)lshift + 2 * bitshift) << 16;
+
+			/* Scale for desired log, output as Q9.23 */
+			log = Q_MULTSR_32X32((int64_t)log, fb->log_mult, 16, 29, 23);
+			mel_log[i] = log; /* Q9.23 */
+		}
 	}
+}
+
+void psy_apply_mel_filterbank_32(struct psy_mel_filterbank *fb, struct icomplex32 *fft_out,
+				 int32_t *power_spectra, int32_t *mel_log, int bitshift)
+{
+	psy_apply_mel_filterbank_with_linear_32(fb, fft_out, power_spectra, mel_log, NULL, bitshift);
 }
