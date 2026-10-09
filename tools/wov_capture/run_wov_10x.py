@@ -123,10 +123,18 @@ def run_s0_iteration(iteration, slot, ctl, card=0, device=None):
     subprocess.run(["rm", "-f", out_wav])
     app = "/usr/local/bin/wov_blocking_read"
     dev_str = f"hw:{card},{device}"
-    cmd = [app, dev_str, ctl, "0", out_wav, "8000"]
+    # Wait 1s idle in stream so KPB history buffer is primed (~16000 frames) before trigger
+    cmd = [app, dev_str, ctl, "1", out_wav, "8000"]
     
     t0 = time.monotonic()
-    p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=20)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    stdout, stderr = "", ""
+    try:
+        stdout, stderr = proc.communicate(timeout=25)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        stdout, stderr = proc.communicate()
+        stderr += " [TIMEOUT]"
     elapsed = time.monotonic() - t0
     
     file_sz = os.path.getsize(out_wav) if os.path.exists(out_wav) else 0
@@ -148,11 +156,11 @@ def run_s0_iteration(iteration, slot, ctl, card=0, device=None):
         time.sleep(0.1)
     
     trig_slot = None
-    m = re.search(r"triggered active_slot=(\d+)", p.stdout)
+    m = re.search(r"triggered active_slot=(\d+)", stdout)
     if m:
         trig_slot = int(m.group(1))
 
-    passed = (p.returncode == 0) and (file_sz > 0) and (post_slot == "0") and (post_ctl == "off") and (trig_slot == slot) and continuity_ok
+    passed = (proc.returncode == 0) and (file_sz > 0) and (post_slot == "0") and (post_ctl == "off") and (trig_slot == slot) and continuity_ok
     return {
         "iteration": iteration,
         "mode": "S0",
@@ -164,8 +172,8 @@ def run_s0_iteration(iteration, slot, ctl, card=0, device=None):
         "post_slot": post_slot,
         "post_ctl": post_ctl,
         "continuity": continuity_msg,
-        "stdout": p.stdout,
-        "stderr": p.stderr,
+        "stdout": stdout,
+        "stderr": stderr,
         "passed": passed,
     }
 
@@ -183,7 +191,13 @@ def run_d0i3_iteration(iteration, slot, ctl, card=0, device=None):
     t_start = time.clock_gettime(time.CLOCK_BOOTTIME)
     t0 = time.monotonic()
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    stdout, stderr = proc.communicate(timeout=25)
+    stdout, stderr = "", ""
+    try:
+        stdout, stderr = proc.communicate(timeout=35)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        stdout, stderr = proc.communicate()
+        stderr += " [TIMEOUT]"
     elapsed = time.monotonic() - t0
     
     d0i3_state = "D0I3" if check_d0i3_transition(t_start) else "UNKNOWN"

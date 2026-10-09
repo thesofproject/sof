@@ -144,8 +144,15 @@ int main(int argc, char **argv)
 
 	if (ctl) {
 		char cmd[128];
-		snprintf(cmd, sizeof(cmd), "amixer -c 0 cset name=%s 1 >/dev/null 2>&1", ctl);
-		system(cmd);
+		snprintf(cmd, sizeof(cmd), "amixer -c %d cset name=%s 1", card, ctl);
+		int rc = system(cmd);
+		if (rc != 0) {
+			fprintf(stderr, "warning: '%s' returned %d, retrying after 150ms...\n", cmd, rc);
+			usleep(150000);
+			rc = system(cmd);
+			if (rc != 0)
+				fprintf(stderr, "error: '%s' retry failed with code %d\n", cmd, rc);
+		}
 	}
 
 	FILE *wav_fp = NULL;
@@ -185,13 +192,17 @@ int main(int argc, char **argv)
 		if (n < 0) {
 			if (n == -EAGAIN) {
 				err = snd_pcm_wait(pcm, 15000);
+				if (err == -ESTRPIPE) {
+					snd_pcm_recover(pcm, err, 0);
+					continue;
+				}
 				if (err <= 0) {
 					fprintf(stderr, "wait error or timeout: %d\n", err);
 					break;
 				}
 				continue;
 			}
-			if (n == -EPIPE) {
+			if (n == -EPIPE || n == -ESTRPIPE) {
 				snd_pcm_recover(pcm, n, 0);
 				continue;
 			}
