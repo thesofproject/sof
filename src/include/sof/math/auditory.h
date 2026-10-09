@@ -111,4 +111,8 @@ void psy_apply_mel_filterbank_16(struct psy_mel_filterbank *mel_fb, struct icomp
 void psy_apply_mel_filterbank_32(struct psy_mel_filterbank *mel_fb, struct icomplex32 *fft_out,
 				 int32_t *power_spectra, int32_t *mel_log, int bitshift);
 
+void psy_apply_mel_filterbank_with_linear_32(struct psy_mel_filterbank *mel_fb, struct icomplex32 *fft_out,
+					    int32_t *power_spectra, int32_t *mel_log,
+					    uint32_t *mel_linear, int bitshift);
+
 #endif /* __SOF_MATH_AUDITORY_H__ */
