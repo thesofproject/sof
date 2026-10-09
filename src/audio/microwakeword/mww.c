@@ -806,8 +806,6 @@ static int mww_process(struct processing_module *mod,
 
 #if CONFIG_COMP_MWW_DEBUG_TRACE
 			int prob_pct = (int)(cd->mwc.probability * 100.0f);
-			/* 0.01% resolution so sub-1% model output is visible */
-			int prob_bp = (int)(cd->mwc.probability * 10000.0f);
 
 			if (prob_pct > cd->dbg_peak_prob)
 				cd->dbg_peak_prob = prob_pct;
@@ -817,8 +815,8 @@ static int mww_process(struct processing_module *mod,
 			 * otherwise a ~1 Hz heartbeat keeps mtrace from overflowing.
 			 */
 			if (cd->vad_history || prob_pct > 0 || (cd->total_inferences % 32) == 1) {
-				comp_info(dev, "MWW prob=%d.%02d%% raw=%d vadh=0x%x in[0..7]=[%d,%d,%d,%d,%d,%d,%d,%d] (cycles=%u)",
-					  prob_bp / 100, prob_bp % 100, (int)cd->mwc.raw_output,
+				comp_info(dev, "MWW prob=%d%% raw=%d vadh=0x%x in[0..7]=[%d,%d,%d,%d,%d,%d,%d,%d] (cycles=%u)",
+					  prob_pct, (int)cd->mwc.raw_output,
 					  cd->vad_history,
 					  (int)cd->feature_buf[0], (int)cd->feature_buf[1],
 					  (int)cd->feature_buf[2], (int)cd->feature_buf[3],

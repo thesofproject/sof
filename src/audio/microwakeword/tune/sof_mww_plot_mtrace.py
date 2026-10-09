@@ -15,6 +15,7 @@ Parses log lines produced by CONFIG_COMP_MWW_DEBUG_TRACE:
     [MWW DBG hop <n>] vad=<0|1> E=<energy> Ne=<noise_energy>
                       f_min=<min> f_max=<max> (pcan)
 and model inference / detection lines:
+  MWW prob=<pct>%
   MWW probability=<pct>
   MWW keyword detected: probability=<pct>
 
@@ -57,11 +58,11 @@ HOP_PCAN_RE = re.compile(
 )
 
 PROB_RE = re.compile(
-    r"\[\s*([0-9.]+)\]\s*.*MWW probability=(\d+)"
+    r"\[\s*([0-9.]+)\]\s*.*?\bMWW\s+prob(?:ability)?=([0-9.]+)(?:%| pct)?"
 )
 
 DETECT_RE = re.compile(
-    r"\[\s*([0-9.]+)\]\s*.*MWW keyword detected(?:\s*\([^)]*\))?:\s*(?:slot \d+,\s*)?probability=(\d+)"
+    r"\[\s*([0-9.]+)\]\s*.*MWW keyword detected(?:\s*\([^)]*\))?:\s*(?:slot \d+,\s*)?prob(?:ability)?=([0-9.]+)(?:\s*(?:%|pct))?"
 )
 
 KPB_TRIGGER_RE = re.compile(
@@ -140,19 +141,19 @@ def parse_mtrace(file_path):
                 })
                 continue
 
-            m = PROB_RE.search(line)
-            if m:
-                probs.append({
-                    "t": float(m.group(1)),
-                    "prob": int(m.group(2))
-                })
-                continue
-
             m = DETECT_RE.search(line)
             if m:
                 detects.append({
                     "t": float(m.group(1)),
-                    "prob": int(m.group(2))
+                    "prob": float(m.group(2))
+                })
+                continue
+
+            m = PROB_RE.search(line)
+            if m:
+                probs.append({
+                    "t": float(m.group(1)),
+                    "prob": float(m.group(2))
                 })
                 continue
 
@@ -209,7 +210,7 @@ def parse_mtrace(file_path):
 
 
 def plot_mww_diagnostics(hops, probs, detects, kpb_triggers, summaries,
-                         output_path, title=None, threshold=60,
+                         output_path, title=None, threshold=85,
                          raw_units=False, show_vad=True, dpi=150,
                          pcan=None):
     """Plot MWW diagnostics across synchronized subplots."""
@@ -284,8 +285,9 @@ def plot_mww_diagnostics(hops, probs, detects, kpb_triggers, summaries,
         detect_labeled = True
         ax1.plot(dt, dp, marker="*", markersize=18, color="#ffd700",
                  markeredgecolor="#b71c1c", markeredgewidth=1.5, zorder=5, label=lbl)
+        dp_str = f"{int(dp)}%" if dp == int(dp) else f"{dp:.1f}%"
         ax1.annotate(
-            f"Detected: {dp}%", xy=(dt, dp),
+            f"Detected: {dp_str}", xy=(dt, dp),
             xytext=(dt - 0.45, dp - 22 if dp > 50 else dp + 15),
             arrowprops=dict(arrowstyle="->", color="#b71c1c", lw=1.8),
             fontweight="bold", color="#b71c1c", fontsize=9,
@@ -315,7 +317,7 @@ def plot_mww_diagnostics(hops, probs, detects, kpb_triggers, summaries,
                 t_probs[-1] if len(t_probs) > 0 else 0.0)
     if len(t_hops) > 1 and (t_hops[-1] - t_hops[0]) >= 0.75 * t_end:
         ax_top = ax1.twiny()
-        ax_top.set_xlim(t_hops[0], t_hops[-1])
+        ax_top.set_xlim(ax1.get_xlim())
         step = max(1, len(hop_idx) // 10)
         tick_indices = list(range(0, len(hop_idx), step))
         if tick_indices[-1] != len(hop_idx) - 1:
@@ -409,8 +411,8 @@ def main():
         help="Output PNG image path (default: <input_stem>_mww.png or mww_mtrace.png for stdin)"
     )
     parser.add_argument(
-        "-t", "--threshold", type=int, default=60,
-        help="Wake word detection probability threshold in percent (default: 60)"
+        "-t", "--threshold", type=int, default=85,
+        help="Wake word detection probability threshold in percent (default: 85)"
     )
     parser.add_argument(
         "--raw-units", action="store_true",
@@ -453,7 +455,9 @@ def main():
     mode_str = "PCAN 8-bit" if is_pcan else "Standard 32-bit"
     print(f"Parsed {len(hops)} hops ({mode_str}), {len(probs)} inferences, {len(detects)} detections from {args.input}")
     for d in detects:
-        print(f"  [Detection Event] timestamp={d['t']}s, probability={d['prob']}%")
+        dp = d["prob"]
+        dp_str = f"{int(dp)}%" if dp == int(dp) else f"{dp:.1f}%"
+        print(f"  [Detection Event] timestamp={d['t']}s, probability={dp_str}")
     dropped = summaries[0].get("dropped_messages", 0) if summaries else 0
     if dropped > 0:
         print(f"  [Transport Warning] {dropped} mtrace log messages were dropped by kernel/FW ring buffer overflow.")
