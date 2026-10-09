@@ -87,8 +87,8 @@ struct sof_audio_stream_params {
  * @param channels number of channels, i.e. samples per frame
  * @return number of frames that can be processed without wrapping
  */
-static inline int circ_buf_frames_without_wrap(const void *began, const void *end,
-					       int sample_bytes, int channels)
+static inline size_t circ_buf_frames_without_wrap(const void *began, const void *end,
+						  size_t sample_bytes, size_t channels)
 {
  	assert(sample_bytes > 0);
  	assert(channels > 0);
