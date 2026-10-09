@@ -57,9 +57,10 @@ SOF_DEFINE_REG_UUID(dp_task);
 
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
-static void pipeline_schedule_cancel(struct pipeline *p)
+void pipeline_schedule_cancel(struct pipeline *p)
 {
-	schedule_task_cancel(p->pipe_task);
+	if (p->pipe_task)
+		schedule_task_cancel(p->pipe_task);
 
 	/* enable system agent panic, when there are no longer
 	 * DMA driven pipelines
@@ -650,7 +651,7 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 	 * when we attempt to start B, we don't need to schedule pipeline C -
 	 * it's already running.
 	 */
-	if (task_is_active(p->pipe_task))
+	if (!p->pipe_task || task_is_active(p->pipe_task))
 		return;
 
 	if (p->sched_next && task_is_active(p->sched_next->pipe_task))
