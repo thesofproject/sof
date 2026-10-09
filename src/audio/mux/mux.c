@@ -239,7 +239,7 @@ static int demux_process(struct processing_module *mod,
 	const void *source_start;
 	size_t source_size;
 	size_t source_bytes;
-	uint32_t frames;
+	size_t frames;
 	int ret;
 	int i;
 
@@ -353,7 +353,7 @@ static int mux_process(struct processing_module *mod,
 	size_t source_bytes[MUX_MAX_STREAMS] = { 0 };
 	struct cir_buf_sink sink_buf;
 	size_t sink_bytes, size;
-	uint32_t frames;
+	size_t frames;
 	int i, idx, ret;
 
 	comp_dbg(dev, "entry");
