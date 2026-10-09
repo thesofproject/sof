@@ -166,27 +166,41 @@ static int ecns_prepare(struct comp_dev *dev)
 
 #if CONFIG_IPC_MAJOR_4
 	/* Output buffer formats must match the topology-declared pins:
-	 * pin0 -> KPB mono 16 kHz 16-bit, pin1 -> host 48 kHz 4ch 16-bit.
+	 * pin0 -> KPB mono 16 kHz, pin1 -> host.
+	 * When src1 (48 kHz producer) is present, use dual-rate 16-bit formats.
+	 * When src1 is absent (single 16 kHz DMIC input), use 32-bit formats matching the manifest.
 	 */
+	struct comp_buffer *src0 = NULL;
+	struct comp_buffer *src1 = NULL;
+	struct comp_buffer *source;
+
+	comp_dev_for_each_producer(dev, source) {
+		uint32_t pin = IPC4_SINK_QUEUE_ID(buf_get_id(source));
+		if (pin == ECNS_PIN_16K_IN && !src0)
+			src0 = source;
+		else if (pin == ECNS_PIN_48K_IN && !src1)
+			src1 = source;
+	}
+
 	struct ipc4_audio_format pin0_fmt = {
 		.sampling_frequency = 16000,
 		.channels_count = 1,
-		.depth = 16,
-		.valid_bit_depth = 16,
-		.s_type = IPC4_TYPE_SIGNED_INTEGER,
+		.depth = src1 ? 16 : 32,
+		.valid_bit_depth = src1 ? 16 : 32,
+		.s_type = src1 ? IPC4_TYPE_SIGNED_INTEGER : IPC4_TYPE_MSB_INTEGER,
 		.interleaving_style = IPC4_CHANNELS_INTERLEAVED,
-		.ch_map = 0xFFFFFFF0,
+		.ch_map = src1 ? 0xFFFFFFF0 : 0x01,
 		.ch_cfg = 0,
 	};
 	struct ipc4_audio_format pin1_fmt = {
-		.sampling_frequency = 48000,
-		.channels_count = 4,
-		.depth = 16,
-		.valid_bit_depth = 16,
-		.s_type = IPC4_TYPE_SIGNED_INTEGER,
+		.sampling_frequency = src1 ? 48000 : 16000,
+		.channels_count = src1 ? 4 : 2,
+		.depth = src1 ? 16 : 32,
+		.valid_bit_depth = src1 ? 16 : 32,
+		.s_type = src1 ? IPC4_TYPE_SIGNED_INTEGER : IPC4_TYPE_MSB_INTEGER,
 		.interleaving_style = IPC4_CHANNELS_INTERLEAVED,
-		.ch_map = 0xFFFF3210,
-		.ch_cfg = 4,
+		.ch_map = src1 ? 0xFFFF3210 : 0x10,
+		.ch_cfg = src1 ? 4 : 1,
 	};
 
 	comp_dev_for_each_consumer(dev, sink) {
@@ -370,8 +384,8 @@ static int ecns_copy(struct comp_dev *dev)
 		}
 	}
 
-	/* Process Pin 1 from its own 48 kHz producer. Pin 0 is a different rate. */
-	struct comp_buffer *in1 = src1;
+	/* Process Pin 1 from its own 48 kHz producer if present, otherwise fallback to src0 */
+	struct comp_buffer *in1 = src1 ? src1 : src0;
 	if (in1 && snk1) {
 		uint32_t in1_ch = audio_stream_get_channels(&in1->stream);
 		if (!in1_ch)
@@ -491,9 +505,14 @@ static int ecns_copy(struct comp_dev *dev)
 			src0_sb = sizeof(int32_t);
 		uint32_t src0_fb = src0_ch * src0_sb;
 
-		if (frames0_produced > 0) {
-			comp_update_buffer_consume(src0, frames0_produced * src0_fb);
-		} else if (!snk0 || comp_buffer_get_sink_state(snk0) != COMP_STATE_ACTIVE || !snk0_free) {
+		uint32_t consumed0 = frames0_produced;
+		if (!src1 && frames1_produced > consumed0)
+			consumed0 = frames1_produced;
+
+		if (consumed0 > 0) {
+			comp_update_buffer_consume(src0, consumed0 * src0_fb);
+		} else if ((!snk0 || comp_buffer_get_sink_state(snk0) != COMP_STATE_ACTIVE || !snk0_free) &&
+			   (src1 || !snk1 || comp_buffer_get_sink_state(snk1) != COMP_STATE_ACTIVE || !snk1_free)) {
 			uint32_t avail = audio_stream_get_avail_bytes(&src0->stream);
 
 			if (src0_fb && avail >= src0_fb) {

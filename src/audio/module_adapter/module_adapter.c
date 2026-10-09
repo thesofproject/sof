@@ -522,7 +522,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	 * Hence check for NULL.
 	 */
 	sink = comp_dev_get_first_data_consumer(dev);
-	if (!sink && mod->max_sinks) {
+	if (!sink && !list_is_empty(&dev->bsink_list) && mod->max_sinks) {
 		comp_err(dev, "no sink present on period size calculation");
 		return -EINVAL;
 	}
