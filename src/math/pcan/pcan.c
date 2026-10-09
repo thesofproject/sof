@@ -240,7 +240,8 @@ void pcan_log_scale(struct pcan_state *state, uint32_t *signal)
 	if (!state || !state->enable_pcan)
 		return;
 
-	scaled = LogScaleApply(&state->g_log_scale, signal, state->num_channels, 3);
+	scaled = LogScaleApply(&state->g_log_scale, signal, state->num_channels,
+			       PCAN_INPUT_CORRECTION_BITS);
 	for (i = state->num_channels - 1; i >= 0; --i)
 		signal[i] = scaled[i];
 }
