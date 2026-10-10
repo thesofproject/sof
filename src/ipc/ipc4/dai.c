@@ -28,6 +28,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#ifdef CONFIG_UAOL_INTEL_ADSP
+#include <sof/audio/intel_uaol.h>
+#endif
 
 #include "../audio/copier/copier.h"
 #include "../audio/copier/dai_copier.h"
@@ -76,6 +79,23 @@ void dai_set_link_hda_config(uint16_t *link_config,
 	*link_config = link_cfg.full;
 #endif /* ACE_VERSION > ACE_VERSION_1_5 */
 }
+
+#ifdef CONFIG_UAOL_INTEL_ADSP
+/* Link config of the UAOL feedback stream: a single 3-byte sample per packet */
+uint16_t dai_uaol_feedback_link_config(const struct ipc_config_dai *common_config)
+{
+	union hdalink_cfg link_cfg = { .full = 0 };
+	const struct ipc_dma_config *fb_dma = common_config->host_dma_config[1];
+
+	if (common_config->direction != SOF_IPC_STREAM_PLAYBACK || !fb_dma ||
+	    !fb_dma->pre_allocated_by_host)
+		return 0;
+
+	link_cfg.part.stream = fb_dma->stream_id;
+
+	return link_cfg.full;
+}
+#endif
 
 int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void *spec_config)
 {
@@ -183,8 +203,18 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 			 dev->ipc_config.frame_fmt, dd->stream_id);
 
 		break;
-	case SOF_DAI_INTEL_UAOL:
+#ifdef CONFIG_UAOL_INTEL_ADSP
+	case SOF_DAI_INTEL_UAOL: {
+		int ret = dai_get_uaol_stream_id(dd->dai, &dd->uaol.link_id,
+						 &dd->uaol.stream_id);
+
+		if (ret < 0) {
+			comp_err(dev, "Failed to get UAOL stream id: %d", ret);
+			return ret;
+		}
 		break;
+	}
+#endif
 	default:
 		/* other types of DAIs not handled for now */
 		comp_warn(dev, "Unknown dai type %d", dai->type);
@@ -241,6 +271,14 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 		sof_dma_release_channel(dd->dma, dd->chan_index);
 		dd->chan_index = -EINVAL;
 	}
+
+#ifdef CONFIG_UAOL_INTEL_ADSP
+	if (dd->uaol.fb_chan_idx >= 0) {
+		dma_stop(dd->uaol.fb_dma->z_dev, dd->uaol.fb_chan_idx);
+		dma_release_channel(dd->uaol.fb_dma->z_dev, dd->uaol.fb_chan_idx);
+		dd->uaol.fb_chan_idx = -EINVAL;
+	}
+#endif
 }
 
 void dai_release_llp_slot(struct dai_data *dd)
