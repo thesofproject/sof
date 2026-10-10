@@ -40,8 +40,6 @@
 #include "copier/copier.h"
 #include "copier/host_copier.h"
 
-static const struct comp_driver comp_host;
-
 LOG_MODULE_REGISTER(host_comp, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(host);
@@ -355,6 +353,9 @@ void host_common_one_shot(struct host_data *hd, uint32_t bytes)
 	}
 }
 
+#if CONFIG_IPC_MAJOR_3
+static const struct comp_driver comp_host;
+
 /* This is called by DMA driver every time when DMA completes its current
  * transfer between host and DSP.
  */
@@ -371,6 +372,7 @@ static void host_dma_cb(struct comp_dev *dev, size_t bytes)
 	if (hd->copy_type == COMP_COPY_ONE_SHOT)
 		host_common_one_shot(hd, bytes);
 }
+#endif
 
 /* get status from dma and check for xrun */
 static int host_get_status(struct comp_dev *dev, struct host_data *hd, struct dma_status *stat)
@@ -684,6 +686,7 @@ int host_common_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 	return ret;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static int host_trigger(struct comp_dev *dev, int cmd)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
@@ -700,6 +703,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 
 	return host_common_trigger(hd, dev, cmd);
 }
+#endif
 
 __cold int host_common_new(struct host_data *hd, struct comp_dev *dev,
 			   const struct ipc_config_host *ipc_host, uint32_t config_id)
@@ -751,6 +755,7 @@ __cold int host_common_new(struct host_data *hd, struct comp_dev *dev,
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_3
 __cold static struct comp_dev *host_new(const struct comp_driver *drv,
 					const struct comp_ipc_config *config,
 					const void *spec)
@@ -793,6 +798,7 @@ e_data:
 	comp_free_device(dev);
 	return NULL;
 }
+#endif
 
 __cold void host_common_free(struct host_data *hd)
 {
@@ -821,6 +827,7 @@ __cold void host_common_free(struct host_data *hd)
 	dma_sg_free(hd->alloc_ctx.heap, &hd->config.elem_array);
 }
 
+#if CONFIG_IPC_MAJOR_3
 __cold static void host_free(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
@@ -833,6 +840,7 @@ __cold static void host_free(struct comp_dev *dev)
 	sof_heap_free(NULL, hd);
 	comp_free_device(dev);
 }
+#endif
 
 static int host_elements_reset(struct host_data *hd, int direction)
 {
@@ -867,6 +875,7 @@ static int host_elements_reset(struct host_data *hd, int direction)
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static int host_verify_params(struct comp_dev *dev,
 			      struct sof_ipc_stream_params *params)
 {
@@ -882,6 +891,7 @@ static int host_verify_params(struct comp_dev *dev,
 
 	return 0;
 }
+#endif
 
 /* configure the DMA params and descriptors for host buffer IO */
 int host_common_params(struct host_data *hd, struct comp_dev *dev,
@@ -1145,6 +1155,7 @@ err_release_channel:
 	return err;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static int host_params(struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params)
 {
@@ -1161,6 +1172,7 @@ static int host_params(struct comp_dev *dev,
 
 	return host_common_params(hd, dev, params, NULL);
 }
+#endif
 
 int host_common_prepare(struct host_data *hd)
 {
@@ -1168,6 +1180,7 @@ int host_common_prepare(struct host_data *hd)
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static int host_prepare(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
@@ -1195,6 +1208,7 @@ static int host_position(struct comp_dev *dev,
 
 	return 0;
 }
+#endif
 
 void host_common_reset(struct host_data *hd, uint16_t state)
 {
@@ -1231,6 +1245,7 @@ void host_common_reset(struct host_data *hd, uint16_t state)
 	hd->sink = NULL;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static int host_reset(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
@@ -1345,3 +1360,4 @@ UT_STATIC void sys_comp_host_init(void)
 
 DECLARE_MODULE(sys_comp_host_init);
 SOF_MODULE_INIT(host, sys_comp_host_init);
+#endif
