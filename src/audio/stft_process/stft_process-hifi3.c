@@ -13,7 +13,7 @@
 
 #include <sof/audio/format.h>
 #include <sof/common.h>
-#include <assert.h>
+#include <rtos/panic.h>
 #include <stdint.h>
 #include "stft_process.h"
 
