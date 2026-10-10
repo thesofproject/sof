@@ -245,15 +245,12 @@ static int demux_process(struct processing_module *mod,
 
 	comp_dbg(dev, "entry");
 
-	if (sources == NULL && sources[0] == NULL) {
+	/* if there are no sources or sinks active, then there is nothing to do */
+	if (num_of_sources == 0 || num_of_sinks == 0) {
 		return 0;
 	}
-	source = sources[0];
 
-	/* if there are no sinks active, then there is nothing to do */
-	if (num_of_sinks == 0) {
-		return 0;
-	}
+	source = sources[0];
 
 	/* the same number of frames is distributed to every sink, so it is
 	 * limited by both the source availability and every active sink's free
