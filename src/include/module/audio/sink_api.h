@@ -118,6 +118,12 @@ struct sink_ops {
 
 	/**
 	 * OPTIONAL
+	 * see comment for sink_set_size
+	 */
+	int (*set_size)(struct sof_sink *sink, size_t size);
+
+	/**
+	 * OPTIONAL
 	 * events called when a module is starting / finishing using of the API
 	 * on the core that the module and API will executed on
 	 */
@@ -302,6 +308,15 @@ int sink_set_params(struct sof_sink *sink, struct sof_ipc_stream_params *params,
 int sink_set_alignment_constants(struct sof_sink *sink,
 				 const uint32_t byte_align,
 				 const uint32_t frame_align_req);
+
+/**
+ * Resize the buffer backing the sink.
+ *
+ * @param sink a handler to sink
+ * @param size requested buffer size in bytes
+ * @return 0 on success, -ENOSYS if the sink implementation does not support resizing
+ */
+int sink_set_size(struct sof_sink *sink, size_t size);
 
 int sink_set_valid_fmt(struct sof_sink *sink, enum sof_ipc_frame valid_sample_fmt);
 int sink_set_rate(struct sof_sink *sink, unsigned int rate);

@@ -114,6 +114,12 @@ struct source_ops {
 
 	/**
 	 * OPTIONAL
+	 * see comment for source_set_size
+	 */
+	int (*set_size)(struct sof_source *source, size_t size);
+
+	/**
+	 * OPTIONAL
 	 * events called when a module is starting / finishing using of the API
 	 * on the core that the module and API will executed on
 	 */
@@ -264,6 +270,15 @@ int source_get_data_s32(struct sof_source *source, size_t req_size, int32_t cons
  * @return proper error code (0  on success)
  */
 int source_release_data(struct sof_source *source, size_t free_size);
+
+/**
+ * Resize the buffer backing the source.
+ *
+ * @param source a handler to source
+ * @param size requested buffer size in bytes
+ * @return 0 on success, -ENOSYS if the source implementation does not support resizing
+ */
+int source_set_size(struct sof_source *source, size_t size);
 
 /** set of functions for retrieve audio parameters */
 static inline enum sof_ipc_frame source_get_valid_fmt(struct sof_source *source)
