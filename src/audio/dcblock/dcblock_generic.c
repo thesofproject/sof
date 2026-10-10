@@ -53,12 +53,12 @@ static int dcblock_s16_default(struct comp_data *cd,
 {
 	const int16_t *x = source->ptr;
 	int16_t *y = sink->ptr;
-	int samples_without_wrap;
+	size_t samples_without_wrap;
 	int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	size_t remaining_samples = frames * nch;
 	int32_t tmp;
 	int ch = 0;
-	int i;
+	size_t i;
 
 	while (remaining_samples) {
 		samples_without_wrap = cir_buf_samples_without_wrap_s16(x, source->buf_end);
@@ -100,12 +100,12 @@ static int dcblock_s24_default(struct comp_data *cd,
 {
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
-	int samples_without_wrap;
+	size_t samples_without_wrap;
 	int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	size_t remaining_samples = frames * nch;
 	int32_t tmp;
 	int ch = 0;
-	int i;
+	size_t i;
 
 	while (remaining_samples) {
 		samples_without_wrap = cir_buf_samples_without_wrap_s32(x, source->buf_end);
@@ -147,11 +147,11 @@ static int dcblock_s32_default(struct comp_data *cd,
 {
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
-	int samples_without_wrap;
+	size_t samples_without_wrap;
 	int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	size_t remaining_samples = frames * nch;
 	int ch = 0;
-	int i;
+	size_t i;
 
 	while (remaining_samples) {
 		samples_without_wrap = cir_buf_samples_without_wrap_s32(x, source->buf_end);
