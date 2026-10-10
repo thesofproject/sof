@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2017-2024 Valve Corporation. All rights reserved.
+# Copyright (c) 2026 Intel Corporation. All rights reserved.
+
+config COMP_STEAMAUDIO
+	tristate "Steam Audio spatial offload component"
+	default m if LIBRARY_DEFAULT_MODULAR
+	depends on IPC_MAJOR_4
+	help
+	  Select for Steam Audio spatial audio offload component.
+	  Provides 3D binaural HRTF spatialization, direct sound modeling,
+	  3-band biquad IIR filtering, 8-channel Householder Feedback Delay
+	  Network (FDN) reverberation, 1st-order Ambisonics rotation/decoding,
+	  and on-chip DSP BVH ray tracing for real-time room acoustic simulation.
