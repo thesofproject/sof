@@ -14,7 +14,7 @@
 #include "src_common.h"
 
 #include <sof/math/numbers.h>
-#include <xtensa/config/defs.h>
+#include <xtensa/config/core-isa.h>
 #include <xtensa/tie/xt_hifi5.h>
 #include <stddef.h>
 #include <stdint.h>
