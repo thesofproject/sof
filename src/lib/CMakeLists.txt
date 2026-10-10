@@ -23,6 +23,10 @@ if(CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL)
   add_local_sources(sof cpu-clk-manager.c)
 endif()
 
+if(CONFIG_CPP)
+  add_local_sources(sof cpp_new_export.cpp)
+endif()
+
 is_zephyr(zephyr)
 if(zephyr) ###  Zephyr ###
 

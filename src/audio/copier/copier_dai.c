@@ -27,13 +27,8 @@ static uint32_t bitmask_to_nibble_channel_map(uint8_t bitmask)
 			channel_count++;
 		}
 
-	/* Absent channel is represented as 0xf nibble. With all 8 channels present the shift count
-	 * would be 32, which is undefined behavior for 32-bit types.
-	 * On Xtensa and x86 architectures this would result in returning 0xffffffff, marking all
-	 * channels absent.
-	 */
-	if (channel_count < 8)
-		nibble_map |= 0xFFFFFFFF << (channel_count * 4);
+	/* absent channel is represented as 0xf nibble */
+	nibble_map |= 0xFFFFFFFF << (channel_count * 4);
 
 	return nibble_map;
 }
@@ -420,13 +415,21 @@ __cold void copier_dai_free(struct processing_module *mod)
 	assert_can_be_cold();
 
 	for (int i = 0; i < cd->endpoint_num; i++) {
-		dai_common_free(cd->dd[i]);
-		mod_free(mod, cd->dd[i]->gain_data);
-		mod_free(mod, cd->dd[i]);
+		if (cd->dd[i]) {
+			if (cd->dd[i]->gain_data) {
+				mod_free(mod, cd->dd[i]->gain_data);
+				cd->dd[i]->gain_data = NULL;
+			}
+			dai_common_free(cd->dd[i]);
+			mod_free(mod, cd->dd[i]);
+			cd->dd[i] = NULL;
+		}
 	}
 	/* only dai have multi endpoint case */
-	if (cd->multi_endpoint_buffer)
+	if (cd->multi_endpoint_buffer) {
 		buffer_free(cd->multi_endpoint_buffer);
+		cd->multi_endpoint_buffer = NULL;
+	}
 }
 
 int copier_dai_prepare(struct comp_dev *dev, struct copier_data *cd)

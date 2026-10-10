@@ -30,6 +30,8 @@ enum ipc4_detect_test_module_config_params {
 	 * Ipc mailbox must contain properly built sof_detect_test_config
 	 * struct.
 	 */
-	IPC4_DETECT_TEST_GET_CONFIG = 3
+	IPC4_DETECT_TEST_GET_CONFIG = 3,
+
 };
+
 #endif
