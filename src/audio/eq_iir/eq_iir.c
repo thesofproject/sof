@@ -13,6 +13,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/sink_source_utils.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
@@ -113,14 +114,32 @@ static int eq_iir_get_config(struct processing_module *mod,
 }
 
 static int eq_iir_process(struct processing_module *mod,
-			  struct input_stream_buffer *input_buffers, int num_input_buffers,
-			  struct output_stream_buffer *output_buffers, int num_output_buffers)
+			  struct sof_source **sources, int num_input_buffers,
+			  struct sof_sink **sinks, int num_output_buffers)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = input_buffers[0].data;
-	struct audio_stream *sink = output_buffers[0].data;
-	uint32_t frame_count = input_buffers[0].size;
+	struct sof_source *source;
+	struct sof_sink *sink;
+	struct cir_buf_source source_buf;
+	struct cir_buf_sink sink_buf;
+	size_t source_frame_bytes;
+	size_t sink_frame_bytes;
+	size_t source_bytes;
+	size_t sink_bytes;
+	size_t source_buf_size;
+	size_t sink_buf_size;
+	size_t frame_count;
 	int ret;
+
+	if (num_input_buffers != 1 || num_output_buffers != 1) {
+		comp_err(mod->dev, "EQ IIR supports one source and one sink");
+		return -EINVAL;
+	}
+
+	source = sources[0];
+	sink = sinks[0];
+	cd->channels = source_get_channels(source);
+	cd->frame_bytes = source_get_frame_bytes(source);
 
 	/* Check for changed configuration. The IPC-time validator installed
 	 * in eq_iir_init() has already structurally validated the blob, so
@@ -131,18 +150,57 @@ static int eq_iir_process(struct processing_module *mod,
 		if (!cd->config)
 			return -EINVAL;
 
-		ret = eq_iir_new_blob(mod, audio_stream_get_frm_fmt(source),
-				      audio_stream_get_frm_fmt(sink),
-				      audio_stream_get_channels(source));
+		ret = eq_iir_new_blob(mod, source_get_frm_fmt(source),
+				      sink_get_frm_fmt(sink),
+				      source_get_channels(source));
 		if (ret)
 			return ret;
 	}
 
-	if (frame_count) {
-		cd->eq_iir_func(mod, &input_buffers[0], &output_buffers[0], frame_count);
-		module_update_buffer_position(&input_buffers[0], &output_buffers[0], frame_count);
+	if (!cd->eq_iir_func)
+		return -EINVAL;
+
+	frame_count = source_sink_avail_frames_aligned(source, sink);
+	if (!frame_count)
+		return 0;
+
+	source_frame_bytes = source_get_frame_bytes(source);
+	sink_frame_bytes = sink_get_frame_bytes(sink);
+	source_bytes = frame_count * source_frame_bytes;
+	sink_bytes = frame_count * sink_frame_bytes;
+
+	ret = source_get_data(source, source_bytes, &source_buf.ptr,
+			      &source_buf.buf_start, &source_buf_size);
+	if (ret < 0)
+		return ret;
+	if (source_buf_size < source_bytes) {
+		source_release_data(source, 0);
+		return -ENOSPC;
 	}
-	return 0;
+	source_buf.buf_end = (const char *)source_buf.buf_start + source_buf_size;
+
+	ret = sink_get_buffer(sink, sink_bytes, &sink_buf.ptr,
+			      &sink_buf.buf_start, &sink_buf_size);
+	if (ret < 0) {
+		source_release_data(source, 0);
+		return ret;
+	}
+	if (sink_buf_size < sink_bytes) {
+		source_release_data(source, 0);
+		sink_commit_buffer(sink, 0);
+		return -ENOSPC;
+	}
+	sink_buf.buf_end = (char *)sink_buf.buf_start + sink_buf_size;
+
+	cd->eq_iir_func(mod, &source_buf, &sink_buf, frame_count);
+
+	ret = source_release_data(source, source_bytes);
+	if (ret < 0) {
+		sink_commit_buffer(sink, 0);
+		return ret;
+	}
+
+	return sink_commit_buffer(sink, sink_bytes);
 }
 
 /**
@@ -150,14 +208,18 @@ static int eq_iir_process(struct processing_module *mod,
  * \param[in,out] source Structure pointer of source.
  * \param[in,out] sink Structure pointer of sink.
  */
-static void eq_iir_set_alignment(struct audio_stream *source,
-				 struct audio_stream *sink)
+static int eq_iir_set_alignment(struct sof_source *source,
+				struct sof_sink *sink)
 {
 	const uint32_t byte_align = SOF_FRAME_BYTE_ALIGN;
 	const uint32_t frame_align_req = 2;
+	int ret;
 
-	audio_stream_set_align(byte_align, frame_align_req, source);
-	audio_stream_set_align(byte_align, frame_align_req, sink);
+	ret = source_set_alignment_constants(source, byte_align, frame_align_req);
+	if (ret < 0)
+		return ret;
+
+	return sink_set_alignment_constants(sink, byte_align, frame_align_req);
 }
 
 static int eq_iir_prepare(struct processing_module *mod,
@@ -165,8 +227,9 @@ static int eq_iir_prepare(struct processing_module *mod,
 			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
+	struct sof_source *source;
+	struct sof_sink *sink;
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
 	int channels;
@@ -174,24 +237,33 @@ static int eq_iir_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "entry");
 
-	/* EQ component will only ever have 1 source and 1 sink buffer */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	sinkb = comp_dev_get_first_data_consumer(dev);
-	if (!sourceb || !sinkb) {
+	/* EQ component will only ever have 1 source and 1 sink buffer. */
+	if (num_of_sources != 1 || num_of_sinks != 1) {
 		comp_err(dev, "no source or sink buffer");
 		return -ENOTCONN;
 	}
+
+	source = sources[0];
+	sink = sinks[0];
 
 	ret = eq_iir_prepare_sub(mod);
 	if (ret < 0)
 		return ret;
 
-	eq_iir_set_alignment(&sourceb->stream, &sinkb->stream);
+	ret = eq_iir_set_alignment(source, sink);
+	if (ret < 0)
+		return ret;
 
 	/* get source and sink data format */
-	channels = audio_stream_get_channels(&sinkb->stream);
-	source_format = audio_stream_get_frm_fmt(&sourceb->stream);
-	sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
+	channels = source_get_channels(source);
+	source_format = source_get_frm_fmt(source);
+	sink_format = sink_get_frm_fmt(sink);
+	if (channels != sink_get_channels(sink)) {
+		comp_err(dev, "source and sink channel counts do not match");
+		return -EINVAL;
+	}
+	cd->channels = channels;
+	cd->frame_bytes = source_get_frame_bytes(source);
 
 	cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
 
@@ -224,6 +296,8 @@ static int eq_iir_reset(struct processing_module *mod)
 	eq_iir_free_delaylines(mod);
 
 	cd->eq_iir_func = NULL;
+	cd->channels = 0;
+	cd->frame_bytes = 0;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df1(&cd->iir[i]);
 
@@ -233,7 +307,7 @@ static int eq_iir_reset(struct processing_module *mod)
 static const struct module_interface eq_iir_interface = {
 	.init = eq_iir_init,
 	.prepare = eq_iir_prepare,
-	.process_audio_stream = eq_iir_process,
+	.process = eq_iir_process,
 	.set_configuration = eq_iir_set_config,
 	.get_configuration = eq_iir_get_config,
 	.reset = eq_iir_reset,
