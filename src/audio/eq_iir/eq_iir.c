@@ -259,4 +259,43 @@ DECLARE_TR_CTX(eq_iir_tr, SOF_UUID(eq_iir_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(eq_iir_interface, eq_iir_uuid, eq_iir_tr);
 SOF_MODULE_INIT(eq_iir, sys_comp_module_eq_iir_interface_init);
 
+#if CONFIG_STATIC_PIPELINE
+#include <sof/audio/pipeline/static_pipeline.h>
+
+static int eq_iir_static_apply_switch(struct comp_dev *dev, uint32_t channels, int32_t val)
+{
+	struct processing_module *mod = comp_mod(dev);
+
+	if (!mod)
+		return -EINVAL;
+
+	struct comp_data *cd = module_get_private_data(mod);
+
+	if (cd) {
+		if (val == 0) {
+			cd->eq_iir_func = eq_iir_pass;
+		} else if (cd->iir_delay_size) {
+#if CONFIG_FORMAT_FLOAT
+			struct comp_buffer *sourceb = comp_dev_get_first_data_producer(dev);
+
+			if (sourceb && audio_stream_get_frm_fmt(&sourceb->stream) == SOF_IPC_FRAME_FLOAT)
+				cd->eq_iir_func = eq_iir_float_default;
+			else
+				cd->eq_iir_func = eq_iir_s16_default;
+#else
+			cd->eq_iir_func = eq_iir_s16_default;
+#endif
+		}
+	}
+	return 0;
+}
+
+static struct sof_static_module_ops eq_iir_static_ops = {
+	.uuid = &eq_iir_uuid,
+	.apply_switch = eq_iir_static_apply_switch,
+};
+
+DECLARE_STATIC_MODULE_OPS(eq_iir, &eq_iir_static_ops);
+#endif /* CONFIG_STATIC_PIPELINE */
+
 #endif

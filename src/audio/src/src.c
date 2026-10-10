@@ -107,4 +107,35 @@ SOF_LLEXT_BUILDINFO;
 DECLARE_MODULE_ADAPTER(src_interface, SRC_UUID, src_tr);
 SOF_MODULE_INIT(src, sys_comp_module_src_interface_init);
 
+#if CONFIG_STATIC_PIPELINE
+#include <sof/audio/pipeline/static_pipeline.h>
+
+#if CONFIG_IPC_MAJOR_4
+static struct comp_dev *src_static_create(const struct comp_driver *drv,
+					  struct comp_ipc_config *cfg,
+					  const struct sof_static_comp *cdesc,
+					  uint32_t period_us)
+{
+	struct ipc4_config_src src_cfg;
+
+	memset(&src_cfg, 0, sizeof(src_cfg));
+	sof_static_init_base_cfg(&src_cfg.base, cdesc, period_us);
+	src_cfg.sink_rate = cdesc->caps.sink_rate ? cdesc->caps.sink_rate : cdesc->caps.default_rate;
+
+	struct ipc_config_process spec = {
+		.size = sizeof(src_cfg),
+		.data = (const uint8_t *)&src_cfg,
+	};
+	return drv->ops.create(drv, cfg, &spec);
+}
+
+static struct sof_static_module_ops src_static_ops = {
+	.uuid = &SRC_UUID,
+	.create = src_static_create,
+};
+
+DECLARE_STATIC_MODULE_OPS(src, &src_static_ops);
+#endif /* CONFIG_IPC_MAJOR_4 */
+#endif /* CONFIG_STATIC_PIPELINE */
+
 #endif

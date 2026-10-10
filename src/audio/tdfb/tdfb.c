@@ -946,4 +946,30 @@ DECLARE_TR_CTX(tdfb_tr, SOF_UUID(tdfb_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(tdfb_interface, tdfb_uuid, tdfb_tr);
 SOF_MODULE_INIT(tdfb, sys_comp_module_tdfb_interface_init);
 
+#if CONFIG_STATIC_PIPELINE
+#include <sof/audio/pipeline/static_pipeline.h>
+
+static int tdfb_static_apply_switch(struct comp_dev *dev, uint32_t channels, int32_t val)
+{
+	struct processing_module *mod = comp_mod(dev);
+
+	if (!mod)
+		return -EINVAL;
+
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
+
+	if (cd)
+		cd->beam_on = (val != 0);
+
+	return 0;
+}
+
+static struct sof_static_module_ops tdfb_static_ops = {
+	.uuid = &tdfb_uuid,
+	.apply_switch = tdfb_static_apply_switch,
+};
+
+DECLARE_STATIC_MODULE_OPS(tdfb, &tdfb_static_ops);
+#endif /* CONFIG_STATIC_PIPELINE */
+
 #endif

@@ -1201,3 +1201,73 @@ SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
 #endif
 
 #endif
+
+#if CONFIG_STATIC_PIPELINE
+#include <sof/audio/pipeline/static_pipeline.h>
+#include <user/selector.h>
+
+static struct comp_dev *sel_static_create(const struct comp_driver *drv,
+					  struct comp_ipc_config *cfg,
+					  const struct sof_static_comp *cdesc,
+					  uint32_t period_us)
+{
+	uint16_t ch = cdesc->caps.max_channels ? cdesc->caps.max_channels : 2;
+	struct sof_sel_config sel_cfg = {
+		.in_channels_count = ch,
+		.out_channels_count = ch,
+		.sel_channel = 0,
+	};
+	struct ipc_config_process sel_spec = {
+		.size = sizeof(sel_cfg),
+		.data = (const uint8_t *)&sel_cfg,
+	};
+	return drv->ops.create(drv, cfg, &sel_spec);
+}
+
+static int sel_static_apply_enum(struct comp_dev *dev, uint32_t channel, int32_t val)
+{
+#if CONFIG_IPC_MAJOR_3
+	uint8_t cbuf[sizeof(struct sof_ipc_ctrl_data) + sizeof(struct sof_ipc_ctrl_value_chan)] = {0};
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)cbuf;
+
+	cdata->cmd = SOF_CTRL_CMD_ENUM;
+	cdata->type = SOF_CTRL_TYPE_VALUE_CHAN_SET;
+	cdata->num_elems = 1;
+	cdata->chanv[0].channel = channel;
+	cdata->chanv[0].value = val;
+	if (dev->drv && dev->drv->ops.cmd)
+		return dev->drv->ops.cmd(dev, COMP_CMD_SET_VALUE, cdata, sizeof(cbuf));
+	return 0;
+#else
+	struct processing_module *mod = comp_mod(dev);
+
+	if (!mod)
+		return -EINVAL;
+
+	struct comp_data *cd = module_get_private_data(mod);
+
+	if (cd)
+		cd->config.sel_channel = val;
+
+	return 0;
+#endif
+}
+
+#if CONFIG_IPC_MAJOR_3
+static struct sof_static_module_ops sel_static_ops = {
+	.uuid = &selector_uuid,
+	.create = sel_static_create,
+	.apply_enum = sel_static_apply_enum,
+};
+DECLARE_STATIC_MODULE_OPS(selector, &sel_static_ops);
+#endif
+
+#if CONFIG_IPC_MAJOR_4
+static struct sof_static_module_ops sel4_static_ops = {
+	.uuid = &selector4_uuid,
+	.create = sel_static_create,
+	.apply_enum = sel_static_apply_enum,
+};
+DECLARE_STATIC_MODULE_OPS(selector4, &sel4_static_ops);
+#endif
+#endif /* CONFIG_STATIC_PIPELINE */

@@ -1031,6 +1031,19 @@ void comp_unregister(struct comp_driver_info *drv);
  */
 int comp_set_adapter_ops(const struct comp_driver *drv, const struct module_interface *ops);
 
+/**
+ * Look up a registered SOF component driver by UUID or driver type.
+ *
+ * Scans the global SOF component driver registry to match either a specific
+ * 128-bit UUID (for audio processing modules) or a generic driver type (for host
+ * or DAI endpoints).
+ *
+ * @param uuid Component UUID to match, or NULL to match by type.
+ * @param type SOF component driver type (SOF_COMP_HOST, SOF_COMP_DAI, etc.).
+ * @return Pointer to matched comp_driver, or NULL if not registered.
+ */
+const struct comp_driver *comp_driver_find(const struct sof_uuid *uuid, uint32_t type);
+
 /** @}*/
 
 /**
