@@ -59,12 +59,12 @@ static void demux_check_for_wrap(struct cir_buf_sink *sink,
 
 #if CONFIG_FORMAT_S16LE
 
-static uint32_t demux_calc_frames_without_wrap_s16(struct cir_buf_sink *sink,
-						   struct cir_buf_source *source,
-						   struct mux_look_up *lookup)
+static size_t demux_calc_frames_without_wrap_s16(struct cir_buf_sink *sink,
+						 struct cir_buf_source *source,
+						 struct mux_look_up *lookup)
 {
-	uint32_t frames;
-	uint32_t min_frames;
+	size_t frames;
+	size_t min_frames;
 	const void *ptr;
 
 	/* for demux we process each source buffer separately - dest/src for
@@ -86,13 +86,13 @@ static uint32_t demux_calc_frames_without_wrap_s16(struct cir_buf_sink *sink,
 	return min_frames;
 }
 
-static uint32_t mux_calc_frames_without_wrap_s16(struct cir_buf_sink *sink,
-						 struct cir_buf_source *source_bufs,
-						 struct mux_look_up *lookup)
+static size_t mux_calc_frames_without_wrap_s16(struct cir_buf_sink *sink,
+					       struct cir_buf_source *source_bufs,
+					       struct mux_look_up *lookup)
 {
 	struct cir_buf_source *source;
-	uint32_t frames;
-	uint32_t min_frames;
+	size_t frames;
+	size_t min_frames;
 	uint32_t elem;
 	const void *ptr;
 
@@ -165,15 +165,15 @@ static void demux_init_look_up_pointers_s16(struct sof_sink *sink,
 static int demux_s16le(struct comp_dev *dev, struct sof_sink *sink,
 			struct sof_source *source, const void *source_data,
 			const void *source_start, size_t source_size,
-			uint32_t frames, struct mux_look_up *lookup)
+			size_t frames, struct mux_look_up *lookup)
 {
 	int16_t *y, *y_start, *y_end;
 	int y_size;
 	struct cir_buf_sink sink_buf;
 	struct cir_buf_source source_buf;
-	int bytes = frames * sink_get_frame_bytes(sink);
+	size_t bytes = frames * sink_get_frame_bytes(sink);
 	uint32_t elem;
-	uint32_t i;
+	size_t i;
 	int ret;
 
 	comp_dbg(dev, "entry");
@@ -202,7 +202,7 @@ static int demux_s16le(struct comp_dev *dev, struct sof_sink *sink,
 			lookup->copy_elem[0].in_ch;
 		int16_t *dst = (int16_t *)lookup->copy_elem[0].dest -
 			lookup->copy_elem[0].out_ch;
-		uint32_t frames_without_wrap;
+		size_t frames_without_wrap;
 
 		frames_without_wrap =
 			demux_calc_frames_without_wrap_s16(&sink_buf, &source_buf, lookup);
@@ -244,14 +244,14 @@ static int demux_s16le(struct comp_dev *dev, struct sof_sink *sink,
  */
 static void mux_s16le(struct comp_dev *dev, struct sof_sink *sink,
 		      struct cir_buf_sink *sink_buf, struct sof_source **sources,
-		      struct cir_buf_source *source_bufs, uint32_t frames,
+		      struct cir_buf_source *source_bufs, size_t frames,
 		      struct mux_look_up *lookup)
 {
-	uint32_t i;
+	size_t i;
 	const int16_t *src;
 	int16_t *dst;
 	uint32_t elem;
-	uint32_t frames_without_wrap;
+	size_t frames_without_wrap;
 
 	comp_dbg(dev, "entry");
 
@@ -287,13 +287,13 @@ static void mux_s16le(struct comp_dev *dev, struct sof_sink *sink,
 
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 
-static uint32_t mux_calc_frames_without_wrap_s32(struct cir_buf_sink *sink,
-						 struct cir_buf_source *source_bufs,
-						 struct mux_look_up *lookup)
+static size_t mux_calc_frames_without_wrap_s32(struct cir_buf_sink *sink,
+					       struct cir_buf_source *source_bufs,
+					       struct mux_look_up *lookup)
 {
 	struct cir_buf_source *source;
-	uint32_t frames;
-	uint32_t min_frames;
+	size_t frames;
+	size_t min_frames;
 	uint32_t elem;
 	const void *ptr;
 
@@ -320,12 +320,12 @@ static uint32_t mux_calc_frames_without_wrap_s32(struct cir_buf_sink *sink,
 	return min_frames;
 }
 
-static uint32_t demux_calc_frames_without_wrap_s32(struct cir_buf_sink *sink,
-						   struct cir_buf_source *source,
-						   struct mux_look_up *lookup)
+static size_t demux_calc_frames_without_wrap_s32(struct cir_buf_sink *sink,
+						 struct cir_buf_source *source,
+						 struct mux_look_up *lookup)
 {
-	uint32_t frames;
-	uint32_t min_frames;
+	size_t frames;
+	size_t min_frames;
 	const void *ptr;
 
 	/* for demux we process each source buffer separately - dest/src for
@@ -409,15 +409,15 @@ static void demux_init_look_up_pointers_s32(struct sof_sink *sink,
 static int demux_s32le(struct comp_dev *dev, struct sof_sink *sink,
 			struct sof_source *source, const void *source_data,
 			const void *source_start, size_t source_size,
-			uint32_t frames, struct mux_look_up *lookup)
+			size_t frames, struct mux_look_up *lookup)
 {
 	int32_t *y, *y_start, *y_end;
 	int y_size;
 	struct cir_buf_sink sink_buf;
 	struct cir_buf_source source_buf;
-	int bytes = frames * sink_get_frame_bytes(sink);
+	size_t bytes = frames * sink_get_frame_bytes(sink);
 	uint32_t elem;
-	uint32_t i;
+	size_t i;
 	int ret;
 
 	comp_dbg(dev, "entry");
@@ -446,7 +446,7 @@ static int demux_s32le(struct comp_dev *dev, struct sof_sink *sink,
 			lookup->copy_elem[0].in_ch;
 		int32_t *dst = (int32_t *)lookup->copy_elem[0].dest -
 			lookup->copy_elem[0].out_ch;
-		uint32_t frames_without_wrap;
+		size_t frames_without_wrap;
 
 		frames_without_wrap =
 			demux_calc_frames_without_wrap_s32(&sink_buf, &source_buf, lookup);
@@ -488,14 +488,14 @@ static int demux_s32le(struct comp_dev *dev, struct sof_sink *sink,
  */
 static void mux_s32le(struct comp_dev *dev, struct sof_sink *sink,
 		      struct cir_buf_sink *sink_buf, struct sof_source **sources,
-		      struct cir_buf_source *source_bufs, uint32_t frames,
+		      struct cir_buf_source *source_bufs, size_t frames,
 		      struct mux_look_up *lookup)
 {
-	uint32_t i;
+	size_t i;
 	const int32_t *src;
 	int32_t *dst;
 	uint32_t elem;
-	uint32_t frames_without_wrap;
+	size_t frames_without_wrap;
 
 	comp_dbg(dev, "entry");
 
