@@ -22,6 +22,11 @@
 #include "../../../../src/include/sof/trace/trace.h"
 
 struct timer;
+/**
+ * @brief Get high-resolution 64-bit hardware timer value for trace timestamping.
+ * @param timer Pointer to hardware timer descriptor.
+ * @return 64-bit current timer count.
+ */
 uint64_t platform_timer_get(struct timer *timer);
 
 /*

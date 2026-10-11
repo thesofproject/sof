@@ -3,6 +3,12 @@
 // Copyright(c) 2024 Intel Corporation.
 //
 
+/**
+ * @file rtos/mutex.h
+ * @brief RTOS mutex primitives and synchronization wrappers.
+ * @ingroup rtos_api
+ */
+
 #ifndef __ZEPHYR_RTOS_MUTEX_H__
 #define __ZEPHYR_RTOS_MUTEX_H__
 

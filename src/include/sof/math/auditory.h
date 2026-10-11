@@ -69,16 +69,25 @@ int16_t psy_hz_to_mel(int16_t hz);
  */
 int16_t psy_mel_to_hz(int16_t mel);
 
+struct processing_module;
+
 /**
  * \brief Get a Mel frequency filterbank
  * See Wikipedia https://en.wikipedia.org/wiki/Mel_scale
  *
+ * \param[in]      mod     Pointer to calling processing module.
  * \param[in, out] mel_fb  Struct with filterbank input parameters, in return the band
  *			   filter coefficients.
  * \return                 Zero when success, otherwise error code.
  */
-struct processing_module;
 int mod_psy_get_mel_filterbank(struct processing_module *mod, struct psy_mel_filterbank *mel_fb);
+
+/**
+ * \brief Free memory allocated for a Mel frequency filterbank
+ * \param[in]      mod     Pointer to calling processing module.
+ * \param[in, out] mel_fb  Struct with filterbank parameters to release.
+ * \return                 Zero when success, otherwise error code.
+ */
 int mod_psy_free_mel_filterbank(struct processing_module *mod, struct psy_mel_filterbank *mel_fb);
 
 /**

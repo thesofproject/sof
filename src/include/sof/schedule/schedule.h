@@ -19,7 +19,7 @@
 #include <stdint.h>
 #include <ipc4/base_fw.h>
 
-/** \addtogroup schedule_api Schedule API
+/** \addtogroup audio_pipeline_api
  *  @{
  */
 
@@ -182,10 +182,25 @@ struct schedulers {
  */
 struct schedulers **arch_schedulers_get(void);
 
+/**
+ * @brief Retrieves registered schedulers for user-space threads on the current core.
+ * @return Pointer to array of registered scheduler pointers.
+ */
 struct schedulers **arch_user_schedulers_get(void);
 
+/**
+ * @brief Retrieves registered schedulers for user-space threads on a specific core.
+ * @param core Target DSP core ID.
+ * @return Pointer to array of registered scheduler pointers for the specified core.
+ */
 struct schedulers **arch_user_schedulers_get_for_core(int core);
 
+/**
+ * @brief Lookup scheduler private context data by scheduler type.
+ * @param schedulers Schedulers list container.
+ * @param type Scheduler type identifier (SOF_SCHEDULE_LL, SOF_SCHEDULE_EDF, etc.).
+ * @return Pointer to scheduler-specific private data, or NULL if not found.
+ */
 static inline void *scheduler_list_get_data(struct schedulers *schedulers, uint16_t type)
 {
 	struct schedule_data *sch;

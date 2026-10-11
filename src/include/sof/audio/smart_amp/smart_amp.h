@@ -155,7 +155,20 @@ struct smart_amp_func_map {
 
 extern const struct smart_amp_func_map src_sink_func_map[];
 
+/**
+ * @brief Retrieve source processing callback matching component and module PCM formats.
+ * @param comp_fmt Component stream frame format.
+ * @param mod_fmt Processing module internal frame format.
+ * @return Source processing function pointer, or NULL if no match found.
+ */
 smart_amp_src_func smart_amp_get_src_func(uint16_t comp_fmt, uint16_t mod_fmt);
+
+/**
+ * @brief Retrieve sink processing callback matching component and module PCM formats.
+ * @param comp_fmt Component stream frame format.
+ * @param mod_fmt Processing module internal frame format.
+ * @return Sink processing function pointer, or NULL if no match found.
+ */
 smart_amp_sink_func smart_amp_get_sink_func(uint16_t comp_fmt, uint16_t mod_fmt);
 
 /******************************************************************************

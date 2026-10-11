@@ -3,6 +3,12 @@
  * Copyright(c) 2022 Intel Corporation. All rights reserved.
  */
 
+/**
+ * @file rtos/alloc.h
+ * @brief Memory allocation API, zones, heaps, and alignment utilities.
+ * @ingroup rtos_api
+ */
+
 #ifndef __ZEPHYR_RTOS_ALLOC_H__
 #define __ZEPHYR_RTOS_ALLOC_H__
 
@@ -15,7 +21,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/** \addtogroup alloc_api Memory Allocation API
+/** \addtogroup rtos_api
  *  @{
  */
 
@@ -99,21 +105,39 @@ void rfree(void *ptr);
  */
 void l3_heap_save(void);
 
-/*
- * This is ugly to define the signatures twice, but this
- * is required to support userspace builds that do not export alloc.
+/**
+ * @brief Allocate memory from a specified Zephyr heap or default system heap.
+ * @param heap Target Zephyr k_heap (or NULL to let implementation choose).
+ * @param flags Memory allocation flags (SOF_MEM_FLAG_...).
+ * @param bytes Size in bytes to allocate.
+ * @param alignment Required memory alignment in bytes.
+ * @return Pointer to allocated buffer, or NULL on allocation failure.
  */
 #ifdef CONFIG_SOF_USERSPACE_INTERFACE_ALLOC
 __syscall void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 			       size_t alignment);
+/**
+ * @brief Free memory allocated via sof_heap_alloc().
+ * @param heap Target Zephyr k_heap.
+ * @param addr Address of allocated buffer to free.
+ */
 __syscall void sof_heap_free(struct k_heap *heap, void *addr);
 #include <zephyr/syscalls/alloc.h>
 #else
 void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 		     size_t alignment);
+/**
+ * @brief Free memory allocated via sof_heap_alloc().
+ * @param heap Target Zephyr k_heap.
+ * @param addr Address of allocated buffer to free.
+ */
 void sof_heap_free(struct k_heap *heap, void *addr);
 #endif
 
+/**
+ * @brief Get the system kernel heap descriptor.
+ * @return Pointer to the global system k_heap structure.
+ */
 #if CONFIG_SOF_FULL_ZEPHYR_APPLICATION
 struct k_heap *sof_sys_heap_get(void);
 #else
@@ -140,7 +164,10 @@ static inline struct k_heap *sof_sys_heap_get(void)
  */
 struct k_heap *sof_sys_user_heap_get(void);
 
-/* TODO: remove - debug only - only needed for linking */
+/**
+ * @brief Trace and log memory allocation statistics across all active heaps.
+ * @param force Force dumping heap trace even if logging threshold is not met.
+ */
 static inline void heap_trace_all(int force) {}
 
 /** @}*/

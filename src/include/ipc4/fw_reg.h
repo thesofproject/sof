@@ -17,10 +17,8 @@
 
 /**
  * \file include/ipc4/fw_reg.h
- * \brief IPC4 fw registers in mailbox for host. Fw exposes dsp / fw
- * state information to the host via shared memory window 0, .e.g. fw error,
- * pipeline state, dma llp counter and others. These information are included
- * in ipc4_fw_registers structure defined in this file.
+ * \brief IPC4 firmware registers in mailbox window 0 for host telemetry and status.
+ * \ingroup ipc4_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 

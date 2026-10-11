@@ -5,6 +5,12 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+/**
+ * @file sof/audio/buffer.h
+ * @brief Component interconnect buffer allocation and stream handling.
+ * @ingroup audio_pipeline_api
+ */
+
 #ifndef __SOF_AUDIO_BUFFER_H__
 #define __SOF_AUDIO_BUFFER_H__
 

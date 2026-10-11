@@ -3,6 +3,12 @@
  * Copyright(c) 2022 Intel Corporation. All rights reserved.
  */
 
+/**
+ * @file rtos/timer.h
+ * @brief RTOS cycle counter, hardware timer, and timestamp utilities.
+ * @ingroup rtos_api
+ */
+
 #ifndef __ZEPHYR_RTOS_TIMER_H__
 #define __ZEPHYR_RTOS_TIMER_H__
 

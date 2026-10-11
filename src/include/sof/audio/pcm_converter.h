@@ -198,16 +198,58 @@ int pcm_convert_as_linear(const struct cir_buf_source *source, size_t s_size_in,
 			  struct cir_buf_sink *sink, size_t s_size_out,
 			  size_t samples, pcm_converter_lin_func converter);
 
-/* Copy stream without conversion, typed by sample size in bytes. chmap is ignored. */
+/**
+ * @brief Copy 1-byte PCM stream without conversion (8-bit samples).
+ * @param source Circular buffer source.
+ * @param src_channels Number of source channels.
+ * @param sink Circular buffer sink.
+ * @param sink_channels Number of sink channels.
+ * @param samples Number of samples to copy.
+ * @param chmap Channel mapping (unused).
+ * @return Number of samples copied or negative error code.
+ */
 int just_copy_1b(const struct cir_buf_source *source, uint32_t src_channels,
 		 struct cir_buf_sink *sink, uint32_t sink_channels,
 		 size_t samples, uint32_t chmap);
+
+/**
+ * @brief Copy 2-byte PCM stream without conversion (16-bit samples).
+ * @param source Circular buffer source.
+ * @param src_channels Number of source channels.
+ * @param sink Circular buffer sink.
+ * @param sink_channels Number of sink channels.
+ * @param samples Number of samples to copy.
+ * @param chmap Channel mapping (unused).
+ * @return Number of samples copied or negative error code.
+ */
 int just_copy_2b(const struct cir_buf_source *source, uint32_t src_channels,
 		 struct cir_buf_sink *sink, uint32_t sink_channels,
 		 size_t samples, uint32_t chmap);
+
+/**
+ * @brief Copy 3-byte PCM stream without conversion (24-bit samples in 3 bytes).
+ * @param source Circular buffer source.
+ * @param src_channels Number of source channels.
+ * @param sink Circular buffer sink.
+ * @param sink_channels Number of sink channels.
+ * @param samples Number of samples to copy.
+ * @param chmap Channel mapping (unused).
+ * @return Number of samples copied or negative error code.
+ */
 int just_copy_3b(const struct cir_buf_source *source, uint32_t src_channels,
 		 struct cir_buf_sink *sink, uint32_t sink_channels,
 		 size_t samples, uint32_t chmap);
+
+/**
+ * @brief Copy 4-byte PCM stream without conversion (32-bit samples or 24-bit in 4 bytes).
+ * @param source Circular buffer source.
+ * @param src_channels Number of source channels.
+ * @param sink Circular buffer sink.
+ * @param sink_channels Number of sink channels.
+ * @param samples Number of samples to copy.
+ * @param chmap Channel mapping (unused).
+ * @return Number of samples copied or negative error code.
+ */
 int just_copy_4b(const struct cir_buf_source *source, uint32_t src_channels,
 		 struct cir_buf_sink *sink, uint32_t sink_channels,
 		 size_t samples, uint32_t chmap);

@@ -225,16 +225,35 @@ struct ssp_pdata {
 	struct sof_ipc_dai_ssp_params params;
 };
 
+/**
+ * @brief Write a 32-bit register on the specified Synchronous Serial Port (SSP) DAI.
+ * @param dai Pointer to DAI device descriptor.
+ * @param reg Register offset.
+ * @param value 32-bit value to write.
+ */
 static inline void ssp_write(struct dai *dai, uint32_t reg, uint32_t value)
 {
 	dai_write(dai, reg, value);
 }
 
+/**
+ * @brief Read a 32-bit register from the specified Synchronous Serial Port (SSP) DAI.
+ * @param dai Pointer to DAI device descriptor.
+ * @param reg Register offset.
+ * @return 32-bit register value.
+ */
 static inline uint32_t ssp_read(struct dai *dai, uint32_t reg)
 {
 	return dai_read(dai, reg);
 }
 
+/**
+ * @brief Read-modify-write bit fields of an SSP DAI register.
+ * @param dai Pointer to DAI device descriptor.
+ * @param reg Register offset.
+ * @param mask Bitmask of fields to modify.
+ * @param value New bit values to set within mask.
+ */
 static inline void ssp_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
 	uint32_t value)
 {

@@ -3,13 +3,22 @@
  * Copyright(c) 2021 Intel Corporation. All rights reserved.
  */
 
+/**
+ * @file sof/audio/format_generic.h
+ * @brief Generic audio sample saturation helpers.
+ * @ingroup audio_pipeline_api
+ */
+
 #ifndef __SOF_AUDIO_FORMAT_GENERIC_H__
 #define __SOF_AUDIO_FORMAT_GENERIC_H__
 
 #include <stdint.h>
 
-/* Saturation inline functions */
-
+/**
+ * @brief Saturate a 64-bit integer to signed 32-bit integer range.
+ * @param x Input 64-bit integer.
+ * @return Saturated 32-bit integer clamped between INT32_MIN and INT32_MAX.
+ */
 static inline int32_t sat_int32(int64_t x)
 {
 	if (x > INT32_MAX)
@@ -20,6 +29,11 @@ static inline int32_t sat_int32(int64_t x)
 		return (int32_t)x;
 }
 
+/**
+ * @brief Saturate a 32-bit integer to signed 24-bit integer range.
+ * @param x Input 32-bit integer.
+ * @return Saturated 24-bit integer clamped between INT24_MINVALUE and INT24_MAXVALUE.
+ */
 static inline int32_t sat_int24(int32_t x)
 {
 	if (x > INT24_MAXVALUE)
@@ -30,6 +44,11 @@ static inline int32_t sat_int24(int32_t x)
 		return x;
 }
 
+/**
+ * @brief Saturate a 32-bit integer to signed 16-bit integer range.
+ * @param x Input 32-bit integer.
+ * @return Saturated 16-bit integer clamped between INT16_MIN and INT16_MAX.
+ */
 static inline int16_t sat_int16(int32_t x)
 {
 	if (x > INT16_MAX)
@@ -40,6 +59,11 @@ static inline int16_t sat_int16(int32_t x)
 		return (int16_t)x;
 }
 
+/**
+ * @brief Saturate a 32-bit integer to signed 8-bit integer range.
+ * @param x Input 32-bit integer.
+ * @return Saturated 8-bit integer clamped between INT8_MIN and INT8_MAX.
+ */
 static inline int8_t sat_int8(int32_t x)
 {
 	if (x > INT8_MAX)

@@ -224,8 +224,12 @@ int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd);
 int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 			void *spec_config);
 
-/*
- * Warning: duplicate declaration in component.h
+/**
+ * @brief Verify stream parameters against component capabilities.
+ * @param dev Pointer to component device descriptor.
+ * @param flag Verification flags (e.g. SOF_IPC_STREAM_PARAMS_...).
+ * @param params Stream parameters to validate.
+ * @return 0 on success, negative error code on invalid parameters.
  */
 int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		       struct sof_ipc_stream_params *params);

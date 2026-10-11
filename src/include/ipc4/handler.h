@@ -102,10 +102,26 @@ __syscall int ipc_wait_for_compound_msg(void);
 
 #include <zephyr/syscalls/handler.h>
 #else
+/**
+ * @brief Compound IPC message pre-start handler (internal implementation).
+ * @param msg_id IPC message identifier.
+ */
 void z_impl_ipc_compound_pre_start(int msg_id);
 #define ipc_compound_pre_start z_impl_ipc_compound_pre_start
+
+/**
+ * @brief Compound IPC message post-start handler (internal implementation).
+ * @param msg_id IPC message identifier.
+ * @param ret Return status of the IPC processing.
+ * @param delayed True if response is deferred/asynchronous.
+ */
 void z_impl_ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed);
 #define ipc_compound_post_start z_impl_ipc_compound_post_start
+
+/**
+ * @brief Wait for active compound IPC message completion (internal implementation).
+ * @return 0 on success, negative error code on timeout.
+ */
 int z_impl_ipc_wait_for_compound_msg(void);
 #define ipc_wait_for_compound_msg z_impl_ipc_wait_for_compound_msg
 #endif

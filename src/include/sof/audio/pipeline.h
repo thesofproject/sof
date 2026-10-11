@@ -5,6 +5,12 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+/**
+ * @file sof/audio/pipeline.h
+ * @brief Audio pipeline management, graph scheduling, and execution control.
+ * @ingroup audio_pipeline_api
+ */
+
 #ifndef __SOF_AUDIO_PIPELINE_H__
 #define __SOF_AUDIO_PIPELINE_H__
 

@@ -4,6 +4,12 @@
  *
  */
 
+/**
+ * @file module/audio/sink_api.h
+ * @brief Sink audio endpoint API for module output buffers.
+ * @ingroup module_api
+ */
+
 #ifndef __MODULE_AUDIO_SINK_API_H__
 #define __MODULE_AUDIO_SINK_API_H__
 

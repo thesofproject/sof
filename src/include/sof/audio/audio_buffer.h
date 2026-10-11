@@ -3,6 +3,12 @@
  * Copyright(c) 2023 Intel Corporation. All rights reserved.
  *
  */
+/**
+ * @file sof/audio/audio_buffer.h
+ * @brief Audio buffer operations, descriptors, and unified audio buffer interfaces.
+ * @ingroup audio_pipeline_api
+ */
+
 #ifndef __SOF_AUDIO_BUFFER__
 #define __SOF_AUDIO_BUFFER__
 

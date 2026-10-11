@@ -3,6 +3,12 @@
  * Copyright(c) 2022 Intel Corporation. All rights reserved.
  */
 
+/**
+ * @file rtos/clk.h
+ * @brief RTOS DSP clock frequency management and notification interfaces.
+ * @ingroup rtos_api
+ */
+
 #ifndef __ZEPHYR_RTOS_CLK_H__
 #define __ZEPHYR_RTOS_CLK_H__
 

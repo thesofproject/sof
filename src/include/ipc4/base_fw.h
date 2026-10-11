@@ -10,7 +10,8 @@
 
 /**
  * \file include/ipc4/base_fw.h
- * \brief IPC4 global definitions.
+ * \brief IPC4 Base Firmware parameters, memory configuration, and status definitions.
+ * \ingroup ipc4_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 
@@ -756,6 +757,10 @@ struct schedulers_info {
 	struct scheduler_props  scheduler_info[];
 } __packed __aligned(4);
 
+/**
+ * @brief Get the current DSP system time information for host-DSP clock synchronization.
+ * @return Pointer to struct ipc4_system_time_info containing current 64-bit timestamp.
+ */
 struct ipc4_system_time_info *basefw_get_system_time_info(void);
 
 /* Specifies I2S IPC4 version for PTL platform */

@@ -8,12 +8,23 @@
  *	   Adrian Warecki <adrian.warecki@intel.com>
  */
 
+/**
+ * @file module/audio/format.h
+ * @brief Audio sample format conversion and size calculation helpers for modules.
+ * @ingroup module_api
+ */
+
 #ifndef __MODULE_AUDIO_FORMAT_H__
 #define __MODULE_AUDIO_FORMAT_H__
 
 #include <stdint.h>
 #include "../ipc/stream.h"
 
+/**
+ * @brief Get the byte size of a single audio sample for a given frame format.
+ * @param fmt Audio frame format enum (enum sof_ipc_frame).
+ * @return Number of bytes per sample (1, 2, 3, or 4).
+ */
 static inline uint32_t get_sample_bytes(enum sof_ipc_frame fmt)
 {
 	switch (fmt) {
@@ -30,6 +41,11 @@ static inline uint32_t get_sample_bytes(enum sof_ipc_frame fmt)
 	}
 }
 
+/**
+ * @brief Get the bit depth of a single audio sample for a given frame format.
+ * @param fmt Audio frame format enum (enum sof_ipc_frame).
+ * @return Number of active audio bits per sample (8, 16, 24, or 32).
+ */
 static inline uint32_t get_sample_bitdepth(enum sof_ipc_frame fmt)
 {
 	switch (fmt) {
@@ -47,6 +63,12 @@ static inline uint32_t get_sample_bitdepth(enum sof_ipc_frame fmt)
 	}
 }
 
+/**
+ * @brief Get the byte size of an entire multi-channel audio frame.
+ * @param fmt Audio frame format enum (enum sof_ipc_frame).
+ * @param channels Number of audio channels.
+ * @return Total frame size in bytes (sample_bytes * channels).
+ */
 static inline uint32_t get_frame_bytes(enum sof_ipc_frame fmt, uint32_t channels)
 {
 	return get_sample_bytes(fmt) * channels;

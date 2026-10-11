@@ -6,6 +6,12 @@
  *	   Adrian Warecki <adrian.warecki@intel.com>
  */
 
+/**
+ * @file module/interface.h
+ * @brief Dynamic module interface, lifecycle callbacks, and buffer contracts.
+ * @ingroup module_api
+ */
+
 #ifndef __MODULE_MODULE_INTERFACE__
 #define __MODULE_MODULE_INTERFACE__
 

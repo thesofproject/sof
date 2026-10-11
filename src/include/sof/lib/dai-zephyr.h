@@ -38,7 +38,7 @@
 
 #include <sof/debug/telemetry/performance_monitor.h>
 
-/** \addtogroup sof_dai_drivers DAI Drivers
+/** \addtogroup platform_drivers_api
  *  DAI Drivers API specification.
  *  @{
  */
@@ -173,16 +173,34 @@ struct dai_data {
 	struct mod_alloc_ctx alloc_ctx;
 };
 
-/* these 3 are here to satisfy clk.c and ssp.h interconnection, will be removed leter */
+/**
+ * @brief Write a 32-bit register on the specified DAI controller.
+ * @param dai Pointer to DAI device descriptor.
+ * @param reg Register offset.
+ * @param value 32-bit value to write.
+ */
 static inline void dai_write(struct dai *dai, uint32_t reg, uint32_t value)
 {
 }
 
+/**
+ * @brief Read a 32-bit register from the specified DAI controller.
+ * @param dai Pointer to DAI device descriptor.
+ * @param reg Register offset.
+ * @return 32-bit register value.
+ */
 static inline uint32_t dai_read(struct dai *dai, uint32_t reg)
 {
 	return 0;
 }
 
+/**
+ * @brief Read-modify-write bit fields of a DAI register.
+ * @param dai Pointer to DAI device descriptor.
+ * @param reg Register offset.
+ * @param mask Bitmask of fields to modify.
+ * @param value New bit values to set within mask.
+ */
 static inline void dai_update_bits(struct dai *dai, uint32_t reg,
 				   uint32_t mask, uint32_t value)
 {

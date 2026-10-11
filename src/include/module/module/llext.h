@@ -3,6 +3,12 @@
  * Copyright(c) 2024 Intel Corporation. All rights reserved.
  */
 
+/**
+ * @file module/llext.h
+ * @brief LLEXT manifest macros and declarations for loadable ELF extensions.
+ * @ingroup module_api
+ */
+
 #ifndef MODULE_LLEXT_H
 #define MODULE_LLEXT_H
 

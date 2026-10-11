@@ -52,13 +52,38 @@ static inline void sa_set_panic_on_delay(bool enabled)
 
 }
 
+/**
+ * @brief Initialize the System Agent watchdog monitoring service.
+ * @param sof Pointer to global SOF runtime context.
+ * @param timeout Watchdog panic threshold in CPU cycles.
+ */
 void sa_init(struct sof *sof, uint64_t timeout);
+
+/**
+ * @brief Teardown the System Agent watchdog monitoring service.
+ * @param sof Pointer to global SOF runtime context.
+ */
 void sa_exit(struct sof *sof);
 
 #else
 
+/**
+ * @brief Initialize the System Agent (no-op stub when CONFIG_HAVE_AGENT is disabled).
+ * @param sof Pointer to global SOF runtime context.
+ * @param timeout Watchdog panic threshold.
+ */
 static inline void sa_init(struct sof *sof, uint64_t timeout) { }
+
+/**
+ * @brief Teardown the System Agent (no-op stub when CONFIG_HAVE_AGENT is disabled).
+ * @param sof Pointer to global SOF runtime context.
+ */
 static inline void sa_exit(struct sof *sof) { }
+
+/**
+ * @brief Configure delay panic behavior (no-op stub when CONFIG_HAVE_AGENT is disabled).
+ * @param enabled True to enable panic on delay.
+ */
 static inline void sa_set_panic_on_delay(bool enabled) { }
 
 #endif

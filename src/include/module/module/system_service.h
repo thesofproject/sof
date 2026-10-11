@@ -5,6 +5,12 @@
  * Author: Adrian Warecki <adrian.warecki@intel.com>
  */
 
+/**
+ * @file module/system_service.h
+ * @brief System services provided by the base firmware to loadable modules.
+ * @ingroup module_api
+ */
+
 #ifndef MODULE_MODULE_SYSTEM_SERVICE_H
 #define MODULE_MODULE_SYSTEM_SERVICE_H
 

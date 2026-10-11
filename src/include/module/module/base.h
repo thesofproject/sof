@@ -6,6 +6,12 @@
  *	   Adrian Warecki <adrian.warecki@intel.com>
  */
 
+/**
+ * @file module/base.h
+ * @brief Base definitions and structures for loadable audio modules.
+ * @ingroup module_api
+ */
+
 #ifndef __MODULE_MODULE_BASE__
 #define __MODULE_MODULE_BASE__
 

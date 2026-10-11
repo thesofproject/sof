@@ -5,7 +5,11 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-/* Matrix calculation related functions */
+/**
+ * @file sof/math/matrix.h
+ * @brief Matrix math routines, allocation, multiplication, and transposition.
+ * @ingroup dsp_math_api
+ */
 
 #ifndef __SOF_MATH_MATRIX_H__
 #define __SOF_MATH_MATRIX_H__

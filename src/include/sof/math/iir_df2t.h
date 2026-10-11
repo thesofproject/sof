@@ -7,6 +7,12 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+/**
+ * @file sof/math/iir_df2t.h
+ * @brief Infinite Impulse Response Direct Form II Transposed (DF2T) filter definitions.
+ * @ingroup dsp_math_api
+ */
+
 #ifndef __SOF_MATH_IIR_DF2T_H__
 #define __SOF_MATH_IIR_DF2T_H__
 

@@ -5,7 +5,11 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-/* Window functions related functions */
+/**
+ * @file sof/math/window.h
+ * @brief Windowing functions (Blackman, Hamming, Hann, Bartlett, rectangular).
+ * @ingroup dsp_math_api
+ */
 
 #ifndef __SOF_MATH_WINDOW_H__
 #define __SOF_MATH_WINDOW_H__
