@@ -205,4 +205,71 @@ DECLARE_TR_CTX(level_multiplier_tr, SOF_UUID(level_multiplier_uuid), LOG_LEVEL_I
 DECLARE_MODULE_ADAPTER(level_multiplier_interface, level_multiplier_uuid, level_multiplier_tr);
 SOF_MODULE_INIT(level_multiplier, sys_comp_module_level_multiplier_interface_init);
 
+#if CONFIG_STATIC_PIPELINE
+#include <sof/audio/pipeline/static_pipeline.h>
+
+static int lm_static_apply_volume(struct comp_dev *dev, uint32_t channels, int32_t val)
+{
+	struct processing_module *mod = comp_mod(dev);
+
+	if (!mod) {
+		comp_err(dev, "lm_static_apply_volume: NULL processing module");
+		return -EINVAL;
+	}
+
+	struct level_multiplier_comp_data *cd = module_get_private_data(mod);
+
+	if (!cd) {
+		comp_err(dev, "lm_static_apply_volume: NULL private data");
+		return -EINVAL;
+	}
+
+	/*
+	 * Convert incoming Q1.31 volume (where INT32_MAX represents unity gain 0 dB)
+	 * to the internal Q9.23 format (where LEVEL_MULTIPLIER_GAIN_ONE = 1 << 23).
+	 * We add rounding (+ 128) before shifting right by 8 bits, and clamp
+	 * non-positive values to 0 and values above unity to LEVEL_MULTIPLIER_GAIN_ONE.
+	 */
+	if (val <= 0) {
+		cd->gain = 0;
+	} else {
+		int64_t gain_q23 = ((int64_t)val + (1 << 7)) >> 8;
+
+		if (gain_q23 > LEVEL_MULTIPLIER_GAIN_ONE)
+			gain_q23 = LEVEL_MULTIPLIER_GAIN_ONE;
+
+		cd->gain = (int32_t)gain_q23;
+	}
+	return 0;
+}
+
+static int lm_static_apply_switch(struct comp_dev *dev, uint32_t channels, int32_t val)
+{
+	struct processing_module *mod = comp_mod(dev);
+
+	if (!mod) {
+		comp_err(dev, "lm_static_apply_switch: NULL processing module");
+		return -EINVAL;
+	}
+
+	struct level_multiplier_comp_data *cd = module_get_private_data(mod);
+
+	if (!cd) {
+		comp_err(dev, "lm_static_apply_switch: NULL private data");
+		return -EINVAL;
+	}
+
+	cd->gain = (val == 0) ? 0 : LEVEL_MULTIPLIER_GAIN_ONE;
+	return 0;
+}
+
+static struct sof_static_module_ops lm_static_ops = {
+	.uuid = &level_multiplier_uuid,
+	.apply_volume = lm_static_apply_volume,
+	.apply_switch = lm_static_apply_switch,
+};
+
+DECLARE_STATIC_MODULE_OPS(level_multiplier, &lm_static_ops);
+#endif /* CONFIG_STATIC_PIPELINE */
+
 #endif

@@ -323,4 +323,91 @@ DECLARE_TR_CTX(eq_iir_tr, SOF_UUID(eq_iir_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(eq_iir_interface, eq_iir_uuid, eq_iir_tr);
 SOF_MODULE_INIT(eq_iir, sys_comp_module_eq_iir_interface_init);
 
+#if CONFIG_STATIC_PIPELINE
+#include <sof/audio/pipeline/static_pipeline.h>
+
+static int eq_iir_static_apply_switch(struct comp_dev *dev, uint32_t channels, int32_t val)
+{
+	struct processing_module *mod = comp_mod(dev);
+
+	if (!mod) {
+		comp_err(dev, "eq_iir_static_apply_switch: NULL processing module");
+		return -EINVAL;
+	}
+
+	struct comp_data *cd = module_get_private_data(mod);
+
+	if (!cd) {
+		comp_err(dev, "eq_iir_static_apply_switch: NULL private data");
+		return -EINVAL;
+	}
+
+	if (val == 0) {
+		/* Disable EQ by engaging pass-through routine */
+		cd->eq_iir_func = eq_iir_pass;
+	} else if (cd->iir_delay_size) {
+		/* Re-enable EQ processing matching configured valid bit depth */
+		unsigned int valid_bit_depth = mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth;
+
+		switch (valid_bit_depth) {
+#if CONFIG_FORMAT_S16LE
+		case IPC4_DEPTH_16BIT:
+			cd->eq_iir_func = eq_iir_s16_default;
+			break;
+#endif
+#if CONFIG_FORMAT_S24LE
+		case IPC4_DEPTH_24BIT:
+			cd->eq_iir_func = eq_iir_s24_default;
+			break;
+#endif
+#if CONFIG_FORMAT_S32LE
+		case IPC4_DEPTH_32BIT:
+			cd->eq_iir_func = eq_iir_s32_default;
+			break;
+#endif
+		default:
+			/* Fallback inspecting producer stream frame format */
+			{
+				struct comp_buffer *sourceb = comp_dev_get_first_data_producer(dev);
+				enum sof_ipc_frame fmt = sourceb ?
+					audio_stream_get_frm_fmt(&sourceb->stream) :
+					SOF_IPC_FRAME_S32_LE;
+
+				switch (fmt) {
+#if CONFIG_FORMAT_S16LE
+				case SOF_IPC_FRAME_S16_LE:
+					cd->eq_iir_func = eq_iir_s16_default;
+					break;
+#endif
+#if CONFIG_FORMAT_S24LE
+				case SOF_IPC_FRAME_S24_4LE:
+				case SOF_IPC_FRAME_S24_3LE:
+					cd->eq_iir_func = eq_iir_s24_default;
+					break;
+#endif
+				default:
+#if CONFIG_FORMAT_S32LE
+					cd->eq_iir_func = eq_iir_s32_default;
+#elif CONFIG_FORMAT_S16LE
+					cd->eq_iir_func = eq_iir_s16_default;
+#else
+					cd->eq_iir_func = eq_iir_pass;
+#endif
+					break;
+				}
+			}
+			break;
+		}
+	}
+	return 0;
+}
+
+static struct sof_static_module_ops eq_iir_static_ops = {
+	.uuid = &eq_iir_uuid,
+	.apply_switch = eq_iir_static_apply_switch,
+};
+
+DECLARE_STATIC_MODULE_OPS(eq_iir, &eq_iir_static_ops);
+#endif /* CONFIG_STATIC_PIPELINE */
+
 #endif
