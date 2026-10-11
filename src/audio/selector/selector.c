@@ -1182,3 +1182,153 @@ SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
 #endif
 
 #endif
+
+#if CONFIG_STATIC_PIPELINE
+#include <sof/audio/pipeline/static_pipeline.h>
+#include <user/selector.h>
+
+static struct comp_dev *sel_static_create(const struct comp_driver *drv,
+					  struct comp_ipc_config *cfg,
+					  const struct sof_static_comp *cdesc,
+					  uint32_t period_us)
+{
+#if CONFIG_IPC_MAJOR_4
+	/*
+	 * In IPC4 mode, selector module_adapter init expects
+	 * struct sof_selector_avs_ipc4_config containing base_cfg and output_format.
+	 * Synthesizing this structure satisfies selector_init size validation.
+	 */
+	struct sof_selector_avs_ipc4_config sel_cfg;
+
+	memset(&sel_cfg, 0, sizeof(sel_cfg));
+	sof_static_init_base_cfg(&sel_cfg.base_cfg, cdesc, period_us);
+	sel_cfg.output_format = sel_cfg.base_cfg.audio_fmt;
+
+	if (cdesc->caps.sink_rate)
+		sel_cfg.output_format.sampling_frequency = cdesc->caps.sink_rate;
+
+	struct ipc_config_process sel_spec = {
+		.size = sizeof(sel_cfg),
+		.data = (const uint8_t *)&sel_cfg,
+	};
+	return drv->ops.create(drv, cfg, &sel_spec);
+#else
+	uint16_t ch = cdesc->caps.max_channels ? cdesc->caps.max_channels : 2;
+	struct sof_sel_config sel_cfg = {
+		.in_channels_count = ch,
+		.out_channels_count = ch,
+		.sel_channel = 0,
+	};
+	struct ipc_config_process sel_spec = {
+		.size = sizeof(sel_cfg),
+		.data = (const uint8_t *)&sel_cfg,
+	};
+	return drv->ops.create(drv, cfg, &sel_spec);
+#endif
+}
+
+static int sel_static_apply_enum(struct comp_dev *dev, uint32_t channel, int32_t val)
+{
+	/* Validate component pointer */
+	if (!dev)
+		return -EINVAL;
+
+	struct processing_module *mod = comp_mod(dev);
+
+	if (!mod) {
+		comp_err(dev, "sel_static_apply_enum: NULL processing module");
+		return -EINVAL;
+	}
+
+	struct comp_data *cd = module_get_private_data(mod);
+
+	if (!cd) {
+		comp_err(dev, "sel_static_apply_enum: NULL private data");
+		return -EINVAL;
+	}
+
+	/* Validate selection value: must be non-negative */
+	if (val < 0) {
+		comp_err(dev, "sel_static_apply_enum: negative sel_channel %d", val);
+		return -EINVAL;
+	}
+
+	/* Query source producer channel count or fallback to configured input width */
+	uint32_t src_channels = 0;
+	struct comp_buffer *src = comp_dev_get_first_data_producer(dev);
+	if (src)
+		src_channels = audio_stream_get_channels(&src->stream);
+	else
+		src_channels = cd->config.in_channels_count;
+
+	/* Validate selection against hardware ceiling and input stream channel width */
+	if ((uint32_t)val >= SEL_SOURCE_CHANNELS_MAX || (src_channels && (uint32_t)val >= src_channels)) {
+		comp_err(dev, "sel_static_apply_enum: invalid sel_channel %d (source channels %u)",
+			 val, src_channels);
+		return -EINVAL;
+	}
+
+	/* Apply validated channel selection to runtime configuration */
+	cd->config.sel_channel = (uint32_t)val;
+
+#if CONFIG_IPC_MAJOR_4
+	/*
+	 * In IPC4 mode, routing is controlled by the Q10 coefficient matrix cd->coeffs_config.
+	 * If channel indicates a single output channel (channel < out_channels_count), route
+	 * input channel 'val' to that specific output channel. If channel indicates all
+	 * channels (channel >= out_channels_count), route input channel 'val' to all output
+	 * channels.
+	 */
+	uint32_t out_channels = cd->config.out_channels_count ?
+		cd->config.out_channels_count : SEL_SINK_CHANNELS_MAX;
+
+	if (channel < out_channels) {
+		/* Route selected input channel to the specified output channel */
+		for (uint32_t in_ch = 0; in_ch < SEL_SOURCE_CHANNELS_MAX; in_ch++)
+			cd->coeffs_config.coeffs[channel][in_ch] = (in_ch == (uint32_t)val) ?
+				SEL_COEF_ONE_Q10 : 0;
+	} else {
+		/* Route selected input channel to all output channels */
+		for (uint32_t out_ch = 0; out_ch < out_channels && out_ch < SEL_SINK_CHANNELS_MAX; out_ch++) {
+			for (uint32_t in_ch = 0; in_ch < SEL_SOURCE_CHANNELS_MAX; in_ch++)
+				cd->coeffs_config.coeffs[out_ch][in_ch] = (in_ch == (uint32_t)val) ?
+					SEL_COEF_ONE_Q10 : 0;
+		}
+	}
+
+	/*
+	 * Re-evaluate passthrough flag: passthrough is true only when input and
+	 * output channel counts match and coeffs form an identity matrix.
+	 */
+	if (cd->config.in_channels_count == cd->config.out_channels_count &&
+	    cd->config.in_channels_count > 0) {
+		cd->passthrough = true;
+		for (uint32_t i = 0; i < cd->config.out_channels_count; i++) {
+			for (uint32_t j = 0; j < cd->config.in_channels_count; j++) {
+				int16_t c = cd->coeffs_config.coeffs[i][j];
+
+				if ((i == j && c != SEL_COEF_ONE_Q10) || (i != j && c != 0)) {
+					cd->passthrough = false;
+					break;
+				}
+			}
+			if (!cd->passthrough)
+				break;
+		}
+	} else {
+		cd->passthrough = false;
+	}
+#endif
+
+	return 0;
+}
+
+#if CONFIG_IPC_MAJOR_4
+static struct sof_static_module_ops sel4_static_ops = {
+	.uuid = &selector4_uuid,
+	.create = sel_static_create,
+	.apply_enum = sel_static_apply_enum,
+};
+DECLARE_STATIC_MODULE_OPS(selector4, &sel4_static_ops);
+#endif
+#endif /* CONFIG_STATIC_PIPELINE */
