@@ -17,7 +17,8 @@
 
 /**
  * \file include/ipc4/pipeline.h
- * \brief IPC4 pipeline definitions
+ * \brief IPC4 pipeline creation, states, priorities, and management commands.
+ * \ingroup ipc4_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 

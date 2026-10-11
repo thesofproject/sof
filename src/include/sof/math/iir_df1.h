@@ -5,6 +5,12 @@
  * Author: Andrula Song <andrula.song@intel.com>
  */
 
+/**
+ * @file sof/math/iir_df1.h
+ * @brief Infinite Impulse Response Direct Form I (DF1) filter definitions.
+ * @ingroup dsp_math_api
+ */
+
 #ifndef __SOF_MATH_IIR_DF1_H__
 #define __SOF_MATH_IIR_DF1_H__
 
@@ -26,13 +32,33 @@ struct iir_state_df1 {
 
 struct sof_eq_iir_header;
 
+/**
+ * @brief Initialize IIR Direct Form 1 coefficients from configuration header.
+ * @param iir Pointer to DF1 filter state structure.
+ * @param config Pointer to IIR equalizer configuration header.
+ * @return 0 on success, negative error code on failure.
+ */
 int iir_init_coef_df1(struct iir_state_df1 *iir,
 		      struct sof_eq_iir_header *config);
 
+/**
+ * @brief Calculate required delay line buffer size in bytes for a DF1 configuration.
+ * @param config Pointer to IIR equalizer configuration header.
+ * @return Required delay buffer size in bytes.
+ */
 int iir_delay_size_df1(struct sof_eq_iir_header *config);
 
+/**
+ * @brief Assign and initialize delay line state memory for DF1 filter.
+ * @param iir Pointer to DF1 filter state structure.
+ * @param state Double pointer to delay state buffer (updated with new buffer offset).
+ */
 void iir_init_delay_df1(struct iir_state_df1 *iir, int32_t **state);
 
+/**
+ * @brief Clear delay history of a Direct Form 1 IIR filter.
+ * @param iir Pointer to DF1 filter state structure.
+ */
 void iir_reset_df1(struct iir_state_df1 *iir);
 
 /**

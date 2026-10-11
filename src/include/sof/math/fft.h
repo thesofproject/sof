@@ -6,6 +6,12 @@
  *	   Keyon Jie <yang.jie@linux.intel.com>
  */
 
+/**
+ * @file sof/math/fft.h
+ * @brief Fast Fourier Transform (FFT) and Inverse FFT (IFFT) interfaces.
+ * @ingroup dsp_math_api
+ */
+
 #ifndef __SOF_FFT_H__
 #define __SOF_FFT_H__
 
@@ -53,11 +59,37 @@ struct fft_multi_plan {
 	int num_ffts;
 };
 
-/* interfaces of the library */
+/**
+ * @brief Allocate and initialize an FFT execution plan.
+ * @param mod Processing module requesting the plan (for memory allocation).
+ * @param inb Pointer to input buffer for complex data.
+ * @param outb Pointer to output buffer for complex results.
+ * @param size FFT transform size in number of complex bins.
+ * @param bits Sample word length in bits (16 or 32).
+ * @return Pointer to allocated struct fft_plan, or NULL on failure.
+ */
 struct fft_plan *mod_fft_plan_new(struct processing_module *mod, void *inb,
 				  void *outb, uint32_t size, int bits);
+
+/**
+ * @brief Execute a 16-bit complex FFT or IFFT according to an initialized plan.
+ * @param plan Pointer to the initialized 16-bit FFT plan.
+ * @param ifft True for Inverse Fast Fourier Transform, false for forward FFT.
+ */
 void fft_execute_16(struct fft_plan *plan, bool ifft);
+
+/**
+ * @brief Execute a 32-bit complex FFT or IFFT according to an initialized plan.
+ * @param plan Pointer to the initialized 32-bit FFT plan.
+ * @param ifft True for Inverse Fast Fourier Transform, false for forward FFT.
+ */
 void fft_execute_32(struct fft_plan *plan, bool ifft);
+
+/**
+ * @brief Free an allocated FFT execution plan and its internal buffers.
+ * @param mod Processing module that owns the plan.
+ * @param plan Pointer to the FFT plan to free.
+ */
 void mod_fft_plan_free(struct processing_module *mod, struct fft_plan *plan);
 
 /**

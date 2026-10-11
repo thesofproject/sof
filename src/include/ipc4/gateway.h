@@ -16,8 +16,9 @@
  */
 
 /**
- * \file include/ipc4/header.h
- * \brief IPC4 global definitions.
+ * \file include/ipc4/gateway.h
+ * \brief IPC4 audio gateway attributes, ALH, HDA, and SoundWire gateway definitions.
+ * \ingroup ipc4_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 

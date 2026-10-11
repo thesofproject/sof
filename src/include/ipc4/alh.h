@@ -54,6 +54,11 @@
 /* Multi-gateways addressing starts from IPC4_ALH_MULTI_GTW_BASE */
 #define IPC4_ALH_MULTI_GTW_BASE 0x50
 
+/**
+ * @brief Check if an IPC4 connector node ID corresponds to an aggregated multi-gateway.
+ * @param node_id Gateway connector node ID.
+ * @return True if the node represents an aggregated multi-gateway, false otherwise.
+ */
 static inline bool is_multi_gateway(const union ipc4_connector_node_id node_id)
 {
 	return node_id.f.v_index >= IPC4_ALH_MULTI_GTW_BASE;
@@ -76,6 +81,11 @@ struct sof_alh_configuration_blob {
 	struct ipc4_alh_multi_gtw_cfg alh_cfg;
 } __attribute__((packed, aligned(4)));
 
+/**
+ * @brief Calculate the serialized size of an ALH configuration blob.
+ * @param alh_blob Pointer to the ALH configuration structure.
+ * @return Size in bytes of the configuration blob.
+ */
 static inline size_t
 get_alh_config_size(const struct sof_alh_configuration_blob *alh_blob)
 {

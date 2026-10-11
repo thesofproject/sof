@@ -7,6 +7,12 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+/**
+ * @file sof/math/numbers.h
+ * @brief Fixed-point arithmetic, saturation, rounding, and number format conversions.
+ * @ingroup dsp_math_api
+ */
+
 #ifndef __SOF_MATH_NUMBERS_H__
 #define __SOF_MATH_NUMBERS_H__
 

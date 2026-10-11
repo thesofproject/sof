@@ -140,6 +140,12 @@ void user_grant_dma_access_all(struct k_thread *thread);
 
 #else
 
+/**
+ * @brief Add access to mailbox.h interface to a user-space thread (no-op stub when CONFIG_USERSPACE is disabled).
+ * @param domain Memory domain.
+ * @param thread_id User-space thread identifier.
+ * @return 0 on success.
+ */
 static inline int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id)
 {
 	return 0;

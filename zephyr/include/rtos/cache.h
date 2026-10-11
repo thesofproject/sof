@@ -3,6 +3,12 @@
  * Copyright(c) 2022 Intel Corporation. All rights reserved.
  */
 
+/**
+ * @file rtos/cache.h
+ * @brief RTOS data and instruction cache invalidation and writeback helpers.
+ * @ingroup rtos_api
+ */
+
 #ifndef __ZEPHYR_RTOS_CACHE_H__
 #define __ZEPHYR_RTOS_CACHE_H__
 
@@ -35,24 +41,57 @@
 #endif /* defined(CONFIG_LIBRARY) || defined(CONFIG_ZEPHYR_POSIX) */
 #endif /* !defined(CONFIG_DCACHE_LINE_SIZE_DETECT) && (CONFIG_DCACHE_LINE_SIZE > 0) */
 
+/**
+ * @brief Write back (flush) modified data cache lines to memory.
+ * @param addr Starting address of the memory region to flush.
+ * @param size Size in bytes of the region to flush.
+ *
+ * Flushes dirty lines in the data cache covering the specified address range
+ * back to physical memory or SRAM. Mandatory before handing buffers over to
+ * hardware DMA or notifying peer cores / host.
+ */
 static inline void dcache_writeback_region(void __sparse_cache *addr, size_t size)
 {
 	/* TODO: return value should probably be checked here */
 	sys_cache_data_flush_range((__sparse_force void *)addr, size);
 }
 
+/**
+ * @brief Invalidate data cache lines in the specified memory region.
+ * @param addr Starting address of the memory region to invalidate.
+ * @param size Size in bytes of the region to invalidate.
+ *
+ * Discards cached data lines covering the address range so subsequent reads
+ * fetch fresh data directly from physical SRAM or DMA-updated memory.
+ */
 static inline void dcache_invalidate_region(void __sparse_cache *addr, size_t size)
 {
 	/* TODO: return value should probably be checked here */
 	sys_cache_data_invd_range((__sparse_force void *)addr, size);
 }
 
+/**
+ * @brief Invalidate instruction cache lines in the specified memory region.
+ * @param addr Starting address of the code memory region to invalidate.
+ * @param size Size in bytes of the code region.
+ *
+ * Used after dynamically loading or relocating executable code (e.g. LLEXT
+ * modules) to ensure the instruction pipeline does not execute stale instructions.
+ */
 static inline void icache_invalidate_region(void __sparse_cache *addr, size_t size)
 {
 	/* TODO: return value should probably be checked here */
 	sys_cache_instr_invd_range((__sparse_force void *)addr, size);
 }
 
+/**
+ * @brief Write back and invalidate data cache lines in the specified memory region.
+ * @param addr Starting address of the memory region.
+ * @param size Size in bytes of the region.
+ *
+ * Flushes modified cache lines back to memory and then invalidates them.
+ * Typically used for bidirectional DMA buffers or when reallocating SRAM pools.
+ */
 static inline void dcache_writeback_invalidate_region(void __sparse_cache *addr, size_t size)
 {
 	/* TODO: return value should probably be checked here */

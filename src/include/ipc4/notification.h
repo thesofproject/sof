@@ -17,7 +17,8 @@
 
 /**
  * \file include/ipc4/notification.h
- * \brief IPC4 notification definitions
+ * \brief IPC4 asynchronous notifications, GLITCH reports, and FW ready events.
+ * \ingroup ipc4_api
  */
 
 #ifndef __IPC4_NOTIFICATION_H__

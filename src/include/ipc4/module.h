@@ -14,7 +14,8 @@
 
 /**
  * \file include/ipc4/module.h
- * \brief IPC4 module definitions
+ * \brief IPC4 module instantiation, binding, pin configuration, and parameter definitions.
+ * \ingroup ipc4_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 

@@ -6,7 +6,7 @@
  */
 
 /**
- * \file include/ipc4/base_fw_platform.h
+ * \file ipc4/base_fw_vendor.h
  * \brief Platform specific IPC4 base firmware functionality.
  */
 

@@ -5,6 +5,12 @@
  * Author: Marcin Szkudlinski
  */
 
+/**
+ * @file sof/schedule/dp_schedule.h
+ * @brief Data Processing (DP) preemptible worker thread scheduler.
+ * @ingroup audio_pipeline_api
+ */
+
 #ifndef __SOF_SCHEDULE_DP_SCHEDULE_H__
 #define __SOF_SCHEDULE_DP_SCHEDULE_H__
 
@@ -83,6 +89,11 @@ int scheduler_dp_task_init(struct task **task,
 
 #if defined(__ZEPHYR__) && CONFIG_SOF_FULL_ZEPHYR_APPLICATION
 __syscall void scheduler_dp_internal_free(struct task *task);
+/**
+ * @brief Tick notification from the Low-Latency (LL) timer domain to the DP scheduler.
+ *
+ * Checks if queued DP tasks require execution or synchronization following an LL period.
+ */
 __syscall void scheduler_dp_ll_tick(void);
 #include <zephyr/syscalls/dp_schedule.h>
 #endif
@@ -145,6 +156,13 @@ union scheduler_dp_thread_ipc_param {
 	} get_config;
 };
 
+/**
+ * @brief Dispatch an IPC command to a Data Processing (DP) worker thread.
+ * @param pmod Pointer to the processing module descriptor.
+ * @param cmd IPC command identifier to execute.
+ * @param param Parameters payload for the IPC command.
+ * @return 0 on success, negative error code on failure.
+ */
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 			    union scheduler_dp_thread_ipc_param *param);

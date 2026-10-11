@@ -13,7 +13,8 @@
 
 /**
  * \file include/ipc4/error_status.h
- * \brief IPC4 global definitions.
+ * \brief IPC4 status codes, error codes, and IXC return values.
+ * \ingroup ipc4_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 

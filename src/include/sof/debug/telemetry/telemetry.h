@@ -89,8 +89,18 @@ struct telemetry_perf_queue {
 	size_t sum;
 };
 
+/**
+ * @brief Update periodic telemetry metrics with elapsed core clock cycles.
+ * @param begin_ccount Cycle count at start of measurement window.
+ * @param current_ccount Cycle count at current measurement point.
+ */
 void telemetry_update(uint32_t begin_ccount, uint32_t current_ccount);
+
 #ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+/**
+ * @brief Get pointer to system tick telemetry information structure.
+ * @return Pointer to struct system_tick_info.
+ */
 struct system_tick_info *telemetry_get_systick_info_ptr(void);
 #endif
 

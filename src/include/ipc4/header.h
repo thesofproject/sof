@@ -17,7 +17,8 @@
 
 /**
  * \file include/ipc4/header.h
- * \brief IPC4 global definitions.
+ * \brief IPC4 global message headers, envelope formats, and command types.
+ * \ingroup ipc4_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 
@@ -179,48 +180,30 @@ struct ipc4_message_reply {
 #define SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL ((uint32_t)0xA15A << 16)
 #define SOF_IPC4_NOTIFY_MODULE_EVENTID_COMPR_MAGIC_VAL ((uint32_t)0xC0C0 << 16)
 
-/**
- * struct sof_ipc4_ctrl_value_chan: generic channel mapped value data
- * @channel: Channel ID
- * @value: control value
- */
+/** Generic channel mapped value data. */
 struct sof_ipc4_ctrl_value_chan {
-	uint32_t channel;
-	uint32_t value;
+	uint32_t channel; /**< Channel ID */
+	uint32_t value;   /**< control value */
 } __attribute((packed, aligned(4)));
 
-/**
- * struct sof_ipc4_control_msg_payload - IPC payload for kcontrol parameters
- * @id: unique id of the control
- * @num_elems: Number of elements in the chanv array or number of bytes in data
- * @reserved: reserved for future use, must be set to 0
- * @chanv: channel ID and value array
- * @data: binary payload
- */
+/** IPC payload for kcontrol parameters. */
 struct sof_ipc4_control_msg_payload {
-	uint16_t id;
-	uint16_t num_elems;
-	uint32_t reserved[4];
+	uint16_t id;          /**< unique id of the control */
+	uint16_t num_elems;   /**< Number of elements in the chanv array or number of bytes in data */
+	uint32_t reserved[4]; /**< reserved for future use, must be set to 0 */
 	union {
-		struct sof_ipc4_ctrl_value_chan chanv[0];
-		uint8_t data[0];
+		struct sof_ipc4_ctrl_value_chan chanv[0]; /**< channel ID and value array */
+		uint8_t data[0];                          /**< binary payload */
 	};
 } __attribute((packed, aligned(4)));
 
-/**
- * struct sof_ipc4_notify_module_data - payload for module notification
- * @instance_id: instance ID of the originator module of the notification
- * @module_id: module ID of the originator of the notification
- * @event_id: module specific event id
- * @event_data_size: Size of the @event_data (if any) in bytes
- * @event_data: Optional notification data, module and notification dependent
- */
+/** Payload for module notification. */
 struct sof_ipc4_notify_module_data {
-	uint16_t instance_id;
-	uint16_t module_id;
-	uint32_t event_id;
-	uint32_t event_data_size;
-	uint8_t event_data[];
+	uint16_t instance_id;     /**< instance ID of the originator module of the notification */
+	uint16_t module_id;       /**< module ID of the originator of the notification */
+	uint32_t event_id;        /**< module specific event id */
+	uint32_t event_data_size; /**< Size of the event_data (if any) in bytes */
+	uint8_t event_data[];     /**< Optional notification data, module and notification dependent */
 } __attribute((packed, aligned(4)));
 
 #endif

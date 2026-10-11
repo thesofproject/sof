@@ -5,6 +5,12 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+/**
+ * @file rtos/sof.h
+ * @brief Sound Open Firmware global runtime context.
+ * @ingroup rtos_api
+ */
+
 #ifndef __ZEPHYR_RTOS_SOF_H__
 #define __ZEPHYR_RTOS_SOF_H__
 
@@ -116,6 +122,10 @@ struct sof {
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);
 
+/**
+ * @brief Get the global Sound Open Firmware runtime instance pointer.
+ * @return Pointer to the global struct sof runtime descriptor.
+ */
 struct sof *sof_get(void);
 
 #endif /* __ZEPHYR_RTOS_SOF_H__ */

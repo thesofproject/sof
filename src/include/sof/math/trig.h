@@ -8,6 +8,12 @@
  *         Shriram Shastry <malladi.sastry@linux.intel.com>
  */
 
+/**
+ * @file sof/math/trig.h
+ * @brief Trigonometric, CORDIC, and polynomial approximation functions.
+ * @ingroup dsp_math_api
+ */
+
 #ifndef __SOF_MATH_TRIG_H__
 #define __SOF_MATH_TRIG_H__
 

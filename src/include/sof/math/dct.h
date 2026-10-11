@@ -5,7 +5,11 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-/* Matrix calculation related functions */
+/**
+ * @file sof/math/dct.h
+ * @brief Discrete Cosine Transform (DCT) matrix generation and planning.
+ * @ingroup dsp_math_api
+ */
 
 #ifndef __SOF_MATH_DCT_H__
 #define __SOF_MATH_DCT_H__
@@ -29,8 +33,20 @@ struct dct_plan_16 {
 	bool ortho;
 };
 
+/**
+ * @brief Initialize a 16-bit Discrete Cosine Transform plan and compute transform matrix.
+ * @param mod Processing module requesting the plan (for memory allocation).
+ * @param dct Pointer to DCT plan configuration structure.
+ * @return 0 on success, negative error code on failure.
+ */
 int mod_dct_initialize_16(struct processing_module *mod, struct dct_plan_16 *dct);
 
+/**
+ * @brief Free memory allocated for a 16-bit DCT plan matrix.
+ * @param mod Processing module owning the plan.
+ * @param dct Pointer to DCT plan structure to free.
+ * @return 0 on success, negative error code on failure.
+ */
 int mod_dct_free_16(struct processing_module *mod, struct dct_plan_16 *dct);
 
 #endif /* __SOF_MATH_DCT_H__ */

@@ -4,6 +4,12 @@
  *
  */
 
+/**
+ * @file module/audio/source_api.h
+ * @brief Source audio endpoint API for module input buffers.
+ * @ingroup module_api
+ */
+
 #ifndef __MODULE_AUDIO_SOURCE_API_H__
 #define __MODULE_AUDIO_SOURCE_API_H__
 
