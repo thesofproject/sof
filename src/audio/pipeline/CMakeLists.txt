@@ -7,3 +7,8 @@ add_local_sources(sof
   pipeline-xrun.c
   pipeline-schedule.c
 )
+
+add_local_sources_ifdef(CONFIG_STATIC_PIPELINE sof
+  static_pipeline_loader.c
+  static_pipeline_modules.c
+)
