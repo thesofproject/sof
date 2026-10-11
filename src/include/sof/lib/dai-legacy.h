@@ -41,7 +41,7 @@
 struct dai;
 struct sof_ipc_stream_params;
 
-/** \addtogroup sof_dai_drivers DAI Drivers
+/** \addtogroup platform_drivers_api
  *  DAI Drivers API specification.
  *  @{
  */

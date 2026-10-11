@@ -36,7 +36,7 @@ struct comp_buffer;
 struct comp_dev;
 struct k_heap;
 
-/** \addtogroup sof_dma_drivers DMA Drivers
+/** \addtogroup platform_drivers_api
  *  SOF DMA Drivers API specification (deprecated interface, to be
  *  replaced by Zephyr zephyr/drivers/dma.h interface).
  *  @{

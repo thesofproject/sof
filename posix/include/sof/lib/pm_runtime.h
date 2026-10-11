@@ -22,7 +22,7 @@
 #include <user/trace.h>
 #include <stdint.h>
 
-/** \addtogroup pm_runtime PM Runtime
+/** \addtogroup platform_drivers_api
  *  PM runtime specification.
  *  @{
  */

@@ -21,8 +21,8 @@
 #include <kernel/header.h>
 #include <stdint.h>
 
-/** \addtogroup sof_uapi_control uAPI Control
- *  SOF uAPI specification - component controls.
+/** \addtogroup ipc3_api
+ *  SOF IPC3 component controls.
  *  @{
  */
 

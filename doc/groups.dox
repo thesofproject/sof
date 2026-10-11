@@ -1,0 +1,56 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2026 Intel Corporation. All rights reserved.
+ *
+ * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ */
+
+/**
+ * @file groups.dox
+ * @brief Sound Open Firmware C API architecture group definitions.
+ */
+
+/**
+ * @defgroup ipc4_api IPC4 Host-DSP Protocol
+ * @brief Intel and AMD IPC4 protocol definitions, message structures, base firmware, gateways, and notifications.
+ */
+
+/**
+ * @defgroup ipc3_api IPC3 Host-DSP Protocol
+ * @brief Legacy IPC3 protocol definitions, commands, and stream controls.
+ */
+
+/**
+ * @defgroup module_api Loadable Module & LLEXT Interface
+ * @brief Dynamic module loading, processing component lifecycle, and buffer streaming endpoints.
+ */
+
+/**
+ * @defgroup audio_pipeline_api Pipeline & Buffer Infrastructure
+ * @brief Audio pipeline execution graphs, stream buffer management, scheduling, and processing threads.
+ */
+
+/**
+ * @defgroup audio_components_api Audio Processing Components
+ * @brief Built-in and dynamic audio processing modules (Volume, Mixer, EQ, DRC, SRC, ASRC, etc.).
+ */
+
+/**
+ * @defgroup rtos_api RTOS Abstraction Layer
+ * @brief RTOS primitives, synchronization (spinlocks, mutexes), memory allocation, clocks, and cache management.
+ */
+
+/**
+ * @defgroup dsp_math_api DSP Math & Filter Libraries
+ * @brief Fixed-point, floating-point, FFT, FIR/IIR accelerators, and vector math routines.
+ */
+
+/**
+ * @defgroup probe_api Telemetry, Logging & Probes
+ * @brief Real-time DSP trace logging, probe extraction/injection buffers, DMA telemetry, and panic dumps.
+ */
+
+/**
+ * @defgroup platform_drivers_api Platform & Hardware Drivers
+ * @brief Digital Audio Interfaces (DAI), Direct Memory Access (DMA), and Power Management (PM) runtime.
+ */

@@ -36,8 +36,8 @@ struct ipc_cmd_hdr;
 
 #define ipc_to_hdr(x) ((struct ipc_cmd_hdr *)x)
 
-/** \addtogroup sof_uapi uAPI
- * SOF uAPI specification
+/** \addtogroup ipc3_api
+ * SOF IPC3 protocol specification
  *
  * **Overview**
  *
