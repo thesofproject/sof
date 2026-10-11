@@ -216,6 +216,14 @@ static inline void process_direct_path(struct steamaudio_comp_data *cd, const fl
 		return;
 	}
 
+#if SOF_USE_HIFI(5, STEAMAUDIO)
+	steamaudio_dsp_direct_eq_process_hifi5(cd, in, out, frames);
+	return;
+#elif SOF_USE_HIFI(4, STEAMAUDIO)
+	steamaudio_dsp_direct_eq_process_hifi4(cd, in, out, frames);
+	return;
+#endif
+
 	int slot = cd->direct.active_slot;
 	float gain = cd->direct.current_gain;
 	float step = cd->direct.gain_step;

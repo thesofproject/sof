@@ -27,6 +27,7 @@ struct output_stream_buffer;
 struct dsp_room_modes_state;
 struct dsp_sofa_hrir_state;
 struct steamaudio_ambisonics_state;
+struct steamaudio_comp_data;
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +39,11 @@ extern "C" {
  * ============================================================================
  */
 #if SOF_USE_HIFI(4, STEAMAUDIO)
+
+void steamaudio_dsp_direct_eq_process_hifi4(struct steamaudio_comp_data *cd,
+					     const float *in,
+					     float *out,
+					     uint32_t frames);
 
 void steamaudio_dsp_room_modes_process_hifi4(struct dsp_room_modes_state *rms,
 					     const float *in,
@@ -66,6 +72,11 @@ void steamaudio_dsp_ambisonics_decode_binaural_hifi4(struct steamaudio_ambisonic
  * ============================================================================
  */
 #if SOF_USE_HIFI(5, STEAMAUDIO)
+
+void steamaudio_dsp_direct_eq_process_hifi5(struct steamaudio_comp_data *cd,
+					     const float *in,
+					     float *out,
+					     uint32_t frames);
 
 void steamaudio_dsp_room_modes_process_hifi5(struct dsp_room_modes_state *rms,
 					     const float *in,

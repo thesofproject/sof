@@ -18,6 +18,60 @@
 LOG_MODULE_DECLARE(steamaudio_hifi5, CONFIG_SOF_LOG_LEVEL);
 
 /*
+ * HiFi 5 Register-Cached 3-Band Direct EQ Biquad Cascade
+ * Holds all state variables in registers across the block, eliminating state memory traffic.
+ */
+void steamaudio_dsp_direct_eq_process_hifi5(struct steamaudio_comp_data *cd,
+					     const float *in,
+					     float *out,
+					     uint32_t frames)
+{
+	int slot = cd->direct.active_slot;
+	float gain = cd->direct.current_gain;
+	float step = cd->direct.gain_step;
+
+	float s0_0 = cd->direct.states[slot][0][0], s1_0 = cd->direct.states[slot][0][1];
+	float s0_1 = cd->direct.states[slot][1][0], s1_1 = cd->direct.states[slot][1][1];
+	float s0_2 = cd->direct.states[slot][2][0], s1_2 = cd->direct.states[slot][2][1];
+
+	const float c0_0 = cd->direct.coeffs[slot][0][0], c1_0 = cd->direct.coeffs[slot][0][1];
+	const float c2_0 = cd->direct.coeffs[slot][0][2], c3_0 = cd->direct.coeffs[slot][0][3], c4_0 = cd->direct.coeffs[slot][0][4];
+
+	const float c0_1 = cd->direct.coeffs[slot][1][0], c1_1 = cd->direct.coeffs[slot][1][1];
+	const float c2_1 = cd->direct.coeffs[slot][1][2], c3_1 = cd->direct.coeffs[slot][1][3], c4_1 = cd->direct.coeffs[slot][1][4];
+
+	const float c0_2 = cd->direct.coeffs[slot][2][0], c1_2 = cd->direct.coeffs[slot][2][1];
+	const float c2_2 = cd->direct.coeffs[slot][2][2], c3_2 = cd->direct.coeffs[slot][2][3], c4_2 = cd->direct.coeffs[slot][2][4];
+
+	for (uint32_t i = 0; i < frames; i++) {
+		float x = in[i];
+
+		/* Band 0 */
+		float y0 = c0_0 * x + s0_0;
+		s0_0 = c1_0 * x - c3_0 * y0 + s1_0;
+		s1_0 = c2_0 * x - c4_0 * y0;
+
+		/* Band 1 */
+		float y1 = c0_1 * y0 + s0_1;
+		s0_1 = c1_1 * y0 - c3_1 * y1 + s1_1;
+		s1_1 = c2_1 * y0 - c4_1 * y1;
+
+		/* Band 2 */
+		float y2 = c0_2 * y1 + s0_2;
+		s0_2 = c1_2 * y1 - c3_2 * y2 + s1_2;
+		s1_2 = c2_2 * y1 - c4_2 * y2;
+
+		gain += step;
+		out[i] = y2 * gain;
+	}
+
+	cd->direct.states[slot][0][0] = s0_0; cd->direct.states[slot][0][1] = s1_0;
+	cd->direct.states[slot][1][0] = s0_1; cd->direct.states[slot][1][1] = s1_1;
+	cd->direct.states[slot][2][0] = s0_2; cd->direct.states[slot][2][1] = s1_2;
+	cd->direct.current_gain = gain;
+}
+
+/*
  * HiFi 5 Quad-Channel Vectorized Cascaded Room Modal Resonator Biquads
  * Evaluates 4 channels simultaneously across shared biquad coefficients.
  */
