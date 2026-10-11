@@ -13,3 +13,10 @@ config COMP_STEAMAUDIO
 	  3-band biquad IIR filtering, 8-channel Householder Feedback Delay
 	  Network (FDN) reverberation, 1st-order Ambisonics rotation/decoding,
 	  and on-chip DSP BVH ray tracing for real-time room acoustic simulation.
+
+if COMP_STEAMAUDIO
+
+rsource "Kconfig.simd"
+
+endif # COMP_STEAMAUDIO
+

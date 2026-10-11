@@ -1888,7 +1888,7 @@ static inline void steamaudio_dsp_render(struct steamaudio_comp_data *cd, uint32
 		}
 		process_reverb(cd, cd->in_scratch, cd->out_left, cd->out_right, frames);
 	} else if (cd->output_mode == STEAMAUDIO_OUTPUT_SCENE_UPMIX) {
-		bool muted = (cd->mute_mask & (1u << STEAMAUDIO_STEP_SCENE_UPMIX)) != 0;
+		bool muted = (cd->mute_mask & (1ULL << STEAMAUDIO_STEP_SCENE_UPMIX)) != 0;
 		steamaudio_dsp_upmix_process(cd, cd->in_channels[0], cd->in_channels[1],
 					     cd->out_channels, frames, muted);
 		memcpy(cd->out_left, cd->out_channels[0], frames * sizeof(float));
@@ -2846,6 +2846,14 @@ void steamaudio_dsp_sofa_hrir_process(struct dsp_sofa_hrir_state *hrir,
 		memcpy(out_r, in, frames * sizeof(float));
 		return;
 	}
+
+#if SOF_USE_HIFI(5, STEAMAUDIO)
+	steamaudio_dsp_sofa_hrir_process_hifi5(hrir, in, out_l, out_r, frames, muted);
+	return;
+#elif SOF_USE_HIFI(4, STEAMAUDIO)
+	steamaudio_dsp_sofa_hrir_process_hifi4(hrir, in, out_l, out_r, frames, muted);
+	return;
+#endif
 
 	uint32_t taps = hrir->num_taps;
 	if (taps > STEAMAUDIO_MAX_HRIR_TAPS)

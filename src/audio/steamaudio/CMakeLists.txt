@@ -9,6 +9,8 @@ if(CONFIG_COMP_STEAMAUDIO STREQUAL "m" AND DEFINED CONFIG_LLEXT)
 else()
   add_local_sources(sof steamaudio.c)
   add_local_sources(sof steamaudio-generic.c)
+  add_local_sources(sof steamaudio_hifi4.c)
+  add_local_sources(sof steamaudio_hifi5.c)
   add_local_sources(sof steamaudio_bvh.c)
 
   if(CONFIG_IPC_MAJOR_4)

@@ -6,6 +6,8 @@
 set(steamaudio_sources
 	../steamaudio.c
 	../steamaudio-generic.c
+	../steamaudio_hifi4.c
+	../steamaudio_hifi5.c
 	../steamaudio_bvh.c
 )
 

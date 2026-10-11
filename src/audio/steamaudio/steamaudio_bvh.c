@@ -3283,6 +3283,14 @@ void steamaudio_dsp_room_modes_process(struct dsp_room_modes_state *rms,
 		return;
 	}
 
+#if SOF_USE_HIFI(5, STEAMAUDIO)
+	steamaudio_dsp_room_modes_process_hifi5(rms, in, out, frames, num_channels, muted);
+	return;
+#elif SOF_USE_HIFI(4, STEAMAUDIO)
+	steamaudio_dsp_room_modes_process_hifi4(rms, in, out, frames, num_channels, muted);
+	return;
+#endif
+
 	/* Initialize output with input */
 	for (uint32_t c = 0; c < num_channels; c++)
 		memcpy(out + c * frames, in, frames * sizeof(float));

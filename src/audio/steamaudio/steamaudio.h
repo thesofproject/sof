@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "steamaudio_math.h"
+#include "steamaudio_hifi.h"
 
 #define STEAMAUDIO_SOF_SYNC_WORD            0x53544541  /* 'STEA' */
 #define STEAMAUDIO_SOF_PROTOCOL_VERSION     0x00010000
