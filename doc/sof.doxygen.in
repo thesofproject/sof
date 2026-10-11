@@ -5,17 +5,30 @@ GENERATE_RTF	 = NO
 GENERATE_MAN     = NO
 GENERATE_XML	 = YES
 
+FULL_PATH_NAMES       = YES
+STRIP_FROM_PATH       = @top_srcdir@
+STRIP_FROM_INC_PATH   = @top_srcdir@
+
 CASE_SENSE_NAMES = NO
 INPUT            = @top_srcdir@/src/include/ipc \
+                   @top_srcdir@/src/include/ipc3 \
+                   @top_srcdir@/src/include/ipc4 \
+                   @top_srcdir@/src/include/module \
                    @top_srcdir@/src/include/kernel \
-		   @top_srcdir@/src/include/user \
+                   @top_srcdir@/src/include/user \
                    @top_srcdir@/src/include/sof \
                    @top_srcdir@/xtos/include \
-                   @top_srcdir@/zephyr/include
-# Exlude some 3rd party codec headers with external references
+                   @top_srcdir@/zephyr/include \
+                   @top_srcdir@/doc/groups.dox \
+                   @top_srcdir@/doc/mainpage.dox
+# Exclude some 3rd party codec headers with external references
 EXCLUDE		 = @top_srcdir@/src/include/sof/audio/MaxxEffect
+EXCLUDE_PATTERNS = */test/* \
+                   */mock/* \
+                   *.mock.* \
+                   */build*
 RECURSIVE	 = YES
-FILE_PATTERNS    = *.c *.h
+FILE_PATTERNS    = *.c *.h *.dox
 EXAMPLE_PATH     = @top_srcdir@/test
 IMAGE_PATH	 =
 QUIET            = YES
@@ -32,13 +45,33 @@ EXPAND_ONLY_PREDEF = YES
 PREDEFINED	 = "__attribute__(x)= " \
 		   "CONFIG_FORMAT_S16LE=1" \
 		   "CONFIG_FORMAT_S32LE=1" \
-		   "CONFIG_TRACE=1"
+		   "CONFIG_FORMAT_S24LE=1" \
+		   "CONFIG_TRACE=1" \
+		   "CONFIG_IPC4=1" \
+		   "CONFIG_IPC3=1" \
+		   "CONFIG_IPC_MAJOR_4=1" \
+		   "CONFIG_IPC_MAJOR_3=1" \
+		   "CONFIG_COMP_VOLUME=1" \
+		   "__packed=" \
+		   "__aligned(x)=" \
+		   "__sparse_cache=" \
+		   "__kernel=" \
+		   "__user=" \
+		   "LOG_MODULE_REGISTER(x,...)= " \
+		   "LOG_MODULE_DECLARE(x,...)= " \
+		   "SOF_DEFINE_REG_UUID(x)= " \
+		   "DECLARE_TR_CTX(x,...)= " \
+		   "DECLARE_MODULE_ADAPTER(x,...)= " \
+		   "SOF_MODULE_INIT(x,...)= " \
+		   "EXPORT_SYMBOL(x)= " \
+		   "STATIC_ASSERT(x,...)= " \
+		   "BUILD_ASSERT(x,...)= " \
+		   "SYS_INIT(x,...)= "
 
 OPTIMIZE_OUTPUT_FOR_C = YES
 TYPEDEF_HIDES_STRUCT = YES
 
-#INPUT_FILTER	 = inputfilter
-#FILTER_SOURCE_FILES = YES
-
-HTML_TIMESTAMP = NO
+GENERATE_TREEVIEW = YES
+SEARCHENGINE = YES
+DOT_GRAPH_MAX_NODES = 250
 WARN_AS_ERROR = NO
