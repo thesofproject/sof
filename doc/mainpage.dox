@@ -1,0 +1,187 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2026 Intel Corporation. All rights reserved.
+ *
+ * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ */
+
+/**
+ * @file mainpage.dox
+ * @brief Sound Open Firmware C API documentation main page.
+ */
+
+/**
+ * @mainpage Sound Open Firmware C API & Architecture Reference
+ *
+ * @section intro_sec Overview
+ *
+ * Sound Open Firmware (SOF) is an open-source, vendor-neutral audio Digital Signal
+ * Processing (DSP) firmware infrastructure, SDK, and real-time execution environment
+ * governed under the Linux Foundation.
+ *
+ * SOF provides transparent, deterministic, low-latency audio processing for modern computing
+ * architectures ranging from client PCs and servers to embedded microcontrollers and IoT devices.
+ * It supports diverse hardware platforms including Intel (CAVS, ACE 1.x, ACE 2.x, ACE 3.x),
+ * AMD, NXP (i.MX8), MediaTek, Espressif (ESP32-P4), and PJRC (Teensy 4.1 / i.MX RT1062).
+ *
+ * The firmware runs atop real-time operating systems (primarily **Zephyr RTOS**, with XTOS support
+ * on legacy platforms) and interfaces with host operating systems (Linux, ChromeOS, Android, Windows)
+ * via high-throughput Mailbox IPC protocols (IPC4 and IPC3) and DMA streaming windows.
+ *
+ * ---
+ *
+ * @section subsystem_sec Subsystem Architecture & API Modules
+ *
+ * The firmware codebase is organized into modular functional subsystems. Each subsystem exposes
+ * structured C APIs, data structures, and lifecycle interfaces:
+ *
+ * <table class="doxtable">
+ * <tr>
+ *   <th>Subsystem</th>
+ *   <th>API Group</th>
+ *   <th>Key Headers & Interfaces</th>
+ *   <th>Description</th>
+ * </tr>
+ * <tr>
+ *   <td><b>Host-DSP IPC4 Protocol</b></td>
+ *   <td>@ref ipc4_api</td>
+ *   <td>
+ *     - @ref src/include/ipc4/base_fw.h "ipc4/base_fw.h"<br/>
+ *     - @ref src/include/ipc4/header.h "ipc4/header.h"<br/>
+ *     - @ref src/include/ipc4/gateway.h "ipc4/gateway.h"<br/>
+ *     - @ref src/include/ipc4/pipeline.h "ipc4/pipeline.h"<br/>
+ *     - @ref src/include/ipc4/notification.h "ipc4/notification.h"
+ *   </td>
+ *   <td>
+ *     Modern Intel/AMD IPC4 messaging protocol: base firmware configuration, gateway management,
+ *     pipeline creation and state transitions, large parameter get/set, and asynchronous notifications.
+ *   </td>
+ * </tr>
+ * <tr>
+ *   <td><b>Host-DSP IPC3 Protocol</b></td>
+ *   <td>@ref ipc3_api</td>
+ *   <td>
+ *     - @ref src/include/ipc/header.h "ipc/header.h"<br/>
+ *     - @ref src/include/ipc/stream.h "ipc/stream.h"<br/>
+ *     - @ref src/include/ipc/control.h "ipc/control.h"<br/>
+ *     - @ref src/include/ipc/topology.h "ipc/topology.h"
+ *   </td>
+ *   <td>
+ *     Legacy IPC3 protocol structures, stream control envelopes, DAI/buffer tokens, and mixer controls.
+ *   </td>
+ * </tr>
+ * <tr>
+ *   <td><b>Loadable Modules & LLEXT</b></td>
+ *   <td>@ref module_api</td>
+ *   <td>
+ *     - @ref src/include/module/module/interface.h "module/interface.h"<br/>
+ *     - @ref src/include/module/module/api_ver.h "module/api_ver.h"<br/>
+ *     - @ref src/include/module/module/base.h "module/base.h"
+ *   </td>
+ *   <td>
+ *     Dynamic ELF module loading infrastructure via Zephyr LLEXT: dynamic symbol linking, module
+ *     interface adapters, processing state machine, parameter configuration, and multi-core routing.
+ *   </td>
+ * </tr>
+ * <tr>
+ *   <td><b>Audio Pipeline & Buffers</b></td>
+ *   <td>@ref audio_pipeline_api</td>
+ *   <td>
+ *     - @ref src/include/sof/audio/pipeline.h "sof/audio/pipeline.h"<br/>
+ *     - @ref src/include/sof/audio/component.h "sof/audio/component.h"<br/>
+ *     - @ref src/include/sof/audio/buffer.h "sof/audio/buffer.h"<br/>
+ *     - @ref src/include/sof/audio/audio_buffer.h "sof/audio/audio_buffer.h"<br/>
+ *     - @ref src/include/sof/schedule/schedule.h "sof/schedule/schedule.h"
+ *   </td>
+ *   <td>
+ *     Audio pipeline Directed Acyclic Graph (DAG) construction, task scheduling domains (LL-Timer,
+ *     LL-DMA, DP threads), lockless ring buffers, audio format negotiation, and multi-channel interleaved/planar routing.
+ *   </td>
+ * </tr>
+ * <tr>
+ *   <td><b>Audio Processing Components</b></td>
+ *   <td>@ref audio_components_api</td>
+ *   <td>
+ *     - @ref src/include/sof/audio/component.h "sof/audio/component.h"<br/>
+ *     - @ref src/include/sof/audio/component_ext.h "sof/audio/component_ext.h"<br/>
+ *     - @ref src/include/sof/audio/smart_amp/smart_amp.h "smart_amp/smart_amp.h"<br/>
+ *     - Modules: Volume, Mixer, EQ FIR/IIR, DRC, SRC, ASRC, Crossover, DC Block, Copier
+ *   </td>
+ *   <td>
+ *     Standard and optimized DSP audio processing modules: smooth volume ramp, mixing, FIR/IIR
+ *     parametric equalization, dynamic range compression, polyphase sample rate conversion,
+ *     asynchronous sample rate conversion, and DAI copier sinks/sources.
+ *   </td>
+ * </tr>
+ * <tr>
+ *   <td><b>RTOS Abstraction Layer (RAL)</b></td>
+ *   <td>@ref rtos_api</td>
+ *   <td>
+ *     - @ref zephyr/include/rtos/alloc.h "rtos/alloc.h"<br/>
+ *     - @ref zephyr/include/rtos/spinlock.h "rtos/spinlock.h"<br/>
+ *     - @ref zephyr/include/rtos/mutex.h "rtos/mutex.h"<br/>
+ *     - @ref zephyr/include/rtos/wait.h "rtos/wait.h"<br/>
+ *     - @ref zephyr/include/rtos/clk.h "rtos/clk.h"<br/>
+ *     - @ref zephyr/include/rtos/cache.h "rtos/cache.h"<br/>
+ *     - @ref zephyr/include/rtos/interrupt.h "rtos/interrupt.h"
+ *   </td>
+ *   <td>
+ *     Operating system abstraction bridging Zephyr RTOS and XTOS: heap management (sys, lpsram, hpsram),
+ *     spinlocks, mutexes, condition variables, hardware timers, and multi-core Inter-Domain Communication (IDC).
+ *   </td>
+ * </tr>
+ * <tr>
+ *   <td><b>DSP Mathematics & Filters</b></td>
+ *   <td>@ref dsp_math_api</td>
+ *   <td>
+ *     - @ref src/include/sof/math/trig.h "sof/math/trig.h"<br/>
+ *     - @ref src/include/sof/math/fft.h "sof/math/fft.h"<br/>
+ *     - @ref src/include/user/fir.h "user/fir.h"<br/>
+ *     - @ref src/include/sof/math/iir_df1.h "sof/math/iir_df1.h"<br/>
+ *     - @ref src/include/sof/math/numbers.h "sof/math/numbers.h"<br/>
+ *     - @ref src/include/sof/math/matrix.h "sof/math/matrix.h"
+ *   </td>
+ *   <td>
+ *     Optimized DSP mathematics routines: fixed-point arithmetic (Q1.15, Q1.31), vector operations,
+ *     fast Fourier transforms (FFT), window functions, biquad filter solvers, and SIMD accelerators.
+ *   </td>
+ * </tr>
+ * <tr>
+ *   <td><b>Telemetry, Logging & Probes</b></td>
+ *   <td>@ref probe_api</td>
+ *   <td>
+ *     - @ref src/include/sof/probe/probe.h "sof/probe/probe.h"<br/>
+ *     - @ref src/include/sof/trace/trace.h "sof/trace/trace.h"<br/>
+ *     - @ref src/include/sof/debug/telemetry/telemetry.h "sof/debug/telemetry/telemetry.h"<br/>
+ *     - @ref src/include/sof/debug/telemetry/performance_monitor.h "performance_monitor.h"
+ *   </td>
+ *   <td>
+ *     Real-time DSP firmware telemetry: non-blocking trace DMA logging, probe injection and extraction
+ *     tap buffers, CPU load monitoring, MIPS benchmarking, and post-mortem crash dump mailboxes.
+ *   </td>
+ * </tr>
+ * <tr>
+ *   <td><b>Platform & Hardware Drivers</b></td>
+ *   <td>@ref platform_drivers_api</td>
+ *   <td>
+ *     - @ref zephyr/include/sof/lib/dai.h "sof/lib/dai.h"<br/>
+ *     - @ref zephyr/include/sof/lib/dma.h "sof/lib/dma.h"<br/>
+ *     - @ref zephyr/include/sof/lib/pm_runtime.h "pm_runtime.h"<br/>
+ *     - @ref src/include/sof/platform.h "sof/platform.h"
+ *   </td>
+ *   <td>
+ *     Low-level peripheral drivers: Digital Audio Interfaces (I2S/SSP, SoundWire, DMIC/PDM, HDA),
+ *     Direct Memory Access (DMA) controllers, interrupt controllers, and Power Management (D0ix/D3) runtime.
+ *   </td>
+ * </tr>
+ * </table>
+ *
+ * ---
+ *
+ * @section quick_links Quick Navigation & Reference Links
+ *
+ * - <a href="topics.html"><b>Complete Sound Open Firmware C API Topics Index</b></a>
+ * - <a href="annotated.html"><b>Data Structures & API Structs</b></a>
+ * - <a href="files.html"><b>Header Files & Source Code Index</b></a>
+ * - <a href="../index.html"><b>SOF Project High-Level Documentation Portal</b></a>
+ */
