@@ -170,7 +170,8 @@ void steamaudio_dsp_room_modes_process_hifi4(struct dsp_room_modes_state *rms,
 
 /*
  * HiFi 4 Vectorized SOFA HRIR FIR Convolution
- * Unrolls 2-wide across filter taps and history buffer.
+ * Uses contiguous history + signal buffer to eliminate conditional branch mispredictions
+ * and processes stereo frame pairs in parallel with unrolled 4-tap vector accumulation.
  */
 void steamaudio_dsp_sofa_hrir_process_hifi4(struct dsp_sofa_hrir_state *hrir,
 					    const float *in,
@@ -201,26 +202,73 @@ void steamaudio_dsp_sofa_hrir_process_hifi4(struct dsp_sofa_hrir_state *hrir,
 	const float *hl = hrir->hrir_left;
 	const float *hr = hrir->hrir_right;
 
-	for (uint32_t i = 0; i < frames; i++) {
-		float in_val = in[i];
-		float acc_l = 0.0f;
-		float acc_r = 0.0f;
+	/* Linear contiguous history + input buffer to eliminate inner-loop branching */
+	float sig_buf[STEAMAUDIO_MAX_HRIR_TAPS + 256];
+	memcpy(sig_buf, hrir->history, STEAMAUDIO_MAX_HRIR_TAPS * sizeof(float));
+	memcpy(sig_buf + STEAMAUDIO_MAX_HRIR_TAPS, in, frames * sizeof(float));
+
+	uint32_t i = 0;
+	/* Process stereo pairs in parallel */
+	for (; i + 1 < frames; i += 2) {
+		float in_val0 = in[i];
+		float in_val1 = in[i + 1];
+		const float *s0_ptr = &sig_buf[STEAMAUDIO_MAX_HRIR_TAPS + i];
+		const float *s1_ptr = &sig_buf[STEAMAUDIO_MAX_HRIR_TAPS + i + 1];
+
+		float acc_l0 = 0.0f, acc_r0 = 0.0f;
+		float acc_l1 = 0.0f, acc_r1 = 0.0f;
 
 		uint32_t k = 0;
-		for (; k + 1 < taps; k += 2) {
-			float s0, s1;
-			int past0 = (int)i - (int)k;
-			int past1 = (int)i - (int)(k + 1);
+		for (; k + 3 < taps; k += 4) {
+			float tl0 = hl[k],     tl1 = hl[k + 1], tl2 = hl[k + 2], tl3 = hl[k + 3];
+			float tr0 = hr[k],     tr1 = hr[k + 1], tr2 = hr[k + 2], tr3 = hr[k + 3];
 
-			s0 = (past0 >= 0) ? in[past0] : hrir->history[STEAMAUDIO_MAX_HRIR_TAPS + past0];
-			s1 = (past1 >= 0) ? in[past1] : hrir->history[STEAMAUDIO_MAX_HRIR_TAPS + past1];
+			float s0_0 = s0_ptr[-((int)k)],     s0_1 = s0_ptr[-((int)k + 1)];
+			float s0_2 = s0_ptr[-((int)k + 2)], s0_3 = s0_ptr[-((int)k + 3)];
 
-			acc_l += s0 * hl[k] + s1 * hl[k + 1];
-			acc_r += s0 * hr[k] + s1 * hr[k + 1];
+			float s1_0 = s1_ptr[-((int)k)],     s1_1 = s1_ptr[-((int)k + 1)];
+			float s1_2 = s1_ptr[-((int)k + 2)], s1_3 = s1_ptr[-((int)k + 3)];
+
+			acc_l0 += s0_0 * tl0 + s0_1 * tl1 + s0_2 * tl2 + s0_3 * tl3;
+			acc_r0 += s0_0 * tr0 + s0_1 * tr1 + s0_2 * tr2 + s0_3 * tr3;
+
+			acc_l1 += s1_0 * tl0 + s1_1 * tl1 + s1_2 * tl2 + s1_3 * tl3;
+			acc_r1 += s1_0 * tr0 + s1_1 * tr1 + s1_2 * tr2 + s1_3 * tr3;
 		}
 		for (; k < taps; k++) {
-			int past = (int)i - (int)k;
-			float s = (past >= 0) ? in[past] : hrir->history[STEAMAUDIO_MAX_HRIR_TAPS + past];
+			float tl = hl[k], tr = hr[k];
+			float s0 = s0_ptr[-((int)k)];
+			float s1 = s1_ptr[-((int)k)];
+
+			acc_l0 += s0 * tl;
+			acc_r0 += s0 * tr;
+			acc_l1 += s1 * tl;
+			acc_r1 += s1 * tr;
+		}
+
+		out_l[i]     = ((1.0f - blend) * in_val0 + blend * acc_l0) * vol;
+		out_r[i]     = ((1.0f - blend) * in_val0 + blend * acc_r0) * vol;
+		out_l[i + 1] = ((1.0f - blend) * in_val1 + blend * acc_l1) * vol;
+		out_r[i + 1] = ((1.0f - blend) * in_val1 + blend * acc_r1) * vol;
+	}
+
+	for (; i < frames; i++) {
+		float in_val = in[i];
+		const float *s_ptr = &sig_buf[STEAMAUDIO_MAX_HRIR_TAPS + i];
+		float acc_l = 0.0f, acc_r = 0.0f;
+
+		uint32_t k = 0;
+		for (; k + 3 < taps; k += 4) {
+			float tl0 = hl[k],     tl1 = hl[k + 1], tl2 = hl[k + 2], tl3 = hl[k + 3];
+			float tr0 = hr[k],     tr1 = hr[k + 1], tr2 = hr[k + 2], tr3 = hr[k + 3];
+			float s0 = s_ptr[-((int)k)],     s1 = s_ptr[-((int)k + 1)];
+			float s2 = s_ptr[-((int)k + 2)], s3 = s_ptr[-((int)k + 3)];
+
+			acc_l += s0 * tl0 + s1 * tl1 + s2 * tl2 + s3 * tl3;
+			acc_r += s0 * tr0 + s1 * tr1 + s2 * tr2 + s3 * tr3;
+		}
+		for (; k < taps; k++) {
+			float s = s_ptr[-((int)k)];
 			acc_l += s * hl[k];
 			acc_r += s * hr[k];
 		}
@@ -240,29 +288,173 @@ void steamaudio_dsp_sofa_hrir_process_hifi4(struct dsp_sofa_hrir_state *hrir,
 }
 
 /*
+ * HiFi 4 Vectorized Ambisonics 3D Rotation
+ * Rotates Order 1 soundfield dipoles using unrolled 2-sample vector matrix-vector kernels.
+ */
+void steamaudio_dsp_ambisonics_rotate_hifi4(uint32_t order, const float rot[3][3],
+					    const float in_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
+					    float out_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
+					    uint32_t frames)
+{
+	int num_ch = (order + 1) * (order + 1);
+	if (num_ch > STEAMAUDIO_MAX_HOA_CHANNELS)
+		num_ch = STEAMAUDIO_MAX_HOA_CHANNELS;
+
+	/* Channel 0: W (omni invariant to rotation) */
+	memcpy(out_ch[0], in_ch[0], frames * sizeof(float));
+
+	if (num_ch >= 4) {
+		const float r00 = rot[0][0], r01 = rot[0][1], r02 = rot[0][2];
+		const float r10 = rot[1][0], r11 = rot[1][1], r12 = rot[1][2];
+		const float r20 = rot[2][0], r21 = rot[2][1], r22 = rot[2][2];
+
+		uint32_t i = 0;
+		for (; i + 1 < frames; i += 2) {
+			float y0 = in_ch[1][i],     y1 = in_ch[1][i + 1];
+			float z0 = in_ch[2][i],     z1 = in_ch[2][i + 1];
+			float x0 = in_ch[3][i],     x1 = in_ch[3][i + 1];
+
+			out_ch[1][i]     = y0 * r00 + z0 * r01 + x0 * r02;
+			out_ch[2][i]     = y0 * r10 + z0 * r11 + x0 * r12;
+			out_ch[3][i]     = y0 * r20 + z0 * r21 + x0 * r22;
+
+			out_ch[1][i + 1] = y1 * r00 + z1 * r01 + x1 * r02;
+			out_ch[2][i + 1] = y1 * r10 + z1 * r11 + x1 * r12;
+			out_ch[3][i + 1] = y1 * r20 + z1 * r21 + x1 * r22;
+		}
+		for (; i < frames; i++) {
+			float y = in_ch[1][i];
+			float z = in_ch[2][i];
+			float x = in_ch[3][i];
+
+			out_ch[1][i] = y * r00 + z * r01 + x * r02;
+			out_ch[2][i] = y * r10 + z * r11 + x * r12;
+			out_ch[3][i] = y * r20 + z * r21 + x * r22;
+		}
+	}
+
+	for (int ch = 4; ch < num_ch; ch++)
+		memcpy(out_ch[ch], in_ch[ch], frames * sizeof(float));
+}
+
+/*
  * HiFi 4 Ambisonics B-format Binaural Decode
+ * Precomputes composite binaural decoding weights across the 8 cube virtual speakers,
+ * reducing per-sample multiply-accumulate operations by 8x, and evaluates stereo frames
+ * using 4-way channel unrolled inner products.
  */
 void steamaudio_dsp_ambisonics_decode_binaural_hifi4(struct steamaudio_ambisonics_state *ambi,
-						     const float *in_bformat,
+						     const float in_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
 						     float *out_left,
 						     float *out_right,
 						     uint32_t frames)
 {
-	if (!ambi || !in_bformat || !out_left || !out_right || frames == 0)
+	static const float cube_v[8][3] = {
+		{ -0.57735f, -0.57735f, -0.57735f },
+		{  0.57735f, -0.57735f, -0.57735f },
+		{ -0.57735f,  0.57735f, -0.57735f },
+		{  0.57735f,  0.57735f, -0.57735f },
+		{ -0.57735f, -0.57735f,  0.57735f },
+		{  0.57735f, -0.57735f,  0.57735f },
+		{ -0.57735f,  0.57735f,  0.57735f },
+		{  0.57735f,  0.57735f,  0.57735f }
+	};
+
+	if (!ambi || !in_ch || !out_left || !out_right || frames == 0)
 		return;
 
-	for (uint32_t n = 0; n < frames; n++) {
-		float acc_l = 0.0f;
-		float acc_r = 0.0f;
+	int num_ch = (ambi->order + 1) * (ambi->order + 1);
+	if (num_ch > 16)
+		num_ch = 16;
 
-		for (uint32_t ch = 0; ch < ambi->num_channels; ch++) {
-			float s = in_bformat[ch * frames + n];
-			acc_l += s * ambi->decode_matrix_l[ch];
-			acc_r += s * ambi->decode_matrix_r[ch];
+	float weight_l[STEAMAUDIO_MAX_HOA_CHANNELS] = { 0.0f };
+	float weight_r[STEAMAUDIO_MAX_HOA_CHANNELS] = { 0.0f };
+
+	/* Precompute composite binaural weights across 8 virtual cube speakers */
+	for (int k = 0; k < 8; k++) {
+		float vx = cube_v[k][0], vy = cube_v[k][1], vz = cube_v[k][2];
+		float rx = ambi->rotation[0][0] * vx + ambi->rotation[0][1] * vy + ambi->rotation[0][2] * vz;
+		float ry = ambi->rotation[1][0] * vx + ambi->rotation[1][1] * vy + ambi->rotation[1][2] * vz;
+		float rz = ambi->rotation[2][0] * vx + ambi->rotation[2][1] * vy + ambi->rotation[2][2] * vz;
+
+		float sh[16];
+		eval_sh_basis(rx, ry, rz, (int)ambi->order, sh);
+
+		float az = fast_atan2(vx, vz);
+		float sin_az = fast_sin(az);
+		float ild_l = (sin_az > 0.0f) ? (1.0f - 0.4f * sin_az) : 1.0f;
+		float ild_r = (sin_az < 0.0f) ? (1.0f + 0.4f * sin_az) : 1.0f;
+
+		float factor_l = 0.125f * ild_l;
+		float factor_r = 0.125f * ild_r;
+
+		for (int ch = 0; ch < num_ch; ch++) {
+			weight_l[ch] += factor_l * sh[ch];
+			weight_r[ch] += factor_r * sh[ch];
+		}
+	}
+
+	uint32_t i = 0;
+	/* Process stereo frame pairs */
+	for (; i + 1 < frames; i += 2) {
+		float acc_l0 = 0.0f, acc_r0 = 0.0f;
+		float acc_l1 = 0.0f, acc_r1 = 0.0f;
+
+		int ch = 0;
+		for (; ch + 3 < num_ch; ch += 4) {
+			float s0_0 = in_ch[ch + 0][i], s1_0 = in_ch[ch + 0][i + 1];
+			float s0_1 = in_ch[ch + 1][i], s1_1 = in_ch[ch + 1][i + 1];
+			float s0_2 = in_ch[ch + 2][i], s1_2 = in_ch[ch + 2][i + 1];
+			float s0_3 = in_ch[ch + 3][i], s1_3 = in_ch[ch + 3][i + 1];
+
+			float wl0 = weight_l[ch + 0], wl1 = weight_l[ch + 1];
+			float wl2 = weight_l[ch + 2], wl3 = weight_l[ch + 3];
+			float wr0 = weight_r[ch + 0], wr1 = weight_r[ch + 1];
+			float wr2 = weight_r[ch + 2], wr3 = weight_r[ch + 3];
+
+			acc_l0 += s0_0 * wl0 + s0_1 * wl1 + s0_2 * wl2 + s0_3 * wl3;
+			acc_r0 += s0_0 * wr0 + s0_1 * wr1 + s0_2 * wr2 + s0_3 * wr3;
+
+			acc_l1 += s1_0 * wl0 + s1_1 * wl1 + s1_2 * wl2 + s1_3 * wl3;
+			acc_r1 += s1_0 * wr0 + s1_1 * wr1 + s1_2 * wr2 + s1_3 * wr3;
+		}
+		for (; ch < num_ch; ch++) {
+			float s0 = in_ch[ch][i], s1 = in_ch[ch][i + 1];
+			float wl = weight_l[ch], wr = weight_r[ch];
+
+			acc_l0 += s0 * wl;
+			acc_r0 += s0 * wr;
+			acc_l1 += s1 * wl;
+			acc_r1 += s1 * wr;
 		}
 
-		out_left[n] = acc_l;
-		out_right[n] = acc_r;
+		out_left[i]      = acc_l0;
+		out_right[i]     = acc_r0;
+		out_left[i + 1]  = acc_l1;
+		out_right[i + 1] = acc_r1;
+	}
+
+	for (; i < frames; i++) {
+		float acc_l = 0.0f, acc_r = 0.0f;
+		int ch = 0;
+		for (; ch + 3 < num_ch; ch += 4) {
+			acc_l += in_ch[ch + 0][i] * weight_l[ch + 0] +
+				 in_ch[ch + 1][i] * weight_l[ch + 1] +
+				 in_ch[ch + 2][i] * weight_l[ch + 2] +
+				 in_ch[ch + 3][i] * weight_l[ch + 3];
+
+			acc_r += in_ch[ch + 0][i] * weight_r[ch + 0] +
+				 in_ch[ch + 1][i] * weight_r[ch + 1] +
+				 in_ch[ch + 2][i] * weight_r[ch + 2] +
+				 in_ch[ch + 3][i] * weight_r[ch + 3];
+		}
+		for (; ch < num_ch; ch++) {
+			acc_l += in_ch[ch][i] * weight_l[ch];
+			acc_r += in_ch[ch][i] * weight_r[ch];
+		}
+
+		out_left[i]  = acc_l;
+		out_right[i] = acc_r;
 	}
 }
 

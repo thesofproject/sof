@@ -58,8 +58,13 @@ void steamaudio_dsp_sofa_hrir_process_hifi4(struct dsp_sofa_hrir_state *hrir,
 					    uint32_t frames,
 					    bool muted);
 
+void steamaudio_dsp_ambisonics_rotate_hifi4(uint32_t order, const float rot[3][3],
+					    const float in_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
+					    float out_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
+					    uint32_t frames);
+
 void steamaudio_dsp_ambisonics_decode_binaural_hifi4(struct steamaudio_ambisonics_state *ambi,
-						     const float *in_bformat,
+						     const float in_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
 						     float *out_left,
 						     float *out_right,
 						     uint32_t frames);
@@ -91,8 +96,13 @@ void steamaudio_dsp_sofa_hrir_process_hifi5(struct dsp_sofa_hrir_state *hrir,
 					    uint32_t frames,
 					    bool muted);
 
+void steamaudio_dsp_ambisonics_rotate_hifi5(uint32_t order, const float rot[3][3],
+					    const float in_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
+					    float out_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
+					    uint32_t frames);
+
 void steamaudio_dsp_ambisonics_decode_binaural_hifi5(struct steamaudio_ambisonics_state *ambi,
-						     const float *in_bformat,
+						     const float in_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
 						     float *out_left,
 						     float *out_right,
 						     uint32_t frames);

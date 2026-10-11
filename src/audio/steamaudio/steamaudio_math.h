@@ -184,4 +184,30 @@ static inline float fast_acos(float x)
 #undef acosf
 #define acosf fast_acosf
 
+static inline void eval_sh_basis(float x, float y, float z, int order, float sh[16])
+{
+	sh[0] = 0.282095f;
+	if (order < 1) return;
+
+	sh[1] = 0.488603f * y;
+	sh[2] = 0.488603f * z;
+	sh[3] = 0.488603f * x;
+	if (order < 2) return;
+
+	sh[4] = 1.092548f * x * y;
+	sh[5] = 1.092548f * y * z;
+	sh[6] = 0.315392f * (-x * x - y * y + 2.0f * z * z);
+	sh[7] = 1.092548f * x * z;
+	sh[8] = 0.546274f * (x * x - y * y);
+	if (order < 3) return;
+
+	sh[9]  = 0.590044f * y * (3.0f * x * x - y * y);
+	sh[10] = 2.890611f * x * y * z;
+	sh[11] = 0.457046f * y * (4.0f * z * z - x * x - y * y);
+	sh[12] = 0.373176f * z * (2.0f * z * z - 3.0f * x * x - 3.0f * y * y);
+	sh[13] = 0.457046f * x * (4.0f * z * z - x * x - y * y);
+	sh[14] = 1.445306f * z * (x * x - y * y);
+	sh[15] = 0.590044f * x * (x * x - 3.0f * y * y);
+}
+
 #endif /* __SOF_AUDIO_STEAMAUDIO_MATH_H__ */

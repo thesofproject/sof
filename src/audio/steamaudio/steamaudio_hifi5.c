@@ -161,7 +161,8 @@ void steamaudio_dsp_room_modes_process_hifi5(struct dsp_room_modes_state *rms,
 
 /*
  * HiFi 5 Quad-Unrolled SOFA HRIR FIR Convolution
- * Uses 4-way float accumulation for maximum FMA utilization.
+ * Uses contiguous signal buffer and 4-way float parallel accumulation across 4 frames
+ * for maximum FMA throughput and zero branch penalties.
  */
 void steamaudio_dsp_sofa_hrir_process_hifi5(struct dsp_sofa_hrir_state *hrir,
 					    const float *in,
@@ -192,35 +193,100 @@ void steamaudio_dsp_sofa_hrir_process_hifi5(struct dsp_sofa_hrir_state *hrir,
 	const float *hl = hrir->hrir_left;
 	const float *hr = hrir->hrir_right;
 
-	for (uint32_t i = 0; i < frames; i++) {
-		float in_val = in[i];
-		float acc_l = 0.0f;
-		float acc_r = 0.0f;
+	/* Linear contiguous history + input buffer */
+	float sig_buf[STEAMAUDIO_MAX_HRIR_TAPS + 256];
+	memcpy(sig_buf, hrir->history, STEAMAUDIO_MAX_HRIR_TAPS * sizeof(float));
+	memcpy(sig_buf + STEAMAUDIO_MAX_HRIR_TAPS, in, frames * sizeof(float));
+
+	uint32_t i = 0;
+	/* Process 4 frames in parallel */
+	for (; i + 3 < frames; i += 4) {
+		float in_val0 = in[i + 0], in_val1 = in[i + 1];
+		float in_val2 = in[i + 2], in_val3 = in[i + 3];
+
+		const float *s0 = &sig_buf[STEAMAUDIO_MAX_HRIR_TAPS + i + 0];
+		const float *s1 = &sig_buf[STEAMAUDIO_MAX_HRIR_TAPS + i + 1];
+		const float *s2 = &sig_buf[STEAMAUDIO_MAX_HRIR_TAPS + i + 2];
+		const float *s3 = &sig_buf[STEAMAUDIO_MAX_HRIR_TAPS + i + 3];
+
+		float al0 = 0.0f, ar0 = 0.0f;
+		float al1 = 0.0f, ar1 = 0.0f;
+		float al2 = 0.0f, ar2 = 0.0f;
+		float al3 = 0.0f, ar3 = 0.0f;
 
 		uint32_t k = 0;
 		for (; k + 3 < taps; k += 4) {
-			int p0 = (int)i - (int)k;
-			int p1 = (int)i - (int)(k + 1);
-			int p2 = (int)i - (int)(k + 2);
-			int p3 = (int)i - (int)(k + 3);
+			float tl0 = hl[k + 0], tl1 = hl[k + 1], tl2 = hl[k + 2], tl3 = hl[k + 3];
+			float tr0 = hr[k + 0], tr1 = hr[k + 1], tr2 = hr[k + 2], tr3 = hr[k + 3];
 
-			float s0 = (p0 >= 0) ? in[p0] : hrir->history[STEAMAUDIO_MAX_HRIR_TAPS + p0];
-			float s1 = (p1 >= 0) ? in[p1] : hrir->history[STEAMAUDIO_MAX_HRIR_TAPS + p1];
-			float s2 = (p2 >= 0) ? in[p2] : hrir->history[STEAMAUDIO_MAX_HRIR_TAPS + p2];
-			float s3 = (p3 >= 0) ? in[p3] : hrir->history[STEAMAUDIO_MAX_HRIR_TAPS + p3];
+			float x0_0 = s0[-((int)k + 0)], x0_1 = s0[-((int)k + 1)];
+			float x0_2 = s0[-((int)k + 2)], x0_3 = s0[-((int)k + 3)];
 
-			acc_l += s0 * hl[k] + s1 * hl[k + 1] + s2 * hl[k + 2] + s3 * hl[k + 3];
-			acc_r += s0 * hr[k] + s1 * hr[k + 1] + s2 * hr[k + 2] + s3 * hr[k + 3];
+			float x1_0 = s1[-((int)k + 0)], x1_1 = s1[-((int)k + 1)];
+			float x1_2 = s1[-((int)k + 2)], x1_3 = s1[-((int)k + 3)];
+
+			float x2_0 = s2[-((int)k + 0)], x2_1 = s2[-((int)k + 1)];
+			float x2_2 = s2[-((int)k + 2)], x2_3 = s2[-((int)k + 3)];
+
+			float x3_0 = s3[-((int)k + 0)], x3_1 = s3[-((int)k + 1)];
+			float x3_2 = s3[-((int)k + 2)], x3_3 = s3[-((int)k + 3)];
+
+			al0 += x0_0 * tl0 + x0_1 * tl1 + x0_2 * tl2 + x0_3 * tl3;
+			ar0 += x0_0 * tr0 + x0_1 * tr1 + x0_2 * tr2 + x0_3 * tr3;
+
+			al1 += x1_0 * tl0 + x1_1 * tl1 + x1_2 * tl2 + x1_3 * tl3;
+			ar1 += x1_0 * tr0 + x1_1 * tr1 + x1_2 * tr2 + x1_3 * tr3;
+
+			al2 += x2_0 * tl0 + x2_1 * tl1 + x2_2 * tl2 + x2_3 * tl3;
+			ar2 += x2_0 * tr0 + x2_1 * tr1 + x2_2 * tr2 + x2_3 * tr3;
+
+			al3 += x3_0 * tl0 + x3_1 * tl1 + x3_2 * tl2 + x3_3 * tl3;
+			ar3 += x3_0 * tr0 + x3_1 * tr1 + x3_2 * tr2 + x3_3 * tr3;
 		}
 		for (; k < taps; k++) {
-			int past = (int)i - (int)k;
-			float s = (past >= 0) ? in[past] : hrir->history[STEAMAUDIO_MAX_HRIR_TAPS + past];
-			acc_l += s * hl[k];
-			acc_r += s * hr[k];
+			float tl = hl[k], tr = hr[k];
+			al0 += s0[-((int)k)] * tl; ar0 += s0[-((int)k)] * tr;
+			al1 += s1[-((int)k)] * tl; ar1 += s1[-((int)k)] * tr;
+			al2 += s2[-((int)k)] * tl; ar2 += s2[-((int)k)] * tr;
+			al3 += s3[-((int)k)] * tl; ar3 += s3[-((int)k)] * tr;
 		}
 
-		out_l[i] = ((1.0f - blend) * in_val + blend * acc_l) * vol;
-		out_r[i] = ((1.0f - blend) * in_val + blend * acc_r) * vol;
+		out_l[i + 0] = ((1.0f - blend) * in_val0 + blend * al0) * vol;
+		out_r[i + 0] = ((1.0f - blend) * in_val0 + blend * ar0) * vol;
+
+		out_l[i + 1] = ((1.0f - blend) * in_val1 + blend * al1) * vol;
+		out_r[i + 1] = ((1.0f - blend) * in_val1 + blend * ar1) * vol;
+
+		out_l[i + 2] = ((1.0f - blend) * in_val2 + blend * al2) * vol;
+		out_r[i + 2] = ((1.0f - blend) * in_val2 + blend * ar2) * vol;
+
+		out_l[i + 3] = ((1.0f - blend) * in_val3 + blend * al3) * vol;
+		out_r[i + 3] = ((1.0f - blend) * in_val3 + blend * ar3) * vol;
+	}
+
+	/* Remainder frames */
+	for (; i < frames; i++) {
+		float in_val = in[i];
+		const float *s = &sig_buf[STEAMAUDIO_MAX_HRIR_TAPS + i];
+		float al = 0.0f, ar = 0.0f;
+
+		uint32_t k = 0;
+		for (; k + 3 < taps; k += 4) {
+			float tl0 = hl[k + 0], tl1 = hl[k + 1], tl2 = hl[k + 2], tl3 = hl[k + 3];
+			float tr0 = hr[k + 0], tr1 = hr[k + 1], tr2 = hr[k + 2], tr3 = hr[k + 3];
+			float x0 = s[-((int)k + 0)], x1 = s[-((int)k + 1)];
+			float x2 = s[-((int)k + 2)], x3 = s[-((int)k + 3)];
+
+			al += x0 * tl0 + x1 * tl1 + x2 * tl2 + x3 * tl3;
+			ar += x0 * tr0 + x1 * tr1 + x2 * tr2 + x3 * tr3;
+		}
+		for (; k < taps; k++) {
+			al += s[-((int)k)] * hl[k];
+			ar += s[-((int)k)] * hr[k];
+		}
+
+		out_l[i] = ((1.0f - blend) * in_val + blend * al) * vol;
+		out_r[i] = ((1.0f - blend) * in_val + blend * ar) * vol;
 	}
 
 	if (frames >= STEAMAUDIO_MAX_HRIR_TAPS) {
@@ -234,46 +300,201 @@ void steamaudio_dsp_sofa_hrir_process_hifi5(struct dsp_sofa_hrir_state *hrir,
 }
 
 /*
- * HiFi 5 Ambisonics B-format Binaural Decode
+ * HiFi 5 Quad-Vectorized Ambisonics 3D Rotation
+ * Rotates Order 1 soundfield dipoles using 4-way parallel matrix-vector kernels.
+ */
+void steamaudio_dsp_ambisonics_rotate_hifi5(uint32_t order, const float rot[3][3],
+					    const float in_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
+					    float out_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
+					    uint32_t frames)
+{
+	int num_ch = (order + 1) * (order + 1);
+	if (num_ch > STEAMAUDIO_MAX_HOA_CHANNELS)
+		num_ch = STEAMAUDIO_MAX_HOA_CHANNELS;
+
+	/* Channel 0: W (omni invariant to rotation) */
+	memcpy(out_ch[0], in_ch[0], frames * sizeof(float));
+
+	if (num_ch >= 4) {
+		const float r00 = rot[0][0], r01 = rot[0][1], r02 = rot[0][2];
+		const float r10 = rot[1][0], r11 = rot[1][1], r12 = rot[1][2];
+		const float r20 = rot[2][0], r21 = rot[2][1], r22 = rot[2][2];
+
+		uint32_t i = 0;
+		for (; i + 3 < frames; i += 4) {
+			float y0 = in_ch[1][i + 0], y1 = in_ch[1][i + 1];
+			float y2 = in_ch[1][i + 2], y3 = in_ch[1][i + 3];
+
+			float z0 = in_ch[2][i + 0], z1 = in_ch[2][i + 1];
+			float z2 = in_ch[2][i + 2], z3 = in_ch[2][i + 3];
+
+			float x0 = in_ch[3][i + 0], x1 = in_ch[3][i + 1];
+			float x2 = in_ch[3][i + 2], x3 = in_ch[3][i + 3];
+
+			out_ch[1][i + 0] = y0 * r00 + z0 * r01 + x0 * r02;
+			out_ch[2][i + 0] = y0 * r10 + z0 * r11 + x0 * r12;
+			out_ch[3][i + 0] = y0 * r20 + z0 * r21 + x0 * r22;
+
+			out_ch[1][i + 1] = y1 * r00 + z1 * r01 + x1 * r02;
+			out_ch[2][i + 1] = y1 * r10 + z1 * r11 + x1 * r12;
+			out_ch[3][i + 1] = y1 * r20 + z1 * r21 + x1 * r22;
+
+			out_ch[1][i + 2] = y2 * r00 + z2 * r01 + x2 * r02;
+			out_ch[2][i + 2] = y2 * r10 + z2 * r11 + x2 * r12;
+			out_ch[3][i + 2] = y2 * r20 + z2 * r21 + x2 * r22;
+
+			out_ch[1][i + 3] = y3 * r00 + z3 * r01 + x3 * r02;
+			out_ch[2][i + 3] = y3 * r10 + z3 * r11 + x3 * r12;
+			out_ch[3][i + 3] = y3 * r20 + z3 * r21 + x3 * r22;
+		}
+		for (; i < frames; i++) {
+			float y = in_ch[1][i];
+			float z = in_ch[2][i];
+			float x = in_ch[3][i];
+
+			out_ch[1][i] = y * r00 + z * r01 + x * r02;
+			out_ch[2][i] = y * r10 + z * r11 + x * r12;
+			out_ch[3][i] = y * r20 + z * r21 + x * r22;
+		}
+	}
+
+	for (int ch = 4; ch < num_ch; ch++)
+		memcpy(out_ch[ch], in_ch[ch], frames * sizeof(float));
+}
+
+/*
+ * HiFi 5 Quad-Vectorized Ambisonics B-format Binaural Decode
+ * Precomputes composite binaural decoding weights across the 8 cube virtual speakers,
+ * reducing per-sample multiply-accumulate operations by 8x, and evaluates 4 stereo frames
+ * in parallel with 4-way channel unrolled inner products.
  */
 void steamaudio_dsp_ambisonics_decode_binaural_hifi5(struct steamaudio_ambisonics_state *ambi,
-						     const float *in_bformat,
+						     const float in_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
 						     float *out_left,
 						     float *out_right,
 						     uint32_t frames)
 {
-	if (!ambi || !in_bformat || !out_left || !out_right || frames == 0)
+	static const float cube_v[8][3] = {
+		{ -0.57735f, -0.57735f, -0.57735f },
+		{  0.57735f, -0.57735f, -0.57735f },
+		{ -0.57735f,  0.57735f, -0.57735f },
+		{  0.57735f,  0.57735f, -0.57735f },
+		{ -0.57735f, -0.57735f,  0.57735f },
+		{  0.57735f, -0.57735f,  0.57735f },
+		{ -0.57735f,  0.57735f,  0.57735f },
+		{  0.57735f,  0.57735f,  0.57735f }
+	};
+
+	if (!ambi || !in_ch || !out_left || !out_right || frames == 0)
 		return;
 
-	for (uint32_t n = 0; n < frames; n++) {
-		float acc_l = 0.0f;
-		float acc_r = 0.0f;
+	int num_ch = (ambi->order + 1) * (ambi->order + 1);
+	if (num_ch > 16)
+		num_ch = 16;
 
-		uint32_t ch = 0;
-		for (; ch + 3 < ambi->num_channels; ch += 4) {
-			float s0 = in_bformat[(ch + 0) * frames + n];
-			float s1 = in_bformat[(ch + 1) * frames + n];
-			float s2 = in_bformat[(ch + 2) * frames + n];
-			float s3 = in_bformat[(ch + 3) * frames + n];
+	float weight_l[STEAMAUDIO_MAX_HOA_CHANNELS] = { 0.0f };
+	float weight_r[STEAMAUDIO_MAX_HOA_CHANNELS] = { 0.0f };
 
-			acc_l += s0 * ambi->decode_matrix_l[ch + 0] +
-				 s1 * ambi->decode_matrix_l[ch + 1] +
-				 s2 * ambi->decode_matrix_l[ch + 2] +
-				 s3 * ambi->decode_matrix_l[ch + 3];
+	/* Precompute composite binaural weights across 8 virtual cube speakers */
+	for (int k = 0; k < 8; k++) {
+		float vx = cube_v[k][0], vy = cube_v[k][1], vz = cube_v[k][2];
+		float rx = ambi->rotation[0][0] * vx + ambi->rotation[0][1] * vy + ambi->rotation[0][2] * vz;
+		float ry = ambi->rotation[1][0] * vx + ambi->rotation[1][1] * vy + ambi->rotation[1][2] * vz;
+		float rz = ambi->rotation[2][0] * vx + ambi->rotation[2][1] * vy + ambi->rotation[2][2] * vz;
 
-			acc_r += s0 * ambi->decode_matrix_r[ch + 0] +
-				 s1 * ambi->decode_matrix_r[ch + 1] +
-				 s2 * ambi->decode_matrix_r[ch + 2] +
-				 s3 * ambi->decode_matrix_r[ch + 3];
+		float sh[16];
+		eval_sh_basis(rx, ry, rz, (int)ambi->order, sh);
+
+		float az = fast_atan2(vx, vz);
+		float sin_az = fast_sin(az);
+		float ild_l = (sin_az > 0.0f) ? (1.0f - 0.4f * sin_az) : 1.0f;
+		float ild_r = (sin_az < 0.0f) ? (1.0f + 0.4f * sin_az) : 1.0f;
+
+		float factor_l = 0.125f * ild_l;
+		float factor_r = 0.125f * ild_r;
+
+		for (int ch = 0; ch < num_ch; ch++) {
+			weight_l[ch] += factor_l * sh[ch];
+			weight_r[ch] += factor_r * sh[ch];
 		}
-		for (; ch < ambi->num_channels; ch++) {
-			float s = in_bformat[ch * frames + n];
-			acc_l += s * ambi->decode_matrix_l[ch];
-			acc_r += s * ambi->decode_matrix_r[ch];
+	}
+
+	uint32_t i = 0;
+	/* Process 4 stereo frames in parallel */
+	for (; i + 3 < frames; i += 4) {
+		float al0 = 0.0f, ar0 = 0.0f;
+		float al1 = 0.0f, ar1 = 0.0f;
+		float al2 = 0.0f, ar2 = 0.0f;
+		float al3 = 0.0f, ar3 = 0.0f;
+
+		int ch = 0;
+		for (; ch + 3 < num_ch; ch += 4) {
+			float s0_0 = in_ch[ch + 0][i + 0], s1_0 = in_ch[ch + 0][i + 1];
+			float s2_0 = in_ch[ch + 0][i + 2], s3_0 = in_ch[ch + 0][i + 3];
+
+			float s0_1 = in_ch[ch + 1][i + 0], s1_1 = in_ch[ch + 1][i + 1];
+			float s2_1 = in_ch[ch + 1][i + 2], s3_1 = in_ch[ch + 1][i + 3];
+
+			float s0_2 = in_ch[ch + 2][i + 0], s1_2 = in_ch[ch + 2][i + 1];
+			float s2_2 = in_ch[ch + 2][i + 2], s3_2 = in_ch[ch + 2][i + 3];
+
+			float s0_3 = in_ch[ch + 3][i + 0], s1_3 = in_ch[ch + 3][i + 1];
+			float s2_3 = in_ch[ch + 3][i + 2], s3_3 = in_ch[ch + 3][i + 3];
+
+			float wl0 = weight_l[ch + 0], wl1 = weight_l[ch + 1];
+			float wl2 = weight_l[ch + 2], wl3 = weight_l[ch + 3];
+
+			float wr0 = weight_r[ch + 0], wr1 = weight_r[ch + 1];
+			float wr2 = weight_r[ch + 2], wr3 = weight_r[ch + 3];
+
+			al0 += s0_0 * wl0 + s0_1 * wl1 + s0_2 * wl2 + s0_3 * wl3;
+			ar0 += s0_0 * wr0 + s0_1 * wr1 + s0_2 * wr2 + s0_3 * wr3;
+
+			al1 += s1_0 * wl0 + s1_1 * wl1 + s1_2 * wl2 + s1_3 * wl3;
+			ar1 += s1_0 * wr0 + s1_1 * wr1 + s1_2 * wr2 + s1_3 * wr3;
+
+			al2 += s2_0 * wl0 + s2_1 * wl1 + s2_2 * wl2 + s2_3 * wl3;
+			ar2 += s2_0 * wr0 + s2_1 * wr1 + s2_2 * wr2 + s2_3 * wr3;
+
+			al3 += s3_0 * wl0 + s3_1 * wl1 + s3_2 * wl2 + s3_3 * wl3;
+			ar3 += s3_0 * wr0 + s3_1 * wr1 + s3_2 * wr2 + s3_3 * wr3;
+		}
+		for (; ch < num_ch; ch++) {
+			float wl = weight_l[ch], wr = weight_r[ch];
+
+			al0 += in_ch[ch][i + 0] * wl; ar0 += in_ch[ch][i + 0] * wr;
+			al1 += in_ch[ch][i + 1] * wl; ar1 += in_ch[ch][i + 1] * wr;
+			al2 += in_ch[ch][i + 2] * wl; ar2 += in_ch[ch][i + 2] * wr;
+			al3 += in_ch[ch][i + 3] * wl; ar3 += in_ch[ch][i + 3] * wr;
 		}
 
-		out_left[n] = acc_l;
-		out_right[n] = acc_r;
+		out_left[i + 0]  = al0; out_right[i + 0] = ar0;
+		out_left[i + 1]  = al1; out_right[i + 1] = ar1;
+		out_left[i + 2]  = al2; out_right[i + 2] = ar2;
+		out_left[i + 3]  = al3; out_right[i + 3] = ar3;
+	}
+
+	for (; i < frames; i++) {
+		float acc_l = 0.0f, acc_r = 0.0f;
+		int ch = 0;
+		for (; ch + 3 < num_ch; ch += 4) {
+			acc_l += in_ch[ch + 0][i] * weight_l[ch + 0] +
+				 in_ch[ch + 1][i] * weight_l[ch + 1] +
+				 in_ch[ch + 2][i] * weight_l[ch + 2] +
+				 in_ch[ch + 3][i] * weight_l[ch + 3];
+
+			acc_r += in_ch[ch + 0][i] * weight_r[ch + 0] +
+				 in_ch[ch + 1][i] * weight_r[ch + 1] +
+				 in_ch[ch + 2][i] * weight_r[ch + 2] +
+				 in_ch[ch + 3][i] * weight_r[ch + 3];
+		}
+		for (; ch < num_ch; ch++) {
+			acc_l += in_ch[ch][i] * weight_l[ch];
+			acc_r += in_ch[ch][i] * weight_r[ch];
+		}
+
+		out_left[i]  = acc_l;
+		out_right[i] = acc_r;
 	}
 }
 

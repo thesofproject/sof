@@ -733,32 +733,6 @@ void steamaudio_dsp_virtual_surround_process(struct steamaudio_virtual_surround_
 	}
 }
 
-static inline void eval_sh_basis(float x, float y, float z, int order, float sh[16])
-{
-	sh[0] = 0.282095f;
-	if (order < 1) return;
-
-	sh[1] = 0.488603f * y;
-	sh[2] = 0.488603f * z;
-	sh[3] = 0.488603f * x;
-	if (order < 2) return;
-
-	sh[4] = 1.092548f * x * y;
-	sh[5] = 1.092548f * y * z;
-	sh[6] = 0.315392f * (-x * x - y * y + 2.0f * z * z);
-	sh[7] = 1.092548f * x * z;
-	sh[8] = 0.546274f * (x * x - y * y);
-	if (order < 3) return;
-
-	sh[9]  = 0.590044f * y * (3.0f * x * x - y * y);
-	sh[10] = 2.890611f * x * y * z;
-	sh[11] = 0.457046f * y * (4.0f * z * z - x * x - y * y);
-	sh[12] = 0.373176f * z * (2.0f * z * z - 3.0f * x * x - 3.0f * y * y);
-	sh[13] = 0.457046f * x * (4.0f * z * z - x * x - y * y);
-	sh[14] = 1.445306f * z * (x * x - y * y);
-	sh[15] = 0.590044f * x * (x * x - 3.0f * y * y);
-}
-
 void steamaudio_dsp_ambisonics_init(struct steamaudio_ambisonics_state *ambi, uint32_t order)
 {
 	if (order < 1) order = 1;
@@ -801,6 +775,14 @@ void steamaudio_dsp_ambisonics_rotate(uint32_t order, const float rot[3][3],
 				      const float in_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
 				      float out_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256], uint32_t frames)
 {
+#if SOF_USE_HIFI(5, STEAMAUDIO)
+	steamaudio_dsp_ambisonics_rotate_hifi5(order, rot, in_ch, out_ch, frames);
+	return;
+#elif SOF_USE_HIFI(4, STEAMAUDIO)
+	steamaudio_dsp_ambisonics_rotate_hifi4(order, rot, in_ch, out_ch, frames);
+	return;
+#endif
+
 	int num_ch = (order + 1) * (order + 1);
 	if (num_ch > STEAMAUDIO_MAX_HOA_CHANNELS)
 		num_ch = STEAMAUDIO_MAX_HOA_CHANNELS;
@@ -832,6 +814,14 @@ void steamaudio_dsp_ambisonics_decode_binaural(struct steamaudio_ambisonics_stat
 					       const float in_ch[STEAMAUDIO_MAX_HOA_CHANNELS][256],
 					       float *out_l, float *out_r, uint32_t frames)
 {
+#if SOF_USE_HIFI(5, STEAMAUDIO)
+	steamaudio_dsp_ambisonics_decode_binaural_hifi5(ambi, in_ch, out_l, out_r, frames);
+	return;
+#elif SOF_USE_HIFI(4, STEAMAUDIO)
+	steamaudio_dsp_ambisonics_decode_binaural_hifi4(ambi, in_ch, out_l, out_r, frames);
+	return;
+#endif
+
 	static const float cube_v[8][3] = {
 		{ -0.57735f, -0.57735f, -0.57735f },
 		{  0.57735f, -0.57735f, -0.57735f },
