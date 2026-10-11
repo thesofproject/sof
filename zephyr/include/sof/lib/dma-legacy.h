@@ -123,18 +123,18 @@ static inline int dma_stop_delayed_legacy(struct dma_chan_data *channel)
 	return 0;
 }
 
-/** \defgroup sof_dma_copy_func static int dma_copy (struct dma_chan_data * channel, int bytes, uint32_t flags)
- *
- * This function is in a separate subgroup to solve a name clash with
- * struct dma_copy {}
- * @{
+/**
+ * @brief Perform a legacy DMA copy operation on a channel.
+ * @param channel DMA channel data.
+ * @param bytes Number of bytes to transfer.
+ * @param flags Transfer flags.
+ * @return 0 on success, negative error code on failure.
  */
 static inline int dma_copy_legacy(struct dma_chan_data *channel, int bytes,
 				  uint32_t flags)
 {
 	return channel->dma->ops->copy(channel, bytes, flags);
 }
-/** @} */
 
 static inline int dma_pause_legacy(struct dma_chan_data *channel)
 {

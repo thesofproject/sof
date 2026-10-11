@@ -18,7 +18,7 @@
 #include <ipc4/fw_reg.h>
 #endif
 
-/** \addtogroup fw_regs_api FW Regs API
+/** \addtogroup probe_api
  *  This is a common SRAM window 0 FW "registers" layout
  *  used in the platfrom-defined SRAM window 0 region
  *  @{

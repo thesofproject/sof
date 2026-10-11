@@ -38,7 +38,7 @@ struct dai_hw_params;
 struct timestamp_data;
 struct dai_ts_data;
 
-/** \addtogroup component_api Component API
+/** \addtogroup audio_pipeline_api
  *  @{
  */
 
@@ -820,7 +820,7 @@ static inline struct comp_buffer *comp_dev_get_next_data_consumer_safe(struct co
  * begin here.
  */
 
-/** \addtogroup component_common_int Component's Common Helpers
+/** \addtogroup audio_pipeline_api
  *  @{
  */
 

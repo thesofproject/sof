@@ -19,7 +19,7 @@
 #include <sof/audio/component.h>
 #include <ipc/topology.h>
 
-/** \addtogroup component_api_helpers Component Mgmt API
+/** \addtogroup audio_pipeline_api
  *  @{
  */
 

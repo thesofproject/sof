@@ -24,7 +24,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/** \addtogroup alloc_api Memory Allocation API
+/** \addtogroup rtos_api
  *  @{
  */
 

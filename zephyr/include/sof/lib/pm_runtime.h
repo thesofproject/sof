@@ -9,7 +9,7 @@
 #include <rtos/sof.h>
 #include <stdint.h>
 
-/** \addtogroup pm_runtime PM Runtime
+/** \addtogroup platform_drivers_api
  *  SOF PM runtime specification mapping for Zephyr builds.
  *
  *  This interface is considered deprecated and native Zephyr
@@ -92,6 +92,10 @@ void pm_runtime_disable(enum pm_runtime_context context, uint32_t index);
  */
 bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index);
 
+/**
+ * @brief Prepare platform hardware and power gating for D0ix idle entry.
+ * @param index Index or context identifier for the target power-managed domain.
+ */
 static inline void platform_pm_runtime_prepare_d0ix_en(uint32_t index)
 {
 }

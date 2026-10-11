@@ -30,7 +30,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/** \addtogroup audio_stream_api Audio Stream API
+/** \addtogroup audio_pipeline_api
  *  @{
  */
 

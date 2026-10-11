@@ -22,7 +22,7 @@
 
 struct sof;
 
-/** \addtogroup platform_api Platform API
+/** \addtogroup platform_drivers_api
  *  Platform API specification.
  *  @{
  */

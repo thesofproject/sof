@@ -17,7 +17,7 @@
 
 #include <stdint.h>
 
-/** \addtogroup uuid_api UUID API
+/** \addtogroup module_api
  *  UUID API specification.
  *  @{
  */
