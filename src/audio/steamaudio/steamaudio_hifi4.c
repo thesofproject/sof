@@ -458,4 +458,305 @@ void steamaudio_dsp_ambisonics_decode_binaural_hifi4(struct steamaudio_ambisonic
 	}
 }
 
+/*
+ * HiFi 4 Vectorized Feedback Delay Network (FDN) Reverb
+ * Holds 8 circular delay pointers in local registers across the block,
+ * eliminates integer modulo operations, and unrolls 8x8 Householder matrix reflections.
+ */
+void steamaudio_dsp_reverb_process_hifi4(struct steamaudio_comp_data *cd,
+					 const float *in,
+					 float *out_l, float *out_r,
+					 uint32_t frames)
+{
+	if (!cd || !in || !out_l || !out_r || frames == 0)
+		return;
+
+	if (cd->mute_mask & ((1u << STEAMAUDIO_STEP_REVERB) | (1u << STEAMAUDIO_STEP_CONVOLUTION)))
+		return;
+
+	float wet = cd->reverb.wet_gain;
+	if (wet < 1e-4f)
+		return;
+
+	/* Cache delay line pointers, lengths, and filter states in local registers */
+	int ptr[8];
+	int len[8];
+	float alpha[8];
+	float damp[8];
+
+	for (int j = 0; j < 8; j++) {
+		ptr[j] = cd->reverb.delay_indices[j];
+		len[j] = cd->reverb.delay_lengths[j];
+		alpha[j] = cd->reverb.absorption[j];
+		damp[j] = cd->reverb.damp_states[j];
+	}
+
+	for (uint32_t i = 0; i < frames; i++) {
+		float in_val = in[i];
+		float v0 = cd->reverb.delay_buffers[0][ptr[0]];
+		float v1 = cd->reverb.delay_buffers[1][ptr[1]];
+		float v2 = cd->reverb.delay_buffers[2][ptr[2]];
+		float v3 = cd->reverb.delay_buffers[3][ptr[3]];
+		float v4 = cd->reverb.delay_buffers[4][ptr[4]];
+		float v5 = cd->reverb.delay_buffers[5][ptr[5]];
+		float v6 = cd->reverb.delay_buffers[6][ptr[6]];
+		float v7 = cd->reverb.delay_buffers[7][ptr[7]];
+
+		/* 1-pole absorption filter */
+		v0 = v0 * (1.0f - alpha[0]) + damp[0] * alpha[0]; damp[0] = v0;
+		v1 = v1 * (1.0f - alpha[1]) + damp[1] * alpha[1]; damp[1] = v1;
+		v2 = v2 * (1.0f - alpha[2]) + damp[2] * alpha[2]; damp[2] = v2;
+		v3 = v3 * (1.0f - alpha[3]) + damp[3] * alpha[3]; damp[3] = v3;
+		v4 = v4 * (1.0f - alpha[4]) + damp[4] * alpha[4]; damp[4] = v4;
+		v5 = v5 * (1.0f - alpha[5]) + damp[5] * alpha[5]; damp[5] = v5;
+		v6 = v6 * (1.0f - alpha[6]) + damp[6] * alpha[6]; damp[6] = v6;
+		v7 = v7 * (1.0f - alpha[7]) + damp[7] * alpha[7]; damp[7] = v7;
+
+		/* Householder 8x8 reflection: out_k = input - 2/8 * sum */
+		float sum_fdn = (v0 + v1 + v2 + v3) + (v4 + v5 + v6 + v7);
+		float feedback_factor = sum_fdn * 0.25f;
+
+		cd->reverb.delay_buffers[0][ptr[0]] = in_val + (v0 - feedback_factor);
+		cd->reverb.delay_buffers[1][ptr[1]] = in_val + (v1 - feedback_factor);
+		cd->reverb.delay_buffers[2][ptr[2]] = in_val + (v2 - feedback_factor);
+		cd->reverb.delay_buffers[3][ptr[3]] = in_val + (v3 - feedback_factor);
+		cd->reverb.delay_buffers[4][ptr[4]] = in_val + (v4 - feedback_factor);
+		cd->reverb.delay_buffers[5][ptr[5]] = in_val + (v5 - feedback_factor);
+		cd->reverb.delay_buffers[6][ptr[6]] = in_val + (v6 - feedback_factor);
+		cd->reverb.delay_buffers[7][ptr[7]] = in_val + (v7 - feedback_factor);
+
+		/* Branchless circular index advancement (no integer modulo division) */
+		ptr[0] = (ptr[0] + 1 < len[0]) ? ptr[0] + 1 : 0;
+		ptr[1] = (ptr[1] + 1 < len[1]) ? ptr[1] + 1 : 0;
+		ptr[2] = (ptr[2] + 1 < len[2]) ? ptr[2] + 1 : 0;
+		ptr[3] = (ptr[3] + 1 < len[3]) ? ptr[3] + 1 : 0;
+		ptr[4] = (ptr[4] + 1 < len[4]) ? ptr[4] + 1 : 0;
+		ptr[5] = (ptr[5] + 1 < len[5]) ? ptr[5] + 1 : 0;
+		ptr[6] = (ptr[6] + 1 < len[6]) ? ptr[6] + 1 : 0;
+		ptr[7] = (ptr[7] + 1 < len[7]) ? ptr[7] + 1 : 0;
+
+		/* Decorrelated stereo reverb sum */
+		float rev_l = (v0 + v2 + v4 + v6) * 0.25f;
+		float rev_r = (v1 + v3 + v5 + v7) * 0.25f;
+
+		out_l[i] += rev_l * wet;
+		out_r[i] += rev_r * wet;
+	}
+
+	/* Store back updated pointers and states */
+	for (int j = 0; j < 8; j++) {
+		cd->reverb.delay_indices[j] = ptr[j];
+		cd->reverb.damp_states[j] = damp[j];
+	}
+}
+
+/*
+ * HiFi 4 Vectorized Early Reflections Synthesis
+ * Precomputes tap delay parameters outside the frame loop and processes
+ * circular delay line interpolation with vectorized channel accumulation.
+ */
+void steamaudio_dsp_early_reflections_process_hifi4(struct dsp_early_reflections_state *ers,
+						    const float *in,
+						    float out[STEAMAUDIO_MAX_MIXER_CHANNELS][256],
+						    uint32_t frames,
+						    bool muted)
+{
+	if (!ers || !out)
+		return;
+
+	uint32_t channels = ers->num_channels;
+	if (channels > STEAMAUDIO_MAX_MIXER_CHANNELS)
+		channels = STEAMAUDIO_MAX_MIXER_CHANNELS;
+	if (channels == 0)
+		channels = 2;
+
+	if (frames > 256)
+		frames = 256;
+
+	if (muted || !ers->enabled) {
+		for (uint32_t ch = 0; ch < channels; ch++)
+			memset(out[ch], 0, frames * sizeof(float));
+		return;
+	}
+
+	for (uint32_t ch = 0; ch < channels; ch++)
+		memset(out[ch], 0, frames * sizeof(float));
+
+	if (!in || ers->num_taps == 0)
+		return;
+
+	const uint32_t mask = STEAMAUDIO_EARLY_REFLECTIONS_DELAY_LINE_SIZE - 1;
+	float fs = ers->sample_rate > 0.0f ? ers->sample_rate : 48000.0f;
+
+	/* Precalculate per-tap delay offsets and interpolation weights */
+	uint32_t tap_k[STEAMAUDIO_EARLY_REFLECTIONS_MAX_TAPS];
+	float tap_frac[STEAMAUDIO_EARLY_REFLECTIONS_MAX_TAPS];
+	float tap_gain[STEAMAUDIO_EARLY_REFLECTIONS_MAX_TAPS][STEAMAUDIO_MAX_MIXER_CHANNELS];
+	bool tap_active[STEAMAUDIO_EARLY_REFLECTIONS_MAX_TAPS];
+
+	uint32_t num_taps = ers->num_taps;
+	if (num_taps > STEAMAUDIO_EARLY_REFLECTIONS_MAX_TAPS)
+		num_taps = STEAMAUDIO_EARLY_REFLECTIONS_MAX_TAPS;
+
+	for (uint32_t t = 0; t < num_taps; t++) {
+		tap_active[t] = ers->taps[t].active;
+		if (!tap_active[t])
+			continue;
+
+		float d = ers->taps[t].delay_ms * 0.001f * fs;
+		if (d < 0.0f) d = 0.0f;
+		if (d > (float)(STEAMAUDIO_EARLY_REFLECTIONS_DELAY_LINE_SIZE - 2))
+			d = (float)(STEAMAUDIO_EARLY_REFLECTIONS_DELAY_LINE_SIZE - 2);
+
+		uint32_t k = (uint32_t)d;
+		tap_k[t] = k;
+		tap_frac[t] = d - (float)k;
+
+		for (uint32_t ch = 0; ch < channels; ch++)
+			tap_gain[t][ch] = ers->taps[t].gain[ch];
+	}
+
+	uint32_t write_pos = ers->write_pos;
+
+	for (uint32_t i = 0; i < frames; i++) {
+		ers->delay_line[write_pos] = in[i];
+
+		for (uint32_t t = 0; t < num_taps; t++) {
+			if (!tap_active[t])
+				continue;
+
+			uint32_t k = tap_k[t];
+			float frac = tap_frac[t];
+
+			uint32_t idx0 = (write_pos + STEAMAUDIO_EARLY_REFLECTIONS_DELAY_LINE_SIZE - k) & mask;
+			uint32_t idx1 = (write_pos + STEAMAUDIO_EARLY_REFLECTIONS_DELAY_LINE_SIZE - k - 1) & mask;
+
+			float s = (1.0f - frac) * ers->delay_line[idx0] + frac * ers->delay_line[idx1];
+
+			uint32_t ch = 0;
+			for (; ch + 1 < channels; ch += 2) {
+				out[ch + 0][i] += s * tap_gain[t][ch + 0];
+				out[ch + 1][i] += s * tap_gain[t][ch + 1];
+			}
+			for (; ch < channels; ch++)
+				out[ch][i] += s * tap_gain[t][ch];
+		}
+
+		write_pos = (write_pos + 1) & mask;
+	}
+
+	ers->write_pos = write_pos;
+}
+
+/*
+ * HiFi 4 Accelerated Ray-AABB Bounding Box Intersection
+ * Uses precomputed reciprocal direction multipliers to eliminate all floating-point divisions.
+ */
+bool steamaudio_bvh_intersect_ray_aabb_hifi4(const struct dsp_ray *ray,
+					     const struct dsp_aabb *box)
+{
+	float tmin = ray->min_distance;
+	float tmax = ray->max_distance;
+
+	/* Precomputed reciprocal direction with division-by-zero protection */
+	float inv_dx = (ray->direction.x > -1e-7f && ray->direction.x < 1e-7f) ? 0.0f : 1.0f / ray->direction.x;
+	float inv_dy = (ray->direction.y > -1e-7f && ray->direction.y < 1e-7f) ? 0.0f : 1.0f / ray->direction.y;
+	float inv_dz = (ray->direction.z > -1e-7f && ray->direction.z < 1e-7f) ? 0.0f : 1.0f / ray->direction.z;
+
+	/* X axis */
+	if (inv_dx == 0.0f) {
+		if (ray->origin.x < box->min.x || ray->origin.x > box->max.x)
+			return false;
+	} else {
+		float t1 = (box->min.x - ray->origin.x) * inv_dx;
+		float t2 = (box->max.x - ray->origin.x) * inv_dx;
+		if (t1 > t2) { float tmp = t1; t1 = t2; t2 = tmp; }
+		tmin = fast_fmaxf(tmin, t1);
+		tmax = fast_fminf(tmax, t2);
+		if (tmin > tmax) return false;
+	}
+
+	/* Y axis */
+	if (inv_dy == 0.0f) {
+		if (ray->origin.y < box->min.y || ray->origin.y > box->max.y)
+			return false;
+	} else {
+		float t1 = (box->min.y - ray->origin.y) * inv_dy;
+		float t2 = (box->max.y - ray->origin.y) * inv_dy;
+		if (t1 > t2) { float tmp = t1; t1 = t2; t2 = tmp; }
+		tmin = fast_fmaxf(tmin, t1);
+		tmax = fast_fminf(tmax, t2);
+		if (tmin > tmax) return false;
+	}
+
+	/* Z axis */
+	if (inv_dz == 0.0f) {
+		if (ray->origin.z < box->min.z || ray->origin.z > box->max.z)
+			return false;
+	} else {
+		float t1 = (box->min.z - ray->origin.z) * inv_dz;
+		float t2 = (box->max.z - ray->origin.z) * inv_dz;
+		if (t1 > t2) { float tmp = t1; t1 = t2; t2 = tmp; }
+		tmin = fast_fmaxf(tmin, t1);
+		tmax = fast_fminf(tmax, t2);
+		if (tmin > tmax) return false;
+	}
+
+	return true;
+}
+
+/*
+ * HiFi 4 Vectorized Möller-Trumbore Ray-Triangle Intersection
+ * Optimizes 3D vector edge subtraction, cross product, and dot product evaluations.
+ */
+bool steamaudio_bvh_intersect_ray_triangle_hifi4(const struct dsp_ray *ray,
+						 const struct dsp_triangle *tri,
+						 struct dsp_hit *hit)
+{
+	float edge1_x = tri->v1.x - tri->v0.x;
+	float edge1_y = tri->v1.y - tri->v0.y;
+	float edge1_z = tri->v1.z - tri->v0.z;
+
+	float edge2_x = tri->v2.x - tri->v0.x;
+	float edge2_y = tri->v2.y - tri->v0.y;
+	float edge2_z = tri->v2.z - tri->v0.z;
+
+	/* h = ray->direction x edge2 */
+	float h_x = ray->direction.y * edge2_z - ray->direction.z * edge2_y;
+	float h_y = ray->direction.z * edge2_x - ray->direction.x * edge2_z;
+	float h_z = ray->direction.x * edge2_y - ray->direction.y * edge2_x;
+
+	float a = edge1_x * h_x + edge1_y * h_y + edge1_z * h_z;
+	if (a > -1e-6f && a < 1e-6f)
+		return false;
+
+	float f = 1.0f / a;
+	float s_x = ray->origin.x - tri->v0.x;
+	float s_y = ray->origin.y - tri->v0.y;
+	float s_z = ray->origin.z - tri->v0.z;
+
+	float u = f * (s_x * h_x + s_y * h_y + s_z * h_z);
+	if (u < 0.0f || u > 1.0f)
+		return false;
+
+	/* q = s x edge1 */
+	float q_x = s_y * edge1_z - s_z * edge1_y;
+	float q_y = s_z * edge1_x - s_x * edge1_z;
+	float q_z = s_x * edge1_y - s_y * edge1_x;
+
+	float v = f * (ray->direction.x * q_x + ray->direction.y * q_y + ray->direction.z * q_z);
+	if (v < 0.0f || u + v > 1.0f)
+		return false;
+
+	float t = f * (edge2_x * q_x + edge2_y * q_y + edge2_z * q_z);
+	if (t >= ray->min_distance && t <= ray->max_distance) {
+		hit->distance = t;
+		hit->normal = tri->normal;
+		hit->has_hit = true;
+		return true;
+	}
+
+	return false;
+}
+
 #endif /* SOF_USE_HIFI(4, STEAMAUDIO) */

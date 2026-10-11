@@ -310,6 +310,14 @@ static inline void process_binaural(struct steamaudio_comp_data *cd, const float
 static inline void process_reverb(struct steamaudio_comp_data *cd, const float *in,
 				  float *out_l, float *out_r, uint32_t frames)
 {
+#if SOF_USE_HIFI(5, STEAMAUDIO)
+	steamaudio_dsp_reverb_process_hifi5(cd, in, out_l, out_r, frames);
+	return;
+#elif SOF_USE_HIFI(4, STEAMAUDIO)
+	steamaudio_dsp_reverb_process_hifi4(cd, in, out_l, out_r, frames);
+	return;
+#endif
+
 	if (cd->mute_mask & ((1u << STEAMAUDIO_STEP_REVERB) | (1u << STEAMAUDIO_STEP_CONVOLUTION)))
 		return;
 

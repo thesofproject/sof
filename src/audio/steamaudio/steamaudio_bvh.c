@@ -62,6 +62,12 @@ static inline __maybe_unused float fmaxf_local(float a, float b) { return (a > b
 
 static bool intersect_ray_aabb(const struct dsp_ray *ray, const struct dsp_aabb *box)
 {
+#if SOF_USE_HIFI(5, STEAMAUDIO)
+	return steamaudio_bvh_intersect_ray_aabb_hifi5(ray, box);
+#elif SOF_USE_HIFI(4, STEAMAUDIO)
+	return steamaudio_bvh_intersect_ray_aabb_hifi4(ray, box);
+#endif
+
 	float tmin = ray->min_distance;
 	float tmax = ray->max_distance;
 
@@ -92,6 +98,12 @@ static bool intersect_ray_aabb(const struct dsp_ray *ray, const struct dsp_aabb 
 
 static bool intersect_ray_triangle(const struct dsp_ray *ray, const struct dsp_triangle *tri, struct dsp_hit *hit)
 {
+#if SOF_USE_HIFI(5, STEAMAUDIO)
+	return steamaudio_bvh_intersect_ray_triangle_hifi5(ray, tri, hit);
+#elif SOF_USE_HIFI(4, STEAMAUDIO)
+	return steamaudio_bvh_intersect_ray_triangle_hifi4(ray, tri, hit);
+#endif
+
 	struct dsp_vec3 edge1 = vec3_sub(tri->v1, tri->v0);
 	struct dsp_vec3 edge2 = vec3_sub(tri->v2, tri->v0);
 	struct dsp_vec3 h = vec3_cross(ray->direction, edge2);
@@ -1430,6 +1442,14 @@ void steamaudio_dsp_early_reflections_process(struct dsp_early_reflections_state
 					     uint32_t frames,
 					     bool muted)
 {
+#if SOF_USE_HIFI(5, STEAMAUDIO)
+	steamaudio_dsp_early_reflections_process_hifi5(ers, in, out, frames, muted);
+	return;
+#elif SOF_USE_HIFI(4, STEAMAUDIO)
+	steamaudio_dsp_early_reflections_process_hifi4(ers, in, out, frames, muted);
+	return;
+#endif
+
 	if (!ers || !out)
 		return;
 

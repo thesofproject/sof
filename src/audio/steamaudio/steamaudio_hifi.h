@@ -28,6 +28,11 @@ struct dsp_room_modes_state;
 struct dsp_sofa_hrir_state;
 struct steamaudio_ambisonics_state;
 struct steamaudio_comp_data;
+struct dsp_ray;
+struct dsp_aabb;
+struct dsp_triangle;
+struct dsp_hit;
+struct dsp_early_reflections_state;
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,6 +74,24 @@ void steamaudio_dsp_ambisonics_decode_binaural_hifi4(struct steamaudio_ambisonic
 						     float *out_right,
 						     uint32_t frames);
 
+void steamaudio_dsp_reverb_process_hifi4(struct steamaudio_comp_data *cd,
+					 const float *in,
+					 float *out_l, float *out_r,
+					 uint32_t frames);
+
+void steamaudio_dsp_early_reflections_process_hifi4(struct dsp_early_reflections_state *ers,
+						    const float *in,
+						    float out[STEAMAUDIO_MAX_MIXER_CHANNELS][256],
+						    uint32_t frames,
+						    bool muted);
+
+bool steamaudio_bvh_intersect_ray_aabb_hifi4(const struct dsp_ray *ray,
+					     const struct dsp_aabb *box);
+
+bool steamaudio_bvh_intersect_ray_triangle_hifi4(const struct dsp_ray *ray,
+						 const struct dsp_triangle *tri,
+						 struct dsp_hit *hit);
+
 #endif /* SOF_USE_HIFI(4, STEAMAUDIO) */
 
 /*
@@ -106,6 +129,24 @@ void steamaudio_dsp_ambisonics_decode_binaural_hifi5(struct steamaudio_ambisonic
 						     float *out_left,
 						     float *out_right,
 						     uint32_t frames);
+
+void steamaudio_dsp_reverb_process_hifi5(struct steamaudio_comp_data *cd,
+					 const float *in,
+					 float *out_l, float *out_r,
+					 uint32_t frames);
+
+void steamaudio_dsp_early_reflections_process_hifi5(struct dsp_early_reflections_state *ers,
+						    const float *in,
+						    float out[STEAMAUDIO_MAX_MIXER_CHANNELS][256],
+						    uint32_t frames,
+						    bool muted);
+
+bool steamaudio_bvh_intersect_ray_aabb_hifi5(const struct dsp_ray *ray,
+					     const struct dsp_aabb *box);
+
+bool steamaudio_bvh_intersect_ray_triangle_hifi5(const struct dsp_ray *ray,
+						 const struct dsp_triangle *tri,
+						 struct dsp_hit *hit);
 
 #endif /* SOF_USE_HIFI(5, STEAMAUDIO) */
 
