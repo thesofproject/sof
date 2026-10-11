@@ -51,6 +51,57 @@ config HOST_DMA_IPC_POSITION_UPDATES
 	  by sending an IPC message whenever one period of audio is transferred.
 	  Most platforms provide more efficient ways to query the DMA status.
 
+config STATIC_PIPELINE
+	bool "Declarative Static Audio Pipeline Loader"
+	depends on IPC_MAJOR_4
+	default n
+	help
+	  Enable support for declarative static audio pipelines in Sound
+	  Open Firmware. This provides a compile-time and runtime loader
+	  engine for hostless, microcontroller, and standalone embedded
+	  targets that do not rely on dynamic IPC topology messages from
+	  a host operating system.
+
+config STATIC_PIPELINE_MAX_PIPELINES
+	int "Maximum static pipelines"
+	default 16
+	depends on STATIC_PIPELINE
+	help
+	  Maximum number of static audio pipelines tracked by the static
+	  pipeline loader. Memory-constrained embedded devices can lower this.
+
+config STATIC_PIPELINE_MAX_COMPS
+	int "Maximum static components"
+	default 64
+	depends on STATIC_PIPELINE
+	help
+	  Maximum number of static audio components tracked by the static
+	  pipeline loader.
+
+config STATIC_PIPELINE_MAX_BUFFERS
+	int "Maximum static audio buffers"
+	default 64
+	depends on STATIC_PIPELINE
+	help
+	  Maximum number of static intermediate audio buffers tracked by
+	  the static pipeline loader.
+
+config STATIC_PIPELINE_MAX_CONTROLS
+	int "Maximum static controls"
+	default 64
+	depends on STATIC_PIPELINE
+	help
+	  Maximum number of static kcontrols tracked by the static
+	  pipeline loader.
+
+config STATIC_PIPELINE_MAX_ROUTES
+	int "Maximum static routes"
+	default 128
+	depends on STATIC_PIPELINE
+	help
+	  Maximum number of static graph connection routes allowed by
+	  the static pipeline loader.
+
 config COMP_CHAIN_DMA
 	  bool "Chain DMA component"
 	  depends on IPC_MAJOR_4
