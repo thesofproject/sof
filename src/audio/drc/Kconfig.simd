@@ -7,6 +7,7 @@ choice "DRC_SIMD_LEVEL_SELECT"
 	depends on COMP_DRC
 	default DRC_HIFI_MAX if XTENSA
 	default DRC_ARM_SIMD if ARM
+	default DRC_RISCV_SIMD if RISCV
 	default DRC_HIFI_NONE
 
 	config DRC_ARM_SIMD
@@ -46,4 +47,11 @@ choice "DRC_SIMD_LEVEL_SELECT"
 		bool
 		help
 			This option used to build DRC generic code.
+
+	config DRC_RISCV_SIMD
+		prompt "choose RISC-V SIMD optimized DRC module"
+		bool
+		depends on RISCV
+		help
+			This option used to build RISC-V SIMD optimized DRC code
 endchoice
