@@ -9,6 +9,11 @@ else()
       volume_arm.c
       volume_arm_with_peakvol.c
       volume.c)
+  elseif(CONFIG_VOLUME_RISCV_SIMD)
+    add_local_sources(sof
+      volume_riscv.c
+      volume_riscv_with_peakvol.c
+      volume.c)
   else()
     add_local_sources(sof
       volume_generic.c
