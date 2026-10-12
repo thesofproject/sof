@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright(c) 2025 Intel Corporation.
 
-/* Pre Allocated Contiguous Virtual Region */
+/**
+ * @file sof/lib/vregion.h
+ * @brief Pre-allocated contiguous virtual memory region allocator (lifetime vs interim).
+ * @ingroup memory_api
+ */
+
 #ifndef __SOF_LIB_VREGION_H__
 #define __SOF_LIB_VREGION_H__
 
@@ -13,20 +18,28 @@
 extern "C" {
 #endif
 
+/** \addtogroup memory_api
+ *  @{
+ */
+
+/**
+ * @brief Virtual region descriptor managing lifetime and interim heap partitions.
+ */
 struct vregion;
 
 /**
- * @brief Memory types for virtual region allocations.
- * Used to specify the type of memory allocation within a virtual region.
+ * @brief Memory allocation modes within a virtual memory region.
  *
- * @note
- * - interim: allocation that can be freed i.e. get/set large config, kcontrols.
- * - lifetime: allocation that cannot be freed i.e. init data, pipeline data.
+ * Distinguishes lifetime allocations (bound to pipeline topology, cannot be freed until teardown)
+ * from interim allocations (dynamically created and released during runtime operations).
  */
 enum vregion_mem_type {
-	VREGION_MEM_TYPE_INTERIM,		/* interim allocation that can be freed */
-	VREGION_MEM_TYPE_LIFETIME,		/* lifetime allocation */
-	VREGION_MEM_TYPE_INVALID,		/* Interim heap initialization failed */
+	/** @brief Interim allocation that can be freed dynamically (e.g. large config set/get, controls). */
+	VREGION_MEM_TYPE_INTERIM,
+	/** @brief Lifetime allocation that persists until region destruction (e.g. topology, module instances). */
+	VREGION_MEM_TYPE_LIFETIME,
+	/** @brief Invalid memory type indicating initialization error or exhaustion. */
+	VREGION_MEM_TYPE_INVALID,
 };
 
 #if CONFIG_SOF_VREGIONS
@@ -37,15 +50,20 @@ enum vregion_mem_type {
  * Create a new virtual region instance with specified memory size.
  * Allocations start in LIFETIME mode.
  *
- * @param[in] memsize Total size of the virtual region memory.
- * @return struct vregion* Pointer to the new virtual region instance, or NULL on failure.
+ * @param[in] memsize Total size of the virtual region memory in bytes.
+ * @return Pointer to the new virtual region instance, or NULL on failure.
  */
 struct vregion *vregion_create(size_t memsize);
 
 /**
- * @brief Create and map a new virtual region instance.
+ * @brief Create and map a new virtual region instance accessible by user-space domains.
  *
- * Like above, but usable by userspace and can add domain access.
+ * Allocates contiguous virtual memory and configures memory protection domain permissions.
+ *
+ * @param[out] vreg_start Output pointer receiving the virtual start address of the region.
+ * @param[in,out] vreg_size Input pointer specifying the requested size in bytes (must be non-zero);
+ *                          updated on return with the actual mapped size in bytes.
+ * @return Pointer to the allocated virtual region instance, or NULL on failure.
  */
 __syscall struct vregion *vregion_create_map(uintptr_t *vreg_start, size_t *vreg_size);
 
@@ -96,16 +114,20 @@ __syscall struct vregion *vregion_put(struct vregion *vr);
 __syscall void *vregion_alloc_align(struct vregion *vr, size_t size, size_t alignment);
 
 /**
- * @brief like vregion_alloc_align() but allocates coherent memory
+ * @brief Allocate aligned coherent (uncached) memory from the specified virtual region.
+ * @param[in,out] vr Pointer to the virtual region instance.
+ * @param[in] size Size of memory to allocate in bytes.
+ * @param[in] alignment Alignment of memory to allocate in bytes.
+ * @return Pointer to the allocated coherent memory, or NULL on failure.
  */
 __syscall void *vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_t alignment);
 
 /**
  * @brief Allocate memory from the specified virtual region.
  *
- * @param[in] vr Pointer to the virtual region instance.
+ * @param[in,out] vr Pointer to the virtual region instance.
  * @param[in] size Size of memory to allocate in bytes.
- * @return void* Pointer to the allocated memory, or NULL on failure.
+ * @return Pointer to the allocated memory, or NULL on failure.
  */
 static inline void *vregion_alloc(struct vregion *vr, size_t size)
 {
@@ -113,7 +135,10 @@ static inline void *vregion_alloc(struct vregion *vr, size_t size)
 }
 
 /**
- * @brief like vregion_alloc() but allocates coherent memory
+ * @brief Allocate naturally aligned coherent (uncached) memory from the specified virtual region.
+ * @param[in,out] vr Pointer to the virtual region instance.
+ * @param[in] size Size of memory to allocate in bytes.
+ * @return Pointer to the allocated coherent memory, or NULL on failure.
  */
 static inline void *vregion_alloc_coherent(struct vregion *vr, size_t size)
 {
@@ -125,8 +150,8 @@ static inline void *vregion_alloc_coherent(struct vregion *vr, size_t size)
  *
  * Free memory previously allocated from the specified virtual region.
  *
- * @param[in] vr Pointer to the virtual region instance.
- * @param[in] ptr Pointer to the memory to free.
+ * @param[in,out] vr Pointer to the virtual region instance.
+ * @param[in,out] ptr Pointer to the memory to free.
  */
 __syscall void vregion_free(struct vregion *vr, void *ptr);
 
@@ -138,19 +163,24 @@ __syscall void vregion_free(struct vregion *vr, void *ptr);
 void vregion_info(struct vregion *vr);
 
 /**
- * @brief Get virtual region memory start and size.
+ * @brief Retrieve virtual region memory base address and size.
  *
  * @param[in] vr Pointer to the virtual region instance.
- * @param[in] size Pointer to size
- * @param[in] start Pointer to start
+ * @param[out] size Output pointer receiving total region size in bytes.
+ * @param[out] start Output pointer receiving starting virtual address.
  */
 void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start);
 
+/**
+ * @brief Validate that a virtual region handle is genuine and isolated from user space.
+ * @param[in] vr Pointer to virtual region instance to verify.
+ * @return True if handle is valid and secure, false otherwise.
+ */
 bool vregion_verify(struct vregion *vr);
 
 #include <zephyr/syscalls/vregion.h>
 
-#else /* CONFIG_SOF_VREGIONS */
+#else
 
 struct vregion {
 	unsigned int use_count;
@@ -200,6 +230,8 @@ static inline void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t 
 static inline bool vregion_verify(struct vregion *vr) {return false;}
 
 #endif /* CONFIG_SOF_VREGIONS */
+
+/** @}*/
 
 #ifdef __cplusplus
 }
