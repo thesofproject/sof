@@ -5,7 +5,12 @@
  * Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
  */
 
-/* Generic schedule api header */
+/**
+ * @file sof/schedule/schedule.h
+ * @brief Generic scheduler interface, scheduler operations, and task management.
+ * @ingroup scheduling_api
+ */
+
 #ifndef __SOF_SCHEDULE_SCHEDULE_H__
 #define __SOF_SCHEDULE_SCHEDULE_H__
 
@@ -19,51 +24,74 @@
 #include <stdint.h>
 #include <ipc4/base_fw.h>
 
-/** \addtogroup audio_pipeline_api
+/** \addtogroup scheduling_api
  *  @{
  */
 
-/** \brief Type of scheduler, comes from topology. */
 enum {
-	SOF_SCHEDULE_EDF = 0,	/**< EDF, schedules based on task's deadline */
-	SOF_SCHEDULE_LL_TIMER,	/**< Low latency timer, schedules immediately
-				  *  on selected timer's tick
-				  */
-	SOF_SCHEDULE_LL_DMA,	/**< Low latency DMA, schedules immediately
-				  *  on scheduling component's DMA interrupt
-				  */
-	SOF_SCHEDULE_DP,	/**< DataProcessing scheduler
-				  *  Scheduler based on Zephyr peemptive threads
-				  *  TODO: DP will become the Zephyr EDF scheduler type
-				  *  and will be unified with SOF_SCHEDULE_EDF for Zephyr builds
-				  *  current implementation of Zephyr based EDF is depreciated now
-				  */
-	SOF_SCHEDULE_TWB,	/**< Tasks With Budget scheduler based on Zephyr peemptive threads
-				  * for each SOF task that has pre-allocated MCPS budget
-				  * renewed with every system tick.
-				  */
-	SOF_SCHEDULE_COUNT	/**< indicates number of scheduler types */
+	/**
+	 * @brief Earliest Deadline First (EDF) scheduler.
+	 * @deprecated Deprecated for modern audio pipeline processing. In Zephyr-based builds,
+	 *             EDF is implemented as a delayed workqueue (edf_workq) retained for
+	 *             host IPC processing and legacy KPB draining tasks until migration.
+	 *             Audio pipeline components should use @ref SOF_SCHEDULE_DP for preemptible
+	 *             deadline-driven tasks or @ref SOF_SCHEDULE_LL_TIMER / @ref SOF_SCHEDULE_LL_DMA
+	 *             for hard real-time tasks.
+	 */
+	SOF_SCHEDULE_EDF = 0,
+	/**
+	 * @brief Low Latency timer domain scheduler.
+	 *
+	 * Executes tasks immediately upon expiration of the primary hardware timer tick.
+	 */
+	SOF_SCHEDULE_LL_TIMER,
+	/**
+	 * @brief Low Latency DMA interrupt domain scheduler.
+	 *
+	 * Executes tasks immediately upon scheduling component's DMA transfer completion interrupt.
+	 */
+	SOF_SCHEDULE_LL_DMA,
+	/**
+	 * @brief Data Processing (DP) worker thread scheduler.
+	 *
+	 * Preemptible Zephyr worker thread per SOF task. Evaluates task readiness
+	 * after each Low-Latency (LL) tick, setting absolute deadlines in Zephyr EDF.
+	 */
+	SOF_SCHEDULE_DP,
+	/**
+	 * @brief Tasks With Budget (TWB) scheduler.
+	 *
+	 * Preemptible Zephyr thread per SOF task with a pre-allocated cycle budget
+	 * renewed every system tick. Drops thread priority on budget exhaustion to
+	 * prevent system starvation.
+	 */
+	SOF_SCHEDULE_TWB,
+	/**
+	 * @brief Indicates total number of scheduler types.
+	 */
+	SOF_SCHEDULE_COUNT
 };
 
-/** \brief Scheduler free available flags */
-#define SOF_SCHEDULER_FREE_IRQ_ONLY	BIT(0) /**< Free function disables only
-						 *  interrupts
-						 */
+/** @brief Scheduler free available flags. */
+#define SOF_SCHEDULER_FREE_IRQ_ONLY	BIT(0) /**< Free function disables interrupts only, keeping data structures intact. */
+
 /**
- * Scheduler operations.
+ * @brief Scheduler operations interface table.
  *
- * Almost all schedule operations must return 0 for success and negative values
- * for errors. Only the scheduler_free operation is allowed to not return any
- * status.
+ * Schedulers implement this interface to plug into the unified SOF scheduling abstraction.
+ * Almost all schedule operations must return 0 for success and negative values for errors.
+ * Only the optional scheduler_free operation returns void.
  */
 struct scheduler_ops {
 	/**
-	 * Schedules task with given scheduling parameters.
-	 * @param data Private data of selected scheduler.
-	 * @param task Task to be scheduled.
-	 * @param start Start time of given task (in microseconds).
-	 * @param period Scheduling period of given task (in microseconds).
-	 * @return 0 if succeeded, error code otherwise.
+	 * @brief Schedule a task with the given timing parameters.
+	 * @param[in,out] data Private state of the selected scheduler.
+	 * @param[in,out] task Task descriptor to be scheduled.
+	 * @param[in] start Start timing parameter (scheduler-specific, e.g. start delay or absolute tick for LL).
+	 * @param[in] period Repetition period in microseconds for periodic schedulers (such as LL, where 0 denotes
+	 *                   one-shot). Schedulers such as DP and TWB ignore this parameter as rescheduling is
+	 *                   governed by the task's returned execution state.
+	 * @return 0 on success, negative error code on failure.
 	 *
 	 * This operation is mandatory.
 	 */
@@ -71,13 +99,13 @@ struct scheduler_ops {
 			     uint64_t period);
 
 	/**
-	 * Schedules task with given scheduling parameters.
-	 * @param data Private data of selected scheduler.
-	 * @param task Task to be scheduled.
-	 * @param start Start time of given task (in microseconds).
-	 * @param period Scheduling period of given task (in microseconds).
-	 * @param before Task to be scheduled before
-	 * @return 0 if succeeded, error code otherwise.
+	 * @brief Schedule a task to execute before a specified reference task.
+	 * @param[in,out] data Private state of the selected scheduler.
+	 * @param[in,out] task Task descriptor to be scheduled.
+	 * @param[in] start Start timing parameter (scheduler-specific).
+	 * @param[in] period Repetition period in microseconds (scheduler-specific).
+	 * @param[in] before Reference task before which this task must be enqueued.
+	 * @return 0 on success, negative error code on failure.
 	 *
 	 * This operation is optional.
 	 */
@@ -85,13 +113,13 @@ struct scheduler_ops {
 				    uint64_t period, struct task *before);
 
 	/**
-	 * Schedules task with given scheduling parameters.
-	 * @param data Private data of selected scheduler.
-	 * @param task Task to be scheduled.
-	 * @param start Start time of given task (in microseconds).
-	 * @param period Scheduling period of given task (in microseconds).
-	 * @param after Task to be scheduled after
-	 * @return 0 if succeeded, error code otherwise.
+	 * @brief Schedule a task to execute after a specified reference task.
+	 * @param[in,out] data Private state of the selected scheduler.
+	 * @param[in,out] task Task descriptor to be scheduled.
+	 * @param[in] start Start timing parameter (scheduler-specific).
+	 * @param[in] period Repetition period in microseconds (scheduler-specific).
+	 * @param[in] after Reference task after which this task must be enqueued.
+	 * @return 0 on success, negative error code on failure.
 	 *
 	 * This operation is optional.
 	 */
@@ -99,42 +127,41 @@ struct scheduler_ops {
 				   uint64_t period, struct task *after);
 
 	/**
-	 * Sets task into running state along with executing additional
-	 * scheduler specific operations.
-	 * @param data Private data of selected scheduler.
-	 * @param task Task to be set into running state.
-	 * @return 0 if succeeded, error code otherwise.
+	 * @brief Transition a task to running state and perform scheduler-specific execution hooks.
+	 * @param[in,out] data Private state of the selected scheduler.
+	 * @param[in,out] task Task transitioning to running state.
+	 * @return 0 on success, negative error code on failure.
 	 *
 	 * This operation is optional.
 	 */
 	int (*schedule_task_running)(void *data, struct task *task);
 
 	/**
-	 * Reschedules already scheduled task with new start time.
-	 * @param data Private data of selected scheduler.
-	 * @param task Task to be rescheduled.
-	 * @param start New start time of given task (in microseconds).
-	 * @return 0 if succeeded, error code otherwise.
+	 * @brief Reschedule an already scheduled task with an updated start delay.
+	 * @param[in,out] data Private state of the selected scheduler.
+	 * @param[in,out] task Task descriptor to reschedule.
+	 * @param[in] start New start delay in microseconds.
+	 * @return 0 on success, negative error code on failure.
 	 *
 	 * This operation is optional.
 	 */
 	int (*reschedule_task)(void *data, struct task *task, uint64_t start);
 
 	/**
-	 * Cancels previously scheduled task.
-	 * @param data Private data of selected scheduler.
-	 * @param task Task to be canceled.
-	 * @return 0 if succeeded, error code otherwise.
+	 * @brief Cancel a previously scheduled task.
+	 * @param[in,out] data Private state of the selected scheduler.
+	 * @param[in,out] task Task descriptor to cancel.
+	 * @return 0 on success, negative error code on failure.
 	 *
 	 * This operation is mandatory.
 	 */
 	int (*schedule_task_cancel)(void *data, struct task *task);
 
 	/**
-	 * Frees task's resources.
-	 * @param data Private data of selected scheduler.
-	 * @param task Task to be freed.
-	 * @return 0 if succeeded, error code otherwise.
+	 * @brief Free scheduler resources associated with a task.
+	 * @param[in,out] data Private state of the selected scheduler.
+	 * @param[in,out] task Task descriptor whose resources are to be freed.
+	 * @return 0 on success, negative error code on failure.
 	 *
 	 * This operation is mandatory.
 	 */
@@ -142,63 +169,76 @@ struct scheduler_ops {
 
 #if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY
 	/**
-	 * Frees scheduler's resources.
-	 * @param data Private data of selected scheduler.
-	 * @param flags Function specific flags.
-	 * @return 0 if succeeded, error code otherwise.
+	 * @brief Free the scheduler instance and release its underlying resources.
+	 * @param[in,out] data Private state of the selected scheduler.
+	 * @param[in] flags Scheduler-specific free flags (e.g. @ref SOF_SCHEDULER_FREE_IRQ_ONLY).
 	 *
-	 * This operation is optional.
+	 * This operation is optional (used only in standalone testing and library testbench).
 	 */
 	void (*scheduler_free)(void *data, uint32_t flags);
 #endif
 
 	/**
-	 * Initializes context
-	 * @param data Private data of selected scheduler.
-	 * @param task task that needs to be scheduled
-	 * @return thread that will be used to run the scheduled task
+	 * @brief Initialize execution thread context for a scheduled task.
+	 * @param[in,out] data Private state of the selected scheduler.
+	 * @param[in,out] task Task requiring dedicated execution context.
+	 * @return Pointer to allocated Zephyr thread object, or NULL on error or unsupported.
 	 *
 	 * This operation is optional.
 	 */
 	struct k_thread *(*scheduler_init_context)(void *data, struct task *task);
 };
 
-/** \brief Holds information about scheduler. */
+/**
+ * @brief Descriptor container representing a registered scheduler instance.
+ */
 struct schedule_data {
-	struct list_item list;			/**< list of schedulers */
-	int type;				/**< SOF_SCHEDULE_ type */
-	const struct scheduler_ops *ops;	/**< scheduler operations */
-	void *data;				/**< pointer to private data */
-};
-
-/** \brief Holds list of all registered schedulers. */
-struct schedulers {
-	struct list_item list;	/**< list of schedulers */
+	struct list_item list;			/**< List node linking this scheduler into the per-core schedulers list. */
+	int type;				/**< Scheduler type identifier (SOF_SCHEDULE_*). */
+	const struct scheduler_ops *ops;	/**< Pointer to scheduler operations table. */
+	void *data;				/**< Pointer to scheduler-specific private context data. */
 };
 
 /**
- * Retrieves registered schedulers.
- * @return List of registered schedulers.
+ * @brief Container holding the linked list of all registered schedulers on a core.
+ */
+struct schedulers {
+	struct list_item list;	/**< Head of the linked list of registered schedulers. */
+};
+
+/**
+ * @brief Retrieve the array of registered kernel-space schedulers for the current core.
+ *
+ * Must only be called from privileged/kernel context (!k_is_user_context()).
+ *
+ * @return Pointer to the per-core schedulers list head pointer.
  */
 struct schedulers **arch_schedulers_get(void);
 
 /**
- * @brief Retrieves registered schedulers for user-space threads on the current core.
- * @return Pointer to array of registered scheduler pointers.
+ * @brief Retrieve registered schedulers for user-space threads on the current core.
+ *
+ * Invokes cpu_get_id(), so this function must only be called from kernel context.
+ * User-space callers should use @ref arch_user_schedulers_get_for_core instead.
+ *
+ * @return Pointer to the per-core user schedulers list head pointer, or NULL if user LL is disabled.
  */
 struct schedulers **arch_user_schedulers_get(void);
 
 /**
- * @brief Retrieves registered schedulers for user-space threads on a specific core.
- * @param core Target DSP core ID.
- * @return Pointer to array of registered scheduler pointers for the specified core.
+ * @brief Retrieve registered schedulers for user-space threads on a specific core.
+ *
+ * Safe to invoke from user-space contexts because the target core ID is explicitly provided.
+ *
+ * @param[in] core Target DSP core ID.
+ * @return Pointer to the user schedulers list head pointer for the specified core, or NULL if disabled.
  */
 struct schedulers **arch_user_schedulers_get_for_core(int core);
 
 /**
- * @brief Lookup scheduler private context data by scheduler type.
- * @param schedulers Schedulers list container.
- * @param type Scheduler type identifier (SOF_SCHEDULE_LL, SOF_SCHEDULE_EDF, etc.).
+ * @brief Lookup scheduler private context data by scheduler type from a schedulers container.
+ * @param[in] schedulers Schedulers list container.
+ * @param[in] type Scheduler type identifier (SOF_SCHEDULE_*).
  * @return Pointer to scheduler-specific private data, or NULL if not found.
  */
 static inline void *scheduler_list_get_data(struct schedulers *schedulers, uint16_t type)
@@ -219,9 +259,9 @@ static inline void *scheduler_list_get_data(struct schedulers *schedulers, uint1
 }
 
 /**
- * Retrieves scheduler's data.
- * @param type SOF_SCHEDULE_ type.
- * @return Pointer to scheduler's data.
+ * @brief Retrieve private data of a registered kernel scheduler on the current core.
+ * @param[in] type Scheduler type (SOF_SCHEDULE_*).
+ * @return Pointer to scheduler private data, or NULL if not found.
  */
 static inline void *scheduler_get_data(uint16_t type)
 {
@@ -229,16 +269,20 @@ static inline void *scheduler_get_data(uint16_t type)
 }
 
 /**
- * Retrieves userspace scheduler's data.
- * @param type SOF_SCHEDULE_ type.
- * @return Pointer to scheduler's data.
+ * @brief Retrieve private data of a registered user-space scheduler on the current core.
+ * @param[in] type Scheduler type (SOF_SCHEDULE_*).
+ * @return Pointer to scheduler private data, or NULL if not found.
  */
 static inline void *scheduler_get_user_data(uint16_t type)
 {
 	return scheduler_list_get_data(*arch_user_schedulers_get(), type);
 }
 
-/** See scheduler_ops::schedule_task_running */
+/**
+ * @brief Notify the scheduler that a task is transitioning to the running state.
+ * @param[in,out] task Task being set to running.
+ * @return 0 on success, or negative error code from scheduler ops.
+ */
 static inline int schedule_task_running(struct task *task)
 {
 	struct schedule_data *sch;
@@ -252,7 +296,13 @@ static inline int schedule_task_running(struct task *task)
 	return sch->ops->schedule_task_running(sch->data, task);
 }
 
-/** See scheduler_ops::schedule_task */
+/**
+ * @brief Schedule a task for execution with start delay and period.
+ * @param[in,out] task Task to schedule.
+ * @param[in] start Start delay in microseconds from now.
+ * @param[in] period Repetition period in microseconds (0 for one-shot execution).
+ * @return 0 on success, -EINVAL if task is NULL, or negative error code from scheduler ops.
+ */
 static inline int schedule_task(struct task *task, uint64_t start,
 				uint64_t period)
 {
@@ -266,7 +316,19 @@ static inline int schedule_task(struct task *task, uint64_t start,
 	return sch->ops->schedule_task(sch->data, task, start, period);
 }
 
-/** See scheduler_ops::schedule_task_before */
+/**
+ * @brief Schedule a task to execute before a specified reference task.
+ *
+ * @note Relative task ordering is optional and scheduler-specific. If the underlying
+ *       scheduler does not implement schedule_task_before, this wrapper falls back to
+ *       ordinary schedule_task() and ignores @p before.
+ *
+ * @param[in,out] task Task to schedule.
+ * @param[in] start Start timing parameter (scheduler-specific).
+ * @param[in] period Repetition period in microseconds (scheduler-specific).
+ * @param[in] before Reference task before which this task must run.
+ * @return 0 on success, -EINVAL if arguments are invalid, or negative error code from scheduler ops.
+ */
 static inline int schedule_task_before(struct task *task, uint64_t start,
 				       uint64_t period, struct task *before)
 {
@@ -284,7 +346,19 @@ static inline int schedule_task_before(struct task *task, uint64_t start,
 	return sch->ops->schedule_task(sch->data, task, start, period);
 }
 
-/** See scheduler_ops::schedule_task_after */
+/**
+ * @brief Schedule a task to execute after a specified reference task.
+ *
+ * @note Relative task ordering is optional and scheduler-specific. If the underlying
+ *       scheduler does not implement schedule_task_after, this wrapper falls back to
+ *       ordinary schedule_task() and ignores @p after.
+ *
+ * @param[in,out] task Task to schedule.
+ * @param[in] start Start timing parameter (scheduler-specific).
+ * @param[in] period Repetition period in microseconds (scheduler-specific).
+ * @param[in] after Reference task after which this task must run.
+ * @return 0 on success, -EINVAL if arguments are invalid, or negative error code from scheduler ops.
+ */
 static inline int schedule_task_after(struct task *task, uint64_t start,
 				      uint64_t period, struct task *after)
 {
@@ -302,7 +376,12 @@ static inline int schedule_task_after(struct task *task, uint64_t start,
 	return sch->ops->schedule_task(sch->data, task, start, period);
 }
 
-/** See scheduler_ops::reschedule_task */
+/**
+ * @brief Reschedule an already scheduled task with an updated start time.
+ * @param[in,out] task Task to reschedule.
+ * @param[in] start New start delay in microseconds.
+ * @return 0 on success, or negative error code from scheduler ops.
+ */
 static inline int reschedule_task(struct task *task, uint64_t start)
 {
 	struct schedule_data *sch;
@@ -317,7 +396,11 @@ static inline int reschedule_task(struct task *task, uint64_t start)
 	return sch->ops->reschedule_task(sch->data, task, start);
 }
 
-/** See scheduler_ops::schedule_task_cancel */
+/**
+ * @brief Cancel a scheduled or queued task.
+ * @param[in,out] task Task to cancel.
+ * @return 0 on success, -EINVAL if task or bound scheduler is NULL, or negative error code from scheduler ops.
+ */
 static inline int schedule_task_cancel(struct task *task)
 {
 	struct schedule_data *sch;
@@ -330,7 +413,11 @@ static inline int schedule_task_cancel(struct task *task)
 	return sch->ops->schedule_task_cancel(sch->data, task);
 }
 
-/** See scheduler_ops::schedule_task_free */
+/**
+ * @brief Free scheduler resources associated with a task.
+ * @param[in,out] task Task whose resources should be freed.
+ * @return 0 on success, -EINVAL if task or bound scheduler is NULL, or negative error code from scheduler ops.
+ */
 static inline int schedule_task_free(struct task *task)
 {
 	struct schedule_data *sch;
@@ -345,7 +432,10 @@ static inline int schedule_task_free(struct task *task)
 
 /* Only used in a stand-alone test and in a testbench test */
 #if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY
-/** See scheduler_ops::scheduler_free */
+/**
+ * @brief Free all registered schedulers and their resources (testing/library only).
+ * @param[in] flags Scheduler-specific free flags (e.g. @ref SOF_SCHEDULER_FREE_IRQ_ONLY).
+ */
 static inline void schedule_free(uint32_t flags)
 {
 	struct schedulers *schedulers = *arch_schedulers_get();
@@ -360,7 +450,11 @@ static inline void schedule_free(uint32_t flags)
 }
 #endif
 
-/** See scheduler_ops::scheduler_init_context */
+/**
+ * @brief Initialize thread execution context for a task.
+ * @param[in,out] task Task requiring execution context initialization.
+ * @return Pointer to allocated Zephyr thread, or NULL if unsupported or failed.
+ */
 static inline struct k_thread *scheduler_init_context(struct task *task)
 {
 	struct schedule_data *sch;
@@ -375,16 +469,23 @@ static inline struct k_thread *scheduler_init_context(struct task *task)
 }
 
 /**
- * Initializes scheduling task.
- * @param task Task to be initialized.
- * @param uid Statically assigned task uuid.
- * @param type SOF_SCHEDULE_ type.
- * @param priority Task's priority.
- * @param run Pointer to task's execution function.
- * @param data Pointer to task's execution data.
- * @param core Core on which task should be run.
- * @param flags Special scheduling flags.
- * @return 0 if succeeded, error code otherwise.
+ * @brief Initialize a scheduling task and bind it to the registered scheduler for its type and core.
+ *
+ * Validates scheduler type and searches registered schedulers. User schedulers look up the
+ * target core via arch_user_schedulers_get_for_core(core), whereas kernel schedulers look up
+ * via arch_schedulers_get() on the calling core. Therefore, kernel task initialization must
+ * execute directly on the target core. Initializes task properties, priority, execution callback,
+ * and sets task state to @ref SOF_TASK_STATE_INIT.
+ *
+ * @param[out] task Task structure to initialize.
+ * @param[in] uid Statically assigned task UUID entry.
+ * @param[in] type Scheduler type (SOF_SCHEDULE_*).
+ * @param[in] priority Task scheduling priority (lower values indicate higher priority).
+ * @param[in] run Execution callback function returning @ref task_state.
+ * @param[in] data Private context pointer passed to run callback.
+ * @param[in] core DSP core ID on which the task should execute.
+ * @param[in] flags Task-specific scheduling flags.
+ * @return 0 on success, -EINVAL if type >= SOF_SCHEDULE_COUNT, -ENODEV if scheduler cannot be found.
  */
 int schedule_task_init(struct task *task,
 		       const struct sof_uuid_entry *uid, uint16_t type,
@@ -392,18 +493,26 @@ int schedule_task_init(struct task *task,
 		       void *data, uint16_t core, uint32_t flags);
 
 /**
- * Initializes scheduler
- * @param type SOF_SCHEDULE_ type.
- * @param ops Pointer to scheduler's operations.
- * @param data Scheduler's private data.
+ * @brief Register a scheduler type instance with its operations table and private context data.
+ *
+ * Allocates a @ref schedule_data container on the system (or user) heap, links it into
+ * the active core scheduler list, and associates the provided operations.
+ *
+ * @param[in] type Scheduler type identifier (SOF_SCHEDULE_*).
+ * @param[in] ops Pointer to scheduler operations table (must provide schedule_task, schedule_task_cancel, schedule_task_free).
+ * @param[in] data Pointer to scheduler private instance data.
  */
 void scheduler_init(int type, const struct scheduler_ops *ops, void *data);
 
 /**
- * Extract scheduler's task information from tasks
- * @param scheduler_props Structure to be filled
- * @param data_off_size Pointer to the current size of the scheduler_props, to be updated
- * @param tasks Scheduler's task list
+ * @brief Extract scheduler task telemetry and properties for IPC4 base firmware.
+ *
+ * Populates @ref scheduler_props with the calling core ID and total task count,
+ * appending @ref task_props structures for each active task in the list.
+ *
+ * @param[out] scheduler_props Properties structure to be filled.
+ * @param[in,out] data_off_size Pointer to running byte size of scheduler_props buffer.
+ * @param[in] tasks Linked list of tasks to inspect.
  */
 void scheduler_get_task_info(struct scheduler_props *scheduler_props,
 			     uint32_t *data_off_size, struct list_item *tasks);

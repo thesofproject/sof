@@ -5,78 +5,85 @@
  * Author: Adrian Bonislawski <adrian.bonislawski@intel.com>
  */
 
+/**
+ * @file sof/schedule/twb_schedule.h
+ * @brief Thread With Budget (TWB) scheduler interface and cycle accounting.
+ * @ingroup scheduling_api
+ *
+ * The Thread With Budget (TWB) scheduler creates a separate preemptible Zephyr thread
+ * for each SOF task that has a pre-allocated MCPS budget renewed with every system tick.
+ *
+ * ### Key Architectural Properties
+ * - **Dynamic Priority Switching**: The TWB scheduler assigns either `MEDIUM_PRIORITY` or
+ *   `LOW_PRIORITY` to the task thread based on the budget remaining in the current system tick.
+ * - **Opportunistic Execution**: If there is no higher-priority ready task, the thread can continue
+ *   executing at low priority even after its budget is exhausted.
+ * - **Cycle & Tick Accounting**:
+ *   - `cycles_granted`: Budget in Zephyr system clock ticks per period (passed to `k_thread_time_slice_set()`).
+ *   - `cycles_consumed`: Actual execution time consumed during the current period, measured in DSP hardware clock cycles.
+ * - **Budget Exhaustion & Replenishment**:
+ *   - When consumed cycles exceed granted cycles, Zephyr time slicing triggers `scheduler_twb_task_cb()`,
+ *     which lowers thread priority to `CONFIG_TWB_THREAD_LOW_PRIORITY`.
+ *   - On the next Low-Latency tick (`scheduler_twb_ll_tick()`), consumed cycles are reset to 0,
+ *     and the original thread priority is restored. Unused budget is not carried over.
+ */
+
 #ifndef __SOF_SCHEDULE_TWB_SCHEDULE_H__
 #define __SOF_SCHEDULE_TWB_SCHEDULE_H__
 
 #include <rtos/task.h>
 #include <stdint.h>
 
-/**
- * @brief Task With Budget (TWB) Scheduler
- *
- * TWB scheduler is a scheduler that creates a separate preemptible Zephyr thread
- * for each SOF task that has a pre-allocated MCPS budget renewed with every system tick.
- * The TWB scheduler assigns either MEDIUM_PRIORITY or LOW_PRIORITY to the task thread
- * based on the budget left in the current system tick.
- * It allows for opportunistic execution if there is no other ready task
- * with a higher priority while the budget is already spent.
- *
- * Examples of tasks with budget include IPC Task and IDC Task.
- *
- * The TWB scheduler has two key parameters assigned:
- * - cycles granted: the budget per system tick
- * - cycles consumed: the number of cycles consumed in a given system tick for task execution
- *
- * The number of cycles consumed is reset to 0 at the beginning of each system tick,
- * renewing the TWB budget.
- * When the number of cycles consumed exceeds the cycles granted,
- * the task is switchedfrom MEDIUM to LOW priority.
- * When the task with budget thread is created, the MPP Scheduling is responsible
- * for setting the thread time slice equal to the task budget, along with
- * setting a callback on time slice timeout.
- * Thread time slicing guarantees that the Zephyr scheduler will interrupt execution
- * when the budget is spent,
- * so the MPP Scheduling timeout callback can re-evaluate the task priority.
- *
- * If there is a budget left in some system tick
- * (i.e., the task spent less time or started executing closeto the system tick
- * that preempts execution), it is reset and not carried over to the next tick.
- *
- * More info:
- * https://thesofproject.github.io/latest/architectures/firmware/sof-zephyr/mpp_layer/mpp_scheduling.html
+/** \addtogroup scheduling_api
+ *  @{
  */
 
 /**
- * \brief default static stack size for each TWB thread
+ * @brief Default static stack size in bytes for each TWB worker thread.
  */
 #define ZEPHYR_TWB_STACK_SIZE 8192
 
 /**
- * \brief max budget limit
+ * @brief Maximum budget limit in system clock ticks per period.
  */
 #define ZEPHYR_TWB_BUDGET_MAX (CONFIG_SYS_CLOCK_TICKS_PER_SEC / 1000)
 
+/**
+ * @brief Convert Zephyr system clock ticks to DSP hardware clock cycles.
+ * @param[in] x System ticks.
+ */
 #define SYS_TICKS_TO_HW_CYCLES(x) (x * CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / CONFIG_SYS_CLOCK_TICKS_PER_SEC)
+
+/**
+ * @brief Convert DSP hardware clock cycles to Zephyr system clock ticks.
+ * @param[in] x Hardware cycles.
+ */
 #define HW_CYCLES_TO_SYS_TICKS(x) (x * CONFIG_SYS_CLOCK_TICKS_PER_SEC / CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC)
 
 /**
- * \brief Init the Tasks with Budget scheduler
+ * @brief Initialize the Thread With Budget (TWB) scheduler on the calling core.
+ *
+ * Allocates per-core TWB scheduler state and binds its driving LL tick source task.
+ *
+ * @return 0 on success, negative error code (-ENOMEM) on failure.
  */
 int scheduler_twb_init(void);
 
 /**
- * \brief initialize a TWB task and add it to scheduling
- * It must be called on core the task is declared to run on
+ * @brief Initialize a TWB task with a dedicated Zephyr worker thread and cycle budget.
  *
- * \param[out] task pointer, pointer to allocated task structure will be return
- * \param[in] uid pointer to UUID of the task
- * \param[in] ops pointer to task functions
- * \param[in] data pointer to the task data
- * \param[in] core CPU the thread should run on
- * \param[in] name zephyr thread name
- * \param[in] stack_size size of stack for a zephyr thread
- * \param[in] thread_priority priority of the zephyr thread
- * \param[in] cycles_granted cycles budget for the zephyr thread
+ * Must be invoked on the same core that the task is configured to execute on.
+ *
+ * @param[out] task Pointer to store the allocated @ref task structure.
+ * @param[in] uid UUID identifying the task.
+ * @param[in] ops Task operations callbacks (@ref task_ops).
+ * @param[in] data Private context pointer passed to task callbacks.
+ * @param[in] core DSP core affinity for the worker thread.
+ * @param[in] name Debug name assigned to the Zephyr thread.
+ * @param[in] stack_size Stack byte size for the worker thread.
+ * @param[in] thread_priority Default preemptible thread priority (must be >= 0).
+ * @param[in] cycles_granted Budget in Zephyr system clock ticks per period (0 or >= ZEPHYR_TWB_BUDGET_MAX for unlimited).
+ * @return 0 on success, negative error code (-EINVAL, -ENOMEM, -EFAULT) on failure.
  */
 int scheduler_twb_task_init(struct task **task,
 			    const struct sof_uuid_entry *uid,
@@ -87,5 +94,7 @@ int scheduler_twb_task_init(struct task **task,
 			    size_t stack_size,
 			    int32_t thread_priority,
 			    uint32_t cycles_granted);
+
+/** @}*/
 
 #endif /* __SOF_SCHEDULE_TWB_SCHEDULE_H__ */

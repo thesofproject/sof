@@ -6,6 +6,12 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+/**
+ * @file sof/ipc/schedule.h
+ * @brief Host IPC message dispatch and scheduling task interface.
+ * @ingroup scheduling_api ipc4_api
+ */
+
 #ifndef __SOF_IPC_SCHEDULE_H__
 #define __SOF_IPC_SCHEDULE_H__
 
@@ -14,14 +20,19 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/** \brief Scheduling period for IPC task in microseconds. */
+/** \addtogroup scheduling_api
+ *  @{
+ */
+
+/** @brief Scheduling period for host IPC worker task in microseconds. */
 #define IPC_PERIOD_USEC	100
 
 struct ipc;
 
 /**
- * \brief Get IPC command processing deadline.
- * @param data Task structure.
+ * @brief Retrieve IPC command processing deadline.
+ * @param[in] data Task structure context pointer.
+ * @return Task deadline timestamp (@ref SOF_TASK_DEADLINE_NOW).
  */
 static inline uint64_t ipc_task_deadline(void *data)
 {
@@ -35,9 +46,11 @@ static inline uint64_t ipc_task_deadline(void *data)
 }
 
 /**
- * \brief Schedule processing of the next IPC command from host.
- * @param ipc The global IPC context.
+ * @brief Schedule processing of the next pending IPC command received from host.
+ * @param[in,out] ipc Global IPC subsystem context pointer.
  */
 void ipc_schedule_process(struct ipc *ipc);
+
+/** @}*/
 
 #endif
