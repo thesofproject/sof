@@ -9,7 +9,7 @@
 #include <sof/math/fir_config.h>
 #include <sof/common.h>
 
-#if SOF_USE_HIFI(NONE, FILTER) || SOF_USE_ARM_SIMD(FILTER)
+#if SOF_USE_HIFI(NONE, FILTER) || SOF_USE_ARM_SIMD(FILTER) || SOF_USE_RISCV_SIMD(FILTER)
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/math/fir_generic.h>
@@ -139,4 +139,4 @@ void eq_fir_s32(struct fir_state_32x16 fir[], const struct cir_buf_source *sourc
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
-#endif /* FILTER_HIFI_NONE */
+#endif /* SOF_USE_HIFI(NONE, FILTER) || SOF_USE_ARM_SIMD(FILTER) || SOF_USE_RISCV_SIMD(FILTER) */
