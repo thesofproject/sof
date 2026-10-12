@@ -6,6 +6,12 @@
  *	   Adrian Warecki <adrian.warecki@intel.com>
  */
 
+/**
+ * @file module/audio/audio_stream.h
+ * @brief Circular audio buffer calculation and wrap utilities for processing modules.
+ * @ingroup module_api
+ */
+
 #ifndef __MODULE_AUDIO_AUDIO_STREAM_H__
 #define __MODULE_AUDIO_AUDIO_STREAM_H__
 
@@ -14,6 +20,9 @@
 #include <rtos/panic.h>
 #include "../ipc/stream.h"
 
+/** \addtogroup module_api
+ *  @{
+ */
 
 /**
  * @enum sof_audio_buffer_state
@@ -268,5 +277,7 @@ static inline const void *source_cir_buf_rewind_wrap(const void *ptr, const void
 
 	return ptr;
 }
+
+/** @}*/
 
 #endif /* __MODULE_AUDIO_AUDIO_STREAM_H__ */
