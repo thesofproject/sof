@@ -7,6 +7,7 @@ choice "VOLUME_SIMD_LEVEL_SELECT"
 	depends on COMP_VOLUME
 	default VOLUME_HIFI_MAX if XTENSA
 	default VOLUME_ARM_SIMD if ARM
+	default VOLUME_RISCV_SIMD if RISCV
 	default VOLUME_HIFI_NONE
 
 	config VOLUME_ARM_SIMD
@@ -15,6 +16,13 @@ choice "VOLUME_SIMD_LEVEL_SELECT"
 		depends on ARM
 		help
 			This option used to build ARMv7E-M DSP / SIMD optimized volume code.
+
+	config VOLUME_RISCV_SIMD
+		prompt "choose RISC-V SIMD vector optimized volume module"
+		bool
+		depends on RISCV
+		help
+			This option used to build RISC-V SIMD vector optimized volume code.
 
 	config VOLUME_HIFI_MAX
 		prompt "SIMD will selected by toolchain pre-defined header"
