@@ -8,7 +8,7 @@
 /**
  * @file sof/audio/channel_map.h
  * @brief Audio stream channel map lookup and sizing helpers.
- * @ingroup audio_pipeline_api
+ * @ingroup audio_format_api
  */
 
 #ifndef __SOF_AUDIO_CHANNEL_MAP_H__
@@ -18,10 +18,14 @@
 #include <sof/common.h>
 #include <stdint.h>
 
+/** \addtogroup audio_format_api
+ *  @{
+ */
+
 /**
- * @brief Returns the size of an IPC channel map structure in bytes.
- * @param chmap Pointer to the channel map structure.
- * @return Total size in bytes including dynamic channel coefficients.
+ * \brief Returns the size of an IPC channel map structure in bytes.
+ * \param[in] chmap Pointer to the channel map structure.
+ * \return Total size in bytes including dynamic channel coefficients.
  */
 static inline uint32_t chmap_get_size(struct sof_ipc_channel_map *chmap)
 {
@@ -30,12 +34,14 @@ static inline uint32_t chmap_get_size(struct sof_ipc_channel_map *chmap)
 }
 
 /**
- * @brief Returns a channel map for a given channel index in a stream map.
- * @param smap Pointer to the stream map structure.
- * @param index Channel index.
- * @return Pointer to matching channel map structure, or NULL if not found.
+ * \brief Returns a channel map for a given channel index in a stream map.
+ * \param[in] smap Pointer to the stream map structure.
+ * \param[in] index Channel index.
+ * \return Pointer to matching channel map structure, or NULL if not found.
  */
 struct sof_ipc_channel_map *chmap_get(struct sof_ipc_stream_map *smap,
 				      int index);
+
+/** @}*/
 
 #endif /* __SOF_AUDIO_CHANNEL_MAP_H__ */

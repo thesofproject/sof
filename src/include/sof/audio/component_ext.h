@@ -19,7 +19,7 @@
 #include <sof/audio/component.h>
 #include <ipc/topology.h>
 
-/** \addtogroup audio_pipeline_api
+/** \addtogroup component_infra_api
  *  @{
  */
 
@@ -28,19 +28,35 @@ struct comp_driver_list {
 	struct list_item list;	/**< list of component drivers */
 };
 
-/** \brief Retrieves the component device buffer list. */
+/** \brief Retrieves the component device buffer list based on direction.
+ * \param[in] comp Component device pointer.
+ * \param[in] dir Direction (PPL_DIR_DOWNSTREAM or PPL_DIR_UPSTREAM).
+ * \return Pointer to sink list or source list.
+ */
 #define comp_buffer_list(comp, dir) \
 	((dir) == PPL_DIR_DOWNSTREAM ? &(comp)->bsink_list :	\
 	 &(comp)->bsource_list)
 
-/** See comp_ops::new */
 #if CONFIG_IPC_MAJOR_3
+/**
+ * \brief Instantiate a new component device from IPC3 descriptor.
+ * \param[in] comp IPC3 component descriptor.
+ * \return Pointer to new component device, or NULL on failure.
+ */
 struct comp_dev *comp_new(struct sof_ipc_comp *comp);
 #elif CONFIG_IPC_MAJOR_4
+/**
+ * \brief Instantiate a new component device from IPC4 module initialization descriptor.
+ * \param[in] module_init IPC4 module initialization data.
+ * \return Pointer to new component device, or NULL on failure.
+ */
 struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *module_init);
 #endif
 
-/** See comp_ops::free */
+/**
+ * \brief Free component device via driver ops.
+ * \param[in,out] dev Component device to free.
+ */
 static inline void comp_free(struct comp_dev *dev)
 {
 	const struct comp_driver *drv = dev->drv;
@@ -55,10 +71,10 @@ static inline void comp_free(struct comp_dev *dev)
 }
 
 /**
- * Parameter init for component on other core.
- * @param dev Component device.
- * @param params Parameters to be set.
- * @return 0 if succeeded, error code otherwise.
+ * \brief Parameter initialization for component on remote core.
+ * \param[in,out] dev Component device.
+ * \param[in] params Stream parameters to be set.
+ * \return 0 if succeeded, error code otherwise.
  */
 static inline int comp_params_remote(struct comp_dev *dev,
 				     struct sof_ipc_stream_params *params)
@@ -69,7 +85,12 @@ static inline int comp_params_remote(struct comp_dev *dev,
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
 
-/** See comp_ops::params */
+/**
+ * \brief Configure audio stream parameters for component device.
+ * \param[in,out] dev Component device.
+ * \param[in,out] params Audio (PCM) stream parameters to configure.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_params(struct comp_dev *dev,
 			      struct sof_ipc_stream_params *params)
 {
@@ -97,7 +118,13 @@ static inline int comp_params(struct comp_dev *dev,
 	return ret;
 }
 
-/** See comp_ops::dai_get_hw_params */
+/**
+ * \brief Retrieve DAI hardware parameters from component device.
+ * \param[in] dev Component device.
+ * \param[out] params Stream parameters to populate.
+ * \param[in] dir Stream direction (enum sof_ipc_stream_direction).
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_dai_get_hw_params(struct comp_dev *dev,
 					 struct sof_ipc_stream_params *params,
 					 int dir)
@@ -109,7 +136,14 @@ static inline int comp_dai_get_hw_params(struct comp_dev *dev,
 }
 
 #if CONFIG_IPC_MAJOR_3
-/** See comp_ops::cmd */
+/**
+ * \brief Dispatch IPC3 command to component device.
+ * \param[in,out] dev Component device.
+ * \param[in] cmd Command code.
+ * \param[in,out] data Command data buffer.
+ * \param[in] max_data_size Maximum acceptable size of returned data.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 			   int max_data_size)
 {
@@ -133,7 +167,10 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 #endif
 
 /**
- * Runs comp_ops::trigger on the core the target component is assigned to.
+ * \brief Run trigger command on remote core for target component.
+ * \param[in,out] dev Component device.
+ * \param[in] cmd Trigger command (COMP_TRIGGER_*).
+ * \return 0 on success, negative error code on failure.
  */
 static inline int comp_trigger_remote(struct comp_dev *dev, int cmd)
 {
@@ -144,6 +181,12 @@ static inline int comp_trigger_remote(struct comp_dev *dev, int cmd)
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
 
+/**
+ * \brief Run trigger command locally on current core for target component.
+ * \param[in,out] dev Component device.
+ * \param[in] cmd Trigger command (COMP_TRIGGER_*).
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_trigger_local(struct comp_dev *dev, int cmd)
 {
 	int ret;
@@ -170,7 +213,12 @@ static inline int comp_trigger_local(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-/** See comp_ops::trigger */
+/**
+ * \brief Dispatch trigger command to component (local or remote).
+ * \param[in,out] dev Component device.
+ * \param[in] cmd Trigger command (COMP_TRIGGER_*).
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_trigger(struct comp_dev *dev, int cmd)
 {
 	int ret;
@@ -184,7 +232,11 @@ static inline int comp_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-/** Runs comp_ops::prepare on the target component's core */
+/**
+ * \brief Run prepare command on remote core for target component.
+ * \param[in,out] dev Component device.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_prepare_remote(struct comp_dev *dev)
 {
 	struct idc_msg msg = { IDC_MSG_PREPARE,
@@ -193,7 +245,11 @@ static inline int comp_prepare_remote(struct comp_dev *dev)
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
 
-/** See comp_ops::prepare */
+/**
+ * \brief Prepare component device for streaming (local or remote).
+ * \param[in,out] dev Component device.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_prepare(struct comp_dev *dev)
 {
 	if (dev->drv->ops.prepare)
@@ -203,14 +259,29 @@ static inline int comp_prepare(struct comp_dev *dev)
 	return 0;
 }
 
+/**
+ * \brief Process and copy audio data through component.
+ * \param[in,out] dev Component device.
+ * \return Number of copied frames, or negative error code on failure.
+ */
 int comp_copy(struct comp_dev *dev);
 
 #if CONFIG_IPC_MAJOR_4
+/**
+ * \brief Remote payload for component get_attribute IPC4 message.
+ */
 struct get_attribute_remote_payload {
-	uint32_t type;
-	void *value;
+	uint32_t type; /**< Attribute type (COMP_ATTR_*) */
+	void *value;   /**< Pointer to attribute value storage */
 };
 
+/**
+ * \brief Retrieve component attribute from a remote core (IPC4).
+ * \param[in,out] dev Component device.
+ * \param[in] type Attribute type (COMP_ATTR_*).
+ * \param[out] value Pointer to buffer where attribute value is copied.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t type,
 						 void *value)
 {
@@ -243,7 +314,13 @@ static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t 
 }
 #endif	/* CONFIG_IPC_MAJOR_4 */
 
-/** See comp_ops::get_attribute */
+/**
+ * \brief Get component attribute.
+ * \param[in,out] dev Component device.
+ * \param[in] type Attribute type (COMP_ATTR_*).
+ * \param[out] value Pointer to buffer where attribute value is returned.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_get_attribute(struct comp_dev *dev, uint32_t type,
 				     void *value)
 {
@@ -262,7 +339,13 @@ static inline int comp_get_attribute(struct comp_dev *dev, uint32_t type,
 #endif
 }
 
-/** See comp_ops::set_attribute */
+/**
+ * \brief Set component attribute.
+ * \param[in,out] dev Component device.
+ * \param[in] type Attribute type (COMP_ATTR_*).
+ * \param[in] value Pointer to attribute value to set.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_set_attribute(struct comp_dev *dev, uint32_t type,
 				     void *value)
 {
@@ -272,7 +355,11 @@ static inline int comp_set_attribute(struct comp_dev *dev, uint32_t type,
 	return 0;
 }
 
-/** Runs comp_ops::reset on the target component's core */
+/**
+ * \brief Run reset command on remote core for target component.
+ * \param[in,out] dev Component device.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_reset_remote(struct comp_dev *dev)
 {
 	struct idc_msg msg = { IDC_MSG_RESET,
@@ -282,9 +369,9 @@ static inline int comp_reset_remote(struct comp_dev *dev)
 }
 
 /**
- * Component reset and free runtime resources.
- * @param dev Component device.
- * @return 0 if succeeded, error code otherwise.
+ * \brief Reset component and free runtime resources (local or remote).
+ * \param[in,out] dev Component device.
+ * \return 0 on success, negative error code on failure.
  */
 static inline int comp_reset(struct comp_dev *dev)
 {
@@ -296,7 +383,13 @@ static inline int comp_reset(struct comp_dev *dev)
 }
 
 #if CONFIG_IPC_MAJOR_3
-/** See comp_ops::dai_config */
+/**
+ * \brief Configure DAI component.
+ * \param[in,out] dev Component device.
+ * \param[in] config IPC DAI configuration.
+ * \param[in] spec_config Spec-specific configuration data.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_dai_config(struct comp_dev *dev, struct ipc_config_dai *config,
 				  const void *spec_config)
 {
@@ -308,6 +401,14 @@ static inline int comp_dai_config(struct comp_dev *dev, struct ipc_config_dai *c
 	return 0;
 }
 #elif CONFIG_IPC_MAJOR_4
+/**
+ * \brief Configure DAI component (IPC4).
+ * \param[in,out] dd DAI driver data.
+ * \param[in,out] dev Component device.
+ * \param[in] config IPC DAI configuration.
+ * \param[in] spec_config Spec-specific configuration data.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_dai_config(struct dai_data *dd, struct comp_dev *dev,
 				  struct ipc_config_dai *config, const void *spec_config)
 {
@@ -316,7 +417,13 @@ static inline int comp_dai_config(struct dai_data *dd, struct comp_dev *dev,
 #else
 #error Unknown IPC major version
 #endif
-/** See comp_ops::position */
+
+/**
+ * \brief Retrieve stream position from component.
+ * \param[in,out] dev Component device.
+ * \param[out] posn Stream position structure to populate.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_position(struct comp_dev *dev,
 				struct sof_ipc_stream_posn *posn)
 {
@@ -327,16 +434,19 @@ static inline int comp_position(struct comp_dev *dev,
 }
 
 /**
- * Allocates and initializes audio component list.
+ * \brief Allocates and initializes audio component list.
+ *
  * To be called once at boot time.
+ *
+ * \param[in,out] sof SOF global system context.
  */
 void sys_comp_init(struct sof *sof);
 
 /**
- * Checks if two component devices belong to the same parent pipeline.
- * @param current Component device.
- * @param previous Another component device.
- * @return 1 if children of the same pipeline, 0 otherwise.
+ * \brief Checks if two component devices belong to the same parent pipeline.
+ * \param[in] current Component device.
+ * \param[in] previous Another component device.
+ * \return 1 if children of the same pipeline, 0 otherwise.
  */
 static inline int comp_is_single_pipeline(struct comp_dev *current,
 					  struct comp_dev *previous)
@@ -345,9 +455,9 @@ static inline int comp_is_single_pipeline(struct comp_dev *current,
 }
 
 /**
- * Checks if component device is active.
- * @param current Component device.
- * @return 1 if active, 0 otherwise.
+ * \brief Checks if component device is active.
+ * \param[in] current Component device.
+ * \return 1 if active, 0 otherwise.
  */
 static inline int comp_is_active(struct comp_dev *current)
 {
@@ -355,9 +465,9 @@ static inline int comp_is_active(struct comp_dev *current)
 }
 
 /**
- * Returns component state based on requested command.
- * @param cmd Request command.
- * @return Component state.
+ * \brief Returns component state based on requested command.
+ * \param[in] cmd Request command (COMP_TRIGGER_*).
+ * \return Component state (COMP_STATE_*).
  */
 static inline int comp_get_requested_state(int cmd)
 {
@@ -390,8 +500,8 @@ static inline int comp_get_requested_state(int cmd)
 
 /**
  * \brief Returns endpoint type of given component.
- * @param dev Component device
- * @return Endpoint type, one of comp_endpoint_type.
+ * \param[in] dev Component device.
+ * \return Endpoint type, one of comp_endpoint_type (COMP_ENDPOINT_*).
  */
 static inline int comp_get_endpoint_type(struct comp_dev *dev)
 {
@@ -406,9 +516,9 @@ static inline int comp_get_endpoint_type(struct comp_dev *dev)
 }
 
 /**
- * Called to check whether component schedules its pipeline.
- * @param dev Component device.
- * @return True if this is scheduling component, false otherwise.
+ * \brief Called to check whether component schedules its pipeline.
+ * \param[in] dev Component device.
+ * \return True if this is scheduling component, false otherwise.
  */
 static inline bool comp_is_scheduling_source(struct comp_dev *dev)
 {
@@ -416,8 +526,8 @@ static inline bool comp_is_scheduling_source(struct comp_dev *dev)
 }
 
 /**
- * Called to mark component as shared between cores
- * @param dev Component device.
+ * \brief Called to mark component as shared between cores.
+ * \param[in,out] dev Component device.
  */
 static inline void comp_make_shared(struct comp_dev *dev)
 {
@@ -425,8 +535,8 @@ static inline void comp_make_shared(struct comp_dev *dev)
 }
 
 /**
- * Get the global component driver list.
- * @return Pointer to the component driver list.
+ * \brief Get the global component driver list.
+ * \return Pointer to the component driver list.
  */
 #ifdef CONFIG_SOF_USERSPACE_LL
 struct comp_driver_list *comp_drivers_get(void);
@@ -438,6 +548,12 @@ static inline struct comp_driver_list *comp_drivers_get(void)
 #endif
 
 #if CONFIG_IPC_MAJOR_4
+/**
+ * \brief Send bind message to component on remote core (IPC4).
+ * \param[in,out] dev Component device.
+ * \param[in] bind_data Binding information.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_ipc4_bind_remote(struct comp_dev *dev, const struct bind_info *bind_data)
 {
 	struct idc_msg msg = { IDC_MSG_BIND,
@@ -448,6 +564,12 @@ static inline int comp_ipc4_bind_remote(struct comp_dev *dev, const struct bind_
 }
 #endif
 
+/**
+ * \brief Bind component to downstream/upstream component or buffer.
+ * \param[in,out] dev Component device.
+ * \param[in] bind_data Binding information.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_bind(struct comp_dev *dev, const struct bind_info *bind_data)
 {
 #if CONFIG_IPC_MAJOR_4
@@ -467,6 +589,12 @@ static inline int comp_bind(struct comp_dev *dev, const struct bind_info *bind_d
 }
 
 #if CONFIG_IPC_MAJOR_4
+/**
+ * \brief Send unbind message to component on remote core (IPC4).
+ * \param[in,out] dev Component device.
+ * \param[in] unbind_data Unbinding information.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_ipc4_unbind_remote(struct comp_dev *dev, const struct bind_info *unbind_data)
 {
 	struct idc_msg msg = { IDC_MSG_UNBIND,
@@ -477,6 +605,12 @@ static inline int comp_ipc4_unbind_remote(struct comp_dev *dev, const struct bin
 }
 #endif
 
+/**
+ * \brief Unbind component from downstream/upstream component or buffer.
+ * \param[in,out] dev Component device.
+ * \param[in] unbind_data Unbinding information.
+ * \return 0 on success, negative error code on failure.
+ */
 static inline int comp_unbind(struct comp_dev *dev, const struct bind_info *unbind_data)
 {
 #if CONFIG_IPC_MAJOR_4
@@ -496,6 +630,13 @@ static inline int comp_unbind(struct comp_dev *dev, const struct bind_info *unbi
 #endif
 }
 
+/**
+ * \brief Retrieve total data processed by component.
+ * \param[in] dev Component device.
+ * \param[in] stream_no Stream index.
+ * \param[in] input True for input data, false for output data.
+ * \return Total processed data in bytes.
+ */
 static inline uint64_t comp_get_total_data_processed(struct comp_dev *dev, uint32_t stream_no,
 						     bool input)
 {
@@ -507,7 +648,12 @@ static inline uint64_t comp_get_total_data_processed(struct comp_dev *dev, uint3
 	return ret;
 }
 
-/** Returns true if the component's pipeline matches the specified direction */
+/**
+ * \brief Returns true if the component's pipeline matches the specified direction.
+ * \param[in] comp Component device.
+ * \param[in] dir Stream direction (SOF_IPC_STREAM_PLAYBACK or SOF_IPC_STREAM_CAPTURE).
+ * \return True if matching direction, false otherwise.
+ */
 static inline bool comp_same_dir(struct comp_dev *comp, enum sof_ipc_stream_direction dir)
 {
 	int end_type = comp_get_endpoint_type(comp->pipeline->sink_comp);

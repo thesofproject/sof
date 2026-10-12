@@ -6,7 +6,7 @@
 /**
  * @file sof/audio/audio_buffer.h
  * @brief Audio buffer operations, descriptors, and unified audio buffer interfaces.
- * @ingroup audio_pipeline_api
+ * @ingroup audio_buffer_api
  */
 
 #ifndef __SOF_AUDIO_BUFFER__
@@ -18,48 +18,66 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 
-#define BUFFER_TYPE_LEGACY_BUFFER 1
-#define BUFFER_TYPE_RING_BUFFER 2
+/** \addtogroup audio_buffer_api
+ *  @{
+ */
+
+/** \name Buffer type identifiers
+ *  @{
+ */
+#define BUFFER_TYPE_LEGACY_BUFFER 1	/**< Legacy comp_buffer type (pipeline 1.0) */
+#define BUFFER_TYPE_RING_BUFFER 2	/**< Lockless async circular ring buffer type (cross-core) */
+/** @}*/
 
 /* forward def */
 struct sof_audio_buffer;
 
+/**
+ * \brief Audio buffer virtual operations table.
+ */
 struct audio_buffer_ops {
 	/**
-	 * @brief this method must free all structures allocated by buffer implementation
-	 *	  and the buffer itself
-	 *	  OBLIGATORY
+	 * \brief Free all structures allocated by buffer implementation and the buffer itself.
+	 *
+	 * MANDATORY: audio_buffer_free() invokes this callback unconditionally.
+	 *
+	 * \param[in,out] buffer Buffer to free.
 	 */
 	void (*free)(struct sof_audio_buffer *buffer);
 
 	/**
-	 * @brief clean all buffer data, set buffer positions to initial, leaving config as is
-	 *	  the procedure is to be called only when buffer is not in use
-	 *	  OPTIONAL
+	 * \brief Clean all buffer data and reset positions to initial state, keeping configuration.
+	 *
+	 * OPTIONAL: procedure is to be called only when buffer is not in use.
+	 *
+	 * \param[in,out] buffer Buffer to reset.
 	 */
 	void (*reset)(struct sof_audio_buffer *buffer);
 
 	/**
-	 * OPTIONAL: Notification to the sink implementation about changes in audio format
-	 *
-	 * Once any of *audio_stream_params elements changes, the implementation of
-	 * sink may need to perform some extra operations.
-	 * This callback will be called immediately after any change
-	 *
-	 * @retval 0 if success, negative if new parameters are not supported
+	 * \brief Notification callback invoked on audio format modification.
+	 * \param[in,out] buffer Buffer whose format changed.
+	 * \retval 0 On success.
+	 * \retval negative If new parameters are not supported.
 	 */
 	int (*on_audio_format_set)(struct sof_audio_buffer *buffer);
 
 	/**
-	 * OPTIONAL
-	 * see sink_set_params comments
+	 * \brief Configure IPC stream parameters on buffer.
+	 * \param[in,out] buffer Buffer to configure.
+	 * \param[in] params Stream parameters to apply.
+	 * \param[in] force_update If true, overwrite parameters unconditionally.
+	 * \return 0 on success, negative error code on failure.
 	 */
 	int (*audio_set_ipc_params)(struct sof_audio_buffer *buffer,
 				    struct sof_ipc_stream_params *params, bool force_update);
 
 	/**
-	 * OPTIONAL
-	 * see comment for sink_set_alignment_constants
+	 * \brief Configure alignment constraints on buffer.
+	 * \param[in,out] buffer Buffer to configure.
+	 * \param[in] byte_align Byte alignment requirement in bytes.
+	 * \param[in] frame_align_req Frame alignment requirement in frames.
+	 * \return 0 on success, negative error code on failure.
 	 */
 	int (*set_alignment_constants)(struct sof_audio_buffer *buffer,
 				       const uint32_t byte_align,
@@ -67,106 +85,71 @@ struct audio_buffer_ops {
 };
 
 struct mod_alloc_ctx;
-/* base class for all buffers, all buffers must inherit from it */
+
+/**
+ * \brief Base class for all audio buffers. All audio buffers must inherit from it.
+ */
 struct sof_audio_buffer {
 	CORE_CHECK_STRUCT_FIELD;
 
-	/* type of the buffer BUFFER_TYPE_* */
-	uint32_t buffer_type;
+	uint32_t buffer_type;	/**< Type of the buffer (BUFFER_TYPE_*) */
 
-	bool is_shared;   /* buffer structure is shared between 2 cores */
+	bool is_shared;		/**< Buffer structure is shared between 2 cores */
 
 #if CONFIG_PIPELINE_2_0
 	/**
-	 * sink API of an additional buffer
-	 * of any type at data input
-	 *
-	 * to be removed when hybrid buffers are no longer needed
+	 * Sink API of an additional buffer of any type at data input.
+	 * To be removed when hybrid buffers are no longer needed.
 	 */
 	struct sof_audio_buffer *secondary_buffer_sink;
 
 	/**
-	 * source API of an additional buffer
-	 * at data output
+	 * Source API of an additional buffer at data output.
 	 */
 	struct sof_audio_buffer *secondary_buffer_source;
 
 #endif /* CONFIG_PIPELINE_2_0 */
 
-	/* effective runtime stream params
-	 * before pipelin2.0 is ready, stream params may be kept in audio_stream structure
-	 * also for hybrid buffering audio params need to be shared between primary and secondary
-	 * buffers
-	 *
-	 * So currently only a pointer to effective stream params is here.
-	 * Note that the same pointer MUST be set in source and sink api (kept there for
-	 * performance reasons)
+	/**
+	 * Pointer to effective runtime stream parameters.
 	 */
 	struct sof_audio_stream_params *audio_stream_params;
 
-
 	/* private: */
-	struct sof_source _source_api;  /**< src api handler */
-	struct sof_sink _sink_api;      /**< sink api handler */
+	struct sof_source _source_api;  /**< Source API interface handler */
+	struct sof_sink _sink_api;      /**< Sink API interface handler */
 
 	/* virtual methods */
-	const struct audio_buffer_ops *ops;
+	const struct audio_buffer_ops *ops; /**< Virtual methods table */
 
-	/*
-	 * legacy params, needed for pipeline binding/iterating, not for data buffering
-	 * should not be in struct sof_audio_buffer at all, kept for pipeline2.0 transition
-	 */
-	bool walking;		/**< indicates if the buffer is being walked */
+	bool walking;		/**< Indicates if the buffer is being walked in pipeline graph */
 
-	struct mod_alloc_ctx *alloc;
+	struct mod_alloc_ctx *alloc;	/**< Allocation context */
 };
 
 #if CONFIG_PIPELINE_2_0
-/*
- * attach a secondary buffer (any type) before buffer (when at_input == true) or behind a buffer
- *
- * before buffer (at_input == true):
- *  2.0 mod ==> (sink_API) secondary buffer ==>
- *			==> comp_buffer (audio_stream or source API) ==> 1.0 mod
- *
- * after buffer (at_input == false):
- *  1.0 mod ==> (audio_stream or sink API) ==> comp_buffer ==>
- *			==> secondary buffer(source API) == 2.0 mod
- *
- * If a secondary buffer is attached, it replaces source or sink interface of audio_stream
- * allowing the module connected to it using all properties of secondary buffer (like
- * lockless cross-core connection in case of ring_buffer etc.) keeping legacy interface
- * to other modules
- *
- * buffer_sync_secondary_buffer must be called every 1 ms to move data to/from
- * secondary buffer to comp_buffer
- *
- * @param buffer pointer to a buffer
- * @param at_input true indicates that a secondary buffer is located at data input, replacing
- *			sink API of audio_stream
- *		   false indicates that a secondary buffer is located at data output, replacing
- *			source API of audio_stream
- * @param secondary_buffer pointer to a buffer to be attached
- *
- * to be removed when hybrid buffers are no longer needed
+/**
+ * \brief Attach a secondary buffer at data input or data output of primary buffer.
+ * \param[in,out] buffer Pointer to primary audio buffer.
+ * \param[in] at_input True if secondary buffer is placed at input, false if at output.
+ * \param[in,out] secondary_buffer Pointer to secondary buffer to attach.
+ * \return 0 on success, or negative error code on failure.
  */
 int audio_buffer_attach_secondary_buffer(struct sof_audio_buffer *buffer, bool at_input,
 					 struct sof_audio_buffer *secondary_buffer);
 
-/*
- * move data from/to secondary buffer, must be called periodically as described above
- *
- * @param buffer pointer to a buffer
- * @param limit data copy limit. Indicates maximum amount of data that will be moved from/to
- *		secondary buffer in an operation
- *
- * to be removed when hybrid buffers are no longer needed
+/**
+ * \brief Synchronize data between primary and secondary hybrid buffers.
+ * \param[in,out] buffer Pointer to audio buffer.
+ * \param[in] limit Maximum number of bytes to move.
+ * \return 0 on success, or negative error code on failure.
  */
 int audio_buffer_sync_secondary_buffer(struct sof_audio_buffer *buffer, size_t limit);
 
 /**
- * @brief return a handler to sink API of audio_buffer.
- *		  the handler may be used by helper functions defined in sink_api.h
+ * \brief Return pointer to sink interface of audio buffer.
+ * \param[in] buffer Pointer to audio buffer.
+ * \return Pointer to sink interface.
  */
 static inline
 struct sof_sink *audio_buffer_get_sink(struct sof_audio_buffer *buffer)
@@ -178,8 +161,9 @@ struct sof_sink *audio_buffer_get_sink(struct sof_audio_buffer *buffer)
 }
 
 /**
- * @brief return a handler to source API of audio_buffer
- *		  the handler may be used by helper functions defined in source_api.h
+ * \brief Return pointer to source interface of audio buffer.
+ * \param[in] buffer Pointer to audio buffer.
+ * \return Pointer to source interface.
  */
 static inline
 struct sof_source *audio_buffer_get_source(struct sof_audio_buffer *buffer)
@@ -193,8 +177,9 @@ struct sof_source *audio_buffer_get_source(struct sof_audio_buffer *buffer)
 #else /* CONFIG_PIPELINE_2_0 */
 
 /**
- * @brief return a handler to sink API of audio_buffer.
- *		  the handler may be used by helper functions defined in sink_api.h
+ * \brief Return pointer to sink interface of audio buffer.
+ * \param[in] buffer Pointer to audio buffer.
+ * \return Pointer to sink interface.
  */
 static inline
 struct sof_sink *audio_buffer_get_sink(struct sof_audio_buffer *buffer)
@@ -204,8 +189,9 @@ struct sof_sink *audio_buffer_get_sink(struct sof_audio_buffer *buffer)
 }
 
 /**
- * @brief return a handler to source API of audio_buffer
- *		  the handler may be used by helper functions defined in source_api.h
+ * \brief Return pointer to source interface of audio buffer.
+ * \param[in] buffer Pointer to audio buffer.
+ * \return Pointer to source interface.
  */
 static inline
 struct sof_source *audio_buffer_get_source(struct sof_audio_buffer *buffer)
@@ -216,48 +202,92 @@ struct sof_source *audio_buffer_get_source(struct sof_audio_buffer *buffer)
 
 #endif /* CONFIG_PIPELINE_2_0 */
 
+/**
+ * \brief Check if audio buffer is shared across cores.
+ * \param[in] buffer Pointer to audio buffer.
+ * \return True if shared, false otherwise.
+ */
 static inline bool audio_buffer_is_shared(struct sof_audio_buffer *buffer)
 {
 	return buffer->is_shared;
 }
 
+/**
+ * \brief Check if buffer hardware parameters are configured.
+ * \param[in] buffer Pointer to audio buffer.
+ * \return True if configured, false otherwise.
+ */
 static inline bool audio_buffer_hw_params_configured(struct sof_audio_buffer *buffer)
 {
 	return buffer->audio_stream_params->state != AUDIOBUF_STATE_INITIAL;
 }
 
+/**
+ * \brief Mark buffer hardware parameters as configured (state set to READY).
+ * \param[in,out] buffer Pointer to audio buffer.
+ */
 static inline void audio_buffer_set_hw_params_configured(struct sof_audio_buffer *buffer)
 {
 	buffer->audio_stream_params->state = AUDIOBUF_STATE_READY;
 }
 
+/**
+ * \brief Reset buffer parameters state to initial.
+ * \param[in,out] buffer Pointer to audio buffer.
+ */
 static inline void audio_buffer_reset_params(struct sof_audio_buffer *buffer)
 {
 	buffer->audio_stream_params->state = AUDIOBUF_STATE_INITIAL;
 }
 
+/**
+ * \brief Retrieve current buffer state.
+ * \param[in] buffer Pointer to audio buffer.
+ * \return Current buffer state (enum sof_audio_buffer_state).
+ */
 static inline enum sof_audio_buffer_state audio_buffer_get_state(
 	const struct sof_audio_buffer *buffer)
 {
 	return buffer->audio_stream_params->state;
 }
 
+/**
+ * \brief Set buffer state.
+ * \param[in,out] buffer Pointer to audio buffer.
+ * \param[in] state New state to assign.
+ */
 static inline void audio_buffer_set_state(struct sof_audio_buffer *buffer,
 					  enum sof_audio_buffer_state state)
 {
 	buffer->audio_stream_params->state = state;
 }
 
+/**
+ * \brief Mark buffer state as end-of-stream (EOS).
+ * \param[in,out] buffer Pointer to audio buffer.
+ */
 static inline void audio_buffer_set_eos(struct sof_audio_buffer *buffer)
 {
 	buffer->audio_stream_params->state = AUDIOBUF_STATE_END_OF_STREAM;
 }
 
+/**
+ * \brief Retrieve channel map value for a given channel index.
+ * \param[in] buffer Pointer to audio buffer.
+ * \param[in] index Channel index.
+ * \return Channel map value.
+ */
 static inline uint16_t audio_buffer_get_chmap(struct sof_audio_buffer *buffer, size_t index)
 {
 	return buffer->audio_stream_params->chmap[index];
 }
 
+/**
+ * \brief Set channel map value for a given channel index.
+ * \param[in,out] buffer Pointer to audio buffer.
+ * \param[in] index Channel index.
+ * \param[in] value Channel map value to set.
+ */
 static inline void audio_buffer_set_chmap(struct sof_audio_buffer *buffer, size_t index,
 					  uint16_t value)
 {
@@ -265,7 +295,9 @@ static inline void audio_buffer_set_chmap(struct sof_audio_buffer *buffer, size_
 }
 
 /**
- * @brief return a handler to stream params structure
+ * \brief Retrieve pointer to runtime stream parameters.
+ * \param[in] buffer Pointer to audio buffer.
+ * \return Pointer to runtime stream parameters.
  */
 static inline
 struct sof_audio_stream_params *audio_buffer_get_stream_params(struct sof_audio_buffer *buffer)
@@ -274,9 +306,13 @@ struct sof_audio_stream_params *audio_buffer_get_stream_params(struct sof_audio_
 }
 
 /**
- * @brief return a pointer to struct sof_audio_buffer from sink pointer
- *	  NOTE! ensure that sink is really provided by sof_audio_buffer
- *	  otherwise a random value will be returned
+ * \brief Retrieve enclosing sof_audio_buffer from sink interface pointer.
+ *
+ * NOTE: Ensure that sink is really embedded within a sof_audio_buffer;
+ * otherwise an invalid derived pointer will be returned.
+ *
+ * \param[in] sink Pointer to sink interface.
+ * \return Pointer to enclosing struct sof_audio_buffer.
  */
 static inline struct sof_audio_buffer *sof_audio_buffer_from_sink(struct sof_sink *sink)
 {
@@ -284,9 +320,13 @@ static inline struct sof_audio_buffer *sof_audio_buffer_from_sink(struct sof_sin
 }
 
 /**
- * @brief return a pointer to struct sof_audio_buffer from source pointer
- *	  NOTE! ensure that source is really provided by sof_audio_buffer
- *	  otherwise a random value will be returned
+ * \brief Retrieve enclosing sof_audio_buffer from source interface pointer.
+ *
+ * NOTE: Ensure that source is really embedded within a sof_audio_buffer;
+ * otherwise an invalid derived pointer will be returned.
+ *
+ * \param[in] source Pointer to source interface.
+ * \return Pointer to enclosing struct sof_audio_buffer.
  */
 static inline struct sof_audio_buffer *sof_audio_buffer_from_source(struct sof_source *source)
 {
@@ -294,23 +334,14 @@ static inline struct sof_audio_buffer *sof_audio_buffer_from_source(struct sof_s
 }
 
 /**
- * @brief initialize audio buffer structures
- *
- * @param buffer pointer to the audio_buffer
- * @param buffer_type a type of the buffer, BUFFER_TYPE_*
- * @param is_shared indicates if the buffer will be shared between cores
- * @param source_ops pointer to virtual methods table for source API
- * @param sink_ops pointer to virtual methods table for sink API
- * @param audio_buffer_ops pointer to required buffer virtual methods implementation
- * @param audio_stream_params pointer to audio stream (currently kept in buffer implementation)
- *
- * in sink_ops and source_ops API if there's no implemented of following methods:
- *   on_audio_format_set
- *   audio_set_ipc_params
- *   set_alignment_constants
- *
- * default implementation will be used instead, redirecting those calls to proper
- * audio_buffer_ops operations
+ * \brief Initialize audio buffer structure and virtual operation tables.
+ * \param[in,out] buffer Pointer to audio buffer.
+ * \param[in] buffer_type Buffer type identifier (BUFFER_TYPE_*).
+ * \param[in] is_shared True if buffer is shared between cores.
+ * \param[in] source_ops Pointer to source operations table.
+ * \param[in] sink_ops Pointer to sink operations table.
+ * \param[in] audio_buffer_ops Pointer to audio buffer operations table.
+ * \param[in,out] audio_stream_params Pointer to audio stream parameters.
  */
 void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bool is_shared,
 		       const struct source_ops *source_ops, const struct sink_ops *sink_ops,
@@ -318,13 +349,14 @@ void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bo
 		       struct sof_audio_stream_params *audio_stream_params);
 
 /**
- * @brief free buffer and all allocated resources
+ * \brief Free audio buffer and all allocated resources.
+ * \param[in,out] buffer Pointer to audio buffer to free.
  */
 void audio_buffer_free(struct sof_audio_buffer *buffer);
 
 /**
- * @brief clean all buffer data, set buffer positions to initial, leaving config as is
- *	  the procedure is to be called only when buffer is not in use
+ * \brief Reset all buffer data and positions leaving configuration intact.
+ * \param[in,out] buffer Pointer to audio buffer.
  */
 static inline
 void audio_buffer_reset(struct sof_audio_buffer *buffer)
@@ -342,18 +374,70 @@ void audio_buffer_reset(struct sof_audio_buffer *buffer)
 }
 
 /* Audio-buffer wrappers for the source-sink API */
+
+/**
+ * \brief Set IPC stream parameters via source interface wrapper.
+ * \param[in,out] source Pointer to source interface.
+ * \param[in] params Stream parameters to apply.
+ * \param[in] force_update If true, overwrite parameters unconditionally.
+ * \return 0 on success, or negative error code on failure.
+ */
 int audio_buffer_source_set_ipc_params(struct sof_source *source,
 				       struct sof_ipc_stream_params *params, bool force_update);
+
+/**
+ * \brief Audio format set callback via source interface wrapper.
+ * \param[in,out] source Pointer to source interface.
+ * \return 0 on success, or negative error code on failure.
+ */
 int audio_buffer_source_on_audio_format_set(struct sof_source *source);
+
+/**
+ * \brief Set alignment constraints via source interface wrapper.
+ * \param[in,out] source Pointer to source interface.
+ * \param[in] byte_align Byte alignment requirement in bytes.
+ * \param[in] frame_align_req Frame alignment requirement in frames.
+ * \return 0 on success, or negative error code on failure.
+ */
 int audio_buffer_source_set_alignment_constants(struct sof_source *source,
 						const uint32_t byte_align,
 						const uint32_t frame_align_req);
+
+/**
+ * \brief Set IPC stream parameters via sink interface wrapper.
+ * \param[in,out] sink Pointer to sink interface.
+ * \param[in] params Stream parameters to apply.
+ * \param[in] force_update If true, overwrite parameters unconditionally.
+ * \return 0 on success, or negative error code on failure.
+ */
 int audio_buffer_sink_set_ipc_params(struct sof_sink *sink, struct sof_ipc_stream_params *params,
 				     bool force_update);
+
+/**
+ * \brief Audio format set callback via sink interface wrapper.
+ * \param[in,out] sink Pointer to sink interface.
+ * \return 0 on success, or negative error code on failure.
+ */
 int audio_buffer_sink_on_audio_format_set(struct sof_sink *sink);
+
+/**
+ * \brief Set alignment constraints via sink interface wrapper.
+ * \param[in,out] sink Pointer to sink interface.
+ * \param[in] byte_align Byte alignment requirement in bytes.
+ * \param[in] frame_align_req Frame alignment requirement in frames.
+ * \return 0 on success, or negative error code on failure.
+ */
 int audio_buffer_sink_set_alignment_constants(struct sof_sink *sink,
 					      const uint32_t byte_align,
 					      const uint32_t frame_align_req);
+
+/**
+ * \brief Get linear free time (LFT) duration in microseconds from sink interface wrapper.
+ * \param[in] sink Pointer to sink interface.
+ * \return Buffered duration in microseconds (us_in_buffer) calculated from source available data and sample rate.
+ */
 uint32_t audio_buffer_sink_get_lft(struct sof_sink *sink);
+
+/** @}*/
 
 #endif /* __SOF_AUDIO_BUFFER__ */

@@ -4,6 +4,12 @@
  *
  */
 
+/**
+ * @file sof/audio/ring_buffer.h
+ * @brief Lockless async circular ring buffer for cross-core audio processing.
+ * @ingroup audio_buffer_api
+ */
+
 #ifndef __SOF_RING_BUFFER_H__
 #define __SOF_RING_BUFFER_H__
 
@@ -15,6 +21,10 @@
 #include <sof/common.h>
 #include <ipc/topology.h>
 #include <sof/coherent.h>
+
+/** \addtogroup audio_buffer_api
+ *  @{
+ */
 
 /**
  * ring_buffer is a lockless async circular buffer
@@ -101,31 +111,33 @@ struct comp_dev;
 struct ring_buffer;
 struct sof_audio_stream_params;
 
-/* the ring_buffer structure */
+/**
+ * \brief Lockless asynchronous circular ring buffer structure.
+ */
 struct ring_buffer {
 	/* public: read only */
-	struct sof_audio_buffer audio_buffer;
+	struct sof_audio_buffer audio_buffer;	/**< Embedded audio buffer base structure */
 
-	size_t data_buffer_size;
+	size_t data_buffer_size;		/**< Total allocated data buffer capacity in bytes */
 
-	uint8_t __sparse_cache *_data_buffer;
-	size_t _write_offset;		/* private: to be modified by data producer using API */
-	size_t _read_offset;		/* private: to be modified by data consumer using API */
+	uint8_t __sparse_cache *_data_buffer;	/**< Pointer to circular data buffer memory */
+	size_t _write_offset;		/**< Producer write offset in bytes */
+	size_t _read_offset;		/**< Consumer read offset in bytes */
 };
 
 /**
- *
- * @param dev pointer to the DP module device structure
- * @param min_available  minimum data available in queue required by the module using
- *			 ring_buffer's source api
- * @param min_free_space minimum buffer space in queue required by the module using
- *			 ring_buffer's sink api
- * @param is_shared indicates if the buffer will be shared between cores
- * @param id a stream ID, accessible later by sink_get_id/source_get_id
- *
+ * \brief Create and allocate a lockless async circular ring buffer.
+ * \param[in,out] dev Pointer to component device creating this buffer.
+ * \param[in] min_available Minimum data available required by source API consumer.
+ * \param[in] min_free_space Minimum buffer space required by sink API producer.
+ * \param[in] is_shared True if buffer memory is shared across processing cores.
+ * \param[in] id Stream identifier accessible via sink/source interface.
+ * \return Pointer to newly allocated ring_buffer, or NULL on failure.
  */
 struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_available,
 				       size_t min_free_space, bool is_shared,
 				       uint32_t id);
+
+/** @}*/
 
 #endif /* __SOF_RING_BUFFER_H__ */
