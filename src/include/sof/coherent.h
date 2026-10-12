@@ -5,6 +5,12 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+/**
+ * @file sof/coherent.h
+ * @brief Cache-coherent multi-core shared memory access abstractions.
+ * @ingroup memory_api
+ */
+
 #ifndef __SOF_COHERENT_H__
 #define __SOF_COHERENT_H__
 
@@ -17,6 +23,11 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/cpu.h>
 
+/** \addtogroup memory_api
+ *  @{
+ */
+
+/** @brief Cache line alignment specifier for coherent shared memory objects. */
 #define __coherent __aligned(PLATFORM_DCACHE_ALIGN)
 
 /*
@@ -52,21 +63,27 @@
  * This structure must not be accessed outside of these APIs.
  * The shared flag is only set at coherent init and thereafter it's RO.
  */
+
+/**
+ * @brief Header embedded at start of multi-core shared memory objects for cache coherence.
+ *
+ * Ensures cache line alignment and synchronizes cached/uncached state transitions across DSP cores.
+ * Must only be manipulated via coherent_* APIs.
+ */
 struct coherent {
 	union {
 		struct {
-			struct k_spinlock lock;	/* locking mechanism */
-			k_spinlock_key_t key;	/* lock flags */
+			struct k_spinlock lock;	/**< Spinlock synchronizing multi-core access. */
+			k_spinlock_key_t key;	/**< Spinlock key storing interrupt flags. */
 		};
 #ifdef __ZEPHYR__
-		struct k_mutex mutex;
+		struct k_mutex mutex;		/**< Mutex synchronizing thread-level access when sleeping is allowed. */
 #endif
 	};
-	uint8_t sleep_allowed;	/* the object will never be acquired or released
-				 * in atomic context */
-	uint8_t shared;		/* shared on other non coherent cores */
-	uint16_t core;		/* owner core if not shared */
-	struct list_item list;	/* coherent list iteration */
+	uint8_t sleep_allowed;	/**< Non-zero if context allows sleeping/blocking mutex operations. */
+	uint8_t shared;		/**< Non-zero if object is shared across non-coherent cores. */
+	uint16_t core;		/**< Owner core ID when object is not shared. */
+	struct list_item list;	/**< Node for coherent tracking list iteration. */
 } __coherent;
 
 #if CONFIG_INCOHERENT
@@ -120,7 +137,17 @@ STATIC_ASSERT(sizeof(struct coherent) <= DCACHE_LINE_SIZE,  DCACHE_LINE_SIZE_too
 #endif
 
 #if CONFIG_INCOHERENT
-/* When coherent_acquire() is called, we are sure not to have cache for this memory */
+/**
+ * @brief Acquire exclusive access to a cache-coherent shared object in atomic/spinlock context.
+ *
+ * For incoherent hardware platforms, validates uncache alias, acquires the spinlock,
+ * and invalidates the local data cache over the object range so local accesses observe
+ * fresh multi-core updates.
+ *
+ * @param[in,out] c Pointer to uncached coherent object header.
+ * @param[in] size Size of the coherent object including header in bytes.
+ * @return Pointer to the cached memory view of the coherent object.
+ */
 __must_check static inline struct coherent __sparse_cache *coherent_acquire(struct coherent *c,
 								     const size_t size)
 {
@@ -155,6 +182,15 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire(stru
 	return cc;
 }
 
+/**
+ * @brief Release exclusive access to a cache-coherent shared object in atomic/spinlock context.
+ *
+ * Writes back dirty cache lines across the object range to physical memory,
+ * invalidates local cache lines, and releases the multi-core spinlock.
+ *
+ * @param[in,out] c Pointer to cached memory view of the coherent object.
+ * @param[in] size Size of the coherent object including header in bytes.
+ */
 static inline void coherent_release(struct coherent __sparse_cache *c,
 				    const size_t size)
 {
@@ -175,6 +211,16 @@ static inline void coherent_release(struct coherent __sparse_cache *c,
 	}
 }
 
+/**
+ * @brief Internal helper to allocate and initialize a coherent shared object.
+ *
+ * Allocates cache-aligned uncached memory with SOF_MEM_FLAG_COHERENT and initializes
+ * the coherent spinlock, tracking list, and owner core ID.
+ *
+ * @param[in] offset Byte offset of the struct coherent member within the allocated object.
+ * @param[in] size Total size in bytes of the container object.
+ * @return Pointer to the newly allocated coherent object, or NULL on failure.
+ */
 static inline void *__coherent_init(size_t offset, const size_t size)
 {
 	/*
@@ -203,10 +249,26 @@ static inline void *__coherent_init(size_t offset, const size_t size)
 	return object;
 }
 
+/**
+ * @brief Allocate and initialize a coherent shared object with spinlock protection.
+ *
+ * Wrapper around __coherent_init() computing the member offset and container type size.
+ *
+ * @param[in] type Type of the container structure.
+ * @param[in] member Member name of the embedded struct coherent.
+ */
 #define coherent_init(type, member) __coherent_init(offsetof(type, member), \
 						    sizeof(type))
 
-/* set the object to shared mode with coherency managed by SW */
+/**
+ * @brief Internal helper to mark an allocated coherent object as actively shared.
+ *
+ * Transitions the coherent object state to shared mode under spinlock protection
+ * and invalidates local cache.
+ *
+ * @param[in,out] c Pointer to uncached coherent object header.
+ * @param[in] size Total size in bytes of the coherent object.
+ */
 static inline void __coherent_shared(struct coherent *c, const size_t size)
 {
 	/* assert if someone passes a cache/local address in here. */
@@ -219,11 +281,29 @@ static inline void __coherent_shared(struct coherent *c, const size_t size)
 	k_spin_unlock(&c->lock, c->key);
 }
 
+/**
+ * @brief Mark an allocated coherent object as actively shared across multiple DSP cores.
+ *
+ * Wrapper around __coherent_shared() computing the member address and container size.
+ *
+ * @param[in,out] object Pointer to the container structure.
+ * @param[in] member Member name of the embedded struct coherent.
+ */
 #define coherent_shared(object, member) __coherent_shared(&(object)->member, \
 							  sizeof(*object))
 
 #ifdef __ZEPHYR__
 
+/**
+ * @brief Acquire exclusive access to a cache-coherent shared object in thread/mutex context.
+ *
+ * Locks the embedded mutex (blocking if necessary) and invalidates the local data
+ * cache region so thread-level accesses observe updates from other cores.
+ *
+ * @param[in,out] c Pointer to uncached coherent object header.
+ * @param[in] size Size of the coherent object including header in bytes.
+ * @return Pointer to the cached memory view of the coherent object.
+ */
 __must_check static inline struct coherent __sparse_cache *coherent_acquire_thread(
 	struct coherent *c, const size_t size)
 {
@@ -248,6 +328,15 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire_thre
 	return cc;
 }
 
+/**
+ * @brief Release exclusive access to a cache-coherent shared object in thread/mutex context.
+ *
+ * Writes back dirty cache lines to physical memory, invalidates local cache,
+ * and unlocks the embedded mutex.
+ *
+ * @param[in,out] c Pointer to cached memory view of the coherent object.
+ * @param[in] size Size of the coherent object including header in bytes.
+ */
 static inline void coherent_release_thread(struct coherent __sparse_cache *c,
 					   const size_t size)
 {
@@ -269,6 +358,16 @@ static inline void coherent_release_thread(struct coherent __sparse_cache *c,
 	}
 }
 
+/**
+ * @brief Internal helper to allocate and initialize a thread-capable coherent shared object.
+ *
+ * Allocates cache-aligned uncached memory with SOF_MEM_FLAG_COHERENT and initializes
+ * the embedded mutex and list header with sleeping allowed.
+ *
+ * @param[in] offset Byte offset of the struct coherent member within the allocated object.
+ * @param[in] size Total size in bytes of the container object.
+ * @return Pointer to the newly allocated coherent object, or NULL on failure.
+ */
 static inline void *__coherent_init_thread(size_t offset, const size_t size)
 {
 	/* As above - prevent cache line sharing */
@@ -293,9 +392,26 @@ static inline void *__coherent_init_thread(size_t offset, const size_t size)
 	return object;
 }
 
+/**
+ * @brief Allocate and initialize a coherent shared object with mutex protection for thread context.
+ *
+ * Wrapper around __coherent_init_thread() computing the member offset and container type size.
+ *
+ * @param[in] type Type of the container structure.
+ * @param[in] member Member name of the embedded struct coherent.
+ */
 #define coherent_init_thread(type, member) __coherent_init_thread(offsetof(type, member), \
 								  sizeof(type))
 
+/**
+ * @brief Internal helper to mark a thread-capable coherent object as actively shared.
+ *
+ * Transitions the coherent object state to shared mode under mutex protection
+ * and invalidates local cache.
+ *
+ * @param[in,out] c Pointer to uncached coherent object header.
+ * @param[in] size Total size in bytes of the coherent object.
+ */
 static inline void __coherent_shared_thread(struct coherent *c, const size_t size)
 {
 	/* assert if someone passes a cache/local address in here. */
@@ -309,11 +425,27 @@ static inline void __coherent_shared_thread(struct coherent *c, const size_t siz
 	k_mutex_unlock(&c->mutex);
 }
 
+/**
+ * @brief Mark a thread-capable coherent object as shared across multiple DSP cores.
+ *
+ * Wrapper around __coherent_shared_thread() computing the member address and container size.
+ *
+ * @param[in,out] object Pointer to the container structure.
+ * @param[in] member Member name of the embedded struct coherent.
+ */
 #define coherent_shared_thread(object, member) __coherent_shared_thread(&(object)->member, \
 									sizeof(*object))
 
 #endif /* __ZEPHYR__ */
 
+/**
+ * @brief Invalidate cache and free a coherent shared memory object.
+ *
+ * Flushes dirty cache lines back to physical memory and frees the memory block via rfree().
+ *
+ * @param[in,out] object Pointer to the container structure.
+ * @param[in] member Member name of the embedded struct coherent.
+ */
 #define coherent_free(object, member)						\
 	do {									\
 		/* assert if someone passes a cache address in here. */		\
@@ -324,7 +456,7 @@ static inline void __coherent_shared_thread(struct coherent *c, const size_t siz
 		rfree(object);							\
 	} while (0)
 
-#else /* CONFIG_INCOHERENT */
+#else
 
 /*
  * Coherent devices only require locking to manage shared access.
@@ -442,7 +574,24 @@ static inline void __coherent_shared_thread(struct coherent *c, const size_t siz
 #define coherent_shared_thread coherent_shared
 #endif
 
+/**
+ * @brief Free a thread-capable coherent shared memory object.
+ *
+ * Flushes dirty cache lines back to physical memory and frees the memory block via rfree().
+ *
+ * @param[in,out] object Pointer to the container structure.
+ * @param[in] member Member name of the embedded struct coherent.
+ */
 #define coherent_free_thread coherent_free
 
+/**
+ * @brief Query whether a coherent object is configured for multi-core shared mode.
+ * @param[in] object Pointer to the container structure.
+ * @param[in] member Member name of the embedded struct coherent.
+ * @return Non-zero if shared mode is enabled, 0 otherwise.
+ */
 #define is_coherent_shared(object, member) ((object)->member.shared)
+
+/** @}*/
+
 #endif
