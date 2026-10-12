@@ -121,10 +121,10 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd,
 		  struct cir_buf_sink *sink, unsigned int out_nch, size_t frames);
 #endif
 
-int tdfb_direction_init(struct processing_module *mod, int32_t fs, int channels);
+int tdfb_direction_init(struct processing_module *mod, int32_t fs, unsigned int channels);
 void tdfb_direction_copy_emphasis(struct tdfb_comp_data *cd, unsigned int channels,
 				  unsigned int *channel, int32_t x);
-void tdfb_direction_estimate(struct tdfb_comp_data *cd, int frames, int channels);
+void tdfb_direction_estimate(struct tdfb_comp_data *cd, size_t frames, unsigned int channels);
 void tdfb_direction_free(struct processing_module *mod);
 
 static inline void tdfb_cinc_s16(int16_t **ptr, int16_t *end, size_t size)
