@@ -21,23 +21,43 @@
  */
 
 /**
- * @defgroup module_api Loadable Module & LLEXT Interface
- * @brief Dynamic module loading, processing component lifecycle, and buffer streaming endpoints.
+ * @defgroup module_api Audio Processing Components & Module Interface
+ * @brief Unified interface contracts, lifecycle callbacks, and streaming endpoints for built-in audio components and dynamic LLEXT processing modules (Volume, Mixer, EQ, DRC, SRC, etc.).
  */
 
 /**
- * @defgroup audio_pipeline_api Pipeline & Buffer Infrastructure
- * @brief Audio pipeline execution graphs, stream buffer management, scheduling, and processing threads.
+ * @defgroup audio_pipeline_api Pipeline Graph & Lifecycle Infrastructure
+ * @brief Directed Acyclic Graph (DAG) pipeline creation, scheduling binding, traversal, and lifecycle management.
  */
 
 /**
- * @defgroup audio_components_api Audio Processing Components
- * @brief Built-in and dynamic audio processing modules (Volume, Mixer, EQ, DRC, SRC, ASRC, etc.).
+ * @defgroup component_infra_api Audio Component Infrastructure & Driver Model
+ * @brief Component driver interface, operations vtable, hardware abstraction, IPC binding, and state machines.
+ */
+
+/**
+ * @defgroup audio_buffer_api Audio Buffer & Stream Infrastructure
+ * @brief Interconnect buffers, circular stream buffers, abstract audio buffers, and lockless ring buffers.
+ */
+
+/**
+ * @defgroup audio_format_api Audio Formats & Channel Routing
+ * @brief Channel map parsing, stream conversion, and audio sample saturation routines.
+ */
+
+/**
+ * @defgroup scheduling_api Scheduling Infrastructure
+ * @brief Real-time task schedulers (Low-Latency Timer/DMA, Data Processing preemptible threads, Thread With Budget), scheduling domains, and task state machines.
+ */
+
+/**
+ * @defgroup memory_api Memory Management Infrastructure
+ * @brief System heaps, Virtual Memory Heap (VMH), virtual regions, cold DRAM staging, and audio buffer allocators.
  */
 
 /**
  * @defgroup rtos_api RTOS Abstraction Layer
- * @brief RTOS primitives, synchronization (spinlocks, mutexes), memory allocation, clocks, and cache management.
+ * @brief RTOS primitives, synchronization (spinlocks, mutexes), task scheduling, clocks, timers, and cache management.
  */
 
 /**

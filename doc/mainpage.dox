@@ -70,54 +70,113 @@
  *     Legacy IPC3 protocol structures, stream control envelopes, DAI/buffer tokens, and mixer controls.
  *   </td>
  * </tr>
+
  * <tr>
- *   <td><b>Loadable Modules & LLEXT</b></td>
+ *   <td><b>Pipeline Graph & Lifecycle</b></td>
+ *   <td>@ref audio_pipeline_api</td>
+ *   <td>
+ *     - @ref src/include/sof/audio/pipeline.h "sof/audio/pipeline.h"
+ *   </td>
+ *   <td>
+ *     Audio pipeline Directed Acyclic Graph (DAG) construction, scheduling task binding (LL/DP),
+ *     pipeline hierarchy traversal, and graph-wide state transitions.
+ *   </td>
+ * </tr>
+ * <tr>
+ *   <td><b>Component Infrastructure</b></td>
+ *   <td>@ref component_infra_api</td>
+ *   <td>
+ *     - @ref src/include/sof/audio/component.h "sof/audio/component.h"<br/>
+ *     - @ref src/include/sof/audio/component_ext.h "sof/audio/component_ext.h"
+ *   </td>
+ *   <td>
+ *     Unified audio component driver model (comp_ops), trigger state machines, IPC module bindings,
+ *     copy limits, and remote multi-core IDC communication.
+ *   </td>
+ * </tr>
+ * <tr>
+ *   <td><b>Audio Buffers & Streams</b></td>
+ *   <td>@ref audio_buffer_api</td>
+ *   <td>
+ *     - @ref src/include/sof/audio/buffer.h "sof/audio/buffer.h"<br/>
+ *     - @ref src/include/sof/audio/audio_buffer.h "sof/audio/audio_buffer.h"<br/>
+ *     - @ref src/include/sof/audio/ring_buffer.h "sof/audio/ring_buffer.h"<br/>
+ *     - @ref src/include/module/audio/audio_stream.h "module/audio/audio_stream.h"<br/>
+ *     - @ref src/include/sof/audio/audio_stream.h "sof/audio/audio_stream.h"
+ *   </td>
+ *   <td>
+ *     Interconnect buffers (comp_buffer), abstract audio buffers (sof_audio_buffer), circular
+ *     stream endpoints, lockless ring buffers, and buffer transaction callbacks.
+ *   </td>
+ * </tr>
+ * <tr>
+ *   <td><b>Audio Formats & Routing</b></td>
+ *   <td>@ref audio_format_api</td>
+ *   <td>
+ *     - @ref src/include/sof/audio/channel_map.h "sof/audio/channel_map.h"<br/>
+ *     - @ref src/include/sof/audio/format_generic.h "sof/audio/format_generic.h"
+ *   </td>
+ *   <td>
+ *     Channel mapping extraction, multi-channel spatial routing, and sample format saturation arithmetic.
+ *   </td>
+ * </tr>
+ * <tr>
+ *   <td><b>Scheduling Infrastructure</b></td>
+ *   <td>@ref scheduling_api</td>
+ *   <td>
+ *     - @ref src/include/sof/schedule/schedule.h "sof/schedule/schedule.h"<br/>
+ *     - @ref src/include/sof/schedule/ll_schedule.h "sof/schedule/ll_schedule.h"<br/>
+ *     - @ref src/include/sof/schedule/ll_schedule_domain.h "sof/schedule/ll_schedule_domain.h"<br/>
+ *     - @ref src/include/sof/schedule/dp_schedule.h "sof/schedule/dp_schedule.h"<br/>
+ *     - @ref src/include/sof/schedule/twb_schedule.h "sof/schedule/twb_schedule.h"<br/>
+ *     - @ref zephyr/include/rtos/task.h "rtos/task.h"
+ *   </td>
+ *   <td>
+ *     Multi-tiered real-time scheduling infrastructure: Low-Latency (LL) timer and DMA domains,
+ *     Data Processing (DP) preemptible worker threads with dynamic deadline evaluation,
+ *     Thread With Budget (TWB) cycle accounting, and core task state machines.
+ *   </td>
+ * </tr>
+ * <tr>
+ *   <td><b>Audio Processing Components & Modules</b></td>
  *   <td>@ref module_api</td>
  *   <td>
  *     - @ref src/include/module/module/interface.h "module/interface.h"<br/>
  *     - @ref src/include/module/module/api_ver.h "module/api_ver.h"<br/>
- *     - @ref src/include/module/module/base.h "module/base.h"
+ *     - @ref src/include/module/module/base.h "module/base.h"<br/>
+ *     - @ref src/include/module/audio/sink_api.h "module/audio/sink_api.h"<br/>
+ *     - @ref src/include/module/audio/source_api.h "module/audio/source_api.h"<br/>
+ *     - @ref src/include/module/audio/format.h "module/audio/format.h"<br/>
+ *     - @ref src/include/module/module/system_service.h "module/system_service.h"<br/>
+ *     - Built-in Modules: Volume, Mixer, EQ FIR/IIR, DRC, Multiband DRC, SRC, ASRC, Crossover, Smart Amp
  *   </td>
  *   <td>
- *     Dynamic ELF module loading infrastructure via Zephyr LLEXT: dynamic symbol linking, module
- *     interface adapters, processing state machine, parameter configuration, and multi-core routing.
- *   </td>
- * </tr>
- * <tr>
- *   <td><b>Audio Pipeline & Buffers</b></td>
- *   <td>@ref audio_pipeline_api</td>
- *   <td>
- *     - @ref src/include/sof/audio/pipeline.h "sof/audio/pipeline.h"<br/>
- *     - @ref src/include/sof/audio/component.h "sof/audio/component.h"<br/>
- *     - @ref src/include/sof/audio/buffer.h "sof/audio/buffer.h"<br/>
- *     - @ref src/include/sof/audio/audio_buffer.h "sof/audio/audio_buffer.h"<br/>
- *     - @ref src/include/sof/schedule/schedule.h "sof/schedule/schedule.h"
- *   </td>
- *   <td>
- *     Audio pipeline Directed Acyclic Graph (DAG) construction, task scheduling domains (LL-Timer,
- *     LL-DMA, DP threads), lockless ring buffers, audio format negotiation, and multi-channel interleaved/planar routing.
+ *     Standard and dynamic DSP audio processing modules and component contracts: lifecycle callbacks
+ *     (init, prepare, process, config), source/sink streaming endpoints, LLEXT dynamic loading,
+ *     and module adapter glue.
  *   </td>
  * </tr>
  * <tr>
- *   <td><b>Audio Processing Components</b></td>
- *   <td>@ref audio_components_api</td>
+ *   <td><b>Memory Management Infrastructure</b></td>
+ *   <td>@ref memory_api</td>
  *   <td>
- *     - @ref src/include/sof/audio/component.h "sof/audio/component.h"<br/>
- *     - @ref src/include/sof/audio/component_ext.h "sof/audio/component_ext.h"<br/>
- *     - @ref src/include/sof/audio/smart_amp/smart_amp.h "smart_amp/smart_amp.h"<br/>
- *     - Modules: Volume, Mixer, EQ FIR/IIR, DRC, SRC, ASRC, Crossover, DC Block, Copier
+ *     - @ref zephyr/include/rtos/alloc.h "rtos/alloc.h"<br/>
+ *     - @ref src/include/sof/lib/vregion.h "sof/lib/vregion.h"<br/>
+ *     - @ref zephyr/include/sof/lib/regions_mm.h "sof/lib/regions_mm.h"<br/>
+ *     - @ref zephyr/include/sof/lib/vpage.h "sof/lib/vpage.h"<br/>
+ *     - @ref src/include/sof/lib/fast-get.h "sof/lib/fast-get.h"<br/>
+ *     - @ref zephyr/include/sof/lib/memory.h "sof/lib/memory.h"
  *   </td>
  *   <td>
- *     Standard and optimized DSP audio processing modules: smooth volume ramp, mixing, FIR/IIR
- *     parametric equalization, dynamic range compression, polyphase sample rate conversion,
- *     asynchronous sample rate conversion, and DAI copier sinks/sources.
+ *     Multi-tier DSP memory subsystem: system heaps (sys_heap), Virtual Memory Heap (VMH),
+ *     pre-allocated virtual regions (vregion lifetime vs interim), cold DRAM dynamic staging (fast_get),
+ *     shared user/kernel buffers, and data cache coherency.
  *   </td>
  * </tr>
  * <tr>
  *   <td><b>RTOS Abstraction Layer (RAL)</b></td>
  *   <td>@ref rtos_api</td>
  *   <td>
- *     - @ref zephyr/include/rtos/alloc.h "rtos/alloc.h"<br/>
  *     - @ref zephyr/include/rtos/spinlock.h "rtos/spinlock.h"<br/>
  *     - @ref zephyr/include/rtos/mutex.h "rtos/mutex.h"<br/>
  *     - @ref zephyr/include/rtos/wait.h "rtos/wait.h"<br/>
@@ -126,8 +185,9 @@
  *     - @ref zephyr/include/rtos/interrupt.h "rtos/interrupt.h"
  *   </td>
  *   <td>
- *     Operating system abstraction bridging Zephyr RTOS and XTOS: heap management (sys, lpsram, hpsram),
- *     spinlocks, mutexes, condition variables, hardware timers, and multi-core Inter-Domain Communication (IDC).
+ *     Operating system abstraction bridging Zephyr RTOS and hardware primitives:
+ *     spinlocks, mutexes, condition variables, hardware timers, cache writeback/invalidation,
+ *     and multi-core Inter-Domain Communication (IDC).
  *   </td>
  * </tr>
  * <tr>
