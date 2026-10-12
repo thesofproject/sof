@@ -454,7 +454,7 @@ void drc_compress_output(struct drc_state *state,
 
 #endif /* DRC_HIFI_NONE */
 
-#if SOF_USE_HIFI(NONE, DRC) || SOF_USE_HIFI(3, DRC) || SOF_USE_ARM_SIMD(DRC)
+#if SOF_USE_HIFI(NONE, DRC) || SOF_USE_HIFI(3, DRC) || SOF_USE_ARM_SIMD(DRC) || SOF_USE_RISCV_SIMD(DRC)
 /* After one complete division of samples have been received (and one division of
  * samples have been output), we calculate shaped power average
  * (detector_average) from the input division, update envelope parameters from
@@ -806,4 +806,4 @@ const struct drc_proc_fnmap drc_proc_fnmap[] = {
 };
 
 const size_t drc_proc_fncount = ARRAY_SIZE(drc_proc_fnmap);
-#endif
+#endif /* SOF_USE_HIFI(NONE, DRC) || SOF_USE_HIFI(3, DRC) || SOF_USE_RISCV_SIMD(DRC) */
