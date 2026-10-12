@@ -8,7 +8,22 @@
 /**
  * @file sof/schedule/dp_schedule.h
  * @brief Data Processing (DP) preemptible worker thread scheduler.
- * @ingroup audio_pipeline_api
+ * @ingroup scheduling_api
+ *
+ * The Data Processing (DP) scheduler manages compute-intensive audio processing
+ * tasks by assigning a dedicated preemptible Zephyr thread to each SOF task.
+ *
+ * ### Key Architectural Properties
+ * - **Preemptible Execution**: Each DP task executes in its own Zephyr thread at a priority
+ *   lower than the hard real-time Low-Latency (LL) scheduler thread.
+ * - **LL-Synchronized Evaluation**: At the end of each Low-Latency tick, `scheduler_dp_ll_tick()`
+ *   evaluates all queued DP tasks. If a task's sources contain enough audio data and its sinks
+ *   have sufficient buffer space, its deadline is calculated and applied to the Zephyr thread
+ *   via `k_thread_absolute_deadline_set()`.
+ * - **Task States & Return Values**:
+ *   - @ref SOF_TASK_STATE_RESCHEDULE : Task completed a data chunk and requests rescheduling next period.
+ *   - @ref SOF_TASK_STATE_COMPLETED : Task completed processing and self-terminates until triggered again.
+ *   - @ref SOF_TASK_STATE_CANCEL : Task was cancelled and will be removed from the active queue.
  */
 
 #ifndef __SOF_SCHEDULE_DP_SCHEDULE_H__
@@ -23,61 +38,35 @@
 #include <ipc4/pipeline.h>
 #include <module/module/interface.h>
 
+/** \addtogroup scheduling_api
+ *  @{
+ */
+
 struct processing_module;
 struct module_ext_init_data;
 
 /**
+ * @brief Initialize the Data Processing (DP) scheduler on the calling core.
  *
- * DP scheduler is a scheduler that creates a separate preemptible Zephyr thread for each SOF task
+ * Allocates per-core DP scheduler state and initializes its driving LL tick source task.
  *
- * The task execution may be delayed and task may be re-scheduled periodically
- * NOTE: delayed start and rescheduling takes place in sync with LL scheduler, meaning the
- *   DP scheduler is triggered on each core after all LL task have been completed
- *
- * Task run() may return:
- *  SOF_TASK_STATE_RESCHEDULE - the task will be rescheduled as specified in scheduler period
- *				note that task won't ever be rescheduled if LL is not running
- *  SOF_TASK_STATE_COMPLETED  - the task will be removed from scheduling,
- *				calling schedule_task will add the task to processing again
- *				task_complete() will be called
- *  SOF_TASK_STATE_CANCEL     - the task will be removed from scheduling,
- *				calling schedule_task will add the task to processing again
- *				task_complete() won't be called
- *  other statuses - assert will go off
- *
- * NOTE: task - means a SOF task
- *	 thread - means a Zephyr preemptible thread
- *
- * TODO  - EDF:
- * Threads run on the same priority, lower than thread running LL tasks. Zephyr EDF mechanism
- * is used for decision which thread/task is to be scheduled next. The DP scheduler calculates
- * the task deadline and set it in Zephyr thread properties, the final scheduling decision is made
- * by Zephyr.
- *
- * Each time tick the scheduler iterates through the list of all active tasks and calculates
- * a deadline based on
- *  - knowledge how the modules are bound
- *  - declared time required by a task to complete processing
- *  - the deadline of the last module
- *
- */
-
-/**
- * \brief Init the Data Processing scheduler
+ * @return 0 on success, negative error code (-ENOMEM) on failure.
  */
 int scheduler_dp_init(void);
 
 /**
- * \brief initialize a DP task and add it to scheduling
- * It must be called on core the task is declared to run on
+ * @brief Initialize a Data Processing task and attach a dedicated Zephyr worker thread.
  *
- * \param[out] task pointer, pointer to allocated task structure will be return
- * \param[in] uid pointer to UUID of the task
- * \param[in] ops pointer to task functions
- * \param[in] mod pointer to the module to be run
- * \param[in] core CPU the thread should run on
- * \param[in] stack_size size of stack for a zephyr task
- * \param[in] options task options used for creation
+ * Must be invoked on the same core that the task is configured to execute on.
+ *
+ * @param[out] task Pointer to store the allocated @ref task structure.
+ * @param[in] uid UUID identifying the task/module.
+ * @param[in] ops Task operations callbacks (@ref task_ops).
+ * @param[in] mod Processing module descriptor bound to this task.
+ * @param[in] core DSP core affinity for the task thread.
+ * @param[in] stack_size Stack byte size for the Zephyr worker thread.
+ * @param[in] options Task configuration flags.
+ * @return 0 on success, negative error code on failure.
  */
 int scheduler_dp_task_init(struct task **task,
 			   const struct sof_uuid_entry *uid,
@@ -88,25 +77,36 @@ int scheduler_dp_task_init(struct task **task,
 			   uint32_t options);
 
 #if defined(__ZEPHYR__) && CONFIG_SOF_FULL_ZEPHYR_APPLICATION
+/**
+ * @brief Free kernel-side internal resources associated with a DP task.
+ * @param[in,out] task Task being freed.
+ */
 __syscall void scheduler_dp_internal_free(struct task *task);
+
 /**
  * @brief Tick notification from the Low-Latency (LL) timer domain to the DP scheduler.
  *
- * Checks if queued DP tasks require execution or synchronization following an LL period.
+ * Invoked on each core after all LL tasks complete. Evaluates readiness for all
+ * queued DP tasks, updates their absolute deadlines, and signals worker threads.
  */
 __syscall void scheduler_dp_ll_tick(void);
 #include <zephyr/syscalls/dp_schedule.h>
 #endif
 
 /**
- * \brief Extract information about scheduler's tasks
+ * @brief Extract telemetry information about Data Processing scheduler tasks.
  *
- * \param scheduler_props Structure to be filled
- * \param data_off_size Pointer to the current size of the scheduler_props, to be updated
+ * Populates @ref scheduler_props with `COMP_PROCESSING_DOMAIN_DP` and active DP tasks.
+ *
+ * @param[out] scheduler_props Structure to be filled with DP scheduler properties.
+ * @param[in,out] data_off_size Pointer to the current size of scheduler_props buffer.
  */
 void scheduler_get_task_info_dp(struct scheduler_props *scheduler_props,
 				uint32_t *data_off_size);
 
+/**
+ * @brief Events signaled to Data Processing (DP) worker threads.
+ */
 enum {
 	DP_TASK_EVENT_PROCESS	= BIT(0),	/* Need to process data */
 	DP_TASK_EVENT_CANCEL	= BIT(1),	/* Thread cancellation */
@@ -157,10 +157,14 @@ union scheduler_dp_thread_ipc_param {
 };
 
 /**
- * @brief Dispatch an IPC command to a Data Processing (DP) worker thread.
- * @param pmod Pointer to the processing module descriptor.
- * @param cmd IPC command identifier to execute.
- * @param param Parameters payload for the IPC command.
+ * @brief Dispatch an IPC command synchronously to a Data Processing (DP) worker thread.
+ *
+ * Posts DP_TASK_EVENT_IPC to the thread's event queue and blocks waiting on completion
+ * (via dp_sync with a 100 ms timeout) before returning.
+ *
+ * @param[in,out] pmod Pointer to the processing module descriptor.
+ * @param[in] cmd IPC command identifier to execute.
+ * @param[in,out] param Parameters payload for the IPC command.
  * @return 0 on success, negative error code on failure.
  */
 #if CONFIG_ZEPHYR_DP_SCHEDULER
@@ -174,5 +178,7 @@ static inline int scheduler_dp_thread_ipc(struct processing_module *pmod,
 	return 0;
 }
 #endif
+ 
+/** @}*/
 
 #endif /* __SOF_SCHEDULE_DP_SCHEDULE_H__ */
