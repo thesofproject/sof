@@ -14,7 +14,7 @@
 #define LEVEL_MULTIPLIER_S24_SHIFT	Q_SHIFT_BITS_64(23, LEVEL_MULTIPLIER_QXY_Y, 23)
 #define LEVEL_MULTIPLIER_S32_SHIFT	Q_SHIFT_BITS_64(31, LEVEL_MULTIPLIER_QXY_Y, 31)
 
-#if SOF_USE_HIFI(NONE, VOLUME) && !SOF_USE_ARM_SIMD(VOLUME)
+#if (SOF_USE_HIFI(NONE, VOLUME) || SOF_USE_RISCV_SIMD(VOLUME)) && !SOF_USE_ARM_SIMD(VOLUME)
 
 #if CONFIG_FORMAT_S16LE
 /**
@@ -66,10 +66,17 @@ static int level_multiplier_s16(const struct processing_module *mod,
 		samples_without_wrap = y_end - y;
 		samples_without_wrap = MIN(samples_without_wrap, source_samples_without_wrap);
 		samples_without_wrap = MIN(samples_without_wrap, remaining_samples);
-		for (i = 0; i < samples_without_wrap; i++) {
-			*y = q_multsr_sat_32x32_16(*x, gain, LEVEL_MULTIPLIER_S16_SHIFT);
-			x++;
-			y++;
+		int samples4 = samples_without_wrap & ~3;
+		for (i = 0; i < samples4; i += 4) {
+			y[0] = q_multsr_sat_32x32_16(x[0], gain, LEVEL_MULTIPLIER_S16_SHIFT);
+			y[1] = q_multsr_sat_32x32_16(x[1], gain, LEVEL_MULTIPLIER_S16_SHIFT);
+			y[2] = q_multsr_sat_32x32_16(x[2], gain, LEVEL_MULTIPLIER_S16_SHIFT);
+			y[3] = q_multsr_sat_32x32_16(x[3], gain, LEVEL_MULTIPLIER_S16_SHIFT);
+			x += 4;
+			y += 4;
+		}
+		for (; i < samples_without_wrap; i++) {
+			*y++ = q_multsr_sat_32x32_16(*x++, gain, LEVEL_MULTIPLIER_S16_SHIFT);
 		}
 
 		/* One of the buffers needs a wrap (or end of data), so check for wrap */
@@ -136,11 +143,22 @@ static int level_multiplier_s24(const struct processing_module *mod,
 		samples_without_wrap = y_end - y;
 		samples_without_wrap = MIN(samples_without_wrap, source_samples_without_wrap);
 		samples_without_wrap = MIN(samples_without_wrap, remaining_samples);
-		for (i = 0; i < samples_without_wrap; i++) {
-			*y = q_multsr_sat_32x32_24(sign_extend_s24(*x), gain,
+		int samples4 = samples_without_wrap & ~3;
+		for (i = 0; i < samples4; i += 4) {
+			y[0] = q_multsr_sat_32x32_24(sign_extend_s24(x[0]), gain,
 						   LEVEL_MULTIPLIER_S24_SHIFT);
-			x++;
-			y++;
+			y[1] = q_multsr_sat_32x32_24(sign_extend_s24(x[1]), gain,
+						   LEVEL_MULTIPLIER_S24_SHIFT);
+			y[2] = q_multsr_sat_32x32_24(sign_extend_s24(x[2]), gain,
+						   LEVEL_MULTIPLIER_S24_SHIFT);
+			y[3] = q_multsr_sat_32x32_24(sign_extend_s24(x[3]), gain,
+						   LEVEL_MULTIPLIER_S24_SHIFT);
+			x += 4;
+			y += 4;
+		}
+		for (; i < samples_without_wrap; i++) {
+			*y++ = q_multsr_sat_32x32_24(sign_extend_s24(*x++), gain,
+						   LEVEL_MULTIPLIER_S24_SHIFT);
 		}
 
 		/* One of the buffers needs a wrap (or end of data), so check for wrap */
@@ -207,10 +225,17 @@ static int level_multiplier_s32(const struct processing_module *mod,
 		samples_without_wrap = y_end - y;
 		samples_without_wrap = MIN(samples_without_wrap, source_samples_without_wrap);
 		samples_without_wrap = MIN(samples_without_wrap, remaining_samples);
-		for (i = 0; i < samples_without_wrap; i++) {
-			*y = q_multsr_sat_32x32(*x, gain, LEVEL_MULTIPLIER_S32_SHIFT);
-			x++;
-			y++;
+		int samples4 = samples_without_wrap & ~3;
+		for (i = 0; i < samples4; i += 4) {
+			y[0] = q_multsr_sat_32x32(x[0], gain, LEVEL_MULTIPLIER_S32_SHIFT);
+			y[1] = q_multsr_sat_32x32(x[1], gain, LEVEL_MULTIPLIER_S32_SHIFT);
+			y[2] = q_multsr_sat_32x32(x[2], gain, LEVEL_MULTIPLIER_S32_SHIFT);
+			y[3] = q_multsr_sat_32x32(x[3], gain, LEVEL_MULTIPLIER_S32_SHIFT);
+			x += 4;
+			y += 4;
+		}
+		for (; i < samples_without_wrap; i++) {
+			*y++ = q_multsr_sat_32x32(*x++, gain, LEVEL_MULTIPLIER_S32_SHIFT);
 		}
 
 		/* One of the buffers needs a wrap (or end of data), so check for wrap */
@@ -263,4 +288,4 @@ level_multiplier_func level_multiplier_find_proc_func(enum sof_ipc_frame src_fmt
 	return NULL;
 }
 
-#endif /* SOF_USE_HIFI(NONE, VOLUME) */
+#endif /* (SOF_USE_HIFI(NONE, VOLUME) || SOF_USE_RISCV_SIMD(VOLUME)) && !SOF_USE_ARM_SIMD(VOLUME) */
