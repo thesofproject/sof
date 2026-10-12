@@ -8,7 +8,7 @@
 /**
  * @file sof/audio/buffer.h
  * @brief Component interconnect buffer allocation and stream handling.
- * @ingroup audio_pipeline_api
+ * @ingroup audio_buffer_api
  */
 
 #ifndef __SOF_AUDIO_BUFFER_H__
@@ -36,6 +36,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/** \addtogroup audio_buffer_api
+ *  @{
+ */
 
 struct comp_dev;
 struct buffer_cb_transact;
@@ -110,53 +114,63 @@ extern struct tr_ctx buffer_tr;
 
 /** @}*/
 
-/* buffer callback types */
-#define BUFF_CB_TYPE_PRODUCE	BIT(0)
-#define BUFF_CB_TYPE_CONSUME	BIT(1)
+/** \name Buffer callback types
+ *  @{
+ */
+#define BUFF_CB_TYPE_PRODUCE	BIT(0)	/**< Callback triggered on buffer produce */
+#define BUFF_CB_TYPE_CONSUME	BIT(1)	/**< Callback triggered on buffer consume */
+/** @}*/
 
-#define BUFFER_UPDATE_IF_UNSET	0
-#define BUFFER_UPDATE_FORCE	1
+/** \name Buffer parameter update modes
+ *  @{
+ */
+#define BUFFER_UPDATE_IF_UNSET	0	/**< Update buffer parameters only if currently unset */
+#define BUFFER_UPDATE_FORCE	1	/**< Force update buffer parameters regardless of current state */
+/** @}*/
 
-/* buffer parameters */
-#define BUFF_PARAMS_FRAME_FMT	BIT(0)
-#define BUFF_PARAMS_BUFFER_FMT	BIT(1)
-#define BUFF_PARAMS_RATE	BIT(2)
-#define BUFF_PARAMS_CHANNELS	BIT(3)
+/** \name Buffer parameter bitmasks
+ *  @{
+ */
+#define BUFF_PARAMS_FRAME_FMT	BIT(0)	/**< Buffer parameter bitmask: frame format */
+#define BUFF_PARAMS_BUFFER_FMT	BIT(1)	/**< Buffer parameter bitmask: buffer format */
+#define BUFF_PARAMS_RATE	BIT(2)	/**< Buffer parameter bitmask: sample rate */
+#define BUFF_PARAMS_CHANNELS	BIT(3)	/**< Buffer parameter bitmask: channels count */
+/** @}*/
 
-/* buffer usage */
-#define BUFFER_USAGE_SHARED	true	/* buffer used by multiple DSP core and/or HW blocks */
-#define BUFFER_USAGE_NOT_SHARED false	/* buffer only used by one HW block */
+/** \name Buffer memory sharing usage
+ *  @{
+ */
+#define BUFFER_USAGE_SHARED	true	/**< Buffer used by multiple DSP cores and/or HW blocks */
+#define BUFFER_USAGE_NOT_SHARED false	/**< Buffer only used by one HW block */
+/** @}*/
 
-/*
- * audio component buffer - connects 2 audio components together in pipeline.
- *
- * this is a legacy component connector for pipeline 1.0
- *
+/**
+ * \brief Audio component interconnect buffer connecting two pipeline components.
  */
 struct comp_buffer {
 	/* data buffer */
-	struct sof_audio_buffer audio_buffer;
+	struct sof_audio_buffer audio_buffer;	/**< Unified audio buffer base class */
 
-	struct audio_stream stream;
+	struct audio_stream stream;		/**< Legacy audio stream representation */
 
 	/* configuration */
-	uint32_t flags;
-	uint32_t core;
+	uint32_t flags;				/**< Buffer flags */
+	uint32_t core;				/**< DSP core ID managing this buffer */
 
 #if !CONFIG_ZEPHYR_LOG
-	struct tr_ctx tctx;			/* trace settings */
+	struct tr_ctx tctx;			/**< Trace context */
 #endif
 
 	/* connected components */
-	struct comp_dev *source;	/* source component */
-	struct comp_dev *sink;		/* sink component */
+	struct comp_dev *source;		/**< Source component feeding this buffer */
+	struct comp_dev *sink;			/**< Sink component consuming from this buffer */
 
 	/* lists */
-	struct list_item source_list;	/* list in comp buffers */
-	struct list_item sink_list;	/* list in comp buffers */
+	struct list_item source_list;		/**< List node in source component's buffer list */
+	struct list_item sink_list;		/**< List node in sink component's buffer list */
 
 	/* list of buffers, to be used i.e. in raw data processing mode*/
-	struct list_item buffers_list;
+	struct list_item buffers_list;		/**< List of buffers used in raw data processing */
 
 #if CONFIG_PROBE
 	/** probe produce callback, called on buffer produce */
@@ -168,56 +182,93 @@ struct comp_buffer {
 #endif
 };
 
-/*
- * get a component providing data to the buffer
+/**
+ * \brief Get component providing data to the buffer.
+ * \param[in] buffer Interconnect buffer.
+ * \return Pointer to source component device, or NULL if none.
  */
 static inline struct comp_dev *comp_buffer_get_source_component(const struct comp_buffer *buffer)
 {
 	return buffer->source;
 }
 
-/*
- * get a component consuming data from the buffer
+/**
+ * \brief Get component consuming data from the buffer.
+ * \param[in] buffer Interconnect buffer.
+ * \return Pointer to sink component device, or NULL if none.
  */
 static inline struct comp_dev *comp_buffer_get_sink_component(const struct comp_buffer *buffer)
 {
 	return buffer->sink;
 }
 
+/**
+ * \brief Set component providing data to the buffer.
+ * \param[in,out] buffer Interconnect buffer.
+ * \param[in] comp Source component device.
+ */
 static inline
 void comp_buffer_set_source_component(struct comp_buffer *buffer, struct comp_dev *comp)
 {
 	buffer->source = comp;
 }
 
+/**
+ * \brief Set component consuming data from the buffer.
+ * \param[in,out] buffer Interconnect buffer.
+ * \param[in] comp Sink component device.
+ */
 static inline
 void comp_buffer_set_sink_component(struct comp_buffer *buffer, struct comp_dev *comp)
 {
 	buffer->sink = comp;
 }
 
+/**
+ * \brief Reset buffer source list node.
+ * \param[in,out] buffer Interconnect buffer.
+ */
 static inline void comp_buffer_reset_source_list(struct comp_buffer *buffer)
 {
 	list_init(&buffer->source_list);
 }
 
+/**
+ * \brief Reset buffer sink list node.
+ * \param[in,out] buffer Interconnect buffer.
+ */
 static inline void comp_buffer_reset_sink_list(struct comp_buffer *buffer)
 {
 	list_init(&buffer->sink_list);
 }
 
-/* Used as parameter for probe produce callback */
+/**
+ * \brief Transaction descriptor passed to buffer probe callbacks.
+ */
 struct buffer_cb_transact {
-	struct comp_buffer *buffer;
-	uint32_t transaction_amount;
-	void *transaction_begin_address;
+	struct comp_buffer *buffer;		/**< Buffer being transacted */
+	uint32_t transaction_amount;		/**< Number of bytes transacted */
+	void *transaction_begin_address;	/**< Starting address of transaction */
 };
 
+/**
+ * \brief Retrieve enclosing comp_buffer from a list node depending on traversal direction.
+ * \param[in] ptr List item pointer.
+ * \param[in] dir Pipeline traversal direction (PPL_DIR_DOWNSTREAM or PPL_DIR_UPSTREAM).
+ * \return Pointer to enclosing struct comp_buffer.
+ */
 #define buffer_from_list(ptr, dir) \
 	((dir) == PPL_DIR_DOWNSTREAM ? \
 	 container_of(ptr, struct comp_buffer, source_list) : \
 	 container_of(ptr, struct comp_buffer, sink_list))
 
+/**
+ * \brief Set transaction callback on a component buffer.
+ * \param[in,out] buffer Target component buffer.
+ * \param[in] func Callback function pointer.
+ * \param[in] data Callback user data.
+ * \param[in] type Callback trigger type (BUFF_CB_TYPE_*).
+ */
 #define buffer_set_cb(buffer, func, data, type) \
 	do {				\
 		buffer->cb = func;	\
@@ -227,20 +278,69 @@ struct buffer_cb_transact {
 
 struct mod_alloc_ctx;
 
-/* pipeline buffer creation and destruction */
+/**
+ * \brief Allocate a pipeline component audio buffer with explicit size and alignment.
+ * \param[in,out] alloc Allocation context (heap and optional vregion).
+ * \param[in] size Required buffer capacity in bytes.
+ * \param[in] flags Memory allocation flags (SOF_MEM_FLAG_...).
+ * \param[in] align Memory alignment requirement in bytes.
+ * \param[in] is_shared True if the buffer memory is shared across processing domains.
+ * \return Pointer to allocated comp_buffer, or NULL on failure.
+ */
 struct comp_buffer *buffer_alloc(struct mod_alloc_ctx *alloc, size_t size, uint32_t flags,
 				 uint32_t align, bool is_shared);
+
+/**
+ * \brief Allocate a pipeline component buffer with an elastic size range.
+ * \param[in,out] alloc Allocation context.
+ * \param[in] preferred_size Desired optimal buffer capacity in bytes.
+ * \param[in] minimum_size Minimum acceptable buffer capacity in bytes.
+ * \param[in] flags Memory allocation flags (SOF_MEM_FLAG_...).
+ * \param[in] align Memory alignment requirement in bytes.
+ * \param[in] is_shared True if the buffer memory is shared across processing domains.
+ * \return Pointer to allocated comp_buffer, or NULL on failure.
+ */
 struct comp_buffer *buffer_alloc_range(struct mod_alloc_ctx *alloc, size_t preferred_size,
 				       size_t minimum_size,
 				       uint32_t flags, uint32_t align, bool is_shared);
+
+/**
+ * \brief Instantiate a pipeline component buffer from an IPC configuration descriptor.
+ * \param[in,out] alloc Allocation context.
+ * \param[in] desc IPC buffer descriptor containing size, flags, and configuration.
+ * \param[in] is_shared True if the buffer memory is shared across processing domains.
+ * \return Pointer to newly instantiated comp_buffer, or NULL on failure.
+ */
 struct comp_buffer *buffer_new(struct mod_alloc_ctx *alloc, const struct sof_ipc_buffer *desc,
 			       bool is_shared);
 
+/**
+ * \brief Resize an existing pipeline component buffer.
+ * \param[in,out] buffer Pointer to comp_buffer to resize.
+ * \param[in] size New buffer capacity in bytes.
+ * \param[in] alignment Required memory alignment in bytes.
+ * \return 0 on success, or negative error code on failure.
+ */
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignment);
+
+/**
+ * \brief Resize a pipeline component buffer within a preferred-to-minimum range.
+ * \param[in,out] buffer Pointer to comp_buffer to resize.
+ * \param[in] preferred_size Desired optimal buffer capacity in bytes.
+ * \param[in] minimum_size Minimum acceptable buffer capacity in bytes.
+ * \param[in] alignment Required memory alignment in bytes.
+ * \return 0 on success, or negative error code on failure.
+ */
 int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, size_t minimum_size,
 			  uint32_t alignment);
 
 /* legacy wrappers, to be removed. Don't use them if possible */
+
+/**
+ * \brief Retrieve enclosing comp_buffer from an audio source interface pointer.
+ * \param[in] source Pointer to audio source interface.
+ * \return Pointer to enclosing struct comp_buffer.
+ */
 static inline struct comp_buffer *comp_buffer_get_from_source(struct sof_source *source)
 {
 	struct sof_audio_buffer *audio_buffer = sof_audio_buffer_from_source(source);
@@ -248,6 +348,11 @@ static inline struct comp_buffer *comp_buffer_get_from_source(struct sof_source 
 	return container_of(audio_buffer, struct comp_buffer, audio_buffer);
 }
 
+/**
+ * \brief Retrieve enclosing comp_buffer from an audio sink interface pointer.
+ * \param[in] sink Pointer to audio sink interface.
+ * \return Pointer to enclosing struct comp_buffer.
+ */
 static inline struct comp_buffer *comp_buffer_get_from_sink(struct sof_sink *sink)
 {
 	struct sof_audio_buffer *audio_buffer = sof_audio_buffer_from_sink(sink);
@@ -255,6 +360,10 @@ static inline struct comp_buffer *comp_buffer_get_from_sink(struct sof_sink *sin
 	return container_of(audio_buffer, struct comp_buffer, audio_buffer);
 }
 
+/**
+ * \brief Free an interconnect component buffer and its underlying memory.
+ * \param[in,out] buffer Component buffer to free.
+ */
 static inline void buffer_free(struct comp_buffer *buffer)
 {
 	audio_buffer_free(&buffer->audio_buffer);
@@ -262,20 +371,51 @@ static inline void buffer_free(struct comp_buffer *buffer)
 
 /* end of legacy wrappers */
 
+/**
+ * \brief Zero-fill the entire payload of an interconnect buffer.
+ * \param[in,out] buffer Component buffer to zero.
+ */
 void buffer_zero(struct comp_buffer *buffer);
 
-/* called by a component after producing data into this buffer */
+/**
+ * \brief Notify buffer that audio data has been produced by a component.
+ * \param[in,out] buffer Component buffer written to.
+ * \param[in] bytes Number of bytes produced.
+ */
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes);
 
-/* called by a component after consuming data from this buffer */
+/**
+ * \brief Notify buffer that audio data has been consumed by a component.
+ * \param[in,out] buffer Component buffer read from.
+ * \param[in] bytes Number of bytes consumed.
+ */
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes);
 
+/**
+ * \brief Set audio stream parameters on a component buffer.
+ * \param[in,out] buffer Component buffer to configure.
+ * \param[in] params Stream parameters to apply.
+ * \param[in] force_update If true, overwrite existing parameters unconditionally.
+ * \return 0 on success, or negative error code on failure.
+ */
 int buffer_set_params(struct comp_buffer *buffer,
 		      struct sof_ipc_stream_params *params, bool force_update);
 
+/**
+ * \brief Test if buffer stream parameters match requested parameters.
+ * \param[in] buffer Component buffer to check.
+ * \param[in] params Stream parameters to compare.
+ * \param[in] flag Bitmask specifying which parameters to check (BUFF_PARAMS_*).
+ * \return True if matching, false otherwise.
+ */
 bool buffer_params_match(struct comp_buffer *buffer,
 			 struct sof_ipc_stream_params *params, uint32_t flag);
 
+/**
+ * \brief Invalidate cache for a shared buffer stream if incoherent.
+ * \param[in,out] buffer Component buffer.
+ * \param[in] bytes Number of bytes to invalidate.
+ */
 static inline void buffer_stream_invalidate(struct comp_buffer *buffer, uint32_t bytes)
 {
 #if CONFIG_INCOHERENT
@@ -284,6 +424,11 @@ static inline void buffer_stream_invalidate(struct comp_buffer *buffer, uint32_t
 #endif
 }
 
+/**
+ * \brief Write back cache for a shared buffer stream if incoherent.
+ * \param[in] buffer Component buffer.
+ * \param[in] bytes Number of bytes to write back.
+ */
 static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t bytes)
 {
 #if CONFIG_INCOHERENT
@@ -292,26 +437,40 @@ static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t 
 #endif
 }
 
-
-/*
- * Attach a new buffer at the beginning of the list. Note, that "head" must
- * really be the head of the list, not a list head within another buffer. We
- * don't synchronise its cache, so it must not be embedded in an object, using
- * the coherent API. The caller takes care to protect list heads.
+/**
+ * \brief Attach a new buffer at the beginning of a component buffer list.
  *
- * Returns -EINVAL if the buffer is already linked in this direction
- * (re-attaching would create a self-loop and corrupt the list).
+ * Locking: Must be called with interrupts disabled (or userspace LL system mutex held).
+ * The caller takes care to protect list heads. "head" must really be the head of the
+ * list, not a list node within another buffer, as its cache is not synchronized and
+ * must not be embedded in an object using the coherent API.
+ *
+ * \param[in,out] buffer Component buffer to attach.
+ * \param[in,out] head List head to prepend buffer to.
+ * \param[in] dir Traversal direction (PPL_DIR_DOWNSTREAM or PPL_DIR_UPSTREAM).
+ * \return 0 on success, or -EALREADY if the buffer is already linked in this direction.
  */
 int buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir);
 
-/*
- * Detach a buffer from anywhere in the list. "head" is again the head of the
- * list, we need it to verify, whether this buffer was the first or the last on
- * the list. Again it is assumed that the head's cache doesn't need to be
- * synchronized. The caller takes care to protect list heads.
+/**
+ * \brief Detach a buffer from anywhere in a component buffer list.
+ *
+ * Locking: Must be called with interrupts disabled (or userspace LL system mutex held).
+ * "head" is the head of the list, assumed not to require cache synchronization.
+ * The caller takes care to protect list heads.
+ *
+ * \param[in,out] buffer Component buffer to detach.
+ * \param[in,out] head List head buffer is attached to.
+ * \param[in] dir Traversal direction (PPL_DIR_DOWNSTREAM or PPL_DIR_UPSTREAM).
  */
 void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir);
 
+/**
+ * \brief Get component connected to buffer in specified traversal direction.
+ * \param[in] buffer Component buffer.
+ * \param[in] dir Traversal direction (PPL_DIR_DOWNSTREAM or PPL_DIR_UPSTREAM).
+ * \return Pointer to connected component device.
+ */
 static inline struct comp_dev *buffer_get_comp(struct comp_buffer *buffer, int dir)
 {
 	struct comp_dev *comp = (dir == PPL_DIR_DOWNSTREAM) ?
@@ -320,16 +479,27 @@ static inline struct comp_dev *buffer_get_comp(struct comp_buffer *buffer, int d
 	return comp;
 }
 
+/**
+ * \brief Retrieve pipeline ID associated with a component buffer.
+ * \param[in] buffer Component buffer.
+ * \return Pipeline ID.
+ */
 static inline uint32_t buffer_pipeline_id(const struct comp_buffer *buffer)
 {
 	return buffer->stream.runtime_stream_params.pipeline_id;
 }
 
-/* Run-time buffer re-configuration calls this too, so it must use cached access */
+/**
+ * \brief Initialize circular stream buffer descriptor for a component buffer.
+ * \param[in,out] buffer Component buffer to initialize stream for.
+ * \param[in] size Capacity of the circular stream in bytes.
+ */
 static inline void buffer_init_stream(struct comp_buffer *buffer, size_t size)
 {
 	/* addr should be set in alloc function */
 	audio_stream_init(&buffer->stream, buffer->stream.addr, size);
 }
+
+/** @}*/
 
 #endif /* __SOF_AUDIO_BUFFER_H__ */
