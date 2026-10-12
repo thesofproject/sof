@@ -3,13 +3,13 @@
 
 if(CONFIG_MATH_IIR_DF1)
   set(df1 ../iir_df1.c ../iir_df1_generic.c ../iir_df1_hifi3.c
-	  ../iir_df1_hifi4.c ../iir_df1_hifi5.c)
+	  ../iir_df1_hifi4.c ../iir_df1_hifi5.c ../iir_df1_riscv.c)
 else()
   set(df1 "")
 endif()
 
 if(CONFIG_MATH_IIR_DF2T)
-  set(df2t ../iir_df2t.c ../iir_df2t_generic.c ../iir_df2t_hifi3.c)
+  set(df2t ../iir_df2t.c ../iir_df2t_generic.c ../iir_df2t_hifi3.c ../iir_df2t_riscv.c)
 else()
   set(df2t "")
 endif()
