@@ -191,18 +191,66 @@ struct module_processing_data {
 /*****************************************************************************/
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
 int module_init(struct processing_module *mod);
+/**
+ * @brief Allocate aligned stream buffer memory for a processing module.
+ *
+ * Allocates buffer memory via the module's allocation context using
+ * #SOF_MEM_FLAG_USER and #SOF_MEM_FLAG_LARGE_BUFFER. Tracked in module
+ * resources and automatically freed on module teardown.
+ *
+ * @param mod Pointer to processing module.
+ * @param size Buffer size in bytes.
+ * @param alignment Required alignment in bytes.
+ * @return Pointer to allocated buffer, or NULL on failure.
+ */
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
 #else
 void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
 #define mod_balloc_align z_impl_mod_balloc_align
 #endif
+
+/**
+ * @brief Initialize module resource management locks and containers.
+ * @param mod Pointer to processing module.
+ */
 void mod_resource_init(struct processing_module *mod);
+
+/**
+ * @brief Query module memory heap boundary and size.
+ * @param mod Pointer to processing module.
+ * @param size Pointer to receive heap size in bytes.
+ * @param start Pointer to receive heap start address.
+ */
 void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start);
+
+/**
+ * @brief Allocate memory for a module with explicit flags and alignment.
+ *
+ * Allocates memory from the module's allocation context (mod_alloc_ctx).
+ * Automatically registered in module resources and released on module removal.
+ *
+ * @param mod Pointer to processing module.
+ * @param flags Memory allocation flags (SOF_MEM_FLAG_...).
+ * @param size Size in bytes to allocate.
+ * @param alignment Required alignment in bytes.
+ * @return Pointer to allocated memory, or NULL on failure.
+ */
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
 			      size_t alignment);
+/**
+ * @brief Free a memory block previously allocated for a module.
+ * @param mod Pointer to processing module.
+ * @param ptr Pointer to memory to free.
+ * @return 0 on success, negative error code on failure.
+ */
 __syscall int mod_free(struct processing_module *mod, const void *ptr);
+
+/**
+ * @brief Free all heap resources currently tracked for a module.
+ * @param mod Pointer to processing module.
+ */
 __syscall void mod_free_all(struct processing_module *mod);
 #else
 void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
@@ -215,11 +263,11 @@ void z_impl_mod_free_all(struct processing_module *mod);
 #endif
 
 /**
- * Allocates aligned memory block for module.
- * @param mod		Pointer to the module this memory block is allocated for.
- * @param size		Size in bytes.
- * @param alignment	Alignment in bytes.
- * @return Pointer to the allocated memory or NULL if failed.
+ * @brief Allocate aligned memory block for module with user privileges.
+ * @param mod Pointer to processing module.
+ * @param size Size in bytes.
+ * @param alignment Alignment in bytes.
+ * @return Pointer to allocated memory, or NULL on failure.
  *
  * The allocated memory is automatically freed when the module is unloaded.
  */
@@ -228,16 +276,34 @@ static inline void *mod_alloc_align(struct processing_module *mod, size_t size, 
 	return mod_alloc_ext(mod, SOF_MEM_FLAG_USER, size, alignment);
 }
 
+/**
+ * @brief Allocate stream buffer memory for module with natural alignment.
+ * @param mod Pointer to processing module.
+ * @param size Size in bytes.
+ * @return Pointer to allocated buffer, or NULL on failure.
+ */
 static inline void *mod_balloc(struct processing_module *mod, size_t size)
 {
 	return mod_balloc_align(mod, size, 0);
 }
 
+/**
+ * @brief Allocate memory block for module with default natural alignment.
+ * @param mod Pointer to processing module.
+ * @param size Size in bytes.
+ * @return Pointer to allocated memory, or NULL on failure.
+ */
 static inline void *mod_alloc(struct processing_module *mod, size_t size)
 {
 	return mod_alloc_align(mod, size, 0);
 }
 
+/**
+ * @brief Allocate zero-initialized memory block for module.
+ * @param mod Pointer to processing module.
+ * @param size Size in bytes.
+ * @return Pointer to zero-initialized allocated memory, or NULL on failure.
+ */
 static inline void *mod_zalloc(struct processing_module *mod, size_t size)
 {
 	void *ret = mod_alloc(mod, size);
