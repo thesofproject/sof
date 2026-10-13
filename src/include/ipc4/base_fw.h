@@ -11,827 +11,762 @@
 /**
  * \file include/ipc4/base_fw.h
  * \brief IPC4 Base Firmware parameters, memory configuration, and status definitions.
- * \ingroup ipc4_api
+ * \ingroup ipc4_base_fw_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 
 #ifndef __SOF_IPC4_BASE_FW_H__
 #define __SOF_IPC4_BASE_FW_H__
 
-/* SOF FW performs autonomous management of clock sources.
+/**
+ * \brief Clock states count.
+ *
+ * SOF FW performs autonomous management of clock sources.
  * Set MAX_CLK_STATES to 0 in order to propagate this information through IPC and thus
  * prevent reception of unsupported clock configuration.
  */
 #define IPC4_MAX_CLK_STATES 0
 
-/* Max src queue count supported by ipc4 */
+/** \brief Maximum source queue count supported by IPC4. */
 #define IPC4_MAX_SRC_QUEUE 8
 
-/* Max dst queue count supported by ipc4 */
+/** \brief Maximum destination queue count supported by IPC4. */
 #define IPC4_MAX_DST_QUEUE 8
 
-/* Max module instance for single module count supported by ipc4 */
+/** \brief Maximum module instance count for a single module supported by IPC4. */
 #define IPC4_MAX_MODULE_INSTANCES 256
 
-/* Max ll tasks for a schedule priority count supported by ipc4 */
+/** \brief Maximum low-latency tasks for a schedule priority count supported by IPC4. */
 #define IPC4_MAX_LL_TASKS_PER_PRI_COUNT 16
 
-/* Max dp tasks count supported by ipc4 */
+/** \brief Maximum data-processing tasks count supported by IPC4. */
 #define IPC4_MAX_DP_TASKS_COUNT 16
 
-/* Max external libraries count supported by ipc4 */
+/** \brief Maximum external libraries count supported by IPC4. */
 #define IPC4_MAX_LIBS_COUNT 16
 
-/* Max pipeline count supported by ipc4 */
+/** \brief Maximum pipeline count supported by IPC4. */
 #define IPC4_MAX_PPL_COUNT 32
 
+/**
+ * \brief IPC4 Base Firmware configuration and query parameter IDs.
+ * \ingroup ipc4_base_fw_api
+ *
+ * Parameter IDs used with LARGE_CONFIG_GET and LARGE_CONFIG_SET commands
+ * addressed to the Base FW module instance (module ID 0, instance ID 0).
+ */
 enum ipc4_basefw_params {
-	/* Use LARGE_CONFIG_GET to retrieve fw properties as TLV structure
-	 * with typeof AdspProperties.
+	/**
+	 * Retrieve firmware properties as TLV structure with typeof AdspProperties
+	 * via LARGE_CONFIG_GET.
 	 */
 	IPC4_DSP_PROPERTIES = 0,
 
+	/** Retrieve DSP resource state via LARGE_CONFIG_GET. */
 	IPC4_DSP_RESOURCE_STATE = 1,
 
+	/** Reserved parameter identifier. */
 	IPC4_RESERVED = 2,
 
-	/* Driver sends this request to enable/disable notifications. This message
-	 * should be used by the driver in debug mode to avoid flooding host with
-	 * underrun notifications when driver is stopped by breakpoint for example.
+	/**
+	 * Enable or disable asynchronous notifications. Used in debug mode
+	 * to prevent flooding the host with underrun notifications during breakpoints.
 	 */
 	IPC4_NOTIFICATION_MASK = 3,
 
-	/* Driver sends A-State Table data right after the Base FW is up and ready to
-	 * handle IPC communication. The table is forwarded to the Power Manager to
-	 * configure available power states according to the underlying platform.
+	/**
+	 * Configure available power states according to the underlying platform.
+	 * Driver sends A-State table data right after Base FW is up.
 	 */
 	IPC4_ASTATE_TABLE = 4,
 
-	/* Driver sends the DMA Control parameter in order to initialize or modify
-	 * DMA gateway configuration outside of a stream lifetime. Typically a DMA
-	 * gateway is initialized during pipeline creation when a Copier module is
-	 * instantiated and attached to that gateway. Similarly the gateway is
-	 * de-initialized when the Copiers parent pipeline is being destroyed.
-	 * However sometimes the driver may want to control the gateway before or
-	 * after a stream is being attached to it.
-	 *
-	 * The data of DMA Control parameter starts with DmaControl structure
-	 * optionally followed by the target gateway specific data (that may consist
-	 * of two parts, the former coming from NHLT BIOS tables and the latter
-	 * aux_config in form of TLV list provided by the driver).
+	/**
+	 * Initialize or modify DMA gateway configuration outside stream lifetime.
+	 * Starts with struct ipc4_dma_control followed by optional gateway-specific data.
 	 */
 	IPC4_DMA_CONTROL = 5,
 
-	/* Driver sets this parameter to control state of FW logging. Driver may
-	 * enable logging for each core and specify logging level. Driver also
-	 * configures period of aging and FIFO full timers. Aging timer period
-	 * specifies how frequently FW sends Log Buffer Status notification for new
-	 * entries in case the usual notification sending criteria are not met
-	 * (half of the buffer is full). Fifo full timer period specifies the latency
-	 * of logging "dropped log entries" information after the content is consumed
-	 * by the driver but no new log entry appears (which would trigger logging
-	 * "dropped entries" as well).
-	 *
-	 * SystemTime property must be provided by the driver prior to enabling
-	 *the logs for the first time, otherwise error is raised by FW since
-	 * it will not be able to translate log event timestamps into the host
-	 * CPU clock domain.
-	 *
-	 * Log FIFO content is reset on logs enabled by the driver, so the RP
-	 * is expected to be 0, however the driver should not assume that value
-	 * but just read the RP from FW Registers instead.
+	/**
+	 * Configure firmware logging state (enable/disable per core, log level,
+	 * aging timer, FIFO full timer).
 	 */
 	IPC4_ENABLE_LOGS = 6,
 
-	/* Use LARGE_CONFIG_SET/LARGE_CONFIG_GET to write/read FW configuration.
-	 *
-	 * Driver requests value of this Base FW property to discover FW configuration.
-	 * Configuration data is returned in form of TLV list and contains items as
-	 * defined in the next table.
-	 *
-	 * Driver may also set values of parameters that are marked as RW in the table.
-	 * FirmwareConfig is expected to be queried/set once at the FW
-	 * initialization time. Properties that are expected to be changed more
-	 * frequently (e.g. current number of modules descriptors loaded or
-	 * performance measurements state) are moved and became separate
-	 * parameters.
+	/**
+	 * Discover or set firmware configuration in TLV format (read/write
+	 * via LARGE_CONFIG_GET / LARGE_CONFIG_SET).
 	 */
 	IPC4_FW_CONFIG = 7,
 
-	/* Use LARGE_CONFIG_GET to read HW configuration.
-	 *
-	 * Driver requests value of this Base FW property to discover underlying HW
-	 * configuration. Configuration data is returned in form of TLV list.
+	/**
+	 * Discover underlying hardware configuration in TLV format
+	 * via LARGE_CONFIG_GET.
 	 */
 	IPC4_HW_CONFIG_GET = 8,
 
-	/* Use LARGE_CONFIG_GET to read modules configuration.
-	 *
-	 * Driver requests value of this Base FW property to retrieve list of the
-	 * module entries loaded into the FW memory space (as part of either the
-	 * image manifest or library manifest).
-	 *
-	 * The response may be too large to fit into a single message. The driver
-	 * must be prepared to handle multiple fragments.
+	/**
+	 * Retrieve list of module entries loaded into firmware memory space
+	 * (image manifest or library manifest) via LARGE_CONFIG_GET.
 	 */
 	IPC4_MODULES_INFO_GET = 9,
 
-	/* Use LARGE_CONFIG_GET to read pipeline list.
-	 *
-	 * Driver requests value of this Base FW property to retrieve list of
-	 * pipelines IDs. Once the list is received driver may retrieve properties of
-	 * each pipeline by querying Pipeline Info specifying IDs from the list.
-	 */
+	/** Retrieve list of instantiated pipeline IDs via LARGE_CONFIG_GET. */
 	IPC4_PIPELINE_LIST_INFO_GET = 10,
 
-	/* Use LARGE_CONFIG_GET to read pipelines properties.
-	 *
-	 * Driver requests value of this Base FW property to retrieve properties of a
-	 * pipeline. Full parameter id wrapped by APPLICATION_PARAM into the request
-	 * payload is of ExtendedParameterId type where parameter_type is set to
-	 * PIPELINE_PROPS and parameter_instance is set to the target pipeline id.
-	 *
-	 * Properties of a single pipeline are expected to fit into a single IPC
-	 * response as there is a room for ~1K of IDs of tasks and modules instances.
+	/**
+	 * Retrieve pipeline properties for a given pipeline ID
+	 * via LARGE_CONFIG_GET.
 	 */
 	IPC4_PIPELINE_PROPS_GET = 11,
 
-	/* Use SCHEDULERS_INFO_GET to read schedulers configuration.
-	 *
-	 * Driver requests value of this Base FW property to retrieve list of task
-	 * schedulers and tasks created inside the FW and being executed on a core.
-	 * Full parameter id wrapped by APPLICATION_PARAM into the request payload
-	 * is of ExtendedParameterId type where parameter_type is set to
-	 * SCHEDULERS_INFO and parameter_instance is set to the target core id.
+	/**
+	 * Retrieve list of task schedulers and tasks running on a core
+	 * via LARGE_CONFIG_GET.
 	 */
 	IPC4_SCHEDULERS_INFO_GET = 12,
 
-	/* Use LARGE_CONFIG_GET to read gateway configuration */
+	/** Retrieve gateway configuration information via LARGE_CONFIG_GET. */
 	IPC4_GATEWAYS_INFO_GET = 13,
 
-	/* Use LARGE_CONFIG_GET to get information on memory state.
-	 *
-	 * Driver requests value of this Base FW property to retrieve information
-	 * about current DSP memory state. Configuration data is returned in form of
-	 * TLV list and contains items as defined in the next table.
-	 */
+	/** Retrieve information about current DSP memory state via LARGE_CONFIG_GET. */
 	IPC4_MEMORY_STATE_INFO_GET = 14,
 
-	/*  Use LARGE_CONFIG_GET to get information on power state.
-	 *
-	 * Driver requests value of this Base FW property to retrieve information
-	 * about current DSP power state. Configuration data is returned in form of
-	 * TLV list and contains items as defined in the next table.
-	 */
+	/** Retrieve information about current DSP power state via LARGE_CONFIG_GET. */
 	IPC4_POWER_STATE_INFO_GET = 15,
 
-	/* Use LARGE_CONFIG_GET to get information about libraries
-	 * loaded into the ADSP memory.
-	 */
+	/** Retrieve information about external libraries loaded into DSP memory. */
 	IPC4_LIBRARIES_INFO_GET = 16,
 
-	/* Use LARGE_CONFIG_SET to set value of this Base FW property to control
-	 * performance measurements state. There is one global flag that controls the
-	 * state of performance measurements process globally.
-	 *
-	 * Driver may set value of this Base FW property to control state of
-	 * performance measurements process in the DSP FW.
-	 *
-	 * This state is applied to MCPS monitoring only. Memory allocation
-	 * state is always available.
-	 */
+	/** Control global performance measurement state (MCPS monitoring). */
 	IPC4_PERF_MEASUREMENTS_STATE = 17,
 
-	/* Use LARGE_CONFIG_GET to retrieve retrieve global performance data. FW
-	 * sends a list of captured performance data per enabled core and power mode.
-	 * MCPS are sampled each DSP system tick (1ms in D0) and used to compute peak
-	 * and average values.
-	 *
-	 * Driver requests value of this Base FW property to retrieve performance data
-	 * captured on the DSP. FW sends a list of items reported by FW components.
-	 * KCPS are sampled either each DSP system tick (1ms in D0) for low latency
-	 * and infrastructure components, or each processed frame otherwise. The KCPS
-	 * are used to compute reported peak and average values by FW.
-	 *
-	 * Data items reported for resource_id = {module_id = 0, instance_id =
-	 * core_id} contain total KCPS spent on each active core.
-	 *
-	 *This parameter reports only KCPS, while the memory state is reported
-	 * by Memory State Info parameter.
-	 */
+	/** Retrieve global performance data (KCPS sampled per tick/frame). */
 	IPC4_GLOBAL_PERF_DATA = 18,
 
-	/* Use LARGE_CONFIG_GET to get information on l2 cache state.
-	 *
-	 * Driver requests value of this Base FW property to retrieve information
-	 * about current state of L2 Cache. Available on platforms where L2 cache is
-	 * in use, otherwise ADSP_IPC_UNAVAILABLE is returned.
-	 */
+	/** Retrieve L2 cache state information. */
 	IPC4_L2_CACHE_INFO_GET = 19,
 
-	/* Driver sets this property to pass down information about host system time.
-	 *
-	 * Driver sets this property to pass down information about current system
-	 * time. It is used by FW to translate event timestamps (Logs, Probes packets
-	 * for example) to the system time (current host time) domain.
-	 *
-	 * The value of system time is expressed in us
-	 * Time is in UTC
-	 * Epoch is 1601-01-01T00:00:00Z
+	/**
+	 * Pass down host system time in microseconds (UTC, epoch 1601-01-01T00:00:00Z)
+	 * to synchronize log and trace timestamps.
 	 */
 	IPC4_SYSTEM_TIME = 20,
 
-	/* Use LARGE_CONFIG_SET to configure firmware for performance */
+	/** Configure firmware for performance mode via LARGE_CONFIG_SET. */
 	IPC4_PERFORMANCE_CONFIGURATION = 21,
 
-	/* Use LARGE_CONFIG_SET to register KCPS into power manager
-	 * service per core 0. Negative numbers are allowed.
-	 */
+	/** Register KCPS into power manager service per core 0 (negative values allowed). */
 	IPC4_REGISTER_KCPS = 22,
 
-	/* Use LARGE_CONFIG_SET to request additional resource allocation */
+	/** Request additional resource allocation via LARGE_CONFIG_SET. */
 	IPC4_RESOURCE_ALLOCATION_REQUEST = 23,
 
-	/* Driver may set value of this Base FW property to control state of
-	 * I/o performance measurements process in the DSP FW.
-	 */
+	/** Control I/O performance measurement state in firmware. */
 	IPC4_IO_PERF_MEASUREMENTS_STATE  = 24,
 
-	/* The command returns I/O statistics when they are enabled */
+	/** Retrieve I/O global performance statistics. */
 	IPC4_IO_GLOBAL_PERF_DATA         = 25,
 
-	/* The command is shorter version of Modules Info command.
-	 * It is used to retrieve module ID for a specified module UUID.
-	 */
+	/** Retrieve module ID for a specified module UUID. */
 	IPC4_GET_MODULE_ID               = 26,
 
-	/* EXTENDED_SYSTEM_TIME command returns current value of UTC, RTC and HH.
-	 * The system time must be set first via SYSTEM_TIME command before
-	 * EXTENDED_SYSTEM_TIME can be used.
-	 */
+	/** Retrieve current UTC, RTC, and ART timestamps (requires SYSTEM_TIME set first). */
 	IPC4_EXTENDED_SYSTEM_TIME        = 27,
 
-	/* Driver may set value of this Base FW property to control state
-	 * of telemetry collection process in the DSP FW.
-	 * In started state, TELEMETRY_STATE command is used to change threshold
-	 * and aging timer depend on system state.
-	 */
+	/** Control telemetry collection process state and thresholds. */
 	IPC4_TELEMETRY_STATE             = 28,
 
-	/* The command to read data from the telemetry circular buffer.
-	 * The telemetry data can be produced by firmware modules using
-	 * System Service APIand then all telemetry is collected via one
-	 * common mechanism provided by the base firmware.
-	 */
+	/** Read data from circular telemetry buffer. */
 	IPC4_TELEMETRY_DATA              = 29,
 
-	/* This command is extended version of Global Performance Data which
-	 * provides more details information about total number of
-	 * cycles consumed by each of the modules.
-	 */
+	/** Extended global performance data with per-module DSP cycle statistics. */
 	IPC4_EXTENDED_GLOBAL_PERF_DATA   = 30,
 
-	/* Use LARGE_CONFIG_SET to change SDW ownership */
-	IPC4_SDW_OWNERSHIP = 31,
+	/** Configure SoundWire controller ownership via LARGE_CONFIG_SET. */
+	IPC4_SDW_OWNERSHIP               = 31,
 
-	/* This command is used by SW to notify FW for changing state of Mic Privacy */
+	/** Notify firmware of hardware-managed microphone privacy state change. */
 	IPC4_MIC_PRIVACY_HW_MANAGED_STATE_CHANGE = 35,
 
-	/* Set policy mask for mic privacy in FW managed mode */
+	/** Set policy mask for microphone privacy in firmware-managed mode. */
 	IPC4_SET_MIC_PRIVACY_FW_MANAGED_POLICY_MASK = 36,
 };
 
+/**
+ * \brief Firmware configuration parameter TLV IDs returned by IPC4_FW_CONFIG.
+ * \ingroup ipc4_base_fw_api
+ */
 enum ipc4_fw_config_params {
-	/* Firmware version */
+	/** Firmware version. */
 	IPC4_FW_VERSION_FW_CFG                  = 0,
-	/* Indicates whether legacy DMA memory is managed by FW */
+	/** Indicates whether legacy DMA memory is managed by FW. */
 	IPC4_MEMORY_RECLAIMED_FW_CFG            = 1,
-	/* Frequency of oscillator clock */
+	/** Frequency of oscillator clock in Hz. */
 	IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG          = 2,
-	/* Frequency of PLL clock */
+	/** Frequency of PLL clock in Hz. */
 	IPC4_FAST_CLOCK_FREQ_HZ_FW_CFG          = 3,
-	/* List of static and dynamic DMA buffer sizes.
-	 * SW may configure minimum and maximum size for each buffer.
+	/**
+	 * List of static and dynamic DMA buffer sizes.
+	 * Host software may configure minimum and maximum size for each buffer.
 	 */
 	IPC4_DMA_BUFFER_CONFIG_FW_CFG           = 4,
-	/* Audio Hub Link support level.
-	 * Note: Lower 16-bits may be used in future to indicate
-	 * implementation revision if necessary.
+	/**
+	 * Audio Hub Link (ALH) support level.
+	 * Lower 16 bits may indicate implementation revision.
 	 */
 	IPC4_ALH_SUPPORT_LEVEL_FW_CFG           = 5,
-	/* Size of IPC downlink mailbox */
-	IPC4_DL_MAILBOX_BYTES_FW_CFG        = 6,
-	/* Size of IPC uplink mailbox */
-	IPC4_UL_MAILBOX_BYTES_FW_CFG        = 7,
-	/* Size of trace log buffer */
+	/** Size of IPC downlink mailbox in bytes. */
+	IPC4_DL_MAILBOX_BYTES_FW_CFG            = 6,
+	/** Size of IPC uplink mailbox in bytes. */
+	IPC4_UL_MAILBOX_BYTES_FW_CFG            = 7,
+	/** Size of trace log buffer in bytes. */
 	IPC4_TRACE_LOG_BYTES_FW_CFG             = 8,
-	/* Maximum number of pipelines that may be instantiated at the same time */
+	/** Maximum number of pipelines that may be instantiated simultaneously. */
 	IPC4_MAX_PPL_CNT_FW_CFG                 = 9,
-	/* Maximum number of A-state table entries that may be configured by the driver.
-	 * Driver may also use this value to estimate the size of data retrieved as
-	 * ASTATE_TABLE property.
+	/**
+	 * Maximum number of A-state table entries that may be configured by the driver.
+	 * Driver may use this value to estimate the size of ASTATE_TABLE data.
 	 */
 	IPC4_MAX_ASTATE_COUNT_FW_CFG            = 10,
-	/* Maximum number of input or output pins supported by a module */
+	/** Maximum number of input or output pins supported by a module. */
 	IPC4_MAX_MODULE_PIN_COUNT_FW_CFG        = 11,
-	/* Current total number of module entries loaded into the DSP */
+	/** Current total number of module entries loaded into the DSP. */
 	IPC4_MODULES_COUNT_FW_CFG               = 12,
-	/* Maximum number of module instances supported by FW */
+	/** Maximum number of module instances supported by FW. */
 	IPC4_MAX_MOD_INST_COUNT_FW_CFG          = 13,
-	/* Maximum number of LL tasks that may be allocated with
-	 * the same priority (specified by a priority of the parent pipeline).
+	/**
+	 * Maximum number of LL tasks that may be allocated with
+	 * the same priority (specified by parent pipeline priority).
 	 */
 	IPC4_MAX_LL_TASKS_PER_PRI_COUNT_FW_CFG  = 14,
-	/* Number of LL priorities */
+	/** Number of Low Latency (LL) scheduling priorities. */
 	IPC4_LL_PRI_COUNT                       = 15,
-	/* Maximum number of DP tasks that may be allocated on a single core */
+	/** Maximum number of DP tasks that may be allocated on a single core. */
 	IPC4_MAX_DP_TASKS_COUNT_FW_CFG          = 16,
-	/* Maximum number of libraries that can be loaded into the ADSP memory */
+	/** Maximum number of external libraries that can be loaded into ADSP memory. */
 	IPC4_MAX_LIBS_COUNT_FW_CFG              = 17,
-	/* Configuration of system tick source and period */
+	/** Configuration of system tick source and period. */
 	IPC4_SCHEDULER_CONFIGURATION            = 18,
-	/* Frequency of xtal oscillator clock */
+	/** Frequency of XTAL oscillator clock in Hz. */
 	IPC4_XTAL_FREQ_HZ_FW_CFG                = 19,
-	/* Configuration of clocks */
+	/** Configuration of clocks. */
 	IPC4_CLOCKS_CONFIGURATION               = 20,
-	/* USB Audio Offload support */
+	/** USB Audio Offload (UAOL) support indicator. */
 	IPC4_UAOL_SUPPORT                       = 21,
-	/* Configuration of Dynamic Power Gating Policy */
+	/** Configuration of Dynamic Power Gating Policy. */
 	IPC4_POWER_GATING_POLICY                = 22,
-	/* Configuration of assert mode
-	 * Run-time asserts requires special handling by decoder.
-	 * Asserts will be in format: "%passert", ptr_to_assert_desc.
-	 *
-	 * ptr_to_assert_desc will point to place in .asserts_desc section in ELF.
-	 * Data must be cased to struct: struct assert_entry
+	/**
+	 * Configuration of assert mode.
+	 * Asserts use format "%passert", ptr_to_assert_desc in .asserts_desc section.
 	 */
 	IPC4_ASSERT_MODE                        = 23,
-	/* Size of telemetry buffer in bytes. The default size is 4KB  */
-	IPC4_TELEMETRY_BUFFER_SIZE = 24,
-	/* HW version information  */
-	IPC4_BUS_HARDWARE_ID = 25,
-	/* Total memory size available in debug window */
-	IPC4_DEBUG_WINDOW_SIZE = 26,
-	/* Number of realtime Key Phrase Buffer (KPB) output pins */
-	IPC4_KPB_RT_SINK_COUNT = 27,
-	/* Manual control of DMI L1 state */
-	IPC4_DMI_FORCE_L1_EXIT = 28,
-	/* FW context save on D3 entry */
-	IPC4_FW_CONTEXT_SAVE = 29,
-	/* Minimum size of host buffer in ms */
-	IPC4_FW_MIN_HOST_BUFFER_PERIODS = 33,
-	/* decoder/encoder codec information */
-	IPC4_FW_SOF_INFO = 35,
-	/* Total number of FW config parameters  */
+	/** Size of telemetry circular buffer in bytes (default 4KB). */
+	IPC4_TELEMETRY_BUFFER_SIZE              = 24,
+	/** Hardware version and bus hardware identifier. */
+	IPC4_BUS_HARDWARE_ID                    = 25,
+	/** Total memory size available in debug window. */
+	IPC4_DEBUG_WINDOW_SIZE                  = 26,
+	/** Number of real-time Key Phrase Buffer (KPB) output sink pins. */
+	IPC4_KPB_RT_SINK_COUNT                  = 27,
+	/** Manual control of DMI L1 state exit. */
+	IPC4_DMI_FORCE_L1_EXIT                  = 28,
+	/** Firmware context save on D3 power state entry. */
+	IPC4_FW_CONTEXT_SAVE                    = 29,
+	/** Minimum size of host buffer in milliseconds. */
+	IPC4_FW_MIN_HOST_BUFFER_PERIODS         = 33,
+	/** SOF specific decoder/encoder codec information. */
+	IPC4_FW_SOF_INFO                        = 35,
+	/** Total number of FW config parameters. */
 	IPC4_FW_CFG_PARAMS_COUNT,
-	/* Max config parameter id */
+	/** Maximum FW config parameter ID value. */
 	IPC4_MAX_FW_CFG_PARAM = IPC4_FW_CFG_PARAMS_COUNT - 1,
 };
 
-/*
- * tuple based array for SOF specific information under IPC4_FW_SOF_INFO
- * tuple of fw_config
+/**
+ * \brief Tuple-based parameters for SOF specific info under IPC4_FW_SOF_INFO.
+ * \ingroup ipc4_base_fw_api
  */
 enum ipc4_fw_sof_info_params {
-	/* decoder/encoder codec information */
+	/** Decoder/encoder codec information. */
 	IPC4_SOF_CODEC_INFO = 0,
 
-	/* Total number of SOF config parameters  */
+	/** Total number of SOF config parameters. */
 	IPC4_SOF_CFG_PARAMS_COUNT,
-	/* Max config parameter id */
+	/** Maximum SOF config parameter ID value. */
 	IPC4_MAX_SOF_CFG_PARAM = IPC4_SOF_CFG_PARAMS_COUNT - 1,
 };
 
+/**
+ * \brief Hardware configuration parameter TLV IDs returned by IPC4_HW_CONFIG_GET.
+ * \ingroup ipc4_base_fw_api
+ */
 enum ipc4_hw_config_params {
-	/* Version of cAVS implemented by FW (from ROMInfo) */
+	/** Version of CAVS/ACE architecture implemented by FW (from ROMInfo). */
 	IPC4_CAVS_VER_HW_CFG             = 0,
-	/* How many dsp cores are available in current audio subsystem */
+	/** Number of DSP cores available in the audio subsystem. */
 	IPC4_DSP_CORES_HW_CFG            = 1,
-	/* Size of a single memory page */
+	/** Size of a single memory page in bytes (typically 4096). */
 	IPC4_MEM_PAGE_BYTES_HW_CFG       = 2,
-	/* Total number of physical pages available for allocation */
+	/** Total number of physical memory pages available for allocation. */
 	IPC4_TOTAL_PHYS_MEM_PAGES_HW_CFG = 3,
-	/*
-	 * Number of items in controller_base_addr array is specified by
-	 * controller_count. note Lower 16 bits of I2sVersion may be used
-	 * in future to indicate implementation revision if necessary.
+	/**
+	 * I2S controller capabilities. Array count given by controller_count.
+	 * Lower 16 bits may indicate implementation revision.
 	 */
 	IPC4_I2S_CAPS_HW_CFG             = 4,
-	/* GPDMA capabilities */
+	/** General Purpose DMA (GPDMA) controller capabilities. */
 	IPC4_GPDMA_CAPS_HW_CFG           = 5,
-	/*Total number of DMA gateways of all types */
+	/** Total number of DMA gateways of all types. */
 	IPC4_GATEWAY_COUNT_HW_CFG        = 6,
-	/* Number of HP SRAM memory banks manageable by DSP */
-	IPC4_HP_EBB_COUNT_HW_CFG          = 7,
-	/* Number of LP SRAM memory banks manageable by DSP */
-	IPC4_LP_EBB_COUNT_HW_CFG          = 8,
-	/* Size of a single memory bank (EBB) in bytes */
-	IPC4_EBB_SIZE_BYTES_HW_CFG        = 9,
-	/* UAOL capabilities */
+	/** Number of High Power (HP) SRAM memory banks (EBBs) manageable by DSP. */
+	IPC4_HP_EBB_COUNT_HW_CFG         = 7,
+	/** Number of Low Power (LP) SRAM memory banks (EBBs) manageable by DSP. */
+	IPC4_LP_EBB_COUNT_HW_CFG         = 8,
+	/** Size of a single memory bank (EBB) in bytes. */
+	IPC4_EBB_SIZE_BYTES_HW_CFG       = 9,
+	/** USB Audio Offload (UAOL) controller capabilities. */
 	IPC4_UAOL_CAPS_HW_CFG            = 10,
-	/* Mic privacy capabilities */
+	/** Microphone privacy hardware capabilities. */
 	IPC4_INTEL_MIC_PRIVACY_CAPS_HW_CFG = 11
 };
 
+/**
+ * \brief SRAM power memory type.
+ * \ingroup ipc4_base_fw_api
+ */
 enum ipc4_memory_type {
-	/* High power sram memory */
+	/** High Power (HP) SRAM memory. */
 	IPC4_HP_SRAM_MEMORY = 0,
-	/*Low power sram memory */
+	/** Low Power (LP) SRAM memory. */
 	IPC4_LP_SRAM_MEMORY = 1
 };
 
+/**
+ * \brief DSP resource state request types.
+ * \ingroup ipc4_base_fw_api
+ */
 enum ipc4_resource_state_request {
-	/*
-	 * This type is used to inform about free physical HP sram memory pages
-	 * available.
-	 */
+	/** Query free physical HP SRAM memory pages available. */
 	IPC4_FREE_PHYS_MEM_PAGES = 0
 };
 
-/* PhysMemPages describes current free phys memory pages */
+/**
+ * \brief Free physical memory page descriptor.
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_phys_mem_pages {
-	uint32_t mem_type;
-	/* Number of pages */
-	uint32_t pages;
+	uint32_t mem_type; /**< Memory type (enum ipc4_memory_type). */
+	uint32_t pages;    /**< Number of free memory pages available. */
 } __attribute__((packed, aligned(4)));
 
+/** \brief Notification bit index: gateway underrun notification. */
 #define IPC4_UNDERRUN_AT_GATEWAY_NOTIFICATION_MASK_IDX	0
+/** \brief Notification bit index: mixer underrun notification. */
 #define IPC4_UNDERRUN_AT_MIXER_NOTIFICATION_MASK_IDX	1
+/** \brief Notification bit index: budget violation notification. */
 #define IPC4_BUDGET_VIOLATION_NOTIFICATION_MASK_IDX	2
+/** \brief Notification bit index: gateway overrun notification. */
 #define IPC4_OVERRUN_AT_GATEWAY_NOTIFICATION_MASK_IDX	3
 
+/**
+ * \brief Notification mask configuration structure (IPC4_NOTIFICATION_MASK).
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_notification_mask_info {
-	/* Indicates which notifications are begin enabled/disabled */
+	/** Bitmask indicating which notifications are being modified. */
 	uint32_t ntfy_mask;
-	/* Indicates if notifications indicated by corresponding bits in ntfy_mask
-	 * are enabled (b'1) or disabled (b'0).
+	/**
+	 * Bitmask indicating enable (1) or disable (0) state for notifications
+	 * selected in ntfy_mask.
 	 */
 	uint32_t enabled_mask;
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Hardware clock source selection.
+ * \ingroup ipc4_base_fw_api
+ */
 enum ipc4_clock_src {
-	/* Low Power XTAL (oscillator) clock source */
+	/** Low Power XTAL oscillator clock source. */
 	IPC4_CLOCK_SRC_XTAL = 0,
-
-	/* Low Power Ring Oscillator */
+	/** Low Power Ring Oscillator (RO). */
 	IPC4_CLOCK_SRC_LP_RING_OSC,
-	/* High Power Ring Oscillator */
+	/** High Power Ring Oscillator (RO). */
 	IPC4_CLOCK_SRC_HP_RING_OSC,
-	/* Low Power XTAL (oscillator) clock source
-	 * Frequency depends on platform. This XTAL is different from CLOCK_SRC_XTAL
-	 * because it is generate in IP (not given from platform), saving more power.
+	/**
+	 * Low Power Wake-on-Voice (WoV) XTAL oscillator.
+	 * Generated internal to IP for optimal low-power listening.
 	 */
 	IPC4_CLOCK_SRC_WOV_XTAL,
+	/** Invalid clock source sentinel. */
 	IPC4_CLOCK_SRC_INVALID,
+	/** Maximum valid clock source index. */
 	IPC4_CLOCK_SRC_MAX_IDX = IPC4_CLOCK_SRC_INVALID - 1,
 };
 
+/**
+ * \brief A-State frequency and load threshold entry.
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_astate {
-	/* Kilo Cycles Per Second.
-	 * Specifies core load threshold (expressed in kilo cycles per second). When
-	 * load is below this threshold DSP is clocked from source specified by clk_src.
-	 *
-	 * Configuring 0 kcps in the first entry means that this clock source will be
-	 * used in idle state only.
+	/**
+	 * Core load threshold in Kilo-Cycles Per Second (KCPS).
+	 * Below this threshold DSP is clocked from source specified by clock_src.
+	 * 0 KCPS indicates clock source used in idle state only.
 	 */
 	uint32_t kcps;
-	/* Clock source associated with kcps threshold */
+	/** Clock source associated with kcps threshold (enum ipc4_clock_src). */
 	enum ipc4_clock_src clock_src;
 } __attribute__((packed, aligned(4)));
 
-/* Power Manager Astate Table */
+/**
+ * \brief Power Manager A-State configuration table (IPC4_ASTATE_TABLE).
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_astate_table {
-	/* Number of entries in astates_ array. The value does not exceed maximum
-	 * number specified by MAX_ASTATE_COUNT member of Base FWs
-	 * FIRMWARE_CONFIG parameter.
-	 */
+	/** Number of active entries in astates_ array. */
 	uint32_t astates_count_;
-	/* Array of states. */
+	/** Array of power states. */
 	struct ipc4_astate astates_[3];
 } __attribute__((packed, aligned(4)));
 
-/* All members have the same meaning as in the CopierGatewayCfg structure
- * (except for the dma_buffer_size that is not used here).
+/**
+ * \brief Direct DMA Gateway Control structure (IPC4_DMA_CONTROL).
+ * \ingroup ipc4_base_fw_api
  */
 struct ipc4_dma_control {
-	uint32_t node_id;
-	uint32_t config_length;
-	uint32_t config_data[0];
+	uint32_t node_id;       /**< Target DMA gateway node ID (union ipc4_connector_node_id). */
+	uint32_t config_length; /**< Configuration blob length in DWORDS. */
+	uint32_t config_data[0]; /**< Gateway-specific configuration payload (NHLT blob / TLV). */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Performance measurement process states.
+ * \ingroup ipc4_base_fw_api
+ */
 enum ipc4_perf_measurements_state_set {
-	IPC4_PERF_MEASUREMENTS_DISABLED = 0,
-	IPC4_PERF_MEASUREMENTS_STOPPED = 1,
-	IPC4_PERF_MEASUREMENTS_STARTED = 2,
-	IPC4_PERF_MEASUREMENTS_PAUSED = 3,
+	IPC4_PERF_MEASUREMENTS_DISABLED = 0, /**< Performance measurements disabled. */
+	IPC4_PERF_MEASUREMENTS_STOPPED = 1,  /**< Performance measurements stopped. */
+	IPC4_PERF_MEASUREMENTS_STARTED = 2,  /**< Performance measurements actively running. */
+	IPC4_PERF_MEASUREMENTS_PAUSED = 3,   /**< Performance measurements paused. */
 };
 
+/**
+ * \brief Single component performance measurement data item.
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_perf_data_item {
-	/*ID of the core running the load being reported */
-	uint32_t  resource_id;
-	/*
-	 * 0 - D0,
-	 * 1 - D0i3,
-	 */
-	uint32_t  power_mode : 1;
-	uint32_t  rsvd       : 30;
-	uint32_t  is_removed : 1;
-	/* Peak KCPS (Kilo Cycles Per Second) captured */
-	uint32_t  peak_kcps;
-	/* Average KCPS (Kilo Cycles Per Second) measured */
-	uint32_t  avg_kcps;
+	uint32_t  resource_id; /**< Resource ID: core ID or {module_id, instance_id}. */
+	uint32_t  power_mode : 1; /**< Power mode: 0 = D0, 1 = D0i3. */
+	uint32_t  rsvd       : 30; /**< Reserved padding. */
+	uint32_t  is_removed : 1;  /**< 1 if component was removed/uninstantiated. */
+	uint32_t  peak_kcps;  /**< Peak Kilo Cycles Per Second captured. */
+	uint32_t  avg_kcps;   /**< Average Kilo Cycles Per Second measured. */
 } __attribute__((packed, aligned(4)));
 
-/*
- * PerfDataItem with additional fields required by module
- * instance to properly calculate its performance data.
- * NOTE: Only PerfDataItem is part of GlobalPerfData.
+/**
+ * \brief Module instance performance data with internal iteration metrics.
+ * \ingroup ipc4_base_fw_api
  */
 struct ipc4_perf_data_item_mi {
-	struct ipc4_perf_data_item item;
-	/* Total iteration count of module instance */
-	uint32_t total_iteration_count;
-	/* Total cycles consumed by module instance */
-	uint64_t total_cycles_consumed;
+	struct ipc4_perf_data_item item; /**< Base performance item header. */
+	uint32_t total_iteration_count;  /**< Total execution iteration count of module instance. */
+	uint64_t total_cycles_consumed;  /**< Total DSP cycles consumed by module instance. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Global DSP performance report payload (IPC4_GLOBAL_PERF_DATA).
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_global_perf_data {
-	/* Specifies number of items in perf_items array */
-	uint32_t      perf_item_count;
-	/* Array of global performance measurements */
-	struct ipc4_perf_data_item  perf_items[1];
+	uint32_t perf_item_count; /**< Number of items in perf_items array. */
+	struct ipc4_perf_data_item perf_items[1]; /**< Array of performance measurement items. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Low latency interrupt source types.
+ * \ingroup ipc4_base_fw_api
+ */
 enum ipc4_low_latency_interrupt_source {
-	IPC4_LOW_POWER_TIMER_INTERRUPT_SOURCE = 1,
-	IPC4_DMA_GATEWAY_INTERRUPT_SOURCE = 2
+	IPC4_LOW_POWER_TIMER_INTERRUPT_SOURCE = 1, /**< Low Power Timer interrupt. */
+	IPC4_DMA_GATEWAY_INTERRUPT_SOURCE = 2      /**< DMA Gateway completion interrupt. */
 };
 
+/**
+ * \brief Scheduler tick and timer configuration (IPC4_SCHEDULER_CONFIGURATION).
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_scheduler_config {
-	uint32_t sys_tick_multiplier;
-	uint32_t sys_tick_divider;
-	uint32_t sys_tick_source;
-	uint32_t sys_tick_cfg_length;
-	uint32_t sys_tick_cfg[1];
+	uint32_t sys_tick_multiplier; /**< System tick multiplier factor. */
+	uint32_t sys_tick_divider;    /**< System tick divider factor. */
+	uint32_t sys_tick_source;     /**< System tick source clock. */
+	uint32_t sys_tick_cfg_length; /**< Length of extra tick configuration. */
+	uint32_t sys_tick_cfg[1];     /**< Extra tick configuration data. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief 64-bit system timestamp split into lower and upper 32-bit words.
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_system_time {
-	/* Lower DWORD of current system time value */
-	uint32_t  val_l;
-	/* Upper DWORD of current system time value */
-	uint32_t  val_u;
+	uint32_t val_l; /**< Lower 32 bits of microsecond timestamp. */
+	uint32_t val_u; /**< Upper 32 bits of microsecond timestamp. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Host and DSP system time pairing for clock synchronization.
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_system_time_info {
-	struct ipc4_system_time host_time;
-	struct ipc4_system_time dsp_time;
+	struct ipc4_system_time host_time; /**< Host CPU timestamp. */
+	struct ipc4_system_time dsp_time;  /**< Corresponding DSP timestamp. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Extended host/DSP system time with RTC and ART timestamps.
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_ext_system_time {
-	/* Lower DWORD of current system time value. */
-	uint32_t utc_l;
-	/* Upper DWORD of current system time value. */
-	uint32_t utc_u;
-	/* Lower DWORD of current RTC value. */
-	uint32_t rtc_l;
-	/* Upper DWORD of current RTC value. */
-	uint32_t rtc_u;
-	/* Lower DWORD of current ART value. */
-	uint32_t art_l;
-	/* Upper DWORD of current ART value. */
-	uint32_t art_u;
+	uint32_t utc_l; /**< Lower DWORD of UTC system time. */
+	uint32_t utc_u; /**< Upper DWORD of UTC system time. */
+	uint32_t rtc_l; /**< Lower DWORD of Real Time Clock. */
+	uint32_t rtc_u; /**< Upper DWORD of Real Time Clock. */
+	uint32_t art_l; /**< Lower DWORD of Always Running Timer (ART). */
+	uint32_t art_u; /**< Upper DWORD of Always Running Timer (ART). */
 };
 
+/**
+ * \brief Pipeline attributes flags.
+ * \ingroup ipc4_base_fw_api
+ */
 enum ipc4_pipeline_attributes {
-	/* Determines whether on pipeline will be allocated module(s) with ULP capability */
+	/** Pipeline contains modules with Ultra Low Power (ULP) capability. */
 	IPC4_ULTRA_LOW_POWER     = 0,
-	/* Determines whether on pipeline will be allocated
-	 * module(s) that can report autonomous reset.
-	 */
+	/** Pipeline contains modules capable of autonomous reset reporting. */
 	IPC4_AUTONOMOUS_RESET     = 1,
 };
 
+/**
+ * \brief Resource allocation request types.
+ * \ingroup ipc4_base_fw_api
+ */
 enum ipc4_resource_allocation_type {
-	/* Allocate KCPS */
-	IPC4_RAT_DSP_KCPS   = 0,
-	IPC4_RAT_MEMORY     = 1,
+	IPC4_RAT_DSP_KCPS   = 0, /**< Allocate DSP processing capacity in KCPS. */
+	IPC4_RAT_MEMORY     = 1, /**< Allocate physical SRAM memory. */
 };
 
+/**
+ * \brief KCPS resource allocation descriptor.
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_resource_kcps {
-	uint32_t core_id;
-	int32_t kcps;
+	uint32_t core_id; /**< DSP core identifier. */
+	int32_t kcps;     /**< KCPS capacity to allocate or release (signed). */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Memory resource allocation descriptor.
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_resource_memory {
-	/* base address to allocate */
-	uint32_t address;
-	/* size of allocate */
-	uint32_t size;
+	uint32_t address; /**< Base physical address to allocate. */
+	uint32_t size;    /**< Size of memory allocation in bytes. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Resource allocation request structure (IPC4_RESOURCE_ALLOCATION_REQUEST).
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_resource_request {
-	/* Type of resource to allocate */
-	uint32_t ra_type;
+	uint32_t ra_type; /**< Resource allocation type (enum ipc4_resource_allocation_type). */
 	union {
-		/* Valid for ra_type == RAT_DSP_KCPS */
-		struct ipc4_resource_kcps kcps;
-		/* Valid for ra_type == RAT_MEMORY */
-		struct ipc4_resource_memory  memory;
-	} ra_data;
+		struct ipc4_resource_kcps kcps;     /**< KCPS data when ra_type == RAT_DSP_KCPS. */
+		struct ipc4_resource_memory memory; /**< Memory data when ra_type == RAT_MEMORY. */
+	} ra_data; /**< Resource payload union. */
 } __attribute__((packed, aligned(4)));
 
+/** \brief LP-SRAM state indicator index. */
 #define IPC4_LPSRAM_STATE  0
+/** \brief HP-SRAM state indicator index. */
 #define IPC4_HPSRAM_STATE  1
 
+/**
+ * \brief SRAM page allocation bitmask array.
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_sram_state_page_alloc {
-	/* Number of items in page_alloc array */
-	uint32_t page_alloc_count;
-	/* State of memory page allocation.
-	 * bit[i] indicates whether i-th page is allocated.
-	 */
+	uint32_t page_alloc_count; /**< Number of items in page_alloc array. */
+	/** Bit[i] indicates whether i-th memory page is allocated. */
 	uint16_t page_alloc[1];
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Detailed SRAM state and power bank information (IPC4_MEMORY_STATE_INFO_GET).
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_sram_state_info {
-	/* Number of free memory pages */
-	uint32_t free_phys_mem_pages;
-	/* Number of items in ebb_state array */
-	uint32_t ebb_state_dword_count;
-	/* State of EBBs (memory banks) */
-	/* bit[i] indicates whether i-th EBB is in use (1) or powered down (0) */
+	uint32_t free_phys_mem_pages;    /**< Number of free memory pages available. */
+	uint32_t ebb_state_dword_count;  /**< Number of items in ebb_state array. */
+	/** Bit[i] indicates whether i-th EBB bank is powered up (1) or off (0). */
 	uint32_t ebb_state[1];
-	struct ipc4_sram_state_page_alloc page_alloc_struct;
+	struct ipc4_sram_state_page_alloc page_alloc_struct; /**< Page allocation state. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Audio Hub Link (ALH) interface versions.
+ * \ingroup ipc4_base_fw_api
+ */
 enum ipc4_alh_version {
-	IPC4_ALH_NO_SUPPORT,
-	IPC4_ALH_CAVS_1_8 = 0x10000,
+	IPC4_ALH_NO_SUPPORT,        /**< ALH not supported. */
+	IPC4_ALH_CAVS_1_8 = 0x10000, /**< CAVS 1.8+ ALH implementation. */
 };
 
+/**
+ * \brief Properties of a dynamic or preloaded external library.
+ * \ingroup ipc4_base_fw_api
+ */
 struct ipc4_library_props {
-	/* Library run-time identifier, depends on order of loading. */
-    /* Base FW is always reported with id 0. */
-	uint32_t id;
-	/* Name of the library. */
-	uint8_t name[8];
-	/* Major version of the library. */
-	uint16_t major_version;
-	/* Minor version of the library. */
-	uint16_t minor_version;
-	/* Hotfix version of the library. */
-	uint16_t hotfix_version;
-	/* Build version of the library. */
-	uint16_t build_version;
-	/* Number of modules packed into the library. */
-	uint32_t num_module_entries;
-} __packed __aligned(4);
-
-struct ipc4_libraries_info {
-	/* Specifies number of items in libraries array. */
-	uint32_t library_count;
-	/* Array of libraries properties. */
-	struct ipc4_library_props libraries[0];
-} __packed __aligned(4);
-
-struct ipc4_log_state_info {
-	/*
-	 * Specifies how frequently FW sends Log Buffer Status
-	 * notification for new entries in case the usual notification
-	 * sending criteria are not met (half of the buffer is full). The
-	 * parameter is specified in number of system ticks.
-	 */
-	uint32_t  aging_timer_period;
-
-	/*
-	 * Specifies the latency of logging 'dropped log entries'
-	 * information after the content is consumed by the driver but no
-	 * new log entry appears (which would trigger logging 'dropped
-	 * entries' as well). The parameter is specified in number of
-	 * system ticks.
-	 */
-	uint32_t  fifo_full_timer_period;
-
-	/* 0 if logging is disabled, otherwise enabled */
-	uint32_t  enable;
-
-	/*
-	 * Logging mask of priorities and components for all
-	 * supported providers. Nth entry in array gives priorities and
-	 * components mask for Nth provider (library).
-	 */
-	uint32_t logs_mask[IPC4_MAX_LIBS_COUNT];
-} __attribute__((packed, aligned(4)));
-
-enum ipc4_power_state_type {
-	IPC4_ACTIVE_CORES_MASK = 0,
-	IPC4_CORE_KCPS = 1,
-};
-
-/* Scheduler info get structures */
-
-struct task_props {
-	/* Unique ID of task. */
-	uint32_t  task_id;
-	/* Specifies number of items in module_instance_id array. */
-	uint32_t  module_instance_count;
-	/*  Array of IDs of module instances running inside the task. */
-	uint32_t  module_instance_id[];
-} __packed __aligned(4);
-
-struct scheduler_props {
-	/* Processing domain, one of:
-	 * COMP_PROCESSING_DOMAIN_LL or COMP_PROCESSING_DOMAIN_DP
-	 */
-	uint32_t   processing_domain;
-	/* ID of core that scheduler is running on. */
-	uint32_t   core_id;
-	/* Specifies number of items in task_info array. */
-	uint32_t   task_count;
-	struct task_props  task_info[];
-} __packed __aligned(4);
-
-struct schedulers_info {
-	/* Specifies number of items in scheduler_info array. */
-	uint32_t        scheduler_count;
-	/* Array of scheduler properties. */
-	struct scheduler_props  scheduler_info[];
+	uint32_t id;             /**< Library runtime ID (Base FW is always 0). */
+	uint8_t name[8];         /**< Library identifier name string. */
+	uint16_t major_version;  /**< Major version number. */
+	uint16_t minor_version;  /**< Minor version number. */
+	uint16_t hotfix_version; /**< Hotfix version number. */
+	uint16_t build_version;  /**< Build version number. */
+	uint32_t num_module_entries; /**< Number of modules provided by this library. */
 } __packed __aligned(4);
 
 /**
- * @brief Get the current DSP system time information for host-DSP clock synchronization.
- * @return Pointer to struct ipc4_system_time_info containing current 64-bit timestamp.
+ * \brief Library information report payload (IPC4_LIBRARIES_INFO_GET).
+ * \ingroup ipc4_base_fw_api
+ */
+struct ipc4_libraries_info {
+	uint32_t library_count; /**< Number of libraries reported. */
+	struct ipc4_library_props libraries[0]; /**< Array of library property structures. */
+} __packed __aligned(4);
+
+/**
+ * \brief Logging configuration and state control (IPC4_ENABLE_LOGS).
+ * \ingroup ipc4_base_fw_api
+ */
+struct ipc4_log_state_info {
+	/** Aging timer period in system ticks for log buffer flush notification. */
+	uint32_t  aging_timer_period;
+	/** Latency in system ticks for logging dropped entries after buffer read. */
+	uint32_t  fifo_full_timer_period;
+	/** 1 to enable logging, 0 to disable. */
+	uint32_t  enable;
+	/** Priority and component logging masks per library provider. */
+	uint32_t logs_mask[IPC4_MAX_LIBS_COUNT];
+} __attribute__((packed, aligned(4)));
+
+/**
+ * \brief Power state query types.
+ * \ingroup ipc4_base_fw_api
+ */
+enum ipc4_power_state_type {
+	IPC4_ACTIVE_CORES_MASK = 0, /**< Query bitmask of currently active DSP cores. */
+	IPC4_CORE_KCPS = 1,         /**< Query core clock KCPS settings. */
+};
+
+/**
+ * \brief Single task properties within scheduler information.
+ * \ingroup ipc4_base_fw_api
+ */
+struct task_props {
+	uint32_t  task_id; /**< Unique identifier of the task. */
+	uint32_t  module_instance_count; /**< Number of module instances attached to task. */
+	uint32_t  module_instance_id[];  /**< Array of module instance IDs executing in task. */
+} __packed __aligned(4);
+
+/**
+ * \brief Core scheduler properties and scheduled tasks.
+ * \ingroup ipc4_base_fw_api
+ */
+struct scheduler_props {
+	uint32_t   processing_domain; /**< Domain: COMP_PROCESSING_DOMAIN_LL or DP. */
+	uint32_t   core_id;           /**< Core ID the scheduler executes on. */
+	uint32_t   task_count;        /**< Number of tasks managed by scheduler. */
+	struct task_props task_info[]; /**< Array of task descriptor structures. */
+} __packed __aligned(4);
+
+/**
+ * \brief Complete scheduler topology report (IPC4_SCHEDULERS_INFO_GET).
+ * \ingroup ipc4_base_fw_api
+ */
+struct schedulers_info {
+	uint32_t scheduler_count; /**< Number of schedulers reported. */
+	struct scheduler_props scheduler_info[]; /**< Array of scheduler properties. */
+} __packed __aligned(4);
+
+/**
+ * \brief Get current DSP system time information for host-DSP clock synchronization.
+ * \ingroup ipc4_base_fw_api
+ * \return Pointer to struct ipc4_system_time_info containing current 64-bit timestamp.
  */
 struct ipc4_system_time_info *basefw_get_system_time_info(void);
 
-/* Specifies I2S IPC4 version for PTL platform */
+/** \brief I2S IPC4 interface version for Panther Lake (PTL) platforms. */
 static const uint32_t I2S_VER_30_PTL       = 0x40000;
 
+/**
+ * \brief FW component performance measurement item.
+ * \ingroup ipc4_base_fw_api
+ */
 struct perf_data_item {
-	/* ID of the FW component */
-	uint32_t resource_id;
-	/* 0 - D0, 1 - D0i3. */
-	uint32_t power_mode : 1;
-	uint32_t rsvd : 30;
-	/* the component still exists (0) or has been already deleted (1) */
-	uint32_t is_removed : 1;
-	/* Peak KCPS captured */
-	uint32_t peak_kcps;
-	/* Average KCPS measured */
-	uint32_t avg_kcps;
+	uint32_t resource_id; /**< Component resource ID. */
+	uint32_t power_mode : 1; /**< Power mode: 0 = D0, 1 = D0i3. */
+	uint32_t rsvd : 30;      /**< Reserved bits. */
+	uint32_t is_removed : 1; /**< 0 if component exists, 1 if deleted. */
+	uint32_t peak_kcps;      /**< Peak KCPS captured. */
+	uint32_t avg_kcps;       /**< Average KCPS measured. */
 } __packed __aligned(4);
 
+/**
+ * \brief Extended component performance metrics with DSP cycle counts.
+ * \ingroup ipc4_base_fw_api
+ */
 struct ext_perf_data_item {
-	/* ID of the FW component */
-	uint32_t resource_id;
-	/* 0 - D0, 1 - D0i3. */
-	uint32_t power_mode : 1;
-	uint32_t rsvd : 30;
-	/* the component still exists (0) or has been already deleted (1) */
-	uint32_t is_removed : 1;
-	/*  peak number of DSP cycles used by a module */
-	uint32_t module_peak_dsp_cycles;
-	/* total number of DSP used since by a module start of measurements, */
-	uint64_t module_total_dsp_cycles_consumed;
-	/*  how many times a module was executed */
-	uint64_t module_total_dsp_iterations;
-	/*  peak number of <restricted> cycles used by a module.
-	 *  It is measured against DSP wall clock
-	 */
-	uint32_t module_peak_restricted_cycles;
-	/* total number of <restricted> cycles used by a module since start of
-	 * measurements. It is measured against DSP wall clock
-	 */
-	uint64_t module_total_restricted_cycles_consumed;
-	/*  how many times a module invoke <restricted> */
-	uint64_t module_total_restricted_iterations;
+	uint32_t resource_id; /**< Component resource identifier. */
+	uint32_t power_mode : 1; /**< Power mode: 0 = D0, 1 = D0i3. */
+	uint32_t rsvd : 30;      /**< Reserved bits. */
+	uint32_t is_removed : 1; /**< 0 if component exists, 1 if deleted. */
+	uint32_t module_peak_dsp_cycles; /**< Peak DSP cycles used in a single run. */
+	uint64_t module_total_dsp_cycles_consumed; /**< Total cumulative DSP cycles consumed. */
+	uint64_t module_total_dsp_iterations; /**< Total execution iteration count. */
+	uint32_t module_peak_restricted_cycles; /**< Peak restricted cycles against wall clock. */
+	uint64_t module_total_restricted_cycles_consumed; /**< Total restricted cycles consumed. */
+	uint64_t module_total_restricted_iterations; /**< Total restricted iteration count. */
 } __packed __aligned(4);
 
+/**
+ * \brief Extended global performance data report (IPC4_EXTENDED_GLOBAL_PERF_DATA).
+ * \ingroup ipc4_base_fw_api
+ */
 struct extended_global_perf_data {
-	/*  Specifies number of items in perf_items array. */
-	uint32_t perf_item_count;
-	/*  Array of extended global performance measurements. */
-	struct ext_perf_data_item perf_items[0];
+	uint32_t perf_item_count; /**< Number of items in perf_items array. */
+	struct ext_perf_data_item perf_items[0]; /**< Array of extended performance items. */
 } __packed __aligned(4);
 
+/**
+ * \brief Component performance data with wall clock cycle metrics.
+ * \ingroup ipc4_base_fw_api
+ */
 struct perf_data_item_comp {
-	struct perf_data_item item;
-	/* Total iteration count of module instance */
-	uint32_t total_iteration_count;
-	/* Total cycles consumed by module instance */
-	uint64_t total_cycles_consumed;
-	/* <restricted> usage statistics against DSP wallclock cycles */
-	uint32_t restricted_peak_cycles;
-	uint64_t restricted_total_iterations;
-	uint64_t restricted_total_cycles;
-
+	struct perf_data_item item; /**< Base performance item header. */
+	uint32_t total_iteration_count; /**< Total module iteration count. */
+	uint64_t total_cycles_consumed; /**< Total DSP cycles consumed. */
+	uint32_t restricted_peak_cycles; /**< Peak cycles measured against wall clock. */
+	uint64_t restricted_total_iterations; /**< Total restricted iteration count. */
+	uint64_t restricted_total_cycles; /**< Total restricted cycles consumed. */
 } __packed __aligned(4);
 
+/**
+ * \brief Global DSP performance summary.
+ * \ingroup ipc4_base_fw_api
+ */
 struct global_perf_data {
-	/* Specifies number of items in perf_items array. */
-	uint32_t      perf_item_count;
-	/* Array of global performance measurements. */
-	struct perf_data_item  perf_items[0];
-
+	uint32_t perf_item_count; /**< Number of items in perf_items array. */
+	struct perf_data_item perf_items[0]; /**< Array of performance items. */
 } __packed __aligned(4);
 
 #endif /* __SOF_IPC4_BASE_FW_H__ */
