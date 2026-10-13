@@ -128,6 +128,37 @@ static inline void src_polyphase_reset(struct polyphase_src *src)
 	src_state_reset(&src->state2);
 }
 
+/**
+ * src_polyphase_reset_state - reset filter state while preserving structure
+ *
+ * Zeros the delay line contents and resets read/write pointers to their
+ * initial positions. The filter stage pointers, delay line allocations,
+ * and sizes are preserved.
+ */
+static inline void src_polyphase_reset_state(struct polyphase_src *src)
+{
+	struct src_state *s1 = &src->state1;
+	struct src_state *s2 = &src->state2;
+
+	if (s1->fir_delay && s1->fir_delay_size)
+		memset(s1->fir_delay, 0, sizeof(int32_t) * s1->fir_delay_size);
+
+	if (s1->out_delay && s1->out_delay_size)
+		memset(s1->out_delay, 0, sizeof(int32_t) * s1->out_delay_size);
+
+	s1->fir_wp = s1->fir_delay ? &s1->fir_delay[s1->fir_delay_size - 1] : NULL;
+	s1->out_rp = s1->out_delay;
+
+	if (s2->fir_delay && s2->fir_delay_size)
+		memset(s2->fir_delay, 0, sizeof(int32_t) * s2->fir_delay_size);
+
+	if (s2->out_delay && s2->out_delay_size)
+		memset(s2->out_delay, 0, sizeof(int32_t) * s2->out_delay_size);
+
+	s2->fir_wp = s2->fir_delay ? &s2->fir_delay[s2->fir_delay_size - 1] : NULL;
+	s2->out_rp = s2->out_delay;
+}
+
 int src_polyphase(struct polyphase_src *src, int32_t x[], int32_t y[],
 		  int n_in);
 
@@ -167,6 +198,7 @@ struct comp_data {
 	int (*src_func)(struct comp_data *cd, struct sof_source *source,
 			struct sof_sink *sink);
 	void (*polyphase_func)(struct src_stage_prm *s);
+	int (*setup_stages)(struct processing_module *mod);
 };
 
 #if CONFIG_IPC_MAJOR_4
@@ -218,6 +250,7 @@ static inline int src_fallback(struct comp_data *cd,
 int src_allocate_copy_stages(struct processing_module *mod, struct src_param *prm,
 			     const struct src_stage *stage_src1,
 			     const struct src_stage *stage_src2);
+int src_allocate_delay_lines(struct processing_module *mod);
 int src_rate_check(const void *spec);
 int src_set_params(struct processing_module *mod, struct sof_sink *sink);
 
@@ -227,6 +260,9 @@ int src_prepare_general(struct processing_module *mod,
 			struct sof_source *source,
 			struct sof_sink *sink);
 int src_init(struct processing_module *mod);
+int src_init_stages(struct processing_module *mod);
+int src_do_prepare(struct processing_module *mod,
+		   struct sof_source *source, struct sof_sink *sink);
 
 int src_copy_sxx(struct comp_data *cd, struct sof_source *source,
 		 struct sof_sink *sink);
