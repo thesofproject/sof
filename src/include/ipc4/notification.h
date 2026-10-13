@@ -134,15 +134,10 @@ struct ipc4_voice_cmd_notification {
 		uint32_t dat;
 
 		struct {
-			/**< ID of detected keyword */
-			uint32_t word_id : 16;
-			/**< Notification::PHRASE_DETECTED */
-			uint32_t notif_type : 8;
-			/**< Global::NOTIFICATION */
-			uint32_t type : 5;
-			/**< Msg::MSG_NOTIFICATION */
-			uint32_t rsp : 1;
-			/**< Msg::FW_GEN_MSG */
+			uint32_t word_id : 16;     /**< ID of detected keyword. */
+			uint32_t notif_type : 8;   /**< Notification type (SOF_IPC4_NOTIFY_PHRASE_DETECTED). */
+			uint32_t type : 5;         /**< Opcode: SOF_IPC4_GLB_NOTIFICATION. */
+			uint32_t rsp : 1;          /**< Direction: 0 for unsolicited notification. */
 			uint32_t msg_tgt : 1;      /**< Message target: 0 for global message. */
 			uint32_t _reserved_0 : 1;  /**< Reserved bit. */
 		} r; /**< Primary bitfields. */

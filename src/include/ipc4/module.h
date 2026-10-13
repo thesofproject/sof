@@ -116,9 +116,9 @@ struct ipc4_module_init_ext_obj_dp_data {
  * \ingroup ipc4_module_api
  */
 struct ipc4_module_init_ext_init {
-	/**< If set to 1, proc_domain is ignored and processing domain is RTOS scheduling. */
+	/** If set to 1, proc_domain is ignored and processing domain is RTOS scheduling. */
 	uint32_t rtos_domain : 1;
-	/**< Indicates that GNA coprocessor is used by module and gna_config follows. */
+	/** Indicates that GNA coprocessor is used by module and gna_config follows. */
 	uint32_t gna_used    : 1;
 	uint32_t data_obj_array : 1;	/**< 1 if followed by struct ipc4_module_init_ext_object array. */
 	uint32_t rsvd_0      : 29;	/**< Reserved bits. */
@@ -139,7 +139,7 @@ struct ipc4_module_init_ext_data {
  * \ingroup ipc4_module_api
  */
 struct ipc4_module_init_gna_config {
-	/**< Number of GNA cycles required to process one input frame. */
+	/** Number of GNA cycles required to process one input frame. */
 	uint32_t gna_cpc;
 	uint32_t rsvd; /**< Reserved padding. */
 } __attribute__((packed, aligned(4)));
@@ -164,15 +164,15 @@ struct ipc4_module_init_instance {
 		uint32_t dat; /**< Raw 32-bit Primary register value. */
 
 		struct {
-			/**< Module class ID index from the FW manifest. */
+			/** Module class ID index from the FW manifest. */
 			uint32_t module_id          : 16;
-			/**< Module instance ID unique within the module class (0..max_instances-1). */
+			/** Module instance ID unique within the module class (0..max_instances-1). */
 			uint32_t instance_id        : 8;
-			/**< Opcode: SOF_IPC4_MOD_INIT_INSTANCE (0). */
+			/** Opcode: SOF_IPC4_MOD_INIT_INSTANCE (0). */
 			uint32_t type               : 5;
-			/**< Direction: 0 for request (SOF_IPC4_MESSAGE_DIR_MSG_REQUEST). */
+			/** Direction: 0 for request (SOF_IPC4_MESSAGE_DIR_MSG_REQUEST). */
 			uint32_t rsp                : 1;
-			/**< Target: 1 for module message (SOF_IPC4_MESSAGE_TARGET_MODULE_MSG). */
+			/** Target: 1 for module message (SOF_IPC4_MESSAGE_TARGET_MODULE_MSG). */
 			uint32_t msg_tgt            : 1;
 			uint32_t _reserved_0        : 1; /**< Reserved hardware control bit. */
 		} r;
@@ -182,15 +182,15 @@ struct ipc4_module_init_instance {
 		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/**< Size of initialization payload in 32-bit DWORDs. */
+			/** Size of initialization payload in 32-bit DWORDs. */
 			uint32_t param_block_size   : 16;
-			/**< ID of parent pipeline, or #IPC4_INVALID_PIPELINE_ID. */
+			/** ID of parent pipeline, or #IPC4_INVALID_PIPELINE_ID. */
 			uint32_t ppl_instance_id    : 8;
-			/**< Target DSP core ID on which this instance will execute (0..3). */
+			/** Target DSP core ID on which this instance will execute (0..3). */
 			uint32_t core_id            : 4;
-			/**< Processing domain (0 = Low-Latency LL, 1 = Data Processing DP). */
+			/** Processing domain (0 = Low-Latency LL, 1 = Data Processing DP). */
 			uint32_t proc_domain        : 1;
-			/**< 1 if extended initialization structures follow. */
+			/** 1 if extended initialization structures follow. */
 			uint32_t extended_init      : 1;
 			uint32_t _hw_reserved_2     : 2; /**< Reserved hardware bits. */
 		} r;
@@ -208,15 +208,15 @@ struct ipc4_module_bind_unbind {
 		uint32_t dat; /**< Raw 32-bit Primary register value. */
 
 		struct {
-			/**< Source module class identifier. */
+			/** Source module class identifier. */
 			uint32_t module_id : 16;
-			/**< Source module instance identifier. */
+			/** Source module instance identifier. */
 			uint32_t instance_id : 8;
-			/**< Opcode: SOF_IPC4_MOD_BIND (5) or SOF_IPC4_MOD_UNBIND (6). */
+			/** Opcode: SOF_IPC4_MOD_BIND (5) or SOF_IPC4_MOD_UNBIND (6). */
 			uint32_t type : 5;
-			/**< Direction: 0 for request (SOF_IPC4_MESSAGE_DIR_MSG_REQUEST). */
+			/** Direction: 0 for request (SOF_IPC4_MESSAGE_DIR_MSG_REQUEST). */
 			uint32_t rsp : 1;
-			/**< Target: 1 for module message (SOF_IPC4_MESSAGE_TARGET_MODULE_MSG). */
+			/** Target: 1 for module message (SOF_IPC4_MESSAGE_TARGET_MODULE_MSG). */
 			uint32_t msg_tgt : 1;
 			uint32_t _reserved_0 : 1; /**< Reserved hardware control bit. */
 		} r;
@@ -226,13 +226,13 @@ struct ipc4_module_bind_unbind {
 		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/**< Destination module class identifier. */
+			/** Destination module class identifier. */
 			uint32_t dst_module_id : 16;
-			/**< Destination module instance identifier. */
+			/** Destination module instance identifier. */
 			uint32_t dst_instance_id : 8;
-			/**< Destination input queue/pin index (0..7). */
+			/** Destination input queue/pin index (0..7). */
 			uint32_t dst_queue : SOF_IPC4_DST_QUEUE_ID_BITFIELD_SIZE;
-			/**< Source output queue/pin index (0..7). */
+			/** Source output queue/pin index (0..7). */
 			uint32_t src_queue : SOF_IPC4_SRC_QUEUE_ID_BITFIELD_SIZE;
 			uint32_t _reserved_2 : 2; /**< Reserved hardware control bits. */
 		} r;
@@ -319,13 +319,13 @@ struct ipc4_module_large_config {
 		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/**< Chunk byte size (single block) or cumulative byte offset (multi-block). */
+			/** Chunk byte size (single block) or cumulative byte offset (multi-block). */
 			uint32_t data_off_size : 20;
-			/**< Parameter type identifier (module-specific or #VENDOR_CONFIG_PARAM). */
+			/** Parameter type identifier (module-specific or #VENDOR_CONFIG_PARAM). */
 			uint32_t large_param_id : 8;
-			/**< Set to 1 on the terminating chunk of a multi-block transfer. */
+			/** Set to 1 on the terminating chunk of a multi-block transfer. */
 			uint32_t final_block : 1;
-			/**< Set to 1 on the initial chunk of a multi-block transfer. */
+			/** Set to 1 on the initial chunk of a multi-block transfer. */
 			uint32_t init_block : 1;
 			uint32_t _reserved_2 : 2;  /**< Reserved bits. */
 		} r;
@@ -428,7 +428,7 @@ struct ipc4_module_set_d0ix {
  */
 struct ipc4_dx_state_info {
 	uint32_t core_mask; /**< Bitmask indicating which DSP cores are subject to state change. */
-	/**< Target state bitmask: bit[core_id] = 0 -> put to D3, bit[core_id] = 1 -> put to D0. */
+	/** Target state bitmask: bit[core_id] = 0 -> put to D3, bit[core_id] = 1 -> put to D0. */
 	uint32_t dx_mask;
 } __attribute__((packed, aligned(4)));
 

@@ -212,15 +212,15 @@ struct ipc4_pipeline_set_state {
 		uint32_t dat; /**< Raw 32-bit Primary register value. */
 
 		struct {
-			/**< Target pipeline state (enum ipc4_pipeline_state). */
+			/** Target pipeline state (enum ipc4_pipeline_state). */
 			uint32_t ppl_state  : 16;
-			/**< Target pipeline ID (ignored if multi_ppl == 1). */
+			/** Target pipeline ID (ignored if multi_ppl == 1). */
 			uint32_t ppl_id     : 8;
-			/**< Opcode: SOF_IPC4_GLB_SET_PIPELINE_STATE (19). */
+			/** Opcode: SOF_IPC4_GLB_SET_PIPELINE_STATE (19). */
 			uint32_t type       : 5;
-			/**< Direction: 0 for request. */
+			/** Direction: 0 for request. */
 			uint32_t rsp        : 1;
-			/**< Target: 0 for global firmware message. */
+			/** Target: 0 for global firmware message. */
 			uint32_t msg_tgt    : 1;
 			uint32_t _reserved_0: 1; /**< Reserved bit. */
 		} r;
@@ -230,9 +230,9 @@ struct ipc4_pipeline_set_state {
 		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/**< 1 if additional pipeline IDs are provided in s_data payload. */
+			/** 1 if additional pipeline IDs are provided in s_data payload. */
 			uint32_t multi_ppl  : 1;
-			/**< 1 if DSP should synchronize state transition across all pipelines. */
+			/** 1 if DSP should synchronize state transition across all pipelines. */
 			uint32_t sync_stop_start : 1;
 			uint32_t rsvd1      : 28; /**< Reserved padding. */
 			uint32_t _reserved_2: 2;  /**< Reserved bits. */
@@ -263,7 +263,7 @@ struct ipc4_pipeline_set_state_reply {
 		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/**< ID of failed pipeline on error. */
+			/** ID of failed pipeline on error. */
 			uint32_t ppl_id     : 30;
 			uint32_t _reserved_2: 2;  /**< Reserved bits. */
 		} r;
@@ -319,7 +319,7 @@ struct ipc4_pipeline_get_state_reply {
 		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/**< Current state (one of enum ipc4_pipeline_state). */
+			/** Current state (one of enum ipc4_pipeline_state). */
 			uint32_t state      : 5;
 			uint32_t rsvd1      : 25; /**< Reserved padding. */
 			uint32_t _reserved_2: 2;  /**< Reserved bits. */
@@ -376,7 +376,7 @@ struct ipc4_pipeline_get_context_size_reply {
 		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/**< Size of pipeline serialization context in 4KB memory pages. */
+			/** Size of pipeline serialization context in 4KB memory pages. */
 			uint32_t ctx_size   : 16;
 			uint32_t rsvd1      : 14; /**< Reserved padding. */
 			uint32_t _reserved_2: 2;  /**< Reserved bits. */
