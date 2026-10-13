@@ -635,8 +635,6 @@ static int sof_dax_init(struct processing_module *mod)
 		return -ENOMEM;
 	}
 
-	dax_instance_manager_init();
-
 	return 0;
 }
 

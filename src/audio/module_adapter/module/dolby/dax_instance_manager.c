@@ -45,10 +45,12 @@ struct dax_instance_manager {
 	int32_t available_inst_cnt;
 
 	struct k_spinlock lock;
-	bool initialized;
 };
 
-static struct dax_instance_manager inst_mgr;
+/* Zero-initialized global and available_inst_cnt is seeded with the maximum. */
+static struct dax_instance_manager inst_mgr = {
+	.available_inst_cnt = DAX_MAX_INSTANCE,
+};
 
 static void update_alloc_state_l(struct processing_module *mod)
 {
@@ -162,16 +164,6 @@ static bool check_priority_l(struct processing_module *mod)
 		return false;
 
 	return true;
-}
-
-void dax_instance_manager_init(void)
-{
-	if (!inst_mgr.initialized) {
-		k_spinlock_init(&inst_mgr.lock);
-		/* Assume memory source is sufficient for maximum instances at the beginning */
-		inst_mgr.available_inst_cnt = DAX_MAX_INSTANCE;
-		inst_mgr.initialized = true;
-	}
 }
 
 int dax_register_user(struct processing_module *mod)
