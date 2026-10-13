@@ -17,7 +17,8 @@
 
 /**
  * \file include/ipc4/base-config.h
- * \brief IPC4 global definitions.
+ * \brief Firmware internal stream parameter and buffer format bridge routines for IPC4.
+ * \ingroup ipc4_format_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 
@@ -28,17 +29,55 @@
 #include <module/ipc4/base-config.h>
 
 struct sof_ipc_stream_params;
+
+/**
+ * \brief Convert an IPC4 base module configuration structure to internal SOF stream parameters.
+ * \ingroup ipc4_format_api
+ * @param[in] base_cfg Pointer to the IPC4 base module configuration.
+ * @param[out] params Destination SOF stream parameters structure to populate.
+ */
 void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
 					   struct sof_ipc_stream_params *params);
+
+/**
+ * \brief Convert an IPC4 audio format descriptor to internal SOF stream parameters.
+ * \ingroup ipc4_format_api
+ * @param[in] audio_fmt Pointer to the IPC4 audio format structure.
+ * @param[out] params Destination SOF stream parameters structure to populate.
+ */
 void ipc4_audio_format_to_stream_params(const struct ipc4_audio_format *audio_fmt,
 					struct sof_ipc_stream_params *params);
+
 struct comp_buffer;
+
+/**
+ * \brief Apply an IPC4 audio format configuration to an intermediate component buffer.
+ * \ingroup ipc4_format_api
+ * @param[in,out] buf_c Component buffer whose stream format will be updated.
+ * @param[in] fmt IPC4 audio format specification to apply.
+ */
 void ipc4_update_buffer_format(struct comp_buffer *buf_c,
 			       const struct ipc4_audio_format *fmt);
+
 struct sof_source;
+
+/**
+ * \brief Apply an IPC4 audio format configuration to an audio streaming source endpoint.
+ * \ingroup ipc4_format_api
+ * @param[in,out] source Audio source interface to configure.
+ * @param[in] fmt IPC4 audio format specification to apply.
+ */
 void ipc4_update_source_format(struct sof_source *source,
 			       const struct ipc4_audio_format *fmt);
+
 struct sof_sink;
+
+/**
+ * \brief Apply an IPC4 audio format configuration to an audio streaming sink endpoint.
+ * \ingroup ipc4_format_api
+ * @param[in,out] sink Audio sink interface to configure.
+ * @param[in] fmt IPC4 audio format specification to apply.
+ */
 void ipc4_update_sink_format(struct sof_sink *sink,
 			     const struct ipc4_audio_format *fmt);
 

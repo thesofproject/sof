@@ -16,8 +16,9 @@
  */
 
 /**
- * \file include/ipc4/base-config.h
- * \brief IPC4 global definitions.
+ * \file include/module/ipc4/base-config.h
+ * \brief IPC4 audio formats, sampling frequencies, bit depths, and pin descriptors.
+ * \ingroup ipc4_format_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 
@@ -26,218 +27,277 @@
 
 #include <stdint.h>
 
+/**
+ * \brief Standard PCM and encoded audio sampling frequencies supported by IPC4.
+ * \ingroup ipc4_format_api
+ */
 enum ipc4_sampling_frequency {
-	IPC4_FS_8000HZ = 8000,
-	IPC4_FS_11025HZ = 11025,
-	IPC4_FS_12000HZ = 12000, /**< Mp3, AAC, SRC only */
-	IPC4_FS_16000HZ = 16000,
-	IPC4_FS_18900HZ = 18900, /**< SRC only for 44100 */
-	IPC4_FS_22050HZ = 22050,
-	IPC4_FS_24000HZ = 24000, /**< Mp3, AAC, SRC only */
-	IPC4_FS_32000HZ = 32000,
-	IPC4_FS_37800HZ = 37800, /**< SRC only for 44100 */
-	IPC4_FS_44100HZ = 44100,
-	IPC4_FS_48000HZ = 48000, /**< Default */
-	IPC4_FS_64000HZ = 64000, /**< AAC, SRC only */
-	IPC4_FS_88200HZ = 88200, /**< AAC, SRC only */
-	IPC4_FS_96000HZ = 96000, /**< AAC, SRC only */
-	IPC4_FS_176400HZ = 176400, /**< SRC only */
-	IPC4_FS_192000HZ = 192000, /**< SRC only */
-	IPC4_FS_INVALID
+	IPC4_FS_8000HZ = 8000,   /**< 8.0 kHz sampling rate. */
+	IPC4_FS_11025HZ = 11025, /**< 11.025 kHz sampling rate. */
+	IPC4_FS_12000HZ = 12000, /**< 12.0 kHz (MP3, AAC, SRC only). */
+	IPC4_FS_16000HZ = 16000, /**< 16.0 kHz sampling rate (standard voice/telephony). */
+	IPC4_FS_18900HZ = 18900, /**< 18.9 kHz (SRC only for 44.1 kHz fractional rates). */
+	IPC4_FS_22050HZ = 22050, /**< 22.05 kHz sampling rate. */
+	IPC4_FS_24000HZ = 24000, /**< 24.0 kHz (MP3, AAC, SRC only). */
+	IPC4_FS_32000HZ = 32000, /**< 32.0 kHz sampling rate. */
+	IPC4_FS_37800HZ = 37800, /**< 37.8 kHz (SRC only for 44.1 kHz fractional rates). */
+	IPC4_FS_44100HZ = 44100, /**< 44.1 kHz CD audio sampling rate. */
+	IPC4_FS_48000HZ = 48000, /**< 48.0 kHz standard DSP audio rate (Default). */
+	IPC4_FS_64000HZ = 64000, /**< 64.0 kHz (AAC, SRC only). */
+	IPC4_FS_88200HZ = 88200, /**< 88.2 kHz high-resolution audio. */
+	IPC4_FS_96000HZ = 96000, /**< 96.0 kHz high-resolution audio. */
+	IPC4_FS_176400HZ = 176400, /**< 176.4 kHz studio master rate. */
+	IPC4_FS_192000HZ = 192000, /**< 192.0 kHz studio master rate. */
+	IPC4_FS_INVALID          /**< Sentinel for invalid or uninitialized sampling rate. */
 };
 
+/**
+ * \brief Container bit depth for sample storage in memory.
+ * \ingroup ipc4_format_api
+ */
 enum ipc4_bit_depth {
-	IPC4_DEPTH_8BIT	= 8, /**< 8 bits depth */
-	IPC4_DEPTH_16BIT = 16, /**< 16 bits depth */
-	IPC4_DEPTH_24BIT = 24, /**< 24 bits depth - Default */
-	IPC4_DEPTH_32BIT = 32, /**< 32 bits depth */
-	IPC4_DEPTH_64BIT = 64, /**< 64 bits depth */
-	IPC4_DEPTH_INVALID
+	IPC4_DEPTH_8BIT	= 8,   /**< 8-bit sample container depth. */
+	IPC4_DEPTH_16BIT = 16, /**< 16-bit sample container depth. */
+	IPC4_DEPTH_24BIT = 24, /**< 24-bit sample container depth (Default). */
+	IPC4_DEPTH_32BIT = 32, /**< 32-bit sample container depth. */
+	IPC4_DEPTH_64BIT = 64, /**< 64-bit sample container depth. */
+	IPC4_DEPTH_INVALID     /**< Sentinel for invalid bit depth. */
 };
 
+/**
+ * \brief Audio channel configurations and speaker mappings.
+ * \ingroup ipc4_format_api
+ */
 enum ipc4_channel_config {
-	IPC4_CHANNEL_CONFIG_MONO = 0,		/**< one channel only */
-	IPC4_CHANNEL_CONFIG_STEREO = 1,		/**< L & R */
-	IPC4_CHANNEL_CONFIG_2_POINT_1 = 2,	/**< L, R & LFE; PCM only */
-	IPC4_CHANNEL_CONFIG_3_POINT_0 = 3,	/**< L, C & R; MP3 & AAC only */
-	IPC4_CHANNEL_CONFIG_3_POINT_1 = 4,	/**< L, C, R & LFE; PCM only */
-	IPC4_CHANNEL_CONFIG_QUATRO = 5,		/**< L, R, Ls & Rs; PCM only */
-	IPC4_CHANNEL_CONFIG_4_POINT_0 = 6,	/**< L, C, R & Cs; MP3 & AAC only */
-	IPC4_CHANNEL_CONFIG_5_POINT_0 = 7,	/**< L, C, R, Ls & Rs */
-	IPC4_CHANNEL_CONFIG_5_POINT_1 = 8,	/**< L, C, R, Ls, Rs & LFE */
-	IPC4_CHANNEL_CONFIG_DUAL_MONO = 9,	/**< one channel replicated in two */
-	/**< Stereo (L,R) in 4 slots, 1st stream: [ L, R, -, - ] */
-	IPC4_CHANNEL_CONFIG_I2S_DUAL_STEREO_0 = 10,
-	/**< Stereo (L,R) in 4 slots, 2nd stream: [ -, -, L, R ] */
-	IPC4_CHANNEL_CONFIG_I2S_DUAL_STEREO_1 = 11,
-	IPC4_CHANNEL_CONFIG_7_POINT_1 = 12,	/**< L, C, R, Ls, Rs & LFE., LS, RS */
-	IPC4_CHANNEL_CONFIG_INVALID
+	IPC4_CHANNEL_CONFIG_MONO = 0,		/**< Single mono channel. */
+	IPC4_CHANNEL_CONFIG_STEREO = 1,		/**< Standard stereo (Left & Right). */
+	IPC4_CHANNEL_CONFIG_2_POINT_1 = 2,	/**< 2.1 Audio: Left, Right & LFE (PCM only). */
+	IPC4_CHANNEL_CONFIG_3_POINT_0 = 3,	/**< 3.0 Audio: Left, Center & Right (MP3 & AAC only). */
+	IPC4_CHANNEL_CONFIG_3_POINT_1 = 4,	/**< 3.1 Audio: Left, Center, Right & LFE (PCM only). */
+	IPC4_CHANNEL_CONFIG_QUATRO = 5,		/**< 4.0 Surround: Left, Right, Left Surround & Right Surround. */
+	IPC4_CHANNEL_CONFIG_4_POINT_0 = 6,	/**< 4.0 Cinema: Left, Center, Right & Center Surround. */
+	IPC4_CHANNEL_CONFIG_5_POINT_0 = 7,	/**< 5.0 Surround: Left, Center, Right, Left Surround & Right Surround. */
+	IPC4_CHANNEL_CONFIG_5_POINT_1 = 8,	/**< 5.1 Surround: Left, Center, Right, Left Surround, Right Surround & LFE. */
+	IPC4_CHANNEL_CONFIG_DUAL_MONO = 9,	/**< Dual mono: single logical channel duplicated into two slots. */
+	IPC4_CHANNEL_CONFIG_I2S_DUAL_STEREO_0 = 10, /**< Stereo (L,R) in 4 slots, 1st stream: [ L, R, -, - ]. */
+	IPC4_CHANNEL_CONFIG_I2S_DUAL_STEREO_1 = 11, /**< Stereo (L,R) in 4 slots, 2nd stream: [ -, -, L, R ]. */
+	IPC4_CHANNEL_CONFIG_7_POINT_1 = 12,	/**< 7.1 Surround: L, C, R, Ls, Rs, LFE, Left Side & Right Side. */
+	IPC4_CHANNEL_CONFIG_INVALID         /**< Sentinel for unsupported channel configuration. */
 };
 
+/**
+ * \brief Logical channel position indices used in channel maps.
+ * \ingroup ipc4_format_api
+ */
 enum ipc4_channel_index {
-	CHANNEL_LEFT            = 0,
-	CHANNEL_CENTER          = 1,
-	CHANNEL_RIGHT           = 2,
-	CHANNEL_LEFT_SURROUND   = 3,
-	CHANNEL_CENTER_SURROUND = 3,
-	CHANNEL_RIGHT_SURROUND  = 4,
-	CHANNEL_LEFT_SIDE       = 5,
-	CHANNEL_RIGHT_SIDE      = 6,
-	CHANNEL_LFE             = 7,
-	CHANNEL_INVALID         = 0xF,
+	CHANNEL_LEFT            = 0,   /**< Front Left channel. */
+	CHANNEL_CENTER          = 1,   /**< Front Center channel. */
+	CHANNEL_RIGHT           = 2,   /**< Front Right channel. */
+	CHANNEL_LEFT_SURROUND   = 3,   /**< Left Surround channel. */
+	CHANNEL_CENTER_SURROUND = 3,   /**< Center Surround channel. */
+	CHANNEL_RIGHT_SURROUND  = 4,   /**< Right Surround channel. */
+	CHANNEL_LEFT_SIDE       = 5,   /**< Left Side Surround channel. */
+	CHANNEL_RIGHT_SIDE      = 6,   /**< Right Side Surround channel. */
+	CHANNEL_LFE             = 7,   /**< Low Frequency Effects (subwoofer) channel. */
+	CHANNEL_INVALID         = 0xF, /**< Unmapped or inactive channel slot. */
 };
 
+/**
+ * \brief Sample interleaving styles.
+ * \ingroup ipc4_format_api
+ */
 enum ipc4_interleaved_style {
-	IPC4_CHANNELS_INTERLEAVED = 0,
-	IPC4_CHANNELS_NONINTERLEAVED = 1,
+	IPC4_CHANNELS_INTERLEAVED = 0,    /**< Channels interleaved sample-by-sample (L0, R0, L1, R1...). */
+	IPC4_CHANNELS_NONINTERLEAVED = 1, /**< Planar non-interleaved channels (all Left samples, then all Right). */
 };
 
+/**
+ * \brief Audio sample representation and arithmetic type.
+ * \ingroup ipc4_format_api
+ */
 enum ipc4_sample_type {
-	IPC4_TYPE_MSB_INTEGER = 0,	/**< integer with Most Significant Byte first */
-	IPC4_TYPE_LSB_INTEGER = 1,	/**< integer with Least Significant Byte first */
-	IPC4_TYPE_SIGNED_INTEGER = 2,
-	IPC4_TYPE_UNSIGNED_INTEGER = 3,
-	IPC4_TYPE_FLOAT = 4,
-	IPC4_TYPE_A_LAW = 5,
-	IPC4_TYPE_MU_LAW = 6,
+	IPC4_TYPE_MSB_INTEGER = 0,	/**< Integer with Most Significant Byte first. */
+	IPC4_TYPE_LSB_INTEGER = 1,	/**< Integer with Least Significant Byte first. */
+	IPC4_TYPE_SIGNED_INTEGER = 2,   /**< Standard 2's complement signed integer (e.g. Q1.15, Q1.23, Q1.31). */
+	IPC4_TYPE_UNSIGNED_INTEGER = 3, /**< Unsigned integer PCM. */
+	IPC4_TYPE_FLOAT = 4,            /**< 32-bit IEEE 754 floating point. */
+	IPC4_TYPE_A_LAW = 5,            /**< ITU-T G.711 A-law companded audio. */
+	IPC4_TYPE_MU_LAW = 6,           /**< ITU-T G.711 mu-law companded audio. */
 };
 
+/**
+ * \brief Stream container encoding type.
+ * \ingroup ipc4_format_api
+ */
 enum ipc4_stream_type {
-	IPC4_STREAM_PCM = 0,	/**< PCM stream */
-	IPC4_STREAM_MP3 = 1,	/**< MP3 encoded stream */
-	IPC4_STREAM_AAC = 2,	/**< AAC encoded stream */
-	/* TODO: revisit max stream type count. Currently
-	 * it aligns with windows audio driver and we will
-	 * update all when more types are supported
-	 */
-	IPC4_STREAM_COUNT = 3,
-	IPC4_STREAM_INVALID = 0xFF
+	IPC4_STREAM_PCM = 0,	/**< Linear Pulse Code Modulated (PCM) uncompressed audio. */
+	IPC4_STREAM_MP3 = 1,	/**< MPEG-1 Audio Layer III encoded bitstream. */
+	IPC4_STREAM_AAC = 2,	/**< Advanced Audio Coding encoded bitstream. */
+	IPC4_STREAM_COUNT = 3,  /**< Total count of defined stream types. */
+	IPC4_STREAM_INVALID = 0xFF /**< Sentinel for invalid stream type. */
 };
 
+/**
+ * \brief Standard audio format descriptor across all IPC4 modules and gateways.
+ * \ingroup ipc4_format_api
+ */
 struct ipc4_audio_format {
-	uint32_t sampling_frequency;	/* enum ipc4_sampling_frequency */
-	uint32_t depth;			/* enum ipc4_bit_depth */
-	uint32_t ch_map;
-	uint32_t ch_cfg;		/* enum ipc4_channel_config */
-	uint32_t interleaving_style;
-	uint32_t channels_count : 8;
-	uint32_t valid_bit_depth : 8;
-	uint32_t s_type : 8;		/* enum ipc4_sample_type */
-	uint32_t reserved : 8;
+	uint32_t sampling_frequency;	/**< Sampling rate in Hz (one of enum ipc4_sampling_frequency). */
+	uint32_t depth;			/**< Container bit depth in bits (one of enum ipc4_bit_depth). */
+	uint32_t ch_map;		/**< 32-bit channel map nibbles (CHANNEL_LEFT, CHANNEL_RIGHT, etc.). */
+	uint32_t ch_cfg;		/**< Channel topology configuration (one of enum ipc4_channel_config). */
+	uint32_t interleaving_style;	/**< Sample layout (one of enum ipc4_interleaved_style). */
+	uint32_t channels_count : 8;	/**< Active channel count (1 to 8). */
+	uint32_t valid_bit_depth : 8;	/**< Number of significant valid bits within container (e.g. 24). */
+	uint32_t s_type : 8;		/**< Sample representation type (one of enum ipc4_sample_type). */
+	uint32_t reserved : 8;		/**< Reserved padding bits; must be set to 0. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Base module configuration parameters provided upon module instantiation.
+ * \ingroup ipc4_format_api
+ */
 struct ipc4_base_module_cfg {
-	uint32_t cpc;		/**< the max count of Cycles Per Chunk processing */
-	uint32_t ibs;		/**< input Buffer Size (in bytes)  */
-	uint32_t obs;		/**< output Buffer Size (in bytes) */
-	uint32_t is_pages;	/**< number of physical pages used */
-	struct ipc4_audio_format audio_fmt;
+	uint32_t cpc;		/**< Maximum Cycles Per Chunk (CPC) compute budget required by module. */
+	uint32_t ibs;		/**< Input Buffer Size (IBS) in bytes required per processing frame. */
+	uint32_t obs;		/**< Output Buffer Size (OBS) in bytes produced per processing frame. */
+	uint32_t is_pages;	/**< Number of physical 4KB memory pages allocated for module state. */
+	struct ipc4_audio_format audio_fmt; /**< Primary audio stream format of the module. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Input pin format specification for multi-pin modules.
+ * \ingroup ipc4_format_api
+ */
 struct ipc4_input_pin_format {
-	uint32_t pin_index;	/**< index of the pin */
-	uint32_t ibs;		/**< specifies input frame size (in bytes) */
-	struct ipc4_audio_format audio_fmt; /**< format of the input data */
+	uint32_t pin_index;	/**< Zero-based logical index of the input pin. */
+	uint32_t ibs;		/**< Required input frame buffer size in bytes for this pin. */
+	struct ipc4_audio_format audio_fmt; /**< Negotiated audio data format for this input pin. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Output pin format specification for multi-pin modules.
+ * \ingroup ipc4_format_api
+ */
 struct ipc4_output_pin_format {
-	uint32_t pin_index;	/**< index of the pin */
-	uint32_t obs;		/**< specifies output frame size (in bytes) */
-	struct ipc4_audio_format audio_fmt; /**< format of the output data */
+	uint32_t pin_index;	/**< Zero-based logical index of the output pin. */
+	uint32_t obs;		/**< Output frame buffer size in bytes for this pin. */
+	struct ipc4_audio_format audio_fmt; /**< Negotiated audio data format for this output pin. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Extended module configuration header describing dynamic input and output pins.
+ * \ingroup ipc4_format_api
+ */
 struct ipc4_base_module_cfg_ext {
-	/* specifies number of items in input_pins array. Maximum size is 8 */
+	/**< Number of input pin format entries following in pin_formats[] (maximum 8). */
 	uint16_t nb_input_pins;
-	/* specifies number of items in output_pins array. Maximum size is 8 */
+	/**< Number of output pin format entries following in pin_formats[] (maximum 8). */
 	uint16_t nb_output_pins;
-	uint8_t reserved[12];
-	/* Specifies format of input pins followed by output pins.
-	 * Pin format arrays may be non-continuous i.e. may contain pin #0 format
-	 * followed by pin #2 format in case pin #1 will not be in use.
-	 * FW assigned format of the pin based on pin_index, not on a position of
-	 * the item in the array. Applies to both input and output pins.
+	uint8_t reserved[12]; /**< Reserved padding; must be set to 0. */
+	/**<
+	 * Variable-length array of input pin formats followed immediately by output pin formats.
+	 * Formats are matched by pin_index rather than array index.
 	 */
 	uint8_t pin_formats[];
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Helper macro to calculate serialized byte size of struct ipc4_base_module_cfg_ext.
+ * \ingroup ipc4_format_api
+ */
 #define ipc4_calc_base_module_cfg_ext_size(in_pins, out_pins)		\
 		(sizeof(struct ipc4_base_module_cfg_ext) +		\
 		 (in_pins) * sizeof(struct ipc4_input_pin_format) +	\
 		 (out_pins) * sizeof(struct ipc4_output_pin_format))
 
-/* Struct to combine the base_cfg and base_cfg_ext for easier parsing */
+/**
+ * \brief Combined base and extended module configuration payload for easy parsing.
+ * \ingroup ipc4_format_api
+ */
 struct ipc4_base_module_extended_cfg {
-	struct ipc4_base_module_cfg base_cfg;
-	struct ipc4_base_module_cfg_ext base_cfg_ext;
+	struct ipc4_base_module_cfg base_cfg;         /**< Standard single-pin base module config. */
+	struct ipc4_base_module_cfg_ext base_cfg_ext; /**< Extended multi-pin format descriptors. */
 } __attribute__((packed, aligned(4)));
 
-/* This enum defines short 16bit parameters common for all modules.
- * Value of module specific parameters have to be less than 0x3000.
+/**
+ * \brief Common 16-bit parameter IDs supported across all IPC4 module instances.
+ * \ingroup ipc4_format_api
  */
 enum ipc4_base_module_params {
-	/* handled inside LargeConfigGet of module instance */
+	/**< Retrieve module instance runtime memory and queue properties via LargeConfigGet. */
 	IPC4_MOD_INST_PROPS  = 0xFE,
-	/* handled inside ConfigSet of module instance */
+	/**< Enable or disable module instance processing via ConfigSet (0 = disable, 1 = enable). */
 	IPC4_MOD_INST_ENABLE = 0x3000
 };
 
+/**
+ * \brief Runtime properties of a module pin connection.
+ * \ingroup ipc4_format_api
+ */
 struct ipc4_pin_props {
-	/* type of the connected stream.
-	 * Holds an "enum ipc4_stream_type" value. Fixed-size because of #9378
-	 */
+	/**< Stream type (one of enum ipc4_stream_type). */
 	uint32_t stream_type;
 
-	/* audio format of the stream. The content is valid in case of ePcm stream_type. */
+	/**< Active audio format of the stream (valid when stream_type == IPC4_STREAM_PCM). */
 	struct ipc4_audio_format format;
 
-	/* unique ID of the physical queue connected to the pin.
-	 * If there is no queue connected, then -1 (invalid queue ID) is set
-	 */
+	/**< Physical DMA queue ID connected to this pin (-1 if unassigned). */
 	uint32_t phys_queue_id;
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief List of active pin properties for a module instance.
+ * \ingroup ipc4_format_api
+ */
 struct ipc4_pin_list_info {
-	uint32_t pin_count;
-	struct ipc4_pin_props pin_info[1];
+	uint32_t pin_count;                  /**< Number of active pin property descriptors. */
+	struct ipc4_pin_props pin_info[1];   /**< Array of pin properties. */
 } __attribute__((packed, aligned(4)));
 
-/* structure describing module instance properties used in response
- * to module LargeConfigGet with MOD_INST_PROPS parameter.
+/**
+ * \brief Detailed module instance runtime state, memory consumption, and queue alignment.
+ * \ingroup ipc4_format_api
+ *
+ * Returned in response to LargeConfigGet with parameter ID #IPC4_MOD_INST_PROPS.
  */
 struct ipc4_module_instance_props {
-	uint32_t  id;
-	uint32_t  dp_queue_type;
-	uint32_t  queue_alignment;
-	uint32_t  cp_usage_mask;
-	uint32_t  stack_bytes;
-	uint32_t  bss_total_bytes;
-	uint32_t  bss_used_bytes;
-	uint32_t  ibs_bytes;
-	uint32_t  obs_bytes;
-	uint32_t  cpc;
-	uint32_t  cpc_peak;
-	struct ipc4_pin_list_info input_queues;
-	struct ipc4_pin_list_info output_queues;
-	uint32_t  input_gateway;
-	uint32_t  output_gateway;
+	uint32_t  id;              /**< Unique module instance identifier. */
+	uint32_t  dp_queue_type;   /**< Data processing queue type. */
+	uint32_t  queue_alignment; /**< Buffer memory alignment in bytes required by DSP. */
+	uint32_t  cp_usage_mask;   /**< Coprocessor / hardware accelerator usage bitmask. */
+	uint32_t  stack_bytes;     /**< Stack memory allocated for module instance thread. */
+	uint32_t  bss_total_bytes; /**< Total BSS data section size in bytes. */
+	uint32_t  bss_used_bytes;  /**< Currently utilized BSS memory in bytes. */
+	uint32_t  ibs_bytes;       /**< Input buffer size in bytes. */
+	uint32_t  obs_bytes;       /**< Output buffer size in bytes. */
+	uint32_t  cpc;             /**< Nominal Cycles Per Chunk compute requirement. */
+	uint32_t  cpc_peak;        /**< Peak measured Cycles Per Chunk compute requirement. */
+	struct ipc4_pin_list_info input_queues;  /**< Connected input queue descriptors. */
+	struct ipc4_pin_list_info output_queues; /**< Connected output queue descriptors. */
+	uint32_t  input_gateway;   /**< Input gateway node ID if attached directly to gateway. */
+	uint32_t  output_gateway;  /**< Output gateway node ID if attached directly to gateway. */
 } __attribute__((packed, aligned(4)));
 
-/* Reflects the last two entries in ModuleInstanceProps sttructure */
+/**
+ * \brief Direct gateway attachment identifiers for a module instance.
+ * \ingroup ipc4_format_api
+ */
 struct ipc4_in_out_gateway {
-	uint32_t  input_gateway;
-	uint32_t  output_gateway;
+	uint32_t  input_gateway;  /**< Node ID of attached input gateway (e.g. DMA stream). */
+	uint32_t  output_gateway; /**< Node ID of attached output gateway (e.g. DMA stream). */
 } __attribute__((packed, aligned(4)));
 
-/* this structure may be used by modules to carry
- * short 16bit parameters as part of the IxC register content.
+/**
+ * \brief 16-bit small parameter register encoding for MOD_CONFIG_SET/GET.
+ * \ingroup ipc4_format_api
  */
 union ipc4_cfg_param_id_data {
-	uint32_t dw;
+	uint32_t dw; /**< Raw 32-bit register value. */
 	struct {
-		uint32_t data16 : 16;   /* Input/Output small config data */
-		uint32_t id     : 14;   /* input parameter ID */
-		uint32_t _rsvd  : 2;
+		uint32_t data16 : 16;   /**< 16-bit parameter data payload. */
+		uint32_t id     : 14;   /**< 14-bit parameter identifier. */
+		uint32_t _rsvd  : 2;    /**< Reserved bits. */
 	} f;
 } __attribute__((packed, aligned(4)));
 
