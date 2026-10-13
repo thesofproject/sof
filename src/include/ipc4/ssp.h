@@ -36,16 +36,16 @@
  * \ingroup ipc4_gateway_api
  */
 struct ipc4_ssp_config {
-	uint32_t ssc0;   /**< Serial Serial Control register 0 (mode, data size). */
-	uint32_t ssc1;   /**< Serial Serial Control register 1 (clocks, phase, polarity). */
-	uint32_t sscto;  /**< Serial Serial Control Timeout register. */
-	uint32_t sspsp;  /**< Serial Serial Port Serial Protocol register (frame sync timing). */
-	uint32_t sstsa;  /**< Serial Serial Tx Time Slot Active register. */
-	uint32_t ssrsa;  /**< Serial Serial Rx Time Slot Active register. */
-	uint32_t ssc2;   /**< Serial Serial Control register 2 (extended FIFO control). */
-	uint32_t sspsp2; /**< Serial Serial Port Serial Protocol register 2. */
-	uint32_t ssc3;   /**< Serial Serial Control register 3. */
-	uint32_t ssioc;  /**< Serial Serial I/O Control register (pin directions). */
+	uint32_t ssc0;   /**< Synchronous Serial Port Control register 0 (SSCR0: mode, data size). */
+	uint32_t ssc1;   /**< Synchronous Serial Port Control register 1 (SSCR1: clocks, phase, polarity). */
+	uint32_t sscto;  /**< Synchronous Serial Port Control Timeout register (SSCTO). */
+	uint32_t sspsp;  /**< Synchronous Serial Port Programmable Serial Protocol register (SSPSP: frame sync timing). */
+	uint32_t sstsa;  /**< Synchronous Serial Port Tx Time Slot Active register (SSTSA). */
+	uint32_t ssrsa;  /**< Synchronous Serial Port Rx Time Slot Active register (SSRSA). */
+	uint32_t ssc2;   /**< Synchronous Serial Port Control register 2 (SSCR2: extended FIFO control). */
+	uint32_t sspsp2; /**< Synchronous Serial Port Programmable Serial Protocol register 2 (SSPSP2). */
+	uint32_t ssc3;   /**< Synchronous Serial Port Control register 3 (SSCR3). */
+	uint32_t ssioc;  /**< Synchronous Serial Port I/O Control register (SSIOC: pin directions). */
 } __attribute__((packed, aligned(4)));
 
 /**

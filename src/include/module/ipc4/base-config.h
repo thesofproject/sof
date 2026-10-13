@@ -116,8 +116,8 @@ enum ipc4_interleaved_style {
  * \ingroup ipc4_format_api
  */
 enum ipc4_sample_type {
-	IPC4_TYPE_MSB_INTEGER = 0,	/**< Integer with Most Significant Byte first. */
-	IPC4_TYPE_LSB_INTEGER = 1,	/**< Integer with Least Significant Byte first. */
+	IPC4_TYPE_MSB_INTEGER = 0,	/**< Integer with valid bits MSB-aligned in container (e.g. S24 in bits [31:8]). */
+	IPC4_TYPE_LSB_INTEGER = 1,	/**< Integer with valid bits LSB-aligned in container (e.g. S24 in bits [23:0]). */
 	IPC4_TYPE_SIGNED_INTEGER = 2,   /**< Standard 2's complement signed integer (e.g. Q1.15, Q1.23, Q1.31). */
 	IPC4_TYPE_UNSIGNED_INTEGER = 3, /**< Unsigned integer PCM. */
 	IPC4_TYPE_FLOAT = 4,            /**< 32-bit IEEE 754 floating point. */

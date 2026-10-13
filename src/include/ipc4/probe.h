@@ -88,7 +88,7 @@ typedef union probe_point_id {
 struct probe_point {
 	probe_point_id_t buffer_id;	/**< ID of module buffer/pin to which probe is attached. */
 	uint32_t purpose;	/**< Extraction or injection (PROBE_PURPOSE_xxx). */
-	uint32_t stream_tag;	/**< Stream tag of DMA providing data for injection or receiving extraction. */
+	uint32_t stream_tag;	/**< Stream tag of DMA providing injection data (for injection probes); ignored for extraction where firmware automatically binds the configured extraction DMA tag. */
 } __attribute__((packed, aligned(4)));
 
 /**
