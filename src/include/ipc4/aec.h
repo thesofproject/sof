@@ -17,7 +17,8 @@
 
 /**
  * \file include/ipc4/aec.h
- * \brief IPC4 global aec definitions.
+ * \brief Acoustic Echo Cancellation (AEC) module configuration and parameter definitions.
+ * \ingroup ipc4_telemetry_probe_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 
@@ -27,15 +28,23 @@
 #include <stdint.h>
 #include <ipc4/base-config.h>
 
+/**
+ * \brief AEC module configuration payload.
+ * \ingroup ipc4_telemetry_probe_api
+ */
 struct sof_ipc4_aec_config {
-	struct ipc4_base_module_cfg base_cfg;
-	struct ipc4_audio_format reference_fmt;
-	struct ipc4_audio_format output_fmt;
-	uint32_t cpc_low_power_mode;
+	struct ipc4_base_module_cfg base_cfg;       /**< Standard base module configuration. */
+	struct ipc4_audio_format reference_fmt;    /**< Echo reference audio format. */
+	struct ipc4_audio_format output_fmt;       /**< Echo-cancelled microphone output format. */
+	uint32_t cpc_low_power_mode;                /**< Low-power mode Cycles Per Chunk compute budget. */
 };
 
+/**
+ * \brief Parameter IDs for AEC module LargeConfigSet/Get.
+ * \ingroup ipc4_telemetry_probe_api
+ */
 enum sof_ipc4_aec_config_params {
-	IPC4_AEC_SET_EXT_FMT,
+	IPC4_AEC_SET_EXT_FMT, /**< Configure extended reference and output formats. */
 };
 
 #endif

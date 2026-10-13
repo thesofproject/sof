@@ -7,7 +7,8 @@
 
 /**
  * \file include/ipc4/kpb.h
- * \brief KPB module definitions.
+ * \brief Key Phrase Buffer (KPB) audio pre-roll module configuration and parameters.
+ * \ingroup ipc4_telemetry_probe_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 
@@ -16,17 +17,22 @@
 
 #include "base-config.h"
 
+/**
+ * \brief KPB module instance base configuration structure.
+ * \ingroup ipc4_telemetry_probe_api
+ */
 struct ipc4_kpb_module_cfg {
-	struct ipc4_base_module_cfg base_cfg;
+	struct ipc4_base_module_cfg base_cfg; /**< Standard base module configuration. */
 } __packed __aligned(4);
 
-/* For the sake of compatibility, do not change IDs, only add new ones.*/
+/**
+ * \brief Parameter IDs for KPB module LargeConfigSet/Get.
+ * \ingroup ipc4_telemetry_probe_api
+ */
 enum ipc4_kpb_module_config_params {
-	/*! Configure the module ID's which would be part of the Fast mode tasks */
+	/**< Configure module IDs that execute within Fast Mode (FM) draining tasks. */
 	KP_BUF_CFG_FM_MODULE = 1,
-	/* Mic selector for client - sets microphone id for real time sink mic selector
-	 * IPC4-compatible ID - please do not change the number
-	 */
+	/**< Real-time sink microphone channel selector ID. */
 	KP_BUF_CLIENT_MIC_SELECT = 11,
 };
 
