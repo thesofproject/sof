@@ -217,7 +217,7 @@ static int eq_iir_init_coef(struct processing_module *mod, unsigned int nch,
 	size_t size_sum = 0;
 	int resp = 0;
 	unsigned int i;
-	int s;
+	size_t s;
 	int ret;
 
 	comp_info(mod->dev, "%u responses, %u channels, stream %u channels",
@@ -263,10 +263,9 @@ static int eq_iir_init_coef(struct processing_module *mod, unsigned int nch,
 		eq = lookup[resp];
 		s = iir_delay_size_df1(eq);
 		if (s > 0) {
-			size_sum += (size_t)s;
+			size_sum += s;
 		} else {
-			comp_err(mod->dev, "sections count %d exceeds max",
-				 eq->num_sections);
+			comp_err(mod->dev, "sections count %d exceeds max", eq->num_sections);
 			return -EINVAL;
 		}
 

@@ -522,7 +522,7 @@ static struct test_parameters parameters[] = {
 static void test_iir_delay_size_df1_series(void **state)
 {
 	struct sof_eq_iir_header hdr = { .num_sections = 11 };
-	const int size = 4 * 11 * sizeof(int32_t);
+	const size_t size = 4 * 11 * sizeof(int32_t);
 
 	(void)state;
 
@@ -534,7 +534,7 @@ static void test_iir_delay_size_df1_series(void **state)
 
 	/* iir_df1() would run 20 biquads against 11 sections of state */
 	hdr.num_sections_in_series = 10;
-	assert_int_equal(iir_delay_size_df1(&hdr), -EINVAL);
+	assert_int_equal(iir_delay_size_df1(&hdr), 0);
 }
 
 int main(void)
