@@ -1,0 +1,20 @@
+{
+	"name": "SOF",
+	"image": "mcr.microsoft.com/devcontainers/cpp:1-ubuntu-24.04",
+	"features": {
+		"ghcr.io/devcontainers/features/python": {
+			"version": "3.12"
+		}
+	},
+	"customizations": {
+		"gitpod": {
+			"automationsFile": "../.ona/automations.yaml"
+		},
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cmake-tools",
+				"ms-vscode.cpptools"
+			]
+		}
+	}
+}
