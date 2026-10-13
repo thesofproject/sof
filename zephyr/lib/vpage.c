@@ -118,6 +118,19 @@ static int vpages_alloc_and_map(unsigned int pages, void **ptr)
 	if (ret < 0) {
 		LOG_ERR("error: failed to map virtual region %p to physical region %p, error %d",
 			vaddr, vpage_ctx.virtual_region->addr, ret);
+
+		/*
+		 * The driver maps page by page and leaves already mapped pages (and
+		 * their physical pages) in place on failure, e.g. when physical L2 is
+		 * exhausted. Release them so they do not leak.
+		 */
+		for (unsigned int i = 0; i < pages; i++) {
+			void *va = (uint8_t *)vaddr + i * CONFIG_MM_DRV_PAGE_SIZE;
+
+			if (!sys_mm_drv_page_phys_get(va, NULL))
+				sys_mm_drv_unmap_page(va);
+		}
+
 		sys_mem_blocks_free_contiguous(&vpage_ctx.vpage_blocks, vaddr, pages);
 		return ret;
 	}
@@ -280,29 +293,51 @@ static int vpage_init(void)
 
 	/* create the virtual memory region and add it to the system */
 	uintptr_t l2_end = L2_SRAM_BASE + L2_SRAM_SIZE;
-	uintptr_t reserved_end = adsp_mm_get_unused_l2_start_aligned() +
-		CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE + CONFIG_LIBRARY_REGION_SIZE;
+	uintptr_t start = adsp_mm_get_unused_l2_start_aligned() +
+		CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE;
+	uintptr_t end;
 	size_t remaining_ram;
 
 	k_mutex_init(&vpage_ctx.lock);
 
-	/*
-	 * The image, virtual heap and library regions may not leave any L2 for
-	 * vpages, e.g. on platforms with a small L2. Never let this underflow
-	 * into a bogus multi-GB region that wraps the address space and makes
-	 * every vpage_alloc() fail. Leave vpages disabled instead.
-	 */
-	if (reserved_end + CONFIG_MM_DRV_PAGE_SIZE > l2_end) {
-		LOG_ERR("error: no L2 left for vpages, reserved end %#lx L2 end %#lx",
-			(unsigned long)reserved_end, (unsigned long)l2_end);
+	if (start + CONFIG_LIBRARY_REGION_SIZE + CONFIG_MM_DRV_PAGE_SIZE <= l2_end) {
+		/* virtual heap and library regions fit in L2, vpages get the rest */
+		end = l2_end - CONFIG_LIBRARY_REGION_SIZE;
+	} else {
+		/*
+		 * Small L2 (e.g. NVL-S): the virtual heap and library regions are only
+		 * virtual address space backed on demand, so they need not fit in L2
+		 * together with the vpages. Use the virtual space up to the library
+		 * region (or the end of virtual memory) and cap it below by the
+		 * physical L2 left after the image, as vpages can never use more.
+		 */
+		end = L2_VIRTUAL_SRAM_BASE + L2_VIRTUAL_SRAM_SIZE;
+		if (IS_ENABLED(CONFIG_LIBRARY_MANAGER) && CONFIG_LIBRARY_BASE_ADDRESS < end)
+			end = CONFIG_LIBRARY_BASE_ADDRESS;
+	}
+
+	/* the image or virtual heap may leave no room, don't let this underflow */
+	if (end < start + CONFIG_MM_DRV_PAGE_SIZE) {
+		LOG_ERR("error: no space left for vpages, start %#lx end %#lx",
+			(unsigned long)start, (unsigned long)end);
 		return -ENOMEM;
 	}
 
-	remaining_ram = l2_end - reserved_end;
+	remaining_ram = end - start;
+	if (end > l2_end) {
+		uintptr_t image_end = adsp_mm_get_unused_l2_start_aligned();
+		size_t phys_left = image_end < l2_end ? l2_end - image_end : 0;
 
-	ret = adsp_add_virtual_memory_region(adsp_mm_get_unused_l2_start_aligned() +
-					     CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE,
-					     remaining_ram, VIRTUAL_REGION_VPAGES_ATTR);
+		remaining_ram = MIN(remaining_ram, phys_left);
+	}
+
+	/* revalidate, the physical cap can leave less than a page */
+	if (remaining_ram < CONFIG_MM_DRV_PAGE_SIZE) {
+		LOG_ERR("error: no physical L2 left for vpages");
+		return -ENOMEM;
+	}
+
+	ret = adsp_add_virtual_memory_region(start, remaining_ram, VIRTUAL_REGION_VPAGES_ATTR);
 	if (ret)
 		return ret;
 
