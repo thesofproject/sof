@@ -15,7 +15,7 @@
 /**
  * \file include/ipc4/module.h
  * \brief IPC4 module instantiation, binding, pin configuration, and parameter definitions.
- * \ingroup ipc4_api
+ * \ingroup ipc4_module_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 
@@ -26,516 +26,479 @@
 
 #include <stdint.h>
 
-/* TODO: revisit it. Now it aligns with audio sdk
- * and we will update this value and sdk when more
- * libraries are supported
- */
+/** Maximum number of dynamically loadable LLEXT library containers. */
 #define IPC4_MAX_SUPPORTED_LIBRARIES 16
 
+/** Maximum distinct module class types registered in the FW image manifest. */
 #define IPC4_MAX_MODULE_COUNT 128
 
+/** Number of bits allocated for destination queue/pin ID in bind commands (3 bits, supporting pins 0..7). */
 #define SOF_IPC4_DST_QUEUE_ID_BITFIELD_SIZE	3
+/** Number of bits allocated for source queue/pin ID in bind commands (3 bits, supporting pins 0..7). */
 #define SOF_IPC4_SRC_QUEUE_ID_BITFIELD_SIZE	3
 
-/* Special large_param_id values */
+/** Special parameter ID (0xFF) designating vendor-specific large configuration payloads. */
 #define VENDOR_CONFIG_PARAM 0xFF
 
+/**
+ * \brief Module message command opcodes (5-bit opcode in Primary DWORD when msg_tgt == MODULE_MSG).
+ * \ingroup ipc4_module_api
+ */
 enum sof_ipc4_module_type {
-	SOF_IPC4_MOD_INIT_INSTANCE		= 0,
-	SOF_IPC4_MOD_CONFIG_GET			= 1,
-	SOF_IPC4_MOD_CONFIG_SET			= 2,
-	SOF_IPC4_MOD_LARGE_CONFIG_GET		= 3,
-	SOF_IPC4_MOD_LARGE_CONFIG_SET		= 4,
-	SOF_IPC4_MOD_BIND			= 5,
-	SOF_IPC4_MOD_UNBIND			= 6,
-	SOF_IPC4_MOD_SET_DX			= 7,
-	SOF_IPC4_MOD_SET_D0IX			= 8,
-	SOF_IPC4_MOD_ENTER_MODULE_RESTORE	= 9,
-	SOF_IPC4_MOD_EXIT_MODULE_RESTORE	= 10,
-	SOF_IPC4_MOD_DELETE_INSTANCE		= 11,
+	SOF_IPC4_MOD_INIT_INSTANCE		= 0,  /**< Instantiate a new module object and attach to a pipeline. */
+	SOF_IPC4_MOD_CONFIG_GET			= 1,  /**< Retrieve a short 16-bit module parameter packed in header. */
+	SOF_IPC4_MOD_CONFIG_SET			= 2,  /**< Set a short 16-bit module parameter packed in header. */
+	SOF_IPC4_MOD_LARGE_CONFIG_GET		= 3,  /**< Retrieve multi-block configuration or state data from module. */
+	SOF_IPC4_MOD_LARGE_CONFIG_SET		= 4,  /**< Send multi-block configuration or filter coefficients to module. */
+	SOF_IPC4_MOD_BIND			= 5,  /**< Connect a source pin of this module to a destination pin. */
+	SOF_IPC4_MOD_UNBIND			= 6,  /**< Disconnect a runtime binding between two module instances. */
+	SOF_IPC4_MOD_SET_DX			= 7,  /**< Request core power state transition (D0/D3). */
+	SOF_IPC4_MOD_SET_D0IX			= 8,  /**< Request Base FW or module to enter low-power D0ix state. */
+	SOF_IPC4_MOD_ENTER_MODULE_RESTORE	= 9,  /**< Notify module to prepare for context restoration after wake. */
+	SOF_IPC4_MOD_EXIT_MODULE_RESTORE	= 10, /**< Signal completion of module state restoration. */
+	SOF_IPC4_MOD_DELETE_INSTANCE		= 11, /**< Destroy module instance and release allocated memory. */
 };
 
-/*
- * Structs for Vendor Config
+/**
+ * \brief Compound parameter identifier encoding type and instance index.
+ * \ingroup ipc4_module_api
  */
-
 union ipc4_extended_param_id {
-	uint32_t full;
-	struct{
-		uint32_t parameter_type     : 8;
-		uint32_t parameter_instance : 24;
+	uint32_t full; /**< Full 32-bit parameter identifier. */
+	struct {
+		uint32_t parameter_type     : 8;  /**< Parameter type identifier. */
+		uint32_t parameter_instance : 24; /**< Parameter instance index. */
 	} part;
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Vendor error reporting payload structure.
+ * \ingroup ipc4_module_api
+ */
 struct ipc4_vendor_error {
-	/* Index of the failed parameter */
-	uint32_t param_idx;
-	/* Error code */
-	uint32_t err_code;
+	uint32_t param_idx; /**< Index of the failed parameter in vendor configuration list. */
+	uint32_t err_code;  /**< Vendor-specific or hardware error code. */
 };
 
-/* IDs for all global object types in struct ipc4_module_init_ext_object */
+/**
+ * \brief Global object type identifiers for extended initialization payloads.
+ * \ingroup ipc4_module_api
+ */
 enum ipc4_mod_init_data_glb_id {
-	IPC4_MOD_INIT_DATA_ID_INVALID = 0,
-	IPC4_MOD_INIT_DATA_ID_DP_DATA = 1,
-	IPC4_MOD_INIT_DATA_ID_MODULE_DATA = 2,
-	IPC4_MOD_INIT_DATA_ID_MAX = IPC4_MOD_INIT_DATA_ID_MODULE_DATA,
+	IPC4_MOD_INIT_DATA_ID_INVALID = 0,     /**< Invalid initialization object identifier. */
+	IPC4_MOD_INIT_DATA_ID_DP_DATA = 1,     /**< Data Processing (DP) thread stack and heap requirements. */
+	IPC4_MOD_INIT_DATA_ID_MODULE_DATA = 2, /**< Module-specific bespoke initialization data. */
+	IPC4_MOD_INIT_DATA_ID_MAX = IPC4_MOD_INIT_DATA_ID_MODULE_DATA, /**< Maximum supported object identifier. */
 };
 
-/* data object for vendor bespoke data with ABI growth and backwards compat */
+/**
+ * \brief Header for extended initialization data objects.
+ * \ingroup ipc4_module_api
+ */
 struct ipc4_module_init_ext_object {
-	uint32_t last_object : 1;	/* object is last in array if 1 else object follows. */
-	uint32_t object_id : 15;	/* unique ID for this object or globally */
-	uint32_t object_words : 16;	/* size in dwords (excluding this structure) */
+	uint32_t last_object : 1;	/**< Set to 1 if this is the terminating object in the array. */
+	uint32_t object_id : 15;	/**< Unique object identifier (one of enum ipc4_mod_init_data_glb_id). */
+	uint32_t object_words : 16;	/**< Payload size in 32-bit DWORDs following this header. */
 } __attribute__((packed, aligned(4)));
-/* the object data will be placed in memory here and will have size "object_words" */
 
-/* Ext init array data object for Data Processing module memory requirements */
+/**
+ * \brief Memory requirements for Data Processing (DP) module threads.
+ * \ingroup ipc4_module_api
+ */
 struct ipc4_module_init_ext_obj_dp_data {
-	uint32_t domain_id;		/* userspace domain ID */
-	uint32_t stack_bytes;		/* required stack size in bytes */
-	uint32_t heap_bytes;			/* required heap size in bytes */
+	uint32_t domain_id;		/**< Userspace domain identifier. */
+	uint32_t stack_bytes;		/**< Required thread stack size in bytes. */
+	uint32_t heap_bytes;		/**< Required thread heap allocation size in bytes. */
 } __attribute__((packed, aligned(4)));
 
-/*
- * Host Driver sends this message to create a new module instance.
+/**
+ * \brief Extended initialization flags and coprocessor requirements.
+ * \ingroup ipc4_module_api
  */
 struct ipc4_module_init_ext_init {
-	/**< if it is set to 1, proc_domain should be ignored and processing */
-	/* domain is RTOS scheduling */
+	/**< If set to 1, proc_domain is ignored and processing domain is RTOS scheduling. */
 	uint32_t rtos_domain : 1;
-	/**< Indicates that GNA is used by a module and additional information */
-	/* (gna_config) is passed after ExtendedData. */
+	/**< Indicates that GNA coprocessor is used by module and gna_config follows. */
 	uint32_t gna_used    : 1;
-	uint32_t data_obj_array : 1;	/* struct ipc4_module_init_ext_object data */
-	uint32_t rsvd_0      : 29;
-	uint32_t rsvd_1[2];
+	uint32_t data_obj_array : 1;	/**< 1 if followed by struct ipc4_module_init_ext_object array. */
+	uint32_t rsvd_0      : 29;	/**< Reserved bits. */
+	uint32_t rsvd_1[2];		/**< Reserved padding words. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Extended module initialization container.
+ * \ingroup ipc4_module_api
+ */
 struct ipc4_module_init_ext_data {
-	struct ipc4_module_init_ext_init extended_init;
-
-	/**< Data (actual size set to param_block_size) */
-	uint32_t param_data[];
+	struct ipc4_module_init_ext_init extended_init; /**< Extended flags. */
+	uint32_t param_data[]; /**< Module configuration payload words. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Neural network accelerator (GNA) compute cycle configuration.
+ * \ingroup ipc4_module_api
+ */
 struct ipc4_module_init_gna_config {
 	/**< Number of GNA cycles required to process one input frame. */
-	/* This information is used by DP scheduler to correctly schedule
-	 * a DP module.
-	 */
 	uint32_t gna_cpc;
-	uint32_t rsvd;
+	uint32_t rsvd; /**< Reserved padding. */
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Module initialization payload buffer.
+ * \ingroup ipc4_module_api
+ */
 struct ipc4_module_init_data {
-	/**< Data (actual size set to param_block_size) */
-	uint32_t param_data[0];
+	uint32_t param_data[0]; /**< Configuration payload words (sized by param_block_size). */
 } __attribute__((packed, aligned(4)));
 
-/*!
-  Created instance is a child element of pipeline identified by the ppl_id
-  specified by the driver.
-
-  The module_id should be set to an index of the module entry in the FW Image
-  Manifest.
-
-  The instance_id assigned by the driver should be in the
-  0..ModuleEntry.max_instance_count range defined in the FW Image Manifest.
-
-  Initial configuration of the module instance is provided by the driver in
-  the param_data array. Size of the array is specified in param_block_size
-  field of the message header.
-
-  Refer to Module Configuration section of FW I/F Specification for details on
-  module specific initial configuration parameters.
-
-  \remark hide_methods
-*/
-
-/* Reserved ppl_instance_id: module has no parent pipeline (e.g. probe). */
+/** Reserved pipeline ID (0xFF) indicating module has no parent pipeline (e.g. probe). */
 #define IPC4_INVALID_PIPELINE_ID 0xFF
 
+/**
+ * \brief Module instance creation command structure (SOF_IPC4_MOD_INIT_INSTANCE).
+ * \ingroup ipc4_module_api
+ */
 struct ipc4_module_init_instance {
-
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Primary register value. */
 
 		struct {
-			/**< module id */
+			/**< Module class ID index from the FW manifest. */
 			uint32_t module_id          : 16;
-			/**< instance id */
+			/**< Module instance ID unique within the module class (0..max_instances-1). */
 			uint32_t instance_id        : 8;
-			/**< ModuleMsg::INIT_INSTANCE */
+			/**< Opcode: SOF_IPC4_MOD_INIT_INSTANCE (0). */
 			uint32_t type               : 5;
-			/**< Msg::MSG_REQUEST */
+			/**< Direction: 0 for request (SOF_IPC4_MESSAGE_DIR_MSG_REQUEST). */
 			uint32_t rsp                : 1;
-			/**< Msg::MODULE_MSG */
+			/**< Target: 1 for module message (SOF_IPC4_MESSAGE_TARGET_MODULE_MSG). */
 			uint32_t msg_tgt            : 1;
-			uint32_t _reserved_0        : 1;
+			uint32_t _reserved_0        : 1; /**< Reserved hardware control bit. */
 		} r;
 	} primary;
 
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/**< Size of Data::param_data[] (in dwords) */
+			/**< Size of initialization payload in 32-bit DWORDs. */
 			uint32_t param_block_size   : 16;
-			/**< ID of module instance's parent pipeline */
+			/**< ID of parent pipeline, or #IPC4_INVALID_PIPELINE_ID. */
 			uint32_t ppl_instance_id    : 8;
-			/**< ID of core that instance will run on */
+			/**< Target DSP core ID on which this instance will execute (0..3). */
 			uint32_t core_id            : 4;
-			/**< Processing domain, 0-LL, 1-DP */
+			/**< Processing domain (0 = Low-Latency LL, 1 = Data Processing DP). */
 			uint32_t proc_domain        : 1;
-			/* reserved in cAVS  */
+			/**< 1 if extended initialization structures follow. */
 			uint32_t extended_init      : 1;
-			uint32_t _hw_reserved_2     : 2;
+			uint32_t _hw_reserved_2     : 2; /**< Reserved hardware bits. */
 		} r;
 	} extension;
-/*
- * The following objects are optional and follow this structure in this
- * order provided the respective object bit is set in preceding object.
- *
- *	struct ipc4_module_init_ext_init ext_init;
- *	struct ipc4_module_init_ext_data ext_data;
- *	struct ipc4_module_init_gna_config gna_config;
- *	struct ipc4_module_init_data init_data;
- */
 } __attribute__((packed, aligned(4)));
 
-/*!
-  SW Driver sends Bind IPC message to connect two module instances together
-  creating data processing path between them.
-
-  Unbind IPC message is sent to destroy a connection between two module instances
-  (belonging to different pipelines) previously created with Bind call.
-
-  NOTE: when both module instances are parts of the same pipeline Unbind IPC would
-  be ignored by FW since FW does not support changing internal topology of pipeline
-  during run-time. The only way to change pipeline topology is to delete the whole
-  pipeline and create it in modified form.
-
-  \remark hide_methods
+/**
+ * \brief Module pin binding and unbinding command structure (SOF_IPC4_MOD_BIND / UNBIND).
+ * \ingroup ipc4_module_api
+ *
+ * Sent by host to connect two module instances across pins (queues), or sever an existing link.
  */
 struct ipc4_module_bind_unbind {
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Primary register value. */
 
 		struct {
-			/**< module id */
+			/**< Source module class identifier. */
 			uint32_t module_id : 16;
-			/**< instance id */
+			/**< Source module instance identifier. */
 			uint32_t instance_id : 8;
-			/**< ModuleMsg::BIND / UNBIND. */
+			/**< Opcode: SOF_IPC4_MOD_BIND (5) or SOF_IPC4_MOD_UNBIND (6). */
 			uint32_t type : 5;
-			/**< Msg::MSG_REQUEST */
+			/**< Direction: 0 for request (SOF_IPC4_MESSAGE_DIR_MSG_REQUEST). */
 			uint32_t rsp : 1;
-			/**< Msg::MODULE_MSG */
+			/**< Target: 1 for module message (SOF_IPC4_MESSAGE_TARGET_MODULE_MSG). */
 			uint32_t msg_tgt : 1;
-			uint32_t _reserved_0 : 1;
+			uint32_t _reserved_0 : 1; /**< Reserved hardware control bit. */
 		} r;
 	} primary;
 
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/**< destination module id */
+			/**< Destination module class identifier. */
 			uint32_t dst_module_id : 16;
-			/**< destination instance id */
+			/**< Destination module instance identifier. */
 			uint32_t dst_instance_id : 8;
-			/**< destination queue (pin) id */
+			/**< Destination input queue/pin index (0..7). */
 			uint32_t dst_queue : SOF_IPC4_DST_QUEUE_ID_BITFIELD_SIZE;
-			/**< source queue (pin) id */
+			/**< Source output queue/pin index (0..7). */
 			uint32_t src_queue : SOF_IPC4_SRC_QUEUE_ID_BITFIELD_SIZE;
-			uint32_t _reserved_2 : 2;
+			uint32_t _reserved_2 : 2; /**< Reserved hardware control bits. */
 		} r;
 	} extension;
 } __attribute__((packed, aligned(4)));
 
-/*
- * Using Module Config Get / Set command, host driver may send a parameter
- * that fits into the header (a very short one), packed along with parameter id.
- * Larger parameters require fragmentation and a series of Large Config Set
- * commands.
- *
- * param_id_data specifies both ID of the parameter, defined by the module
- * and value of the parameter.
- * It is up to the module how to distribute bits to ID and value of the parameter.
- * If there are more bits required than available to value, then Input Data may
- * be used to pass the value
- *
- * NOTE: Module Config Get/Set commands are used internally by the driver
- * for small parameters defined by Intel components. While all externally
- * developed components communicates with host using Large Config commands
- * no matter what the size of parameter is.
+/**
+ * \brief Small parameter configuration command structure (SOF_IPC4_MOD_CONFIG_GET / SET).
+ * \ingroup ipc4_module_api
  */
 struct ipc4_module_config {
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Primary register value. */
 
 		struct {
-			uint32_t module_id      : 16;	/* module id */
-			uint32_t instance_id    : 8;	/* instance id */
-			/* SOF_IPC4_MOD_CONFIG_GET / SOF_IPC4_MOD_CONFIG_SET */
-			uint32_t type           : 5;
-			uint32_t rsp            : 1;	/* SOF_IPC4_MESSAGE_DIR_MSG_REQUEST */
-			uint32_t msg_tgt        : 1;	/* SOF_IPC4_MESSAGE_TARGET_MODULE_MSG */
-			uint32_t _reserved_0    : 1;
+			uint32_t module_id      : 16;	/**< Target module class ID. */
+			uint32_t instance_id    : 8;	/**< Target module instance ID. */
+			uint32_t type           : 5;	/**< Opcode: SOF_IPC4_MOD_CONFIG_GET or SET. */
+			uint32_t rsp            : 1;	/**< 0 for request. */
+			uint32_t msg_tgt        : 1;	/**< 1 for module message. */
+			uint32_t _reserved_0    : 1;	/**< Reserved bit. */
 		} r;
 	} primary;
 
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/* Param id and data */
-			uint32_t param_id_data  : 30;
-			uint32_t _reserved_2    : 2;
+			uint32_t param_id_data  : 30;	/**< Packed 16-bit parameter data and 14-bit parameter ID. */
+			uint32_t _reserved_2    : 2;	/**< Reserved bits. */
 		} r;
 	} extension;
 } __attribute__((packed, aligned(4)));
 
-/*
- * Sent by FW in response to Module Config Get.
+/**
+ * \brief Reply structure for small parameter query (SOF_IPC4_MOD_CONFIG_GET).
+ * \ingroup ipc4_module_api
  */
 struct ipc4_module_config_reply {
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Primary register value. */
 
 		struct {
-			uint32_t status		: IPC4_IXC_STATUS_BITS;
-			uint32_t type		: 5;	/* SOF_IPC4_MOD_CONFIG_GET */
-			uint32_t rsp		: 1;	/* SOF_IPC4_MESSAGE_DIR_MSG_REPLY */
-			uint32_t msg_tgt	: 1;	/* SOF_IPC4_MESSAGE_TARGET_MODULE_MSG */
-			uint32_t _reserved_0	: 1;
+			uint32_t status		: IPC4_IXC_STATUS_BITS;	/**< Command processing status (enum ipc4_status). */
+			uint32_t type		: 5;			/**< Opcode: SOF_IPC4_MOD_CONFIG_GET. */
+			uint32_t rsp		: 1;			/**< 1 for reply. */
+			uint32_t msg_tgt	: 1;			/**< 1 for module message. */
+			uint32_t _reserved_0	: 1;			/**< Reserved bit. */
 		} r;
 	} primary;
 
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/*
-			 * Value of this field may be changed by the module
-			 * if parameter value fits into the available bits,
-			 * or stay intact if the value is copied to the Output Data.
-			 */
-			uint32_t param_id_data	: 30;
-			uint32_t _reserved_2	: 2;
+			uint32_t param_id_data	: 30;	/**< Returned parameter value if fitting in 30 bits. */
+			uint32_t _reserved_2	: 2;	/**< Reserved bits. */
 		} r;
 	} extension;
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Large configuration parameter transfer envelope (SOF_IPC4_MOD_LARGE_CONFIG_GET / SET).
+ * \ingroup ipc4_module_api
+ *
+ * Implements the multi-block fragmentation handshake for exchanging configuration payloads
+ * exceeding the mailbox window size (e.g. FIR coefficients, EQ curves, model blobs).
+ */
 struct ipc4_module_large_config {
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Primary register value. */
 
 		struct {
-			/**< module id */
-			uint32_t module_id : 16;
-			/**< instance id */
-			uint32_t instance_id : 8;
-			/**< ModuleMsg::LARGE_CONFIG_GET / LARGE_CONFIG_SET */
-			uint32_t type : 5;
-			/**< Msg::MSG_REQUEST or Msg::MSG_REPLY */
-			uint32_t rsp : 1;
-			/**< Msg::MODULE_MSG or Msg::FW_GEN_MSG */
-			uint32_t msg_tgt : 1;
-			uint32_t _reserved_0 : 1;
-			} r;
-		} primary;
+			uint32_t module_id : 16;   /**< Target module class ID. */
+			uint32_t instance_id : 8;  /**< Target module instance ID. */
+			uint32_t type : 5;         /**< LARGE_CONFIG_GET (3) or LARGE_CONFIG_SET (4). */
+			uint32_t rsp : 1;          /**< 0 for request, 1 for reply. */
+			uint32_t msg_tgt : 1;      /**< 1 for module target. */
+			uint32_t _reserved_0 : 1;  /**< Reserved bit. */
+		} r;
+	} primary;
 
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/**< data size for single block, offset for multiple block case */
+			/**< Chunk byte size (single block) or cumulative byte offset (multi-block). */
 			uint32_t data_off_size : 20;
-			/**< param type : VENDOR_CONFIG_PARAM / GENERIC_CONFIG_PARAM */
+			/**< Parameter type identifier (module-specific or #VENDOR_CONFIG_PARAM). */
 			uint32_t large_param_id : 8;
-			/**< 1 if final block */
+			/**< Set to 1 on the terminating chunk of a multi-block transfer. */
 			uint32_t final_block : 1;
-			/**< 1 if init block */
+			/**< Set to 1 on the initial chunk of a multi-block transfer. */
 			uint32_t init_block : 1;
-			uint32_t _reserved_2 : 2;
+			uint32_t _reserved_2 : 2;  /**< Reserved bits. */
 		} r;
 	} extension;
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Reply structure for large configuration transfer.
+ * \ingroup ipc4_module_api
+ */
 struct ipc4_module_large_config_reply {
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Primary register value. */
 
 		struct {
-			uint32_t status :IPC4_IXC_STATUS_BITS;
-			/**< ModuleMsg::LARGE_CONFIG_GET / LARGE_CONFIG_SET */
-			uint32_t type : 5;
-			/**< Msg::MSG_REQUEST */
-			uint32_t rsp : 1;
-			/**< Msg::MODULE_MSG */
-			uint32_t msg_tgt : 1;
-			uint32_t _reserved_0 : 1;
-			} r;
-		} primary;
+			uint32_t status : IPC4_IXC_STATUS_BITS; /**< Processing status (enum ipc4_status). */
+			uint32_t type : 5;         /**< Symmetric opcode. */
+			uint32_t rsp : 1;          /**< 1 for reply. */
+			uint32_t msg_tgt : 1;      /**< Symmetric target. */
+			uint32_t _reserved_0 : 1;  /**< Reserved bit. */
+		} r;
+	} primary;
 
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/**< data size/offset */
-			uint32_t data_off_size : 20;
-			/**< param type : VENDOR_CONFIG_PARAM / GENERIC_CONFIG_PARAM */
-			uint32_t large_param_id : 8;
-			/**< 1 if final block */
-			uint32_t final_block : 1;
-			/**< 1 if first block */
-			uint32_t init_block : 1;
-			uint32_t _reserved_2 : 2;
+			uint32_t data_off_size : 20;  /**< Processed byte size or offset. */
+			uint32_t large_param_id : 8;  /**< Parameter type ID. */
+			uint32_t final_block : 1;     /**< 1 if final block processed. */
+			uint32_t init_block : 1;      /**< 1 if first block processed. */
+			uint32_t _reserved_2 : 2;     /**< Reserved bits. */
 		} r;
 	} extension;
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Module instance deletion command structure (SOF_IPC4_MOD_DELETE_INSTANCE).
+ * \ingroup ipc4_module_api
+ */
 struct ipc4_module_delete_instance {
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Primary register value. */
 
 		struct {
-			uint32_t module_id : 16;
-			uint32_t instance_id : 8;
-			/**< ModuleMsg::DELETE_INSTANCE */
-			uint32_t type : 5;
-			/**< Msg::MSG_REQUEST */
-			uint32_t rsp : 1;
-			/**< Msg::MODULE_MSG */
-			uint32_t msg_tgt : 1;
-			uint32_t _reserved_0 : 1;
+			uint32_t module_id : 16;   /**< Module class ID of instance to destroy. */
+			uint32_t instance_id : 8;  /**< Instance ID to destroy. */
+			uint32_t type : 5;         /**< Opcode: SOF_IPC4_MOD_DELETE_INSTANCE (11). */
+			uint32_t rsp : 1;          /**< 0 for request. */
+			uint32_t msg_tgt : 1;      /**< 1 for module target. */
+			uint32_t _reserved_0 : 1;  /**< Reserved bit. */
 		} r;
 	} primary;
 
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			uint32_t rsvd : 30;
-			uint32_t _reserved_1 : 2;
+			uint32_t rsvd : 30;        /**< Reserved padding. */
+			uint32_t _reserved_1 : 2;   /**< Reserved bits. */
 		} r;
 	} extension;
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Module D0ix low-power state entry command (SOF_IPC4_MOD_SET_D0IX).
+ * \ingroup ipc4_module_api
+ */
 struct ipc4_module_set_d0ix {
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Primary register value. */
 
 		struct {
-			/* module id (must be 0 - Base FW) */
-			uint32_t module_id		: 16;
-			/* instance id (must be 0 - core 0) */
-			uint32_t instance_id	: 8;
-			/* ModuleMsg::SET_D0IX */
-			uint32_t type			: 5;
-			/* Msg::MSG_REQUEST */
-			uint32_t rsp			: 1;
-			/* Msg::MODULE_MSG */
-			uint32_t msg_tgt		: 1;
-			uint32_t _reserved_0	: 1;
+			uint32_t module_id		: 16; /**< Module ID (must be 0 for Base FW). */
+			uint32_t instance_id	: 8;  /**< Instance ID (must be 0 for core 0). */
+			uint32_t type			: 5;  /**< Opcode: SOF_IPC4_MOD_SET_D0IX (8). */
+			uint32_t rsp			: 1;  /**< 0 for request. */
+			uint32_t msg_tgt		: 1;  /**< 1 for module message. */
+			uint32_t _reserved_0	: 1;  /**< Reserved bit. */
 		} r;
 	} primary;
 
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			/* legacy wake type (see WakeType) */
-			uint32_t wake			: 1;
-			/* streaming active now */
-			uint32_t streaming		: 1;
-			/* D0/D0ix transitions allowed (PG disabled) */
-			uint32_t prevent_power_gating : 1;
-			/* Clock gating enabled */
-			uint32_t prevent_local_clock_gating : 1;
-
-			uint32_t rsvd1			: 26;
-			uint32_t _reserved_2	: 2;
+			uint32_t wake			: 1;  /**< Legacy wake type flag. */
+			uint32_t streaming		: 1;  /**< Active audio streaming indicator. */
+			uint32_t prevent_power_gating : 1; /**< Set to 1 to inhibit DSP core power gating. */
+			uint32_t prevent_local_clock_gating : 1; /**< Set to 1 to inhibit local clock gating. */
+			uint32_t rsvd1			: 26; /**< Reserved padding. */
+			uint32_t _reserved_2	: 2;  /**< Reserved bits. */
 		} r;
 	} extension;
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief DSP core power state bitmask descriptor.
+ * \ingroup ipc4_module_api
+ */
 struct ipc4_dx_state_info {
-	/* Indicates which cores are subject to change the power state */
-	uint32_t core_mask;
-	/* Indicates core state.
-	 * bit[core_id] = 0 -> put core_id to D3
-	 * bit[core_id] = 1 -> put core_id to D0
-	 */
+	uint32_t core_mask; /**< Bitmask indicating which DSP cores are subject to state change. */
+	/**< Target state bitmask: bit[core_id] = 0 -> put to D3, bit[core_id] = 1 -> put to D0. */
 	uint32_t dx_mask;
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Core DX power state transition command structure (SOF_IPC4_MOD_SET_DX).
+ * \ingroup ipc4_module_api
+ */
 struct ipc4_module_set_dx {
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Primary register value. */
 
 		struct {
-			/* module id (must be 0 - Base FW) */
-			uint32_t module_id			: 16;
-			/* instance id (must be 0 - core 0) */
-			uint32_t instance_id		: 8;
-			/* ModuleMsg::SET_DX */
-			uint32_t type				: 5;
-			/* Msg::MSG_REQUEST */
-			uint32_t rsp				: 1;
-			/* Msg::MODULE_MSG */
-			uint32_t msg_tgt			: 1;
-			uint32_t _reserved_0		: 1;
+			uint32_t module_id			: 16; /**< Module ID (0 for Base FW). */
+			uint32_t instance_id		: 8;  /**< Instance ID (0 for Core 0). */
+			uint32_t type				: 5;  /**< Opcode: SOF_IPC4_MOD_SET_DX (7). */
+			uint32_t rsp				: 1;  /**< 0 for request. */
+			uint32_t msg_tgt			: 1;  /**< 1 for module message. */
+			uint32_t _reserved_0		: 1;  /**< Reserved bit. */
 		} r;
 	} primary;
 
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			uint32_t rsvd				: 30;
-			uint32_t _reserved_2		: 2;
+			uint32_t rsvd				: 30; /**< Reserved padding. */
+			uint32_t _reserved_2		: 2;  /**< Reserved bits. */
 		} r;
 	} extension;
 } __attribute__((packed, aligned(4)));
 
+/**
+ * \brief Dynamic library loading command structure (SOF_IPC4_GLB_LOAD_LIBRARY).
+ * \ingroup ipc4_module_api
+ */
 struct ipc4_module_load_library {
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Primary register value. */
 
 		struct {
-			/* ID of HD/A HO DMA to load the code */
-			uint32_t dma_id				: 5;
-			uint32_t rsvd0				: 11;
-			/* ID of library */
-			uint32_t lib_id				: 4;
-			uint32_t rsvd1				: 4;
-			/* Global::LOAD_LIBRARY */
-			uint32_t type				: 5;
-			/* Msg::MSG_REQUEST */
-			uint32_t rsp				: 1;
-			/* Msg::FW_GEN_MSG */
-			uint32_t msg_tgt			: 1;
-			uint32_t _reserved_0		: 1;
+			uint32_t dma_id				: 5;  /**< ID of Host Output DMA used to load code. */
+			uint32_t rsvd0				: 11; /**< Reserved padding. */
+			uint32_t lib_id				: 4;  /**< Dynamic library container ID (0..15). */
+			uint32_t rsvd1				: 4;  /**< Reserved padding. */
+			uint32_t type				: 5;  /**< Opcode: SOF_IPC4_GLB_LOAD_LIBRARY (24). */
+			uint32_t rsp				: 1;  /**< 0 for request. */
+			uint32_t msg_tgt			: 1;  /**< 0 for global firmware message. */
+			uint32_t _reserved_0		: 1;  /**< Reserved bit. */
 		} r;
 	} header;
 
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit Extension register value. */
 
 		struct {
-			uint32_t load_offset		: 30;
-			uint32_t _reserved_2		: 2;
+			uint32_t load_offset		: 30; /**< Load offset into host DMA buffer. */
+			uint32_t _reserved_2		: 2;  /**< Reserved bits. */
 		} r;
 	} data;
 } __attribute__((packed, aligned(4)));
 
+/** Construct a 32-bit component token from module class ID (x) and instance ID (y). */
 #define IPC4_COMP_ID(x, y)	((y) << 16 | (x))
+/** Extract 16-bit module class ID from a 32-bit component token. */
 #define IPC4_MOD_ID(x)	(IS_ENABLED(CONFIG_IPC_MAJOR_4) ? ((x) & 0xffff) : 0)
+/** Extract 16-bit instance ID from a 32-bit component token. */
 #define IPC4_INST_ID(x)	((x) >> 16)
+/** Extract 16-bit source queue/pin ID from a 32-bit queue token. */
 #define IPC4_SRC_QUEUE_ID(x)	((x) & 0xffff)
+/** Extract 16-bit sink queue/pin ID from a 32-bit queue token. */
 #define IPC4_SINK_QUEUE_ID(x)	(((x) >> 16) & 0xffff)
 
 #endif
