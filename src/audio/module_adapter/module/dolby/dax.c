@@ -777,21 +777,23 @@ static int sof_dax_process(struct processing_module *mod, struct sof_source **so
 			   int num_of_sources, struct sof_sink **sinks, int num_of_sinks)
 {
 	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
-	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
+	struct sof_dax *dax_ctx;
 	struct sof_source *source = sources[0];
 	struct sof_sink *sink = sinks[0];
 	uint8_t *buf, *bufstart, *bufend, *dax_buf;
 	size_t bufsz;
-	struct dax_buffer *dax_input_buffer = &dax_ctx->input_buffer;
-	struct dax_buffer *dax_output_buffer = &dax_ctx->output_buffer;
+	struct dax_buffer *dax_input_buffer;
+	struct dax_buffer *dax_output_buffer;
 	uint32_t consumed_bytes, processed_bytes, produced_bytes;
-
-	flag_process(adapter_data, DAX_PROCESSING_MASK, DAX_FLAG_SET);
 
 	if (!adapter_data) {
 		comp_err(mod->dev, "invalid adapter data");
 		return -EINVAL;
 	}
+	dax_ctx = &adapter_data->dax_ctx;
+	dax_input_buffer = &dax_ctx->input_buffer;
+	dax_output_buffer = &dax_ctx->output_buffer;
+	flag_process(adapter_data, DAX_PROCESSING_MASK, DAX_FLAG_SET);
 
 	/* source stream -> internal input buffer */
 	consumed_bytes = MIN(source_get_data_available(source), dax_input_buffer->free);
