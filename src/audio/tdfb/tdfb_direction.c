@@ -12,7 +12,10 @@
 #include <sof/math/trig.h>
 #include <sof/math/sqrt.h>
 #include <user/eq.h>
+#include <sof/trace/trace.h>
 #include <stdint.h>
+
+LOG_MODULE_DECLARE(tdfb, CONFIG_SOF_LOG_LEVEL);
 
 /* Generic definitions */
 #define COEF_DEG_TO_RAD		Q_CONVERT_FLOAT(0.017453, 15)	/* Q1.15 */
@@ -200,6 +203,10 @@ int tdfb_direction_init(struct processing_module *mod, int32_t fs, int ch_count)
 
 	/* Allocate delay lines for IIR filters and initialize them */
 	size = ch_count * iir_delay_size_df1(filt);
+	if (!size) {
+		comp_err(mod->dev, "Invalid iir configuration");
+		return -EINVAL;
+	}
 	delay = mod_zalloc(mod, size);
 	if (!delay)
 		return -ENOMEM;
