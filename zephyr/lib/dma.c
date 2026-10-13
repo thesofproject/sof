@@ -221,7 +221,11 @@ APP_SYSUSER_DATA struct sof_dma dma[] = {
 		.devs		= SOF_DMA_DEV_HOST,
 		.base		= DMA0_BASE,
 		.chan_size	= DMA0_SIZE,
+#if defined(CONFIG_SOC_ACP_7_X)
+		.channels	= 10,
+#else
 		.channels	= 8,
+#endif
 		.period_count	= 2,
 	},
 	.z_dev = DEVICE_DT_GET(DT_NODELABEL(acp_host_dma)),
