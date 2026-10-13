@@ -356,7 +356,7 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 	int size_sum = 0;
 	int resp = 0;
 	int i;
-	int s;
+	size_t s;
 	int ret;
 
 	comp_info(mod->dev, "%u responses, %u channels, stream %d channels",
@@ -404,8 +404,7 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 		if (s > 0) {
 			size_sum += s;
 		} else {
-			comp_err(mod->dev, "sections count %d exceeds max",
-				 eq->num_sections);
+			comp_err(mod->dev, "sections count %u exceeds max", eq->num_sections);
 			return -EINVAL;
 		}
 
