@@ -190,12 +190,12 @@ struct ipc4_output_pin_format {
  * \ingroup ipc4_format_api
  */
 struct ipc4_base_module_cfg_ext {
-	/**< Number of input pin format entries following in pin_formats[] (maximum 8). */
+	/** Number of input pin format entries following in pin_formats[] (maximum 8). */
 	uint16_t nb_input_pins;
-	/**< Number of output pin format entries following in pin_formats[] (maximum 8). */
+	/** Number of output pin format entries following in pin_formats[] (maximum 8). */
 	uint16_t nb_output_pins;
 	uint8_t reserved[12]; /**< Reserved padding; must be set to 0. */
-	/**<
+	/**
 	 * Variable-length array of input pin formats followed immediately by output pin formats.
 	 * Formats are matched by pin_index rather than array index.
 	 */
@@ -225,9 +225,9 @@ struct ipc4_base_module_extended_cfg {
  * \ingroup ipc4_format_api
  */
 enum ipc4_base_module_params {
-	/**< Retrieve module instance runtime memory and queue properties via LargeConfigGet. */
+	/** Retrieve module instance runtime memory and queue properties via LargeConfigGet. */
 	IPC4_MOD_INST_PROPS  = 0xFE,
-	/**< Enable or disable module instance processing via ConfigSet (0 = disable, 1 = enable). */
+	/** Enable or disable module instance processing via ConfigSet (0 = disable, 1 = enable). */
 	IPC4_MOD_INST_ENABLE = 0x3000
 };
 
@@ -236,13 +236,13 @@ enum ipc4_base_module_params {
  * \ingroup ipc4_format_api
  */
 struct ipc4_pin_props {
-	/**< Stream type (one of enum ipc4_stream_type). */
+	/** Stream type (one of enum ipc4_stream_type). */
 	uint32_t stream_type;
 
-	/**< Active audio format of the stream (valid when stream_type == IPC4_STREAM_PCM). */
+	/** Active audio format of the stream (valid when stream_type == IPC4_STREAM_PCM). */
 	struct ipc4_audio_format format;
 
-	/**< Physical DMA queue ID connected to this pin (-1 if unassigned). */
+	/** Physical DMA queue ID connected to this pin (-1 if unassigned). */
 	uint32_t phys_queue_id;
 } __attribute__((packed, aligned(4)));
 

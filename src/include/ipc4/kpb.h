@@ -30,9 +30,9 @@ struct ipc4_kpb_module_cfg {
  * \ingroup ipc4_telemetry_probe_api
  */
 enum ipc4_kpb_module_config_params {
-	/**< Configure module IDs that execute within Fast Mode (FM) draining tasks. */
+	/** Configure module IDs that execute within Fast Mode (FM) draining tasks. */
 	KP_BUF_CFG_FM_MODULE = 1,
-	/**< Real-time sink microphone channel selector ID. */
+	/** Real-time sink microphone channel selector ID. */
 	KP_BUF_CLIENT_MIC_SELECT = 11,
 };
 

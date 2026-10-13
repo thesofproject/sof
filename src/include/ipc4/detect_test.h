@@ -20,13 +20,13 @@
  * \ingroup ipc4_telemetry_probe_api
  */
 enum ipc4_detect_test_module_config_params {
-	/**< Send neural network keyword detection model binary blob via LargeConfigSet. */
+	/** Send neural network keyword detection model binary blob via LargeConfigSet. */
 	IPC4_DETECT_TEST_SET_MODEL_BLOB = 1,
 
-	/**< Configure Keyword Detector operational thresholds and parameters via LargeConfigSet. */
+	/** Configure Keyword Detector operational thresholds and parameters via LargeConfigSet. */
 	IPC4_DETECT_TEST_SET_CONFIG = 2,
 
-	/**< Query current Keyword Detector operational configuration via LargeConfigGet. */
+	/** Query current Keyword Detector operational configuration via LargeConfigGet. */
 	IPC4_DETECT_TEST_GET_CONFIG = 3
 };
 
