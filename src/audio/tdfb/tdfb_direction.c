@@ -200,6 +200,10 @@ int tdfb_direction_init(struct processing_module *mod, int32_t fs, int ch_count)
 
 	/* Allocate delay lines for IIR filters and initialize them */
 	size = ch_count * iir_delay_size_df1(filt);
+	if (!size) {
+		comp_err(mod->dev, "Invalid iir configuration");
+		return -EINVAL;
+	}
 	delay = mod_zalloc(mod, size);
 	if (!delay)
 		return -ENOMEM;
