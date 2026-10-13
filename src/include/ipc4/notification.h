@@ -119,7 +119,7 @@ union ipc4_notification_header {
 	struct {
 		uint32_t rsvd0 : 16;       /**< Reserved bits. */
 		uint32_t notif_type : 8;   /**< Notification type (enum sof_ipc4_notification_type). */
-		uint32_t type : 5;         /**< Opcode: SOF_IPC4_GLB_NOTIFICATION (23). */
+		uint32_t type : 5;         /**< Opcode: SOF_IPC4_GLB_NOTIFICATION (27). */
 		uint32_t rsp : 1;          /**< Message direction: 0 for request/notification. */
 		uint32_t msg_tgt : 1;      /**< Message target: 0 for global message. */
 		uint32_t _reserved_0 : 1;  /**< Reserved bit. */
@@ -267,7 +267,7 @@ void send_process_data_error_notif_msg(uint32_t resource_id, uint32_t error_code
  * \ingroup ipc4_notification_api
  * \param pipeline_id Target pipeline identifier.
  * \param dir Stream direction (playback underrun or capture overrun).
- * \return True if sent successfully, false otherwise.
+ * \return True if dispatched or suppressed by notification mask; false if notification pool was exhausted and caller should retry.
  */
 bool send_copier_gateway_xrun_notif_msg(uint32_t pipeline_id, enum sof_ipc_stream_direction dir);
 
@@ -276,7 +276,7 @@ bool send_copier_gateway_xrun_notif_msg(uint32_t pipeline_id, enum sof_ipc_strea
  * \ingroup ipc4_notification_api
  * \param resource_id Gateway connector node ID.
  * \param dir Stream direction.
- * \return True if sent successfully, false otherwise.
+ * \return True if dispatched or suppressed by notification mask; false if notification pool was exhausted and caller should retry.
  */
 bool send_gateway_xrun_notif_msg(uint32_t resource_id, enum sof_ipc_stream_direction dir);
 
@@ -309,7 +309,7 @@ void ipc4_update_notification_mask(uint32_t ntfy_mask, uint32_t enabled_mask);
  * \param resource_type Resource category (enum sof_ipc4_resource_type).
  * \param data Pointer to event payload.
  * \param data_size Size of event payload in bytes.
- * \return True on success, false on failure.
+ * \return True if dispatched or suppressed by notification mask; false if notification pool was exhausted and caller should retry.
  */
 __syscall bool send_resource_notif(uint32_t resource_id, uint32_t event_type,
 				   uint32_t resource_type, void *data, uint32_t data_size);
@@ -325,7 +325,7 @@ __syscall bool send_resource_notif(uint32_t resource_id, uint32_t event_type,
  * \param resource_type Resource category (enum sof_ipc4_resource_type).
  * \param data Pointer to event payload.
  * \param data_size Size of event payload in bytes.
- * \return True on success, false on failure.
+ * \return True if dispatched or suppressed by notification mask; false if notification pool was exhausted and caller should retry.
  */
 bool z_impl_send_resource_notif(uint32_t resource_id, uint32_t event_type,
 				uint32_t resource_type, void *data, uint32_t data_size);

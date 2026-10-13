@@ -186,7 +186,7 @@ struct ipc4_module_init_instance {
 			uint32_t param_block_size   : 16;
 			/** ID of parent pipeline, or #IPC4_INVALID_PIPELINE_ID. */
 			uint32_t ppl_instance_id    : 8;
-			/** Target DSP core ID on which this instance will execute (0..3). */
+			/** Target DSP core ID on which this instance will execute (platform-dependent, 0..CONFIG_CORE_COUNT - 1). */
 			uint32_t core_id            : 4;
 			/** Processing domain (0 = Low-Latency LL, 1 = Data Processing DP). */
 			uint32_t proc_domain        : 1;
