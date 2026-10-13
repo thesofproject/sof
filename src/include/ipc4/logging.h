@@ -6,16 +6,18 @@
 /**
  * @file ipc4/logging.h
  * @brief IPC4 host logging control and configuration interface.
- * @ingroup ipc4_api
+ * @ingroup ipc4_telemetry_probe_api
  */
 
 #ifndef __SOF_IPC4_LOGGING_H__
 #define __SOF_IPC4_LOGGING_H__
 
+/** \brief Page size in bytes for mtrace memory window DMA logging buffers. */
 #define SOF_IPC4_LOGGING_MTRACE_PAGE_SIZE	0x1000
 
 /**
  * @brief Configure and enable firmware logging requested by the host via IPC4.
+ * @ingroup ipc4_telemetry_probe_api
  * @param first_block True if this buffer is the first chunk of logging configuration.
  * @param last_block True if this buffer is the final chunk of logging configuration.
  * @param data_offset_or_size Byte offset or payload size of the configuration block.
@@ -29,6 +31,7 @@ int ipc4_logging_enable_logs(bool first_block,
 
 /**
  * @brief Shutdown active IPC4 firmware logging and flush remaining trace buffers.
+ * @ingroup ipc4_telemetry_probe_api
  * @return 0 on success, negative error code on failure.
  */
 int ipc4_logging_shutdown(void);
