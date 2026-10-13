@@ -18,7 +18,6 @@
 LOG_MODULE_REGISTER(dolby_dax_audio_processing, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(dolby_dax_audio_processing);
 
-#define MAX_PARAMS_STR_BUFFER_SIZE 1536
 #define DAX_ENABLE_MASK 0x1
 #define DAX_PROFILE_MASK 0x2
 #define DAX_DEVICE_MASK 0x4
@@ -121,20 +120,24 @@ static int itostr(int num, char *str)
 	return index + digit_count;
 }
 
-static const char *get_params_str(const void *val, uint32_t val_sz)
+static void get_params_str(const void *val, uint32_t val_sz,
+			   char *params_str, size_t params_str_sz)
 {
-	static char params_str[MAX_PARAMS_STR_BUFFER_SIZE + 16];
 	const int32_t *param_val = (const int32_t *)val;
 	const uint32_t param_sz = val_sz >> 2;
 	uint32_t offset = 0;
 
-	for (uint32_t i = 0; i < param_sz && offset < MAX_PARAMS_STR_BUFFER_SIZE; i++) {
+	if (params_str_sz == 0)
+		return;
+	params_str[0] = '\0';
+
+	/* Assume each value is an int32_t with maximum 16 characters when converted to string */
+	for (uint32_t i = 0; i < param_sz && offset + 16 < params_str_sz; i++) {
 		offset += itostr(param_val[i], params_str + offset);
 		params_str[offset] = ',';
 		offset++;
 		params_str[offset] = '\0';
 	}
-	return &params_str[0];
 }
 
 static int sof_to_dax_frame_fmt(enum sof_ipc_frame sof_frame_fmt)
@@ -445,8 +448,10 @@ static int dax_set_param_wrapper(struct processing_module *mod,
 		break;
 	default:
 		ret = dax_set_param(id, (void *)(value), size, dax_ctx);
+		get_params_str(value, size, adapter_data->params_str,
+			       sizeof(adapter_data->params_str));
 		comp_info(dev, "dax_set_param: ret %d, id %#x, size %u, value %s",
-			  ret, id, size >> 2, get_params_str(value, size));
+			  ret, id, size >> 2, adapter_data->params_str);
 		break;
 	}
 

@@ -13,6 +13,7 @@
 
 #define DAX_USER_ID_INVALID 0
 #define DAX_MAX_INSTANCE 2
+#define DAX_PARAMS_STR_BUFFER_SIZE 1536
 
 enum dax_user_priority {
 	DAX_USER_PRIORITY_DEFAULT = 0,
@@ -27,6 +28,7 @@ struct dax_adapter_data {
 	int32_t priority;
 	struct dax_buffer cache_tuning_buf;
 	struct k_spinlock lock;
+	char params_str[DAX_PARAMS_STR_BUFFER_SIZE];
 };
 
 /**
