@@ -18,7 +18,7 @@
 /**
  * \file include/ipc4/notification.h
  * \brief IPC4 asynchronous notifications, GLITCH reports, and FW ready events.
- * \ingroup ipc4_api
+ * \ingroup ipc4_notification_api
  */
 
 #ifndef __IPC4_NOTIFICATION_H__
@@ -29,121 +29,101 @@
 #include <sof/ipc/msg.h>
 #include <sof/compiler_attributes.h>
 
-/* ipc4 notification msg */
+/**
+ * \brief Unsolicited DSP-to-host asynchronous notification types.
+ * \ingroup ipc4_notification_api
+ */
 enum sof_ipc4_notification_type {
-	SOF_IPC4_NOTIFY_PHRASE_DETECTED		= 4,
-	SOF_IPC4_NOTIFY_RESOURCE_EVENT		= 5,
-	SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS	= 6,
-	SOF_IPC4_NOTIFY_TIMESTAMP_CAPTURED	= 7,
-	SOF_IPC4_NOTIFY_FW_READY		= 8,
-	SOF_IPC4_FW_AUD_CLASS_RESULT		= 9,
-	SOF_IPC4_EXCEPTION_CAUGHT		= 10,
-	SOF_IPC4_MODULE_NOTIFICATION		= 12,
-	SOF_IPC4_UAOL_EVENT			= 13,
-	SOF_IPC4_PROBE_DATA_AVAILABLE		= 14,
-	SOF_IPC4_WATCHDOG_TIMEOUT		= 15,
-	SOF_IPC4_MANAGEMENT_SERVICE		= 16,
+	SOF_IPC4_NOTIFY_PHRASE_DETECTED		= 4,  /**< Key phrase detected by wake-on-voice engine. */
+	SOF_IPC4_NOTIFY_RESOURCE_EVENT		= 5,  /**< Resource event (underrun, overrun, budget violation). */
+	SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS	= 6,  /**< Trace log buffer half-full or aging timer expired. */
+	SOF_IPC4_NOTIFY_TIMESTAMP_CAPTURED	= 7,  /**< Audio wallclock timestamp captured. */
+	SOF_IPC4_NOTIFY_FW_READY		= 8,  /**< Firmware initialization complete and ready for IPC. */
+	SOF_IPC4_FW_AUD_CLASS_RESULT		= 9,  /**< Audio classifier / acoustic event result. */
+	SOF_IPC4_EXCEPTION_CAUGHT		= 10, /**< Critical DSP exception or panic caught. */
+	SOF_IPC4_MODULE_NOTIFICATION		= 12, /**< Generic module-specific event notification. */
+	SOF_IPC4_UAOL_EVENT			= 13, /**< USB Audio Offload event notification. */
+	SOF_IPC4_PROBE_DATA_AVAILABLE		= 14, /**< Probe extraction buffer contains recorded audio. */
+	SOF_IPC4_WATCHDOG_TIMEOUT		= 15, /**< Watchdog timer timeout interrupt on DSP core. */
+	SOF_IPC4_MANAGEMENT_SERVICE		= 16, /**< System management service event notification. */
 };
 
 /**
- * \brief Resource Event Notification provides unified structure for events that may be raised by
- * identifiable entity from inside the FW.
+ * \brief Specific resource event types reported by identifiable FW entities.
+ * \ingroup ipc4_notification_api
  */
 enum sof_ipc4_resource_event_type {
-	/* MCPS budget for the module exceeded */
-	SOF_IPC4_BUDGET_VIOLATION		= 0,
-	/* Underrun detected by the Mixer */
-	SOF_IPC4_MIXER_UNDERRUN_DETECTED	= 1,
-	/* Stream data segment completed by the gateway */
-	SOF_IPC4_STREAM_DATA_SEGMENT		= 2,
-	/* Error caught during data processing */
-	SOF_IPC4_PROCESS_DATA_ERROR		= 3,
-	/* Stack overflow in a module instance */
-	SOF_IPC4_STACK_OVERFLOW			= 4,
-	/* KPB changed buffering mode */
-	SOF_IPC4_BUFFERING_MODE_CHANGED		= 5,
-	/* Underrun detected by gateway. */
-	SOF_IPC4_GATEWAY_UNDERRUN_DETECTED	= 6,
-	/* Overrun detected by gateway */
-	SOF_IPC4_GATEWAY_OVERRUN_DETECTED	= 7,
-	/* DP task missing the deadline */
-	SOF_IPC4_EDF_DOMAIN_UNSTABLE		= 8,
-	/* Watchdog notification */
-	SOF_IPC4_WATCHDOG_EVENT			= 9,
-	/* IPC gateway reached high threshold */
-	SOF_IPC4_GATEWAY_HIGH_THRES		= 10,
-	/* IPC gateway reached low threshold */
-	SOF_IPC4_GATEWAY_LOW_THRES		= 11,
-	/* Bit Count Error detected on I2S port */
-	SOF_IPC4_I2S_BCE_DETECTED		= 12,
-	/* Clock detected/loss on I2S port */
-	SOF_IPC4_I2S_CLK_STATE_CHANGED		= 13,
-	/* I2S Sink started/stopped dropping data in non-blk mode */
-	SOF_IPC4_I2S_SINK_MODE_CHANGED		= 14,
-	/* I2S Source started/stopped generating 0's in non-blk mode */
-	SOF_IPC4_I2S_SOURCE_MODE_CHANGED	= 15,
-	/* Frequency drift exceeded limit in SRE */
-	SOF_IPC4_SRE_DRIFT_TOO_HIGH		= 16,
-	/* The notification should be sent only once after exceeding threshold or aging timer. */
-	SOF_IPC4_TELEMETRY_DATA_STATUS		= 17,
-	/* SNDW debug notification e.g. external VAD detected */
-	SOF_IPC4_SNDW_DEBUG_INFO		= 18,
-	/* Invalid type */
-	SOF_IPC4_INVALID_RESOURCE_EVENT_TYPE	= 19,
+	SOF_IPC4_BUDGET_VIOLATION		= 0,  /**< MCPS budget for module or core exceeded. */
+	SOF_IPC4_MIXER_UNDERRUN_DETECTED	= 1,  /**< Underrun detected by mixer/mixin component. */
+	SOF_IPC4_STREAM_DATA_SEGMENT		= 2,  /**< Stream data segment completed by gateway. */
+	SOF_IPC4_PROCESS_DATA_ERROR		= 3,  /**< Error caught during audio processing. */
+	SOF_IPC4_STACK_OVERFLOW			= 4,  /**< Stack overflow detected in module or thread. */
+	SOF_IPC4_BUFFERING_MODE_CHANGED		= 5,  /**< Key Phrase Buffer (KPB) buffering mode changed. */
+	SOF_IPC4_GATEWAY_UNDERRUN_DETECTED	= 6,  /**< Underrun detected at peripheral DMA gateway. */
+	SOF_IPC4_GATEWAY_OVERRUN_DETECTED	= 7,  /**< Overrun detected at peripheral DMA gateway. */
+	SOF_IPC4_EDF_DOMAIN_UNSTABLE		= 8,  /**< Data-processing EDF task missed its deadline. */
+	SOF_IPC4_WATCHDOG_EVENT			= 9,  /**< Watchdog expiration event. */
+	SOF_IPC4_GATEWAY_HIGH_THRES		= 10, /**< IPC gateway reached high watermark threshold. */
+	SOF_IPC4_GATEWAY_LOW_THRES		= 11, /**< IPC gateway reached low watermark threshold. */
+	SOF_IPC4_I2S_BCE_DETECTED		= 12, /**< Bit Count Error detected on I2S/SSP port. */
+	SOF_IPC4_I2S_CLK_STATE_CHANGED		= 13, /**< Clock state change (detected/lost) on I2S port. */
+	SOF_IPC4_I2S_SINK_MODE_CHANGED		= 14, /**< I2S sink mode change (started/stopped dropping). */
+	SOF_IPC4_I2S_SOURCE_MODE_CHANGED	= 15, /**< I2S source mode change (started/stopped zero-fill). */
+	SOF_IPC4_SRE_DRIFT_TOO_HIGH		= 16, /**< Sample Rate Estimator frequency drift exceeded limit. */
+	SOF_IPC4_TELEMETRY_DATA_STATUS		= 17, /**< Telemetry buffer exceeded threshold or aged. */
+	SOF_IPC4_SNDW_DEBUG_INFO		= 18, /**< SoundWire debug notification (e.g. external VAD). */
+	SOF_IPC4_INVALID_RESOURCE_EVENT_TYPE	= 19, /**< Invalid resource event sentinel. */
 };
 
-/* Resource Type - source of the event */
+/**
+ * \brief Originator resource category firing a resource event.
+ * \ingroup ipc4_notification_api
+ */
 enum sof_ipc4_resource_type {
-	/* Module instance */
-	SOF_IPC4_MODULE_INSTANCE		= 0,
-	/* Pipeline */
-	SOF_IPC4_PIPELINE			= 1,
-	/* Gateway */
-	SOF_IPC4_GATEWAY			= 2,
-	/* EDF Task*/
-	SOF_IPC4_EDF_TASK			= 3,
-	/* Invalid type */
-	SOF_IPC4_INVALID_RESOURCE_TYPE		= 4,
+	SOF_IPC4_MODULE_INSTANCE		= 0, /**< Event originated from a module instance. */
+	SOF_IPC4_PIPELINE			= 1, /**< Event originated from a pipeline. */
+	SOF_IPC4_GATEWAY			= 2, /**< Event originated from a DMA gateway. */
+	SOF_IPC4_EDF_TASK			= 3, /**< Event originated from an EDF DP task. */
+	SOF_IPC4_INVALID_RESOURCE_TYPE		= 4, /**< Invalid resource type sentinel. */
 };
 
+/** \brief Global notification direction bitmask. */
 #define SOF_IPC4_GLB_NOTIFY_DIR_MASK		BIT(29)
+/** \brief Reply status mask in primary register. */
 #define SOF_IPC4_REPLY_STATUS_MASK		0xFFFFFF
+/** \brief Bit shift for notification type in primary register. */
 #define SOF_IPC4_GLB_NOTIFY_TYPE_SHIFT		16
+/** \brief Bit shift for message type in primary register. */
 #define SOF_IPC4_GLB_NOTIFY_MSG_TYPE_SHIFT	24
 
+/** \brief Pre-computed header word for FW_READY notification. */
 #define SOF_IPC4_FW_READY \
 		(((SOF_IPC4_NOTIFY_FW_READY) << (SOF_IPC4_GLB_NOTIFY_TYPE_SHIFT)) |\
 		((SOF_IPC4_GLB_NOTIFICATION) << (SOF_IPC4_GLB_NOTIFY_MSG_TYPE_SHIFT)))
 
+/** \brief FW_READY extension flag indicating dynamic libraries were restored. */
 #define SOF_IPC4_FW_READY_LIB_RESTORED		BIT(15)
 
+/** \brief Helper macro to construct notification primary header DWORD. */
 #define SOF_IPC4_NOTIF_HEADER(notif_type) \
 		((notif_type) << (SOF_IPC4_GLB_NOTIFY_TYPE_SHIFT) | \
 		((SOF_IPC4_GLB_NOTIFICATION) << (SOF_IPC4_GLB_NOTIFY_MSG_TYPE_SHIFT)))
 
 /**
- * \brief IPC MAJOR 4 notification header. All IPC4 notifications use this header.
+ * \brief Standard 32-bit IPC4 notification primary header word.
+ * \ingroup ipc4_notification_api
  */
 union ipc4_notification_header {
-	uint32_t dat;
+	uint32_t dat; /**< Raw 32-bit register value. */
 
 	struct {
-		uint32_t rsvd0 : 16;
-
-		/**< Notification::MODULE_EVENT */
-		uint32_t notif_type : 8;
-
-		/**< One of Global::Type */
-		uint32_t type : 5;
-
-		/**< Msg::MSG_REQUEST */
-		uint32_t rsp : 1;
-
-		/**< Msg::FW_GEN_MSG */
-		uint32_t msg_tgt : 1;
-
-		uint32_t _reserved_0 : 1;
-	} r;
+		uint32_t rsvd0 : 16;       /**< Reserved bits. */
+		uint32_t notif_type : 8;   /**< Notification type (enum sof_ipc4_notification_type). */
+		uint32_t type : 5;         /**< Opcode: SOF_IPC4_GLB_NOTIFICATION (23). */
+		uint32_t rsp : 1;          /**< Message direction: 0 for request/notification. */
+		uint32_t msg_tgt : 1;      /**< Message target: 0 for global message. */
+		uint32_t _reserved_0 : 1;  /**< Reserved bit. */
+	} r; /**< Bitfield layout. */
 } __packed __aligned(4);
 
 /**
@@ -163,58 +143,61 @@ struct ipc4_voice_cmd_notification {
 			/**< Msg::MSG_NOTIFICATION */
 			uint32_t rsp : 1;
 			/**< Msg::FW_GEN_MSG */
-			uint32_t msg_tgt : 1;
-			uint32_t _reserved_0 : 1;
-		} r;
-	} primary;
+			uint32_t msg_tgt : 1;      /**< Message target: 0 for global message. */
+			uint32_t _reserved_0 : 1;  /**< Reserved bit. */
+		} r; /**< Primary bitfields. */
+	} primary; /**< Primary 32-bit register union. */
 
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit register value. */
 
 		struct {
-			/**< Final speaker verification score in range of 0..8192 */
-			uint32_t sv_score : 16;
-			uint32_t rsvd1 : 14;
-			uint32_t _reserved_2 : 2;
-		} r;
-	} extension;
+			uint32_t sv_score : 16;   /**< Final speaker verification score (0..8192). */
+			uint32_t rsvd1 : 14;      /**< Reserved bits. */
+			uint32_t _reserved_2 : 2; /**< Reserved bits. */
+		} r; /**< Extension bitfields. */
+	} extension; /**< Extension 32-bit register union. */
 } __packed __aligned(4);
 
 /**
- * \brief This notification is reported by the Base FW when DSP core receive WDT timeout interrupt.
+ * \brief Watchdog timeout notification structure (SOF_IPC4_WATCHDOG_TIMEOUT).
+ * \ingroup ipc4_notification_api
+ *
+ * Reported by Base FW when a DSP core encounters a watchdog timeout interrupt.
  */
 struct ipc4_watchdog_timeout_notification {
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit register value. */
 
 		struct {
-			/* ID of a core that timeouted. */
-			uint32_t core_id : 4;
-			/* Indicates that it was first timeout and crash dump was done */
-			uint32_t first_timeout : 1;
-			uint32_t rsvd : 11;
-			/* Notification::WATCHDOG_TIMEOUT */
-			uint32_t notif_type : 8;
-			/* Global::NOTIFICATION */
-			uint32_t type : 5;
-			/* Msg::MSG_NOTIFICATION (0) */
-			uint32_t rsp : 1;
-			/* Msg::FW_GEN_MSG */
-			uint32_t msg_tgt : 1;
-			uint32_t _hw_rsvd_0 : 1;
-		} r;
-	} primary;
+			uint32_t core_id : 4;       /**< ID of core that timed out. */
+			uint32_t first_timeout : 1; /**< 1 if initial timeout and crash dump was taken. */
+			uint32_t rsvd : 11;         /**< Reserved padding. */
+			uint32_t notif_type : 8;    /**< SOF_IPC4_WATCHDOG_TIMEOUT. */
+			uint32_t type : 5;          /**< SOF_IPC4_GLB_NOTIFICATION. */
+			uint32_t rsp : 1;           /**< 0 for notification. */
+			uint32_t msg_tgt : 1;       /**< 0 for global message. */
+			uint32_t _hw_rsvd_0 : 1;    /**< Hardware reserved bit. */
+		} r; /**< Primary bitfield layout. */
+	} primary; /**< Primary register value. */
 
 	union {
-		uint32_t dat;
+		uint32_t dat; /**< Raw 32-bit register value. */
 
 		struct {
-			uint32_t rsvd1 : 30;
-			uint32_t _hw_rsvd_2 : 2;
-		} r;
-	} extension;
+			uint32_t rsvd1 : 30;      /**< Reserved padding. */
+			uint32_t _hw_rsvd_2 : 2;  /**< Hardware reserved bits. */
+		} r; /**< Extension bitfield layout. */
+	} extension; /**< Extension register value. */
 } __packed __aligned(4);
 
+/**
+ * \brief Helper to initialize watchdog timeout notification structure.
+ * \ingroup ipc4_notification_api
+ * \param notif Pointer to watchdog timeout notification structure to initialize.
+ * \param core_id DSP core ID that timed out.
+ * \param first_timeout True if this is the first timeout event.
+ */
 static inline void ipc4_notification_watchdog_init(struct ipc4_watchdog_timeout_notification *notif,
 						   uint32_t core_id, bool first_timeout)
 {
@@ -234,78 +217,121 @@ static inline void ipc4_notification_watchdog_init(struct ipc4_watchdog_timeout_
 }
 
 /**
- * \brief This notification is sent by a shim of module instance on error raised by data processing
- * function.
- *
- * In case of 3rd party IP error_code is set to its native error code returned by the 3rd party
- * library.
+ * \brief Data payload for process data error event (SOF_IPC4_PROCESS_DATA_ERROR).
+ * \ingroup ipc4_notification_api
  */
 struct ipc4_process_data_error_event_data {
-	/* Error code returned by data processing function */
-	uint32_t error_code;
+	uint32_t error_code; /**< Native error code returned by processing function. */
 };
 
 /**
- * \brief This notification is sent by the mixer on stream underrun detection. The frequency of
- * sending this notification by Mixer depends on the MixIn settings.
+ * \brief Data payload for mixer underrun event (SOF_IPC4_MIXER_UNDERRUN_DETECTED).
+ * \ingroup ipc4_notification_api
  */
 struct ipc4_mixer_underrun_event_data {
-	/* Indicates EndOfStream */
-	uint32_t eos_flag;
-	/* Data processed by module (in bytes) */
-	uint32_t data_mixed;
-	/* Expected data to be processed (in bytes) */
-	uint32_t expected_data_mixed;
+	uint32_t eos_flag;             /**< End-Of-Stream flag (1 if EOS reached). */
+	uint32_t data_mixed;          /**< Bytes of data successfully mixed. */
+	uint32_t expected_data_mixed; /**< Expected bytes of data to be mixed. */
 };
 
 /**
- * \brief Input data payload is reserved field in parent technical spec which can be easily
- * extendable if needed by specific resource event types in the future. For backward compatibility
- * the size of this structure is 6 dw.
+ * \brief Polymorphic payload for generic resource event notification.
+ * \ingroup ipc4_notification_api
  */
 union ipc4_resource_event_data {
-	/* Raw data */
-	uint32_t dws[6];
-	/* Process Data Error Data (res type = MODULE_INSTANCE) */
-	struct ipc4_process_data_error_event_data process_data_error;
-	/* Mixer Underrun Detected Data (res type = PIPELINE) */
-	struct ipc4_mixer_underrun_event_data mixer_underrun;
+	uint32_t dws[6]; /**< Raw 6-DWORD data array for backwards compatibility. */
+	struct ipc4_process_data_error_event_data process_data_error; /**< Process error payload. */
+	struct ipc4_mixer_underrun_event_data mixer_underrun;         /**< Mixer underrun payload. */
 };
 
+/**
+ * \brief Full resource event notification structure sent in Mailbox Window 0.
+ * \ingroup ipc4_notification_api
+ */
 struct ipc4_resource_event_data_notification {
-	/* Type of originator (see sof_ipc4_resource_type) */
-	uint32_t resource_type;
-	/* ID of resource firing event */
-	uint32_t resource_id;
-	/* Type of fired event (see sof_ipc4_resource_event_type enum) */
-	uint32_t event_type;
-	/* Explicit alignment as ipc4_resource_event_data contains 64bit fields and needs
-	 * alignment
-	 */
-	uint32_t reserved0;
-	/* Detailed event data */
-	union ipc4_resource_event_data event_data;
+	uint32_t resource_type; /**< Source category (enum sof_ipc4_resource_type). */
+	uint32_t resource_id;   /**< Instance identifier of the firing entity. */
+	uint32_t event_type;    /**< Event type (enum sof_ipc4_resource_event_type). */
+	uint32_t reserved0;     /**< Explicit alignment padding for 64-bit alignment. */
+	union ipc4_resource_event_data event_data; /**< Event-specific data union. */
 } __packed __aligned(8);
 
+/** \brief Size in bytes of resource event notification data packet. */
 #define IPC4_RESOURCE_EVENT_SIZE	sizeof(struct ipc4_resource_event_data_notification)
 
+/**
+ * \brief Send process data error notification message to host.
+ * \ingroup ipc4_notification_api
+ * \param resource_id ID of module instance encountering error.
+ * \param error_code Module-specific error code.
+ */
 void send_process_data_error_notif_msg(uint32_t resource_id, uint32_t error_code);
 
+/**
+ * \brief Send Copier gateway xrun (underrun/overrun) notification to host.
+ * \ingroup ipc4_notification_api
+ * \param pipeline_id Target pipeline identifier.
+ * \param dir Stream direction (playback underrun or capture overrun).
+ * \return True if sent successfully, false otherwise.
+ */
 bool send_copier_gateway_xrun_notif_msg(uint32_t pipeline_id, enum sof_ipc_stream_direction dir);
+
+/**
+ * \brief Send DMA gateway xrun notification to host.
+ * \ingroup ipc4_notification_api
+ * \param resource_id Gateway connector node ID.
+ * \param dir Stream direction.
+ * \return True if sent successfully, false otherwise.
+ */
 bool send_gateway_xrun_notif_msg(uint32_t resource_id, enum sof_ipc_stream_direction dir);
 
+/**
+ * \brief Send mixer underrun notification message to host.
+ * \ingroup ipc4_notification_api
+ * \param resource_id Target mixer pipeline identifier.
+ * \param eos_flag End of stream flag.
+ * \param data_mixed Actual bytes mixed.
+ * \param expected_data_mixed Expected bytes mixed.
+ */
 void send_mixer_underrun_notif_msg(uint32_t resource_id, uint32_t eos_flag, uint32_t data_mixed,
 				   uint32_t expected_data_mixed);
+
+/**
+ * \brief Update host notification enable/disable bitmasks.
+ * \ingroup ipc4_notification_api
+ * \param ntfy_mask Bitmask of notifications to update.
+ * \param enabled_mask Target state (1 = enable, 0 = disable) for selected bits.
+ */
 void ipc4_update_notification_mask(uint32_t ntfy_mask, uint32_t enabled_mask);
 
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 
+/**
+ * \brief Send generic resource event notification.
+ * \ingroup ipc4_notification_api
+ * \param resource_id ID of originator resource.
+ * \param event_type Event type (enum sof_ipc4_resource_event_type).
+ * \param resource_type Resource category (enum sof_ipc4_resource_type).
+ * \param data Pointer to event payload.
+ * \param data_size Size of event payload in bytes.
+ * \return True on success, false on failure.
+ */
 __syscall bool send_resource_notif(uint32_t resource_id, uint32_t event_type,
 				   uint32_t resource_type, void *data, uint32_t data_size);
 #include <zephyr/syscalls/notification.h>
 
 #else
 
+/**
+ * \brief Implementation of send_resource_notif for non-Zephyr builds.
+ * \ingroup ipc4_notification_api
+ * \param resource_id ID of originator resource.
+ * \param event_type Event type (enum sof_ipc4_resource_event_type).
+ * \param resource_type Resource category (enum sof_ipc4_resource_type).
+ * \param data Pointer to event payload.
+ * \param data_size Size of event payload in bytes.
+ * \return True on success, false on failure.
+ */
 bool z_impl_send_resource_notif(uint32_t resource_id, uint32_t event_type,
 				uint32_t resource_type, void *data, uint32_t data_size);
 #define send_resource_notif z_impl_send_resource_notif
