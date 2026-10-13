@@ -82,7 +82,8 @@ static const uint32_t iir_emphasis_16k[20] = {
  *					and reset to zero after channel_count -1.
  * \param[in]		x		Input PCM sample
  */
-void tdfb_direction_copy_emphasis(struct tdfb_comp_data *cd, int ch_count, int *ch, int32_t x)
+void tdfb_direction_copy_emphasis(struct tdfb_comp_data *cd, unsigned int ch_count,
+				  unsigned int *ch, int32_t x)
 {
 	int32_t y;
 
@@ -175,16 +176,15 @@ static bool line_array_mode_check(struct tdfb_comp_data *cd)
 	return true;
 }
 
-int tdfb_direction_init(struct processing_module *mod, int32_t fs, int ch_count)
+int tdfb_direction_init(struct processing_module *mod, int32_t fs, unsigned int ch_count)
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	struct sof_eq_iir_header *filt;
 	int32_t *delay;
 	int32_t d_max;
 	int32_t t_max;
-	size_t size;
-	int n;
-	int i;
+	size_t size, n;
+	unsigned int i;
 
 	/* Select emphasis response per sample rate */
 	switch (fs) {
@@ -200,6 +200,10 @@ int tdfb_direction_init(struct processing_module *mod, int32_t fs, int ch_count)
 
 	/* Allocate delay lines for IIR filters and initialize them */
 	size = ch_count * iir_delay_size_df1(filt);
+	if (!size) {
+		comp_err(dev, "Invalid iir configuration");
+		return -EINVAL;
+	}
 	delay = mod_zalloc(mod, size);
 	if (!delay)
 		return -ENOMEM;
@@ -270,7 +274,8 @@ void tdfb_direction_free(struct processing_module *mod)
 }
 
 /* Measure level of one channel */
-static void level_update(struct tdfb_comp_data *cd, int frames, int ch_count, int channel)
+static void level_update(struct tdfb_comp_data *cd, size_t frames, unsigned int ch_count,
+			 unsigned int channel)
 {
 	int64_t tmp = 0;
 	int64_t ambient;
@@ -279,7 +284,7 @@ static void level_update(struct tdfb_comp_data *cd, int frames, int ch_count, in
 	int16_t *p = cd->direction.rp + channel;
 	int shift;
 	int thr;
-	int n;
+	size_t n;
 
 	/* Calculate mean square level */
 	for (n = 0; n < frames; n++) {
@@ -322,7 +327,7 @@ static int find_max_value_index(int32_t *v, int length)
 	return idx;
 }
 
-static void time_differences(struct tdfb_comp_data *cd, int frames, int ch_count)
+static void time_differences(struct tdfb_comp_data *cd, size_t frames, unsigned int ch_count)
 {
 	int64_t r;
 	int16_t *x;
@@ -331,14 +336,14 @@ static void time_differences(struct tdfb_comp_data *cd, int frames, int ch_count
 	int max_lag = cd->direction.max_lag;
 	int c;
 	int k;
-	int i;
+	size_t i;
 	int32_t maxval = 0;
 
 	/* Calculate xcorr for channel 0 vs. 1 .. (ch_count-1). Scan -maxlag .. +maxlag*/
 	for (c = 1; c < ch_count; c++) {
 		for (k = -max_lag; k <= max_lag; k++) {
 			y = cd->direction.rp; /* First channel */
-			x = y + k * ch_count + c; /* other channel C */
+			x = y + k * (int)ch_count + c; /* other channel C */
 			tdfb_cinc_s16(&x, cd->direction.d_end, cd->direction.d_size);
 			tdfb_cdec_s16(&x, cd->direction.d, cd->direction.d_size);
 			r = 0;
@@ -505,7 +510,7 @@ static void iterate_source_angle(struct tdfb_comp_data *cd)
 	cd->direction.az_slow = unwrap_radians(az_slow);
 }
 
-static void updates_when_no_trigger(struct tdfb_comp_data *cd, int frames, int ch_count)
+static void updates_when_no_trigger(struct tdfb_comp_data *cd, size_t frames, unsigned int ch_count)
 {
 	cd->direction.rp += frames * ch_count;
 	tdfb_cinc_s16(&cd->direction.rp, cd->direction.d_end, cd->direction.d_size);
@@ -533,7 +538,7 @@ static int convert_angle_to_enum(struct tdfb_comp_data *cd)
 }
 
 /* Placeholder function for sound direction estimate */
-void tdfb_direction_estimate(struct tdfb_comp_data *cd, int frames, int ch_count)
+void tdfb_direction_estimate(struct tdfb_comp_data *cd, size_t frames, unsigned int ch_count)
 {
 	int32_t time_since;
 	int new_az_value;
