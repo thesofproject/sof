@@ -49,11 +49,6 @@ void dax_buffer_release(struct processing_module *mod, struct dax_buffer *dax_bu
 int dax_buffer_alloc(struct processing_module *mod, struct dax_buffer *dax_buff, uint32_t bytes);
 
 /**
- * @brief Initialize global DAX instance manager state.
- */
-void dax_instance_manager_init(void);
-
-/**
  * @brief Register the current module as a DAX instance user.
  *
  * @param[in] mod Pointer to the processing module.
