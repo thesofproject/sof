@@ -36,7 +36,8 @@ SOF_DEFINE_REG_UUID(dp_sched);
 /* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);
 
-#define DP_LOCK_INIT(i, _)	Z_SEM_INITIALIZER(dp_lock[i], 1, 1)
+/* k_mutex, not k_sem: priority inheritance keeps a preempted DP holder from stalling LL */
+#define DP_LOCK_INIT(i, _)	Z_MUTEX_INITIALIZER(dp_lock[i])
 #define DP_LOCK_INIT_LIST	LISTIFY(CONFIG_MP_MAX_NUM_CPUS, DP_LOCK_INIT, (,))
 
 /* User threads don't need access to this array. Access is performed from
@@ -44,7 +45,7 @@ DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);
  * to be qualified as initialized by the gen_kobject_list.py script.
  */
 static
-STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_lock, CONFIG_MP_MAX_NUM_CPUS) = { DP_LOCK_INIT_LIST };
+STRUCT_SECTION_ITERABLE_ARRAY(k_mutex, dp_lock, CONFIG_MP_MAX_NUM_CPUS) = { DP_LOCK_INIT_LIST };
 
 /* Each per-core instance of DP scheduler has separate structures; hence, locks are per-core.
  *
@@ -52,13 +53,13 @@ STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_lock, CONFIG_MP_MAX_NUM_CPUS) = { DP_LOC
  */
 unsigned int scheduler_dp_lock(uint16_t core)
 {
-	k_sem_take(&dp_lock[core], K_FOREVER);
+	k_mutex_lock(&dp_lock[core], K_FOREVER);
 	return core;
 }
 
 void scheduler_dp_unlock(unsigned int key)
 {
-	k_sem_give(&dp_lock[key]);
+	k_mutex_unlock(&dp_lock[key]);
 }
 
 void scheduler_dp_grant(k_tid_t thread_id, uint16_t core)

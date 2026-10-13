@@ -109,7 +109,7 @@ __cold static inline unsigned char *ipc4_get_comp_new_data(void)
 
 	return (unsigned char *)MAILBOX_HOSTBOX_BASE;
 }
-#endif /* CONFIG_LIBRARY */
+#endif
 
 __cold static int ipc4_comp_new_config(struct comp_ipc_config *ipc_config,
 				       const struct ipc4_module_init_instance *module_init)
@@ -731,7 +731,7 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 		else \
 			irq_local_enable(flags); \
 	} while (0)
-#endif /* CONFIG_SOF_USERSPACE_LL */
+#endif
 
 /* Calling both ll_block() and ll_wait_finished_on_core() makes sure LL will not start its
  * next cycle and its current cycle on specified core has finished.
@@ -761,7 +761,7 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 	return 0;
 }
 
-#else /* CONFIG_CROSS_CORE_STREAM */
+#else
 
 #if CONFIG_SOF_USERSPACE_LL
 /* note: cross-core streams are disabled so src_core==dst_core */
@@ -780,7 +780,7 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 #define ll_unblock(src_core, dst_core, flags)	irq_local_enable(flags)
 #endif
 
-#endif /* CONFIG_CROSS_CORE_STREAM */
+#endif
 
 /* Only called from ipc4_bind_module_instance(), which is __cold */
 __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbind *bu)
@@ -813,24 +813,28 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 	struct mod_alloc_ctx *alloc;
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-	if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
-	    sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+	bool src_is_dp = source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP;
+	bool sink_is_dp = sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP;
+#ifdef CONFIG_DP_TO_DP_BIND
+	bool dp_to_dp = src_is_dp && sink_is_dp;
+#else
+	if (src_is_dp && sink_is_dp) {
 		tr_err(&ipc_tr, "DP to DP binding is not supported: can't bind %x to %x",
 		       src_id, sink_id);
 		return IPC4_INVALID_REQUEST;
 	}
-
+#endif
 	struct comp_dev *dp;
 
-	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+	if (sink_is_dp)
 		dp = sink;
-	else if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+	else if (src_is_dp)
 		dp = source;
 	else
 		dp = NULL;
 
 	alloc = dp && dp->mod ? dp->mod->priv.resources.alloc : NULL;
-#else /* CONFIG_ZEPHYR_DP_SCHEDULER */
+#else
 	alloc = NULL;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
@@ -897,8 +901,8 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 	 *
 	 *	size = 2*max(obs of source module, ibs of destination module)
 	 *	(obs and ibs is single buffer size)
-	 * in case of DP -> LL
-	 *	size = 2*ibs of destination (LL) module. DP queue will handle obs of DP module
+	 * in case of DP -> LL or DP -> DP
+	 *	size = 2*ibs of destination module. DP queue will handle obs of DP module
 	 */
 	if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
 		buf_size = MAX(ibs, obs) * 2;
@@ -933,12 +937,15 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	struct ring_buffer *ring_buffer = NULL;
 
-	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP ||
-	    source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+	if (src_is_dp || sink_is_dp) {
 		struct processing_module *srcmod = comp_mod(source);
-		struct module_data *src_module_data = &srcmod->priv;
+		struct module_data *src_module_data = srcmod ? &srcmod->priv : NULL;
 		struct processing_module *dstmod = comp_mod(sink);
-		struct module_data *dst_module_data = &dstmod->priv;
+		struct module_data *dst_module_data = dstmod ? &dstmod->priv : NULL;
+		uint32_t dst_in_buff_size = dst_module_data ? dst_module_data->mpd.in_buff_size : 0;
+		uint32_t src_out_buff_size = src_module_data ? src_module_data->mpd.out_buff_size : 0;
+		bool is_shared = audio_buffer_is_shared(&buffer->audio_buffer);
+		uint32_t buf_id = buf_get_id(buffer);
 
 		/*
 		 * Handle cases where the size of the ring buffer depends on the
@@ -948,18 +955,42 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 		 * is only for the ring buffer. The size of intermediate buffer created above is
 		 * unchanged.
 		 */
-		ring_buffer = ring_buffer_create(dp, MAX(ibs, dst_module_data->mpd.in_buff_size),
-						 MAX(obs, src_module_data->mpd.out_buff_size),
-						 audio_buffer_is_shared(&buffer->audio_buffer),
-						 buf_get_id(buffer));
+		ring_buffer = ring_buffer_create(dp, MAX(ibs, dst_in_buff_size),
+						 MAX(obs, src_out_buff_size),
+						 is_shared, buf_id);
 		if (!ring_buffer) {
 			buffer_free(buffer);
 			return IPC4_OUT_OF_MEMORY;
 		}
 
-		/* data destination module needs to use ring_buffer */
-		audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, dp == source,
-						     &ring_buffer->audio_buffer);
+#ifdef CONFIG_DP_TO_DP_BIND
+		/*
+		 * When CONFIG_DP_TO_DP_BIND is enabled, keep the DP module vregion
+		 * alive for the lifetime of this ring_buffer (dropped in ring_buffer_free()).
+		 */
+		if (ring_buffer->audio_buffer.alloc)
+			vregion_get(ring_buffer->audio_buffer.alloc->vreg);
+#endif
+
+#ifdef CONFIG_DP_TO_DP_BIND
+		if (dp_to_dp) {
+			/*
+			 * DP-to-DP binding: both source and sink are DP modules.
+			 * A single shared ring_buffer is attached on both sides
+			 * of the comp_buffer, so source DP writes directly to it
+			 * and sink DP reads directly from it without copying.
+			 */
+			audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, true,
+							     &ring_buffer->audio_buffer);
+			audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, false,
+							     &ring_buffer->audio_buffer);
+		} else
+#endif
+		{
+			/* data destination module needs to use ring_buffer */
+			audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, dp == source,
+							     &ring_buffer->audio_buffer);
+		}
 	}
 
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
@@ -1129,7 +1160,7 @@ __cold int ipc4_comp_disconnect(struct ipc *ipc, const struct ipc4_module_bind_u
 		tr_err(&ipc_tr, "Cross-core binding is disabled");
 		ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
 		return IPC4_FAILURE;
-#endif /* CONFIG_CROSS_CORE_STREAM */
+#endif
 	}
 
 	pipeline_disconnect(src, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
@@ -1222,7 +1253,7 @@ __cold int ipc4_chain_dma_state(struct comp_dev *dev, const struct ipc4_chain_dm
 	}
 	return ret;
 }
-#endif /* CONFIG_COMP_CHAIN_DMA */
+#endif
 
 __cold static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
 {
@@ -1321,7 +1352,7 @@ __cold static const struct comp_driver *ipc4_search_for_drv(const void *uuid)
 		info = container_of(clist, struct comp_driver_info, list);
 		if (!memcmp(info->drv->uid, uuid, UUID_SIZE)) {
 			tr_dbg(&comp_tr, "found type %d, uuid %pU",
-			       info->drv->type, SOF_DRV_UID_NAME(info->drv));
+			       info->drv->type, info->drv->tctx->uuid_p);
 			drv = info->drv;
 			break;
 		}
@@ -1407,7 +1438,7 @@ static const struct comp_driver *ipc4_get_fuzzer_drv(uint32_t module_id)
 	       module_id, idx);
 	return NULL;
 }
-#endif /* defined(CONFIG_ARCH_POSIX_LIBFUZZER) && !defined(RIMAGE_MANIFEST) */
+#endif
 
 /*
  * Called from

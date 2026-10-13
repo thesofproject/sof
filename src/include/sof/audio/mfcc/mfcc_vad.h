@@ -29,9 +29,9 @@ struct processing_module;
 #define MFCC_VAD_NOISE_INIT_FRAMES	100
 
 /**
- * \brief Slow noise floor rise coefficient in Q1.15 (0.003 * 2^15).
+ * \brief Slow noise floor rise coefficient in Q1.15 (0.001 * 2^15, tau ~10 s).
  */
-#define MFCC_VAD_NOISE_RISE_ALPHA	98
+#define MFCC_VAD_NOISE_RISE_ALPHA	33
 
 /**
  * \brief Fast noise floor rise coefficient in Q1.15 (0.020 * 2^15).
@@ -39,9 +39,9 @@ struct processing_module;
 #define MFCC_VAD_NOISE_RISE_ALPHA_FAST	655
 
 /**
- * \brief Energy threshold for speech detection in Q9.23 (0.30 * 2^23).
+ * \brief Energy threshold for speech detection in Q9.23 (0.20 * 2^23).
  */
-#define MFCC_VAD_ENERGY_THRESHOLD	2516582
+#define MFCC_VAD_ENERGY_THRESHOLD	1677722
 
 /**
  * \brief Hangover frame count to keep VAD active after last speech detection.

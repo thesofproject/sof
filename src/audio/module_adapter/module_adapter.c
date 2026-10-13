@@ -418,12 +418,21 @@ static void module_adapter_calculate_dp_period(struct comp_dev *dev)
 	unsigned int period = UINT32_MAX;
 
 	for (int i = 0; i < mod->num_of_sinks; i++) {
+		unsigned int frame_bytes = sink_get_frame_bytes(mod->sinks[i]);
+		unsigned int rate = sink_get_rate(mod->sinks[i]);
+
+		/* Skip sinks that don't produce audio data (e.g. phrase detect
+		 * modules emit events, no rate/frame bytes) to avoid divide by
+		 * zero. The module is expected to set dev->period itself.
+		 */
+		if (!frame_bytes || !rate)
+			continue;
+
 		/* calculate time required the module to provide OBS data portion - a period
 		 * use 64bit integers to avoid overflows
 		 */
 		unsigned int sink_period = 1000000ULL * sink_get_min_free_space(mod->sinks[i]) /
-					   (sink_get_frame_bytes(mod->sinks[i]) *
-					   sink_get_rate(mod->sinks[i]));
+					   (frame_bytes * rate);
 		/* note the minimal period for the module */
 		if (period > sink_period)
 			period = sink_period;
@@ -492,6 +501,12 @@ int module_adapter_prepare(struct comp_dev *dev)
 	 * Second example is a module with variable data rate on output (like MPEG encoder)
 	 */
 	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		/* legacy comp_driver consumers don't set their input buffer params at bind */
+		comp_dev_for_each_consumer(dev, sink) {
+			if (!audio_stream_get_rate(&sink->stream) && mod->stream_params)
+				buffer_set_params(sink, mod->stream_params, BUFFER_UPDATE_FORCE);
+		}
+
 		/* calculate DP period if a module didn't */
 		if (!dev->period)
 			module_adapter_calculate_dp_period(dev);
@@ -537,13 +552,15 @@ int module_adapter_prepare(struct comp_dev *dev)
 	 * Hence check for NULL.
 	 */
 	sink = comp_dev_get_first_data_consumer(dev);
-	if (!sink) {
+	if (!sink && !list_is_empty(&dev->bsink_list) && mod->max_sinks) {
 		comp_err(dev, "no sink present on period size calculation");
 		return -EINVAL;
 	}
 
-	mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
-	comp_dbg(dev, "got period_bytes = %u", mod->period_bytes);
+	if (sink) {
+		mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
+		comp_dbg(dev, "got period_bytes = %u", mod->period_bytes);
+	}
 
 	/* no more to do for sink/source mode */
 	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
@@ -1228,7 +1245,7 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 		/* input - we need to copy data from audio_stream (as source)
 		 * to ring_buffer (as sink)
 		 */
-		err = audio_buffer_sync_secondary_buffer(&buffer->audio_buffer, UINT_MAX);
+		err = audio_buffer_sync_secondary_buffer(&buffer->audio_buffer, SIZE_MAX);
 
 		if (err) {
 			comp_err(dev, "LL to DP copy error status: %d", err);
