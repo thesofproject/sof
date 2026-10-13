@@ -82,6 +82,10 @@ static int vpages_alloc_and_map(unsigned int pages, void **ptr)
 	if (!ptr)
 		return -EINVAL;
 
+	/* the virtual region is missing if init found no space for it */
+	if (!vpage_ctx.virtual_region)
+		return -ENODEV;
+
 	if (!pages) {
 		*ptr = NULL;
 		return 0;
@@ -175,6 +179,9 @@ static int vpages_free_and_unmap(uintptr_t *ptr)
 	unsigned int pages = 0;
 	int ret;
 
+	if (!vpage_ctx.virtual_region)
+		return -ENODEV;
+
 	/* check for valid ptr which must be page aligned */
 	CHECKIF(!IS_ALIGNED(ptr, CONFIG_MM_DRV_PAGE_SIZE)) {
 		LOG_ERR("error: invalid non aligned page pointer %p", ptr);
@@ -219,12 +226,15 @@ static int vpages_free_and_unmap(uintptr_t *ptr)
 		return ret;
 	}
 
-	/* move the last element over the released one, clear the last element */
+	/*
+	 * Keep the elements dense: move the last in-use element (num_elems_in_use - 1)
+	 * over the released one and clear the last slot.
+	 */
+	vpage_ctx.num_elems_in_use--;
 	if (vpage_ctx.num_elems_in_use != elem_idx)
 		vpage_ctx.velems[elem_idx] = vpage_ctx.velems[vpage_ctx.num_elems_in_use];
 	vpage_ctx.velems[vpage_ctx.num_elems_in_use].pages = 0;
 	vpage_ctx.velems[vpage_ctx.num_elems_in_use].vpage = 0;
-	vpage_ctx.num_elems_in_use--;
 
 	/* success update the free pages */
 	vpage_ctx.free_pages += pages;
@@ -269,18 +279,32 @@ static int vpage_init(void)
 	int ret;
 
 	/* create the virtual memory region and add it to the system */
-	size_t remaining_ram = L2_SRAM_BASE + L2_SRAM_SIZE -
-		(adsp_mm_get_unused_l2_start_aligned() +
-		 CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE +
-		 CONFIG_LIBRARY_REGION_SIZE);
+	uintptr_t l2_end = L2_SRAM_BASE + L2_SRAM_SIZE;
+	uintptr_t reserved_end = adsp_mm_get_unused_l2_start_aligned() +
+		CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE + CONFIG_LIBRARY_REGION_SIZE;
+	size_t remaining_ram;
+
+	k_mutex_init(&vpage_ctx.lock);
+
+	/*
+	 * The image, virtual heap and library regions may not leave any L2 for
+	 * vpages, e.g. on platforms with a small L2. Never let this underflow
+	 * into a bogus multi-GB region that wraps the address space and makes
+	 * every vpage_alloc() fail. Leave vpages disabled instead.
+	 */
+	if (reserved_end + CONFIG_MM_DRV_PAGE_SIZE > l2_end) {
+		LOG_ERR("error: no L2 left for vpages, reserved end %#lx L2 end %#lx",
+			(unsigned long)reserved_end, (unsigned long)l2_end);
+		return -ENOMEM;
+	}
+
+	remaining_ram = l2_end - reserved_end;
 
 	ret = adsp_add_virtual_memory_region(adsp_mm_get_unused_l2_start_aligned() +
 					     CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE,
 					     remaining_ram, VIRTUAL_REGION_VPAGES_ATTR);
 	if (ret)
 		return ret;
-
-	k_mutex_init(&vpage_ctx.lock);
 
 	/* now find the virtual region in all memory regions */
 	virtual_memory_regions = sys_mm_drv_query_memory_regions();
