@@ -9,7 +9,7 @@
 
 #include "mixin_mixout.h"
 
-#if SOF_USE_HIFI(NONE, MIXIN_MIXOUT)
+#if SOF_USE_HIFI(NONE, MIXIN_MIXOUT) && !SOF_USE_ARM_SIMD(MIXIN_MIXOUT)
 
 #if CONFIG_FORMAT_S16LE
 static void mix_s16(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixed_samples,
