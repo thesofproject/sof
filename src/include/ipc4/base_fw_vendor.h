@@ -8,6 +8,7 @@
 /**
  * \file ipc4/base_fw_vendor.h
  * \brief Platform specific IPC4 base firmware functionality.
+ * \ingroup ipc4_base_fw_api
  */
 
 #ifndef __SOF_IPC4_BASE_FW_VENDOR_H__
@@ -28,8 +29,9 @@ struct comp_dev;
 /**
  * \brief Vendor specific routine to add data tuples to FW_CONFIG
  * structure sent to host via IPC.
- * \param[out] data_offset data offset after tuples added
- * \param[in] data pointer where to add new entries
+ * \ingroup ipc4_base_fw_api
+ * \param[out] data_offset Data offset after tuples added.
+ * \param[in,out] data Pointer to destination buffer where to add new entries.
  * \return 0 if successful, error code otherwise.
  */
 int basefw_vendor_fw_config(uint32_t *data_offset, char *data);
@@ -37,32 +39,42 @@ int basefw_vendor_fw_config(uint32_t *data_offset, char *data);
 /**
  * \brief Vendor specific routine to add data tuples to HW_CONFIG
  * structure sent to host via IPC.
- * \param[out] data_offset data offset after tuples added
- * \param[in] data pointer where to add new entries
+ * \ingroup ipc4_base_fw_api
+ * \param[out] data_offset Data offset after tuples added.
+ * \param[in,out] data Pointer to destination buffer where to add new entries.
  * \return 0 if successful, error code otherwise.
  */
 int basefw_vendor_hw_config(uint32_t *data_offset, char *data);
 
 /**
- * \brief Vendor specific routine which return the pointer to
+ * \brief Vendor specific routine which returns the pointer to
  * the boot base manifest.
- * \return pointer to struct if successful, null otherwise.
+ * \ingroup ipc4_base_fw_api
+ * \return Pointer to struct sof_man_fw_desc if successful, NULL otherwise.
  */
 struct sof_man_fw_desc *basefw_vendor_get_manifest(void);
 
 /**
  * \brief Vendor specific routine to get information about modules.
- * Function add information and sent to host via IPC.
- * \param[out] data_offset data offset after structure added
- * \param[in] data pointer where to add new entries
+ * Function adds module information sent to host via IPC.
+ * \ingroup ipc4_base_fw_api
+ * \param[out] data_offset Data offset after structure added.
+ * \param[in,out] data Pointer to destination buffer where to add new entries.
  * \return 0 if successful, error code otherwise.
  */
 int basefw_vendor_modules_info_get(uint32_t *data_offset, char *data);
 
 /**
- * \brief Implement vendor specific parameter for basefw module.
- * This function is called for parameters not handled by
- * generic base_fw code.
+ * \brief Implement vendor specific parameter retrieval for basefw module.
+ * This function is called for parameters not handled by generic base_fw code.
+ * \ingroup ipc4_base_fw_api
+ * \param[in] dev Pointer to base firmware component device.
+ * \param[in] param_id Parameter ID requested.
+ * \param[in] first_block True if this is the first block of large config.
+ * \param[in] last_block True if this is the last block of large config.
+ * \param[in,out] data_offset Offset into large configuration buffer.
+ * \param[out] data Buffer to receive parameter payload.
+ * \return 0 on success, negative error code on failure.
  */
 int basefw_vendor_get_large_config(struct comp_dev *dev,
 				   uint32_t param_id,
@@ -72,9 +84,16 @@ int basefw_vendor_get_large_config(struct comp_dev *dev,
 				   char *data);
 
 /**
- * \brief Implement vendor specific parameter for basefw module.
- * This function is called for parameters not handled by
- * generic base_fw code.
+ * \brief Implement vendor specific parameter configuration for basefw module.
+ * This function is called for parameters not handled by generic base_fw code.
+ * \ingroup ipc4_base_fw_api
+ * \param[in] dev Pointer to base firmware component device.
+ * \param[in] param_id Parameter ID configured.
+ * \param[in] first_block True if this is the first block of large config.
+ * \param[in] last_block True if this is the last block of large config.
+ * \param[in] data_offset Offset into large configuration buffer.
+ * \param[in] data Pointer to parameter payload.
+ * \return 0 on success, negative error code on failure.
  */
 int basefw_vendor_set_large_config(struct comp_dev *dev,
 				   uint32_t param_id,
@@ -84,12 +103,12 @@ int basefw_vendor_set_large_config(struct comp_dev *dev,
 				   const char *data);
 
 /**
- * @brief Vendor specific routine to configure DMA gateway.
- *
- * @param node_id The node ID of the DMA gateway to configure.
- * @param config_data pointer to the configuration data.
- * @param data_size Size of the configuration data.
- * @return 0 if successful, error code otherwise.
+ * \brief Vendor specific routine to configure DMA gateway.
+ * \ingroup ipc4_base_fw_api
+ * \param[in] node_id The node ID of the DMA gateway to configure.
+ * \param[in] config_data Pointer to the configuration data.
+ * \param[in] data_size Size of the configuration data in bytes.
+ * \return 0 if successful, error code otherwise.
  */
 int basefw_vendor_dma_control(uint32_t node_id,
 			      const char *config_data,
