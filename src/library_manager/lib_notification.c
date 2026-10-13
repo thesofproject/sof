@@ -27,6 +27,9 @@ struct ipc_msg *lib_notif_msg_init(uint32_t header, uint32_t size)
 	struct ext_library *ext_lib = ext_lib_get();
 	struct ipc_lib_msg *lib_notif = ext_lib->lib_notif_pool;
 
+	if (size > SRAM_OUTBOX_SIZE)
+		return NULL;
+
 	/* If list not empty search for free notification handle */
 	if (lib_notif && !list_is_empty(&lib_notif->list)) {
 		struct list_item *list_elem;
