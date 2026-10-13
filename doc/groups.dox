@@ -16,6 +16,54 @@
  */
 
 /**
+ * @defgroup ipc4_envelope_api IPC4 Message Envelope & Dispatch
+ * @ingroup ipc4_api
+ * @brief 64-bit mailbox message envelope formats, primary/extension registers, command target routing, reply status, and compound message barriers.
+ */
+
+/**
+ * @defgroup ipc4_base_fw_api IPC4 Base Firmware & Global Configuration
+ * @ingroup ipc4_api
+ * @brief Core 0 Base Firmware management, ADSP global properties, hardware capabilities, memory pools, power budget tables, and crash dump telemetry.
+ */
+
+/**
+ * @defgroup ipc4_pipeline_api IPC4 Pipeline Lifecycle & State Machine
+ * @ingroup ipc4_api
+ * @brief Pipeline creation, priority assignments, state machine transitions (RESET, PAUSED, RUNNING, EOS), multi-pipeline synchronization, and save/restore.
+ */
+
+/**
+ * @defgroup ipc4_module_api IPC4 Module Architecture & Dynamic Binding
+ * @ingroup ipc4_api
+ * @brief Module instantiation, dynamic queue/pin binding, small/large parameter configuration handshake, and module power transitions.
+ */
+
+/**
+ * @defgroup ipc4_format_api IPC4 Audio Formats & Pin Contracts
+ * @ingroup ipc4_api
+ * @brief Audio format specification bitfields, sampling rates, bit depths, channel configurations, and pin format descriptors.
+ */
+
+/**
+ * @defgroup ipc4_gateway_api IPC4 Hardware Audio Gateways
+ * @ingroup ipc4_api
+ * @brief Audio gateway addressing (HD-Audio host/link, SoundWire ALH aggregation, DMIC link, SSP/I2S), gateway attributes, and NHLT configuration blobs.
+ */
+
+/**
+ * @defgroup ipc4_notification_api IPC4 Asynchronous Notifications & Telemetry Registers
+ * @ingroup ipc4_api
+ * @brief Unsolicited DSP-to-host notifications, resource event reports, keyword detection events, watchdog alerts, and Mailbox Window 0 status registers.
+ */
+
+/**
+ * @defgroup ipc4_telemetry_probe_api IPC4 Telemetry, Logging & Audio Probes
+ * @ingroup ipc4_api
+ * @brief Host DMA trace logging control, audio probe injection and extraction data streams, and module-specific configuration payloads.
+ */
+
+/**
  * @defgroup ipc3_api IPC3 Host-DSP Protocol
  * @brief Legacy IPC3 protocol definitions, commands, and stream controls.
  */

@@ -44,17 +44,22 @@
  * </tr>
  * <tr>
  *   <td><b>Host-DSP IPC4 Protocol</b></td>
- *   <td>@ref ipc4_api</td>
  *   <td>
- *     - @ref src/include/ipc4/base_fw.h "ipc4/base_fw.h"<br/>
+ *     @ref ipc4_api<br/>
+ *     <small>(@ref ipc4_envelope_api, @ref ipc4_pipeline_api, @ref ipc4_module_api, @ref ipc4_format_api, @ref ipc4_gateway_api, @ref ipc4_base_fw_api, @ref ipc4_notification_api, @ref ipc4_telemetry_probe_api)</small>
+ *   </td>
+ *   <td>
  *     - @ref src/include/ipc4/header.h "ipc4/header.h"<br/>
- *     - @ref src/include/ipc4/gateway.h "ipc4/gateway.h"<br/>
  *     - @ref src/include/ipc4/pipeline.h "ipc4/pipeline.h"<br/>
+ *     - @ref src/include/ipc4/module.h "ipc4/module.h"<br/>
+ *     - @ref src/include/ipc4/gateway.h "ipc4/gateway.h"<br/>
+ *     - @ref src/include/ipc4/base_fw.h "ipc4/base_fw.h"<br/>
  *     - @ref src/include/ipc4/notification.h "ipc4/notification.h"
  *   </td>
  *   <td>
- *     Modern Intel/AMD IPC4 messaging protocol: base firmware configuration, gateway management,
- *     pipeline creation and state transitions, large parameter get/set, and asynchronous notifications.
+ *     Modern Intel/AMD IPC4 messaging protocol: 64-bit mailbox envelope, base firmware configuration,
+ *     dynamic module instantiation & binding, pipeline lifecycle state machines, hardware audio gateways,
+ *     large parameter get/set fragmentation handshake, and asynchronous event notifications.
  *   </td>
  * </tr>
  * <tr>

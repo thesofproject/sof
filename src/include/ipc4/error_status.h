@@ -14,15 +14,24 @@
 /**
  * \file include/ipc4/error_status.h
  * \brief IPC4 status codes, error codes, and IXC return values.
- * \ingroup ipc4_api
+ * \ingroup ipc4_envelope_api
  * NOTE: This ABI uses bit fields and is non portable.
  */
 
 #ifndef __SOF_IPC4_ERROR_STATUS_H__
 #define __SOF_IPC4_ERROR_STATUS_H__
 
+/**< Number of bits allocated for processing status in the Primary reply DWORD (24 bits). */
 #define IPC4_IXC_STATUS_BITS	24
 
+/**
+ * \brief IPC4 host-DSP status and error codes.
+ * \ingroup ipc4_envelope_api
+ *
+ * Returned in the lower 24 bits of the Primary reply DWORD (ipc4_message_reply::primary::r::status).
+ * Standard status codes are common across global and module commands, while values >= 100
+ * convey subsystem-specific failures (module management, probes, gateways, and clocking).
+ */
 enum ipc4_status {
 	/**< The operation was successful */
 	IPC4_SUCCESS = 0,
