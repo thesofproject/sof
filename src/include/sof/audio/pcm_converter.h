@@ -33,6 +33,8 @@ struct cir_buf_sink;
 #ifndef UNIT_TEST
 #if __XCC__ && XCHAL_HAVE_HIFI3 && CONFIG_FORMAT_CONVERT_HIFI3
 #define PCM_CONVERTER_HIFI3
+#elif defined(CONFIG_FORMAT_CONVERT_ARM_SIMD)
+#define PCM_CONVERTER_ARM_SIMD
 #else
 #define PCM_CONVERTER_GENERIC
 #endif
