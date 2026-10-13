@@ -14,7 +14,7 @@
 #include <sof/math/fir_config.h>
 #include <sof/common.h>
 
-#if SOF_USE_HIFI(NONE, FILTER)
+#if SOF_USE_HIFI(NONE, FILTER) || SOF_USE_ARM_SIMD(FILTER)
 #include <sof/math/fir_generic.h>
 #endif
 #if SOF_USE_HIFI(2, FILTER)
@@ -78,7 +78,7 @@ int eq_fir_params(struct processing_module *mod);
  * set_fir_func.
  */
 
-#if SOF_USE_MIN_HIFI(2, FILTER)
+#if SOF_USE_MIN_HIFI(2, FILTER) || SOF_USE_ARM_SIMD(FILTER)
 #if CONFIG_FORMAT_S16LE
 static inline void set_s16_fir(struct comp_data *cd)
 {
