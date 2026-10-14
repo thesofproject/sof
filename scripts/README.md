@@ -26,14 +26,6 @@ source ~/work/sof/.venv/bin/activate
 ./scripts/xtensa-build-zephyr.py -p ptl
 ```
 
-### Reproducible Output Builds (`test-repro-build.sh`)
-
-This script can be used to locally reproduce the exact build steps and environment of specific CI validation tests.
-
-```bash
-./scripts/test-repro-build.sh --help
-```
-
 ## Tools and Topologies
 
 Tooling and topology can be built together using one script. To build all topologies please run:
