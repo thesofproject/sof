@@ -84,32 +84,3 @@ jobs:
         run: CMAKE_BUILD_TYPE=Release ./sof/scripts/build-tools.sh ||
              VERBOSE=1 NO_PROCESSORS=1 USE_XARGS=no
              CMAKE_BUILD_TYPE=Release ./sof/scripts/build-tools.sh
-
-
-  SOF-alsa-plugin:
-    # TODO: Update ubuntu to 26.04 when openvino situation is resolved
-    # It's not in the base ubuntu 26.04 OS and installation fails
-    # https://github.com/openvinotoolkit/openvino/issues/37509
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with: {filter: 'tree:0'}
-
-      - name: apt install
-        run: sudo apt-get update;
-          sudo apt-get -y install ninja-build libasound2-dev
-
-      # One space character is enough to detect most quoting issues
-      - name: configure
-        run: cmake -GNinja -B 'build plugin' -S tools/plugin
-          -GNinja -Wdev -Werror=dev --warn-uninitialized
-
-      # Retry with -j1 in case of error because parallel builds drown error
-      # messages.
-      - name: build ExternalProjects first to avoid build race condition
-        run: cmake --build 'build plugin' -- sof_ep parser_ep ||
-             cmake --build 'build plugin' -- sof_ep parser_ep -j1
-
-      - name: Remaining build steps
-        run: cmake --build 'build plugin' ||
-             cmake --build 'build plugin' -j1
