@@ -105,83 +105,79 @@ endif()
 	return()
 endif()
 
-if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
-	if(CONFIG_CADENCE_CODEC)
-		add_local_sources(sof module/cadence.c)
+if(CONFIG_CADENCE_CODEC)
+	add_local_sources(sof module/cadence.c)
 
-		if(CONFIG_CADENCE_CODEC_WRAPPER)
-			sof_add_static_library(codec_wrapper_lib ${CONFIG_CADENCE_CODEC_WRAPPER_LIB})
-		endif()
-
-		if(CONFIG_CADENCE_CODEC_AAC_DEC)
-			sof_add_static_library(xa_aac_dec ${CONFIG_CADENCE_CODEC_AAC_DEC_LIB})
-		endif()
-
-		if(CONFIG_CADENCE_CODEC_BSAC_DEC)
-			sof_add_static_library(xa_bsac_dec ${CONFIG_CADENCE_CODEC_BSAC_DEC_LIB})
-		endif()
-
-		if(CONFIG_CADENCE_CODEC_DAB_DEC)
-			sof_add_static_library(xa_dab_dec ${CONFIG_CADENCE_CODEC_DAB_DEC_LIB})
-		endif()
-
-		if(CONFIG_CADENCE_CODEC_DRM_DEC)
-			sof_add_static_library(xa_drm_dec ${CONFIG_CADENCE_CODEC_DRM_DEC_LIB})
-		endif()
-
-		if(CONFIG_CADENCE_CODEC_MP3_DEC)
-			sof_add_static_library(xa_mp3_dec ${CONFIG_CADENCE_CODEC_MP3_DEC_LIB})
-		endif()
-
-		if(CONFIG_CADENCE_CODEC_MP3_ENC)
-			sof_add_static_library(xa_mp3_enc ${CONFIG_CADENCE_CODEC_MP3_ENC_LIB})
-		endif()
-
-		if(CONFIG_CADENCE_CODEC_SBC_DEC)
-			sof_add_static_library(xa_sbc_dec ${CONFIG_CADENCE_CODEC_SBC_DEC_LIB})
-		endif()
-
-		if(CONFIG_CADENCE_CODEC_VORBIS_DEC)
-			sof_add_static_library(xa_vorbis_dec ${CONFIG_CADENCE_CODEC_VORBIS_DEC_LIB})
-		endif()
-
-		if(CONFIG_CADENCE_CODEC_SRC_PP)
-			sof_add_static_library(xa_src_pp ${CONFIG_CADENCE_CODEC_SRC_PP_LIB})
-		endif()
-
+	if(CONFIG_CADENCE_CODEC_WRAPPER)
+		sof_add_static_library(codec_wrapper_lib ${CONFIG_CADENCE_CODEC_WRAPPER_LIB})
 	endif()
 
-	if(CONFIG_SOF_COMPRESS_CODEC_PCM_DEC)
-		add_subdirectory(module/compress_other)
+	if(CONFIG_CADENCE_CODEC_AAC_DEC)
+		sof_add_static_library(xa_aac_dec ${CONFIG_CADENCE_CODEC_AAC_DEC_LIB})
 	endif()
 
-	if(CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING)
-		target_include_directories(sof PRIVATE ${PROJECT_SOURCE_DIR}/third_party/include)
-		add_local_sources(sof module/dolby/dax.c)
-		add_local_sources(sof module/dolby/dax_instance_manager.c)
-		if (CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK)
-			add_local_sources(sof module/dolby/dax_mock.c)
-		else()
-			target_link_libraries(sof PRIVATE m)
-			target_link_libraries(sof PRIVATE c)
-			sof_add_static_library(dax_effect
-				${PROJECT_SOURCE_DIR}/third_party/lib/libdax.a)
-		endif()
+	if(CONFIG_CADENCE_CODEC_BSAC_DEC)
+		sof_add_static_library(xa_bsac_dec ${CONFIG_CADENCE_CODEC_BSAC_DEC_LIB})
 	endif()
 
-	if(CONFIG_PASSTHROUGH_CODEC)
-		add_local_sources(sof module/passthrough.c)
+	if(CONFIG_CADENCE_CODEC_DAB_DEC)
+		sof_add_static_library(xa_dab_dec ${CONFIG_CADENCE_CODEC_DAB_DEC_LIB})
 	endif()
 
-	if(CONFIG_WAVES_CODEC)
-		add_local_sources(sof module/waves/waves.c)
-		if (CONFIG_WAVES_CODEC_STUB)
-			add_local_sources(sof module/waves/maxx_stub.c)
-		else()
-			sof_add_static_library(MaxxChrome ${CMAKE_CURRENT_LIST_DIR}/lib/release/libMaxxChrome.a)
-		endif()
-	# folder with Waves API must be among include directories
+	if(CONFIG_CADENCE_CODEC_DRM_DEC)
+		sof_add_static_library(xa_drm_dec ${CONFIG_CADENCE_CODEC_DRM_DEC_LIB})
 	endif()
 
-	return()
+	if(CONFIG_CADENCE_CODEC_MP3_DEC)
+		sof_add_static_library(xa_mp3_dec ${CONFIG_CADENCE_CODEC_MP3_DEC_LIB})
+	endif()
+
+	if(CONFIG_CADENCE_CODEC_MP3_ENC)
+		sof_add_static_library(xa_mp3_enc ${CONFIG_CADENCE_CODEC_MP3_ENC_LIB})
+	endif()
+
+	if(CONFIG_CADENCE_CODEC_SBC_DEC)
+		sof_add_static_library(xa_sbc_dec ${CONFIG_CADENCE_CODEC_SBC_DEC_LIB})
+	endif()
+
+	if(CONFIG_CADENCE_CODEC_VORBIS_DEC)
+		sof_add_static_library(xa_vorbis_dec ${CONFIG_CADENCE_CODEC_VORBIS_DEC_LIB})
+	endif()
+
+	if(CONFIG_CADENCE_CODEC_SRC_PP)
+		sof_add_static_library(xa_src_pp ${CONFIG_CADENCE_CODEC_SRC_PP_LIB})
+	endif()
+
+endif()
+
+if(CONFIG_SOF_COMPRESS_CODEC_PCM_DEC)
+	add_subdirectory(module/compress_other)
+endif()
+
+if(CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING)
+	target_include_directories(sof PRIVATE ${PROJECT_SOURCE_DIR}/third_party/include)
+	add_local_sources(sof module/dolby/dax.c)
+	add_local_sources(sof module/dolby/dax_instance_manager.c)
+	if (CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK)
+		add_local_sources(sof module/dolby/dax_mock.c)
+	else()
+		target_link_libraries(sof PRIVATE m)
+		target_link_libraries(sof PRIVATE c)
+		sof_add_static_library(dax_effect
+			${PROJECT_SOURCE_DIR}/third_party/lib/libdax.a)
+	endif()
+endif()
+
+if(CONFIG_PASSTHROUGH_CODEC)
+	add_local_sources(sof module/passthrough.c)
+endif()
+
+if(CONFIG_WAVES_CODEC)
+	add_local_sources(sof module/waves/waves.c)
+	if (CONFIG_WAVES_CODEC_STUB)
+		add_local_sources(sof module/waves/maxx_stub.c)
+	else()
+		sof_add_static_library(MaxxChrome ${CMAKE_CURRENT_LIST_DIR}/lib/release/libMaxxChrome.a)
+	endif()
+# folder with Waves API must be among include directories
 endif()
