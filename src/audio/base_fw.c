@@ -114,6 +114,34 @@ static void get_codec_info(struct sof_tlv **tuple)
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_PCM, SOF_IPC_STREAM_PLAYBACK);
 #endif
+#ifdef CONFIG_FFMPEG_DEC_FLAC
+	/* FLAC decode is provided by the ffmpeg_dec (libavcodec) module. */
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_FLAC, SOF_IPC_STREAM_PLAYBACK);
+#endif
+#if defined(CONFIG_FFMPEG_DEC_AAC) && !defined(CONFIG_CADENCE_CODEC_AAC_DEC)
+	/* AAC-LC decode is provided by the ffmpeg_dec (libavcodec) module (guarded so
+	 * it is not advertised twice when the Cadence AAC decoder is also present).
+	 */
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_AAC, SOF_IPC_STREAM_PLAYBACK);
+#endif
+#if defined(CONFIG_FFMPEG_DEC_MP3) && !defined(CONFIG_CADENCE_CODEC_MP3_DEC)
+	/* MP3 decode is provided by the ffmpeg_dec (libavcodec) module (guarded so
+	 * it is not advertised twice when the Cadence MP3 decoder is also present).
+	 */
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_PLAYBACK);
+#endif
+#ifdef CONFIG_FFMPEG_DEC_OPUS
+	/* Opus decode is provided by the ffmpeg_dec (libavcodec) module.
+	 * Advertise OPUS_RAW and BESPOKE.
+	 */
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_OPUS_RAW, SOF_IPC_STREAM_PLAYBACK);
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_PLAYBACK);
+#endif
 
 	if (!codec_info.count)
 		return;
