@@ -81,7 +81,7 @@ struct drc_comp_data {
 	bool enabled;                       /**< control processing via blob and switch */
 	bool enable_switch;                 /**< enable switch state */
 	enum sof_ipc_frame source_format;   /**< source frame format */
-	int channels;                       /**< number of channels */
+	unsigned int channels;              /**< number of channels */
 	drc_func drc_func;                  /**< processing function */
 };
 
