@@ -28,7 +28,7 @@ main()
     local defconfig
 
     # First make sure all configurations build
-    for d in "$SOFTOP"/src/arch/xtensa/configs/*_defconfig; do
+    for d in "$SOFTOP"/test/cmocka/configs/*_defconfig; do
         defconfig=$(basename "$d")
         rebuild_config "$defconfig"
     done
