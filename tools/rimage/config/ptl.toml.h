@@ -90,6 +90,14 @@ index = __COUNTER__
 #include <audio/kpb.toml>
 #endif
 
+#if defined(CONFIG_COMP_WOV_ARBITER) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/wov_arbiter/wov_arbiter.toml>
+#endif
+
+#if defined(CONFIG_COMP_ECNS) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/ecns/ecns.toml>
+#endif
+
 #if defined(CONFIG_SAMPLE_SMART_AMP) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <samples/audio/smart_amp_test.toml>
 #endif
@@ -181,28 +189,12 @@ index = __COUNTER__
 #include <audio/phase_vocoder/phase_vocoder.toml>
 #endif
 
-#if defined(CONFIG_COMP_WEBRTC_HPF) || defined(LLEXT_FORCE_ALL_MODULAR)
-#include <audio/webrtc_hpf/webrtc_hpf.toml>
-#endif
-
-#if defined(CONFIG_COMP_WEBRTC_AGC) || defined(LLEXT_FORCE_ALL_MODULAR)
-#include <audio/webrtc_agc/webrtc_agc.toml>
-#endif
-
-#if defined(CONFIG_COMP_WEBRTC_NS) || defined(LLEXT_FORCE_ALL_MODULAR)
-#include <audio/webrtc_ns/webrtc_ns.toml>
-#endif
-
-#if defined(CONFIG_COMP_WEBRTC_NS2) || defined(LLEXT_FORCE_ALL_MODULAR)
-#include <audio/webrtc_ns2/webrtc_ns2.toml>
-#endif
-
-#if defined(CONFIG_COMP_WEBRTC_VAD) || defined(LLEXT_FORCE_ALL_MODULAR)
-#include <audio/webrtc_vad/webrtc_vad.toml>
-#endif
-
 #if defined(CONFIG_COMP_WEBRTC_AEC) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/webrtc_aec/webrtc_aec.toml>
+#endif
+
+#if defined(CONFIG_COMP_MWW) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/microwakeword/mww.toml>
 #endif
 
 [module]
