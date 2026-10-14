@@ -5,7 +5,7 @@
 #include "aria.h"
 
 #if SOF_USE_HIFI(5, ARIA)
-#include <xtensa/config/defs.h>
+#include <xtensa/config/core-isa.h>
 #include <xtensa/tie/xt_hifi5.h>
 
 extern const int32_t sof_aria_index_tab[];
