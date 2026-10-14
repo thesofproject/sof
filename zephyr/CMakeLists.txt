@@ -248,11 +248,6 @@ add_subdirectory(test/)
 # Intel TGL and CAVS 2.5 platforms
 if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 
-	# Driver sources
-	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
-		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
-	)
-
 	# Platform sources
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
@@ -296,10 +291,6 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 
 	zephyr_library_sources_ifdef(CONFIG_VIRTUAL_HEAP
 		lib/regions_mm.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_CAVS_LPS
-		${SOF_PLATFORM_PATH}/intel/ace/lps_wait.c
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_LL_WATCHDOG
