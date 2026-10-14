@@ -233,7 +233,7 @@ config ESP32P4_PIE_SIMD
 	  128-bit vector SIMD engine for audio processing kernels (volume, mixer, etc.).
 
 #
-# For non-Zephyr builds like testbench, cmocka and SOF ALSA plugin,
+# For non-Zephyr builds like testbench and cmocka,
 # set core count separately.
 #
 if !ZEPHYR_SOF_MODULE
