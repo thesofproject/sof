@@ -17,23 +17,3 @@ add_subdirectory(drivers)
 if (CONFIG_TRACE)
 	add_subdirectory(trace)
 endif()
-
-if(CONFIG_LIBRARY)
-	return()
-endif()
-
-add_subdirectory(debug)
-add_subdirectory(init)
-add_subdirectory(schedule)
-
-if (CONFIG_PROBE)
-	add_subdirectory(probe)
-endif()
-
-if (CONFIG_MULTICORE)
-	add_subdirectory(idc)
-endif()
-
-if (CONFIG_LOADABLE_MODULES)
-	add_subdirectory(library_manager)
-endif()
