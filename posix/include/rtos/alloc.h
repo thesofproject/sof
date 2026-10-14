@@ -7,7 +7,7 @@
  */
 
 /**
- * \file xtos/include/rtos/alloc.h
+ * \file posix/include/rtos/alloc.h
  * \brief Memory Allocation API definition
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>

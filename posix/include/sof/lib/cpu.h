@@ -6,7 +6,7 @@
  */
 
 /**
- * \file xtos/include/sof/lib/cpu.h
+ * \file posix/include/sof/lib/cpu.h
  * \brief CPU header file
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */

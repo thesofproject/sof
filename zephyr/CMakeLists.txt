@@ -67,7 +67,6 @@ function(sof_llext_build module)
 	endif()
 
 	target_include_directories(${module}_llext_lib PRIVATE
-		"${SOF_BASE}/xtos/include"
 		"${SOF_BASE}/src/include"
 		"${SOF_BASE}/tools/rimage/src/include"
 	)

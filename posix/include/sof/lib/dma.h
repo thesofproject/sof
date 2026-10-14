@@ -7,7 +7,7 @@
  */
 
 /**
- * \file xtos/include/sof/lib/dma.h
+ * \file posix/include/sof/lib/dma.h
  * \brief DMA Drivers definition
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>
