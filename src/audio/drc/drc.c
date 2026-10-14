@@ -124,14 +124,14 @@ int drc_set_pre_delay_time(struct drc_state *state,
 static int drc_setup(struct processing_module *mod, unsigned int channels, uint32_t rate)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
-	uint32_t sample_bytes = get_sample_bytes(cd->source_format);
+	size_t sample_bytes = get_sample_bytes(cd->source_format);
 	int ret;
 
 	/* Reset any previous state */
 	drc_reset_state(mod, &cd->state);
 
 	/* Allocate pre-delay buffers */
-	ret = drc_init_pre_delay_buffers(mod, &cd->state, (size_t)sample_bytes, channels);
+	ret = drc_init_pre_delay_buffers(mod, &cd->state, sample_bytes, channels);
 	if (ret < 0)
 		return ret;
 
@@ -284,7 +284,7 @@ static int drc_process(struct processing_module *mod,
 	size_t sink_frame_bytes = sink_get_frame_bytes(sink);
 	size_t source_bytes, sink_bytes;
 	size_t source_buf_size, sink_buf_size;
-	uint32_t frames;
+	size_t frames;
 	int ret;
 
 	comp_dbg(dev, "entry");
