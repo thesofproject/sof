@@ -107,9 +107,6 @@ config IMX8
 	select DUMMY_DMA
 	select XT_WAITI_DELAY
 	select IMX
-	select IMX_EDMA
-	select IMX_ESAI
-	select IMX_INTERRUPT_IRQSTEER
 	help
 	  Select if your target platform is imx8-compatible
 
@@ -123,9 +120,6 @@ config IMX8X
 	select DUMMY_DMA
 	select XT_WAITI_DELAY
 	select IMX
-	select IMX_EDMA
-	select IMX_ESAI
-	select IMX_INTERRUPT_IRQSTEER
 	help
 	  Select if your target platform is imx8x-compatible
 
@@ -139,9 +133,6 @@ config IMX8M
 	select DUMMY_DMA
 	select XT_WAITI_DELAY
 	select IMX
-	select IMX_SDMA
-	select IMX_MICFIL
-	select IMX_INTERRUPT_IRQSTEER
 	help
 	  Select if your target platform is imx8m-compatible
 
@@ -163,8 +154,6 @@ config IMX8ULP
 	select DUMMY_DMA
 	select XT_WAITI_DELAY
 	select IMX
-	select IMX_EDMA
-	select IMX_INTERRUPT_GENERIC
 	help
 	 Select if your target platform is imx8ulp-compatible.
 	 imx.8ulp support dsp.
