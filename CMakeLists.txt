@@ -15,7 +15,6 @@ set(PYTHON3 "${Python3_EXECUTABLE}")
 
 option(BUILD_UNIT_TESTS "Build unit tests" OFF)
 option(BUILD_UNIT_TESTS_HOST "Build unit tests for host" OFF)
-option(BUILD_CLANG_SCAN "Build for clang's scan-build" OFF)
 option(BUILD_COUNTERS "Enable build counter(s), timestamps and any other
 non-deterministic build features" OFF)
 
@@ -24,19 +23,13 @@ if(BUILD_UNIT_TESTS AND NOT BUILD_UNIT_TESTS_HOST)
 		"use -DBUILD_UNIT_TESTS_HOST=ON")
 endif()
 
-if(CONFIG_LIBRARY OR BUILD_UNIT_TESTS_HOST OR CONFIG_ZEPHYR_POSIX)
-	set(ARCH host)
-else()
-	# firmware build supports only xtensa arch for now
-	set(ARCH xtensa)
+# The firmware is built with Zephyr (scripts/xtensa-build-zephyr.py), this
+# top-level project only builds the host library and the unit tests.
+if(NOT (CONFIG_LIBRARY OR BUILD_UNIT_TESTS_HOST OR CONFIG_ZEPHYR_POSIX))
+	message(FATAL_ERROR "The XTOS firmware build has been removed, "
+		"use scripts/xtensa-build-zephyr.py to build the firmware")
 endif()
-
-# let user override built-in toolchains
-if(DEFINED CMAKE_TOOLCHAIN_FILE)
-	set(TOOLCHAIN "${CMAKE_TOOLCHAIN_FILE}")
-else()
-	include(scripts/cmake/${ARCH}-toolchain.cmake OPTIONAL)
-endif()
+set(ARCH host)
 
 include(scripts/cmake/misc.cmake)
 
@@ -157,39 +150,4 @@ if(BUILD_UNIT_TESTS)
 	enable_testing()
 	add_subdirectory(src/arch/${ARCH})
 	add_subdirectory(test)
-	# rest of this file is not needed for unit tests
-	return()
 endif()
-
-# for FW just install api folders
-install(
-	DIRECTORY
-		${PROJECT_SOURCE_DIR}/src/include/ipc
-		${PROJECT_SOURCE_DIR}/src/include/kernel
-		${PROJECT_SOURCE_DIR}/src/include/user
-		${RIMAGE_TOP}/src/include/sof/kernel
-		${RIMAGE_TOP}/src/include/sof/user
-	DESTINATION include/sof
-	PATTERN "*.h"
-)
-
-add_library(sof_ld_flags INTERFACE)
-add_library(sof_ld_scripts INTERFACE)
-
-target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/third_party_include)
-link_directories(${PROJECT_SOURCE_DIR}/third_party_libraries)
-
-# declare target with no sources to let cmake know about it
-add_executable(sof "")
-target_link_libraries(sof PRIVATE sof_options)
-target_link_libraries(sof PRIVATE sof_ld_scripts)
-target_link_libraries(sof PRIVATE sof_ld_flags)
-target_link_libraries(sof PRIVATE sof_static_libraries)
-
-if (BUILD_COUNTERS)
-sof_add_build_counter_rule()
-endif()
-
-add_subdirectory(src)
-
-sof_append_relative_path_definitions(sof)
