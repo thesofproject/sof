@@ -359,10 +359,10 @@ static int drc_process(struct processing_module *mod,
 }
 
 #if CONFIG_IPC_MAJOR_4
-static void drc_params(struct processing_module *mod)
+static void drc_params(struct processing_module *mod, struct sof_source *source,
+		       struct sof_sink *sink)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "entry");
@@ -371,12 +371,8 @@ static void drc_params(struct processing_module *mod)
 	component_set_nearest_period_frames(dev, params->rate);
 
 	/* The caller has verified, that sink and source buffers are connected */
-
-	sinkb = comp_dev_get_first_data_consumer(dev);
-	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
-
-	sourceb = comp_dev_get_first_data_producer(dev);
-	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
+	ipc4_update_sink_format(sink, &mod->priv.cfg.base_cfg.audio_fmt);
+	ipc4_update_source_format(source, &mod->priv.cfg.base_cfg.audio_fmt);
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
 
@@ -385,7 +381,6 @@ static int drc_prepare(struct processing_module *mod,
 		       struct sof_sink **sinks, int num_of_sinks)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
 	unsigned int channels;
 	int rate;
@@ -394,21 +389,20 @@ static int drc_prepare(struct processing_module *mod,
 	comp_info(dev, "entry");
 
 	/* DRC component will only ever have 1 source and 1 sink buffer */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	sinkb = comp_dev_get_first_data_consumer(dev);
-	if (!sourceb || !sinkb) {
-		comp_err(dev, "no source or sink buffer");
+	if (num_of_sources != 1 || num_of_sinks != 1) {
+		comp_err(dev, "expected 1 source and 1 sink, got %d sources and %d sinks",
+			 num_of_sources, num_of_sinks);
 		return -ENOTCONN;
 	}
 
 #if CONFIG_IPC_MAJOR_4
-	drc_params(mod);
+	drc_params(mod, sources[0], sinks[0]);
 #endif
 
 	/* get source data format */
-	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
-	channels = audio_stream_get_channels(&sinkb->stream);
-	rate = audio_stream_get_rate(&sinkb->stream);
+	cd->source_format = source_get_frm_fmt(sources[0]);
+	channels = sink_get_channels(sinks[0]);
+	rate = sink_get_rate(sinks[0]);
 	cd->channels = channels;
 
 	/* Initialize DRC */
