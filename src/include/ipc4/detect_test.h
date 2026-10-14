@@ -27,7 +27,7 @@ enum ipc4_detect_test_module_config_params {
 	IPC4_DETECT_TEST_SET_CONFIG = 2,
 
 	/** Query current Keyword Detector operational configuration via LargeConfigGet. */
-	IPC4_DETECT_TEST_GET_CONFIG = 3
+	IPC4_DETECT_TEST_GET_CONFIG = 3,
 };
 
 #endif
