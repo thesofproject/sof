@@ -267,6 +267,15 @@ config ZEPHYR_DP_SCHEDULER_MIN_STACK_SIZE
          ext_init payload. If the stack size requested in the IPC is
          smaller than this, then the value defined here takes over.
 
+config DP_TO_DP_BIND
+	bool "Support DP to DP component binding"
+	default y
+	depends on ZEPHYR_DP_SCHEDULER
+	help
+	  Enable binding between two Data Processing (DP) scheduled components.
+	  This allows connecting DP modules together (e.g. DP source to DP sink)
+	  via intermediate buffering.
+
 config CROSS_CORE_STREAM
 	bool "Enable cross-core connected pipelines"
 	default y if IPC_MAJOR_4
