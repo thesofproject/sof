@@ -877,7 +877,7 @@ static inline struct processing_module *comp_mod(const struct comp_dev *dev)
 #define comp_get_drvdata(c) \
 	(c->priv_data)
 
-#if defined UNIT_TEST || defined __ZEPHYR__  || CONFIG_LIBRARY_STATIC
+#if defined UNIT_TEST || defined __ZEPHYR__  || CONFIG_LIBRARY
 #define DECLARE_MODULE(init)
 
 /* declared modules */

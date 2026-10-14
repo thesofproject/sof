@@ -331,7 +331,7 @@ struct ipc_cmd_hdr;
 /** Maximum message size for mailbox Tx/Rx */
 #if CONFIG_IPC_MAJOR_4
 #define SOF_IPC_MSG_MAX_SIZE			0x1000
-#elif CONFIG_LIBRARY_STATIC || UNIT_TEST
+#elif CONFIG_LIBRARY || UNIT_TEST
 #define SOF_IPC_MSG_MAX_SIZE			0x2000
 #else
 #define SOF_IPC_MSG_MAX_SIZE			384

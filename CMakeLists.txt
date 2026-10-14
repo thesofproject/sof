@@ -114,11 +114,7 @@ target_include_directories(sof_public_headers INTERFACE ${GENERATED_DIRECTORY}/i
 include(scripts/cmake/uuid-registry.cmake)
 
 if(CONFIG_LIBRARY)
-	if (CONFIG_LIBRARY_STATIC)
-		add_library(sof STATIC "")
-	else()
-		add_library(sof SHARED "")
-	endif()
+	add_library(sof STATIC "")
 	target_link_libraries(sof PRIVATE sof_options)
 	target_link_libraries(sof PRIVATE sof_static_libraries)
 	install(TARGETS sof DESTINATION lib)

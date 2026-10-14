@@ -11,11 +11,7 @@ set(default_asoc_h "/usr/include/alsa/sound/uapi/asoc.h")
 
 set(sof_source_directory "${PROJECT_SOURCE_DIR}/../..")
 
-if (CONFIG_LIBRARY_STATIC)
-	add_library(sof_tplg_parser STATIC "")
-else()
-	add_library(sof_tplg_parser SHARED "")
-endif()
+add_library(sof_tplg_parser STATIC "")
 
 if (CONFIG_IPC4)
 	set(tplg_ipc CONFIG_IPC_MAJOR_4)

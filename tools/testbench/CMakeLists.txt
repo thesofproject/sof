@@ -55,7 +55,7 @@ if (supports_implicit_fallthrough)
 endif()
 
 target_compile_options(${testbench} PRIVATE -g -O3 -Wall -Werror -Wmissing-prototypes
-  ${implicit_fallthrough} -DCONFIG_LIBRARY -DCONFIG_LIBRARY_STATIC -imacros${config_h})
+  ${implicit_fallthrough} -DCONFIG_LIBRARY -imacros${config_h})
 
 target_link_libraries(${testbench} PRIVATE -lm)
 
@@ -75,7 +75,6 @@ ExternalProject_Add(sof_ep
 		-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}
 		-DINIT_CONFIG=library_defconfig
 		-DCONFIG_H_PATH=${config_h}
-		-DCONFIG_LIBRARY_STATIC=ON
 	BUILD_ALWAYS 1
 	BUILD_BYPRODUCTS "${sof_install_directory}/lib/libsof.a"
 )
@@ -95,7 +94,6 @@ ExternalProject_Add(parser_ep
 	CMAKE_ARGS
 		-DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/sof_parser/install
 		-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}
-		-DCONFIG_LIBRARY_STATIC=ON
 	BUILD_ALWAYS 1
 	BUILD_BYPRODUCTS "${parser_install_dir}/lib/libsof_tplg_parser.a"
 )
