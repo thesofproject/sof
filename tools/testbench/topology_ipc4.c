@@ -1321,6 +1321,11 @@ static int tb_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl,
 		strncpy(ctl->name, tplg_ctl->name, TB_MAX_CTL_NAME_CHARS);
 
 		/* populate the volume table */
+		if (tplg_mixer->max >= TB_MAX_VOLUME_SIZE) {
+			fprintf(stderr, "Error: mixer max %u exceeds volume table size %d\n",
+				tplg_mixer->max, TB_MAX_VOLUME_SIZE);
+			return -EINVAL;
+		}
 		for (i = 0; i < tplg_mixer->max + 1 ; i++) {
 			uint32_t val = vol_compute_gain(i, scale);
 
