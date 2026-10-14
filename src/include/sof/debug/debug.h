@@ -36,12 +36,8 @@
 
 #include <sof/lib/mailbox.h>
 
-/** Firmware ready flags describing debug capabilities (GDB, build flags) */
-#define DEBUG_SET_FW_READY_FLAGS					\
-(									\
-	SOF_IPC_INFO_BUILD |						\
-	(IS_ENABLED(CONFIG_GDB_DEBUG) ? SOF_IPC_INFO_GDB : 0)	\
-)
+/** Firmware ready flags describing debug capabilities (build flags) */
+#define DEBUG_SET_FW_READY_FLAGS	SOF_IPC_INFO_BUILD
 
 /** \brief Dump current file name, function name, and line number to base of debug mailbox */
 #define dbg() \
@@ -128,10 +124,7 @@
 
 #else
 
-#define DEBUG_SET_FW_READY_FLAGS					\
-(									\
-	(IS_ENABLED(CONFIG_GDB_DEBUG) ? SOF_IPC_INFO_GDB : 0)	\
-)
+#define DEBUG_SET_FW_READY_FLAGS	0
 
 #define dbg() do {} while (0)
 #define dbg_at(__x) do {} while (0)

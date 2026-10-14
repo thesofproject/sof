@@ -16,7 +16,6 @@ src/include/ipc/**			@randerwang @tmleman @pblaszko
 src/include/ipc4/**			@randerwang @tmleman @pblaszko
 src/include/kernel/**			@thesofproject/steering-committee
 src/include/user/**			@thesofproject/steering-committee
-src/include/sof/debug/gdb/*		@abonislawski
 src/include/sof/audio/aria/*		@abonislawski
 src/include/sof/audio/kpb.h		@fkwasowi @iganakov
 src/include/sof/audio/mux.h		@fkwasowi
@@ -48,7 +47,6 @@ src/audio/module_adapter/*		@ranj063 @jxstelter
 src/audio/google/*			@thesofproject/google
 
 # platforms
-src/arch/xtensa/debug/gdb/*		@abonislawski
 src/platform/imx8/**			@dbaluta
 src/platform/amd/**			@bhiregoudar @sunilkumardommati
 src/platform/mtk/**			@yaochunhung @kuanhsuncheng
@@ -63,7 +61,6 @@ src/drivers/mediatek/**		@yaochunhung @kuanhsuncheng
 src/math/*				@singalsu
 src/ipc/*				@bardliao @tmleman @pblaszko
 # src/lib/*				TODO
-src/debug/gdb/*				@abonislawski
 src/schedule				@pblaszko @marcinszkudlinski @dbaluta @LaurentiuM1234
 
 # samples
