@@ -83,65 +83,18 @@ RUN mkdir -p "$HOME"/work/alsa && cd "$HOME"/work/alsa && \
 	chown -R sof:sof "$HOME" && \
 	echo "Stage1: alsa-lib, alsa-utils are done!"
 
-ARG GITHUB_SOF=https://github.com/thesofproject
-ARG XT_OVERLAY_REPO=$GITHUB_SOF/xtensa-overlay.git
-ARG CT_NG_REPO=$GITHUB_SOF/crosstool-ng.git
-# build cross compiler
 USER sof
-RUN cd "$HOME" && \
-	git clone $CLONE_DEFAULTS --branch sof-gcc10.2 $XT_OVERLAY_REPO && \
-	git clone $CLONE_DEFAULTS --branch sof-gcc10x $CT_NG_REPO && \
-	cd crosstool-ng && \
-	./bootstrap && ./configure --prefix=`pwd` && make && make install && \
-	for arch in byt hsw apl cnl imx imx8m imx8ulp rn rmb vangogh mt8186 mt8195 mt8188; do \
-		echo "$arch: ct-ng build start..." && \
-		cp config-${arch}-gcc10.2-gdb9 .config && \
-		# replace the build dist to save space
-		sed -i 's#${CT_TOP_DIR}\/builds#\/home\/sof\/work#g' .config && \
-		# gl_cv_func_getcwd_path_max=yes is used to avoid too-long confdir3/confdir3/...
-		gl_cv_func_getcwd_path_max=yes ./ct-ng build && \
-		./ct-ng distclean ; \
-	done && \
-	echo "Stage2: xtensa-overlay, crosstool-ng are done!"
-
-ENV PATH="/home/sof/work/xtensa-byt-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-hsw-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-apl-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-cnl-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-rn-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-rmb-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-vangogh-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-imx-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-imx8m-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-imx8ulp-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-mt8186-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-mt8195-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-mt8188-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-mt8196-elf/bin:${PATH}"
-
-ARG NEWLIB_REPO=https://github.com/jcmvbkbc/newlib-xtensa.git
-RUN cd "$HOME" && \
-	git clone $CLONE_DEFAULTS --branch xtensa $NEWLIB_REPO && \
-	cd newlib-xtensa && \
-	for arch in byt hsw apl cnl imx imx8m imx8ulp rn rmb vangogh mt8186 mt8195 mt8188; do \
-		./configure --target=xtensa-${arch}-elf \
-		--prefix=/home/sof/work/xtensa-root && \
-		make && make install && \
-		rm -rf etc/config.cache; \
-	done && \
-	echo "Stage3: newlib-xtensa is done!"
 
 # log all hashes for each repo to a file
 ARG SOF_WORK="$HOME"/work
 # FIXME: this will fail when any whitespace in SOF_WORK. bash array probably good option to consider
-ARG REPOS="$SOF_WORK/alsa/alsa-lib $SOF_WORK/alsa/alsa-utils $HOME/xtensa-overlay $HOME/crosstool-ng $HOME/newlib-xtensa"
+ARG REPOS="$SOF_WORK/alsa/alsa-lib $SOF_WORK/alsa/alsa-utils"
 ARG HASH_LIST="$SOF_WORK"/sof_docker_hash.txt
 RUN echo "Build date: $(date +%Y%m%d)" > "$HASH_LIST" && set -e && \
 	for repo in $REPOS; do \
 		cd "$repo"; pwd; git log --oneline -5; \
 	done >> "$HASH_LIST" && \
-	cd "$HOME" && rm -rf xtensa-overlay crosstool-ng newlib-xtensa; \
-	echo "Stage4: git versions saved and repos deleted."
+	echo "Stage2: git versions saved."
 
 # Create direcroties for the host machines sof directories to be mounted.
 RUN mkdir -p "$HOME"/work/sof.git

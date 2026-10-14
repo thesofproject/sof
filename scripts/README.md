@@ -127,19 +127,9 @@ cd scripts/docker_build
 ./docker-build.sh
 ```
 
-After the container is built, it can be used to run the scripts.
-
-To build for tigerlake:
-
-```bash
-./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l tgl
-```
-
-or (this command may prompt for a password during rimage installation inside the container)
-
-```bash
-./scripts/docker-run.sh ./scripts/xtensa-build-all.sh tgl
-```
+After the container is built, it can be used to run the host scripts. The
+firmware is built with the Zephyr SDK container instead, see
+`zephyr/docker-run.sh`.
 
 To rebuild the topology and logger:
 
