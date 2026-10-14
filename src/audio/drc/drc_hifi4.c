@@ -114,12 +114,13 @@ static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 void drc_update_detector_average(struct drc_state *state,
 				 const struct sof_drc_params *p,
 				 int nbyte,
-				 int nch)
+				 unsigned int nch)
 {
 	ae_f32 detector_average = state->detector_average; /* Q2.30 */
 	ae_int32 abs_input_array[DRC_DIVISION_FRAMES] __attribute__((aligned(8))); /* Q1.31 */
 	ae_int32 *abs_input_array_p;
-	int div_start, i, ch;
+	int div_start, i;
+	unsigned int ch;
 	ae_int16 *sample16_p; /* for s16 format case */
 	ae_int32 *sample32_p; /* for s24 and s32 format cases */
 	ae_int32x2 sample32;
@@ -324,14 +325,15 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
 void drc_compress_output(struct drc_state *state,
 			 const struct sof_drc_params *p,
 			 int nbyte,
-			 int nch)
+			 unsigned int nch)
 {
 	const int count = DRC_DIVISION_FRAMES >> 2;
 	ae_f32 x[4]; /* Q2.30 */
 	ae_f32 c, base, r, r2, r4; /* Q2.30 */
 	ae_f32 post_warp_compressor_gain;
 	ae_f32 total_gain;
-	int i, j, ch;
+	int i, j;
+	unsigned int ch;
 	int inc = state->pre_delay_read_index;
 	int16_t *sample16_p; /* for s16 format case */
 	int32_t *sample32_p; /* for s24 and s32 format cases */
@@ -518,7 +520,7 @@ void drc_compress_output(struct drc_state *state,
 static void drc_process_one_division(struct drc_state *state,
 				     const struct sof_drc_params *p,
 				     int nbyte,
-				     int nch)
+				     unsigned int nch)
 {
 	drc_update_detector_average(state, p, nbyte, nch);
 	drc_update_envelope(state, p);
@@ -561,7 +563,8 @@ static inline void drc_pre_delay_index_inc(int *idx, int increment)
 static void drc_delay_input_sample_s16(struct drc_state *state,
 				       const struct cir_buf_source *source,
 				       struct cir_buf_sink *sink,
-				       const ae_int16 **x, ae_int16 **y, int samples, int nch)
+				       const ae_int16 **x, ae_int16 **y, int samples,
+				       unsigned int nch)
 {
 	const ae_int16 *x1;
 	ae_int16 *y1;
@@ -569,7 +572,7 @@ static void drc_delay_input_sample_s16(struct drc_state *state,
 	ae_int16 *pd_r;
 	ae_int16 *pd_w;
 	int nbuf, npcm, nfrm;
-	int ch;
+	unsigned int ch;
 	int i;
 	const ae_int16 *x0 = *x;
 	ae_int16 *y0 = *y;
@@ -628,7 +631,8 @@ static void drc_s16_default(struct processing_module *mod,
 	ae_int16 *pd_w;
 	const ae_int16 *x1;
 	ae_int16 *y1;
-	int i, ch;
+	int i;
+	unsigned int ch;
 	ae_int16x4 sample;
 	const int sample_inc = nch * sizeof(ae_int16);
 	const int delay_inc = sizeof(ae_int16);
@@ -694,7 +698,8 @@ static void drc_s16_default(struct processing_module *mod,
 static void drc_delay_input_sample_s32(struct drc_state *state,
 				       const struct cir_buf_source *source,
 				       struct cir_buf_sink *sink,
-				       const ae_int32 **x, ae_int32 **y, int samples, int nch)
+				       const ae_int32 **x, ae_int32 **y, int samples,
+				       unsigned int nch)
 {
 	const ae_int32 *x1;
 	ae_int32 *y1;
@@ -702,7 +707,7 @@ static void drc_delay_input_sample_s32(struct drc_state *state,
 	ae_int32 *pd_w;
 	ae_int32 *pd;
 	int nbuf, npcm, nfrm;
-	int ch;
+	unsigned int ch;
 	int i;
 	const ae_int32 *x0 = *x;
 	ae_int32 *y0 = *y;
@@ -756,7 +761,7 @@ static void drc_s24_default(struct processing_module *mod,
 			    uint32_t frames)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
-	int nch = cd->channels;
+	const unsigned int nch = cd->channels;
 	const ae_int32 *x = source->ptr;
 	ae_int32 *y = sink->ptr;
 	int samples = frames * nch;
@@ -768,7 +773,8 @@ static void drc_s24_default(struct processing_module *mod,
 	ae_int32 *pd_w;
 	const ae_int32 *x1;
 	ae_int32 *y1;
-	int i, ch;
+	int i;
+	unsigned int ch;
 	ae_int32x2 sample;
 	const int sample_inc = nch * sizeof(int32_t);
 	const int delay_inc = sizeof(int32_t);
@@ -844,7 +850,7 @@ static void drc_s32_default(struct processing_module *mod,
 			    uint32_t frames)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
-	int nch = cd->channels;
+	const unsigned int nch = cd->channels;
 	const ae_int32 *x = source->ptr;
 	ae_int32 *y = sink->ptr;
 	struct drc_state *state = &cd->state;
@@ -855,7 +861,8 @@ static void drc_s32_default(struct processing_module *mod,
 	ae_int32 *pd_w;
 	const ae_int32 *x1;
 	ae_int32 *y1;
-	int i, ch;
+	int i;
+	unsigned int ch;
 	ae_int32x2 sample;
 	const int sample_inc = nch * sizeof(int32_t);
 	const int delay_inc = sizeof(int32_t);

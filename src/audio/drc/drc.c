@@ -70,11 +70,11 @@ void drc_reset_state(struct processing_module *mod, struct drc_state *state)
 int drc_init_pre_delay_buffers(struct processing_module *mod,
 			       struct drc_state *state,
 			       size_t sample_bytes,
-			       int channels)
+			       unsigned int channels)
 {
 	size_t bytes_per_channel = sample_bytes * CONFIG_DRC_MAX_PRE_DELAY_FRAMES;
 	size_t bytes_total = bytes_per_channel * channels;
-	int i;
+	unsigned int i;
 
 	/* Allocate pre-delay (lookahead) buffers */
 	state->pre_delay_buffers[0] = mod_alloc(mod, bytes_total);
@@ -122,7 +122,7 @@ int drc_set_pre_delay_time(struct drc_state *state,
 }
 
 /* Called from drc_process(), so cannot be __cold */
-static int drc_setup(struct processing_module *mod, uint16_t channels, uint32_t rate)
+static int drc_setup(struct processing_module *mod, unsigned int channels, uint32_t rate)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	uint32_t sample_bytes = get_sample_bytes(cd->source_format);
@@ -132,7 +132,7 @@ static int drc_setup(struct processing_module *mod, uint16_t channels, uint32_t 
 	drc_reset_state(mod, &cd->state);
 
 	/* Allocate pre-delay buffers */
-	ret = drc_init_pre_delay_buffers(mod, &cd->state, (size_t)sample_bytes, (int)channels);
+	ret = drc_init_pre_delay_buffers(mod, &cd->state, (size_t)sample_bytes, channels);
 	if (ret < 0)
 		return ret;
 
@@ -388,7 +388,7 @@ static int drc_prepare(struct processing_module *mod,
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
-	int channels;
+	unsigned int channels;
 	int rate;
 	int ret;
 

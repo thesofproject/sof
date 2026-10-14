@@ -90,12 +90,13 @@ static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 void drc_update_detector_average(struct drc_state *state,
 				 const struct sof_drc_params *p,
 				 int nbyte,
-				 int nch)
+				 unsigned int nch)
 {
 	ae_f32 detector_average = state->detector_average; /* Q2.30 */
 	int32_t abs_input_array[DRC_DIVISION_FRAMES]; /* Q1.31 */
 	int32_t *abs_input_array_p;
-	int div_start, i, ch;
+	int div_start, i;
+	unsigned int ch;
 	int16_t *sample16_p; /* for s16 format case */
 	int32_t *sample32_p; /* for s24 and s32 format cases */
 	int32_t sample;
@@ -293,7 +294,7 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
 void drc_compress_output(struct drc_state *state,
 			 const struct sof_drc_params *p,
 			 int nbyte,
-			 int nch)
+			 unsigned int nch)
 {
 	const int div_start = state->pre_delay_read_index;
 	const int count = DRC_DIVISION_FRAMES >> 2;
@@ -304,7 +305,8 @@ void drc_compress_output(struct drc_state *state,
 	ae_f32 total_gain;
 	ae_f32 tmp;
 
-	int i, j, ch, inc;
+	int i, j, inc;
+	unsigned int ch;
 	int16_t *sample16_p; /* for s16 format case */
 	int32_t *sample32_p; /* for s24 and s32 format cases */
 	int32_t sample;
