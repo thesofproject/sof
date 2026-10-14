@@ -63,7 +63,7 @@ run_ut()
 	for test in ${TESTS}
 	do
 	    if [ x"$test" = x'build_ut/test/cmocka/src/lib/alloc/alloc' ]; then
-		printf 'SKIP alloc test until it is fixed on HOST (passes with xt-run)'
+		printf 'SKIP alloc test until it is fixed on HOST'
 		continue
 	    fi
 

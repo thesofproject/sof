@@ -1,22 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-if(CONFIG_MULTICORE AND NOT BUILD_UNIT_TESTS_HOST)
-	SET(arch_src ${PROJECT_SOURCE_DIR}/src/drivers/intel/cavs/idc.c)
-
-	# make small lib for stripping so we don't have to care
-	# about unused missing references
-
-	add_compile_options(-fdata-sections -ffunction-sections)
-	link_libraries(-Wl,--gc-sections)
-
-	add_library(pipeline_lib STATIC ${arch_src})
-	sof_append_relative_path_definitions(pipeline_lib)
-
-	target_link_libraries(pipeline_lib PRIVATE sof_options)
-
-	link_libraries(pipeline_lib)
-endif()
-
 cmocka_test(pipeline_new
 	pipeline_new.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c

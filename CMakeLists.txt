@@ -15,10 +15,14 @@ set(PYTHON3 "${Python3_EXECUTABLE}")
 
 option(BUILD_UNIT_TESTS "Build unit tests" OFF)
 option(BUILD_UNIT_TESTS_HOST "Build unit tests for host" OFF)
-option(BUILD_UNIT_TESTS_XTENSA_GCC "Build xtensa unit test using GCC" OFF)
 option(BUILD_CLANG_SCAN "Build for clang's scan-build" OFF)
 option(BUILD_COUNTERS "Enable build counter(s), timestamps and any other
 non-deterministic build features" OFF)
+
+if(BUILD_UNIT_TESTS AND NOT BUILD_UNIT_TESTS_HOST)
+	message(FATAL_ERROR "Unit tests can only be built for the host, "
+		"use -DBUILD_UNIT_TESTS_HOST=ON")
+endif()
 
 if(CONFIG_LIBRARY OR BUILD_UNIT_TESTS_HOST OR CONFIG_ZEPHYR_POSIX)
 	set(ARCH host)
