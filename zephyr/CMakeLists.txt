@@ -599,10 +599,6 @@ endif()
 
 # Optional SOF sources - depends on Kconfig - WIP
 
-zephyr_library_sources_ifdef(CONFIG_DW_DMA
-	${SOF_DRIVERS_PATH}/dw/dma.c
-)
-
 zephyr_library_sources_ifdef(CONFIG_SOF_BOOT_TEST
        boot_test.c
 )

@@ -2,8 +2,6 @@
 
 menu "Drivers"
 
-rsource "dw/Kconfig"
-
 rsource "amd/Kconfig"
 
 config DUMMY_DMA
