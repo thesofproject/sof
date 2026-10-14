@@ -511,6 +511,9 @@ static int mww_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "entry slot %u", cd->wov_slot_id);
 
+	/* Sink carries feature frames, so module_adapter can't derive the DP period. */
+	dev->period = MWW_MFCC_HOP_MS * 1000;
+
 	if (!cd->initialized) {
 		const unsigned char *model_ptr = NULL;
 		size_t blob_size = 0;
