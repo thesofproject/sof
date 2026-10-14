@@ -81,7 +81,7 @@ static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 /* Update detector_average from the last input division. */
 void drc_update_detector_average(struct drc_state *state,
 				 const struct sof_drc_params *p,
-				 int nbyte,
+				 size_t nbyte,
 				 unsigned int nch)
 {
 	int32_t detector_average = state->detector_average; /* Q2.30 */
@@ -265,7 +265,7 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
  * the next output division. */
 void drc_compress_output(struct drc_state *state,
 			 const struct sof_drc_params *p,
-			 int nbyte,
+			 size_t nbyte,
 			 unsigned int nch)
 {
 	const int div_start = state->pre_delay_read_index;
@@ -465,7 +465,7 @@ void drc_compress_output(struct drc_state *state,
  */
 static void drc_process_one_division(struct drc_state *state,
 				     const struct sof_drc_params *p,
-				     int nbyte,
+				     size_t nbyte,
 				     unsigned int nch)
 {
 	drc_update_detector_average(state, p, nbyte, nch);
@@ -475,11 +475,11 @@ static void drc_process_one_division(struct drc_state *state,
 
 void drc_default_pass(struct processing_module *mod,
 		      const struct cir_buf_source *source,
-		      struct cir_buf_sink *sink, uint32_t frames)
+		      struct cir_buf_sink *sink, size_t frames)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
-	const int sample_bytes = get_sample_bytes(cd->source_format);
-	size_t bytes = (size_t)frames * cd->channels * sample_bytes;
+	const size_t sample_bytes = get_sample_bytes(cd->source_format);
+	size_t bytes = frames * cd->channels * sample_bytes;
 	const uint8_t *src = source->ptr;
 	uint8_t *dst = sink->ptr;
 	size_t n;
@@ -558,7 +558,7 @@ static void drc_delay_input_sample_s16(struct drc_state *state,
 static void drc_s16_default(struct processing_module *mod,
 			    const struct cir_buf_source *source,
 			    struct cir_buf_sink *sink,
-			    uint32_t frames)
+			    size_t frames)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	const unsigned int nch = cd->channels;
@@ -704,7 +704,7 @@ static void drc_delay_input_sample_s24(struct drc_state *state,
 static void drc_s24_default(struct processing_module *mod,
 			    const struct cir_buf_source *source,
 			    struct cir_buf_sink *sink,
-			    uint32_t frames)
+			    size_t frames)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	const unsigned int nch = cd->channels;
@@ -752,7 +752,7 @@ static void drc_s24_default(struct processing_module *mod,
 static void drc_s32_default(struct processing_module *mod,
 			    const struct cir_buf_source *source,
 			    struct cir_buf_sink *sink,
-			    uint32_t frames)
+			    size_t frames)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	const unsigned int nch = cd->channels;
