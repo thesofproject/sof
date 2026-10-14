@@ -187,18 +187,6 @@ config IMX95
 	help
 	  Select if your target platform is imx95-compatible.
 
-config RENOIR
-	bool "Build for Renoir"
-	select XT_INTERRUPT_LEVEL_5
-	select XT_INTERRUPT_LEVEL_3
-	select XT_INTERRUPT_LEVEL_1
-	select XT_INTERRUPT_LEVEL_4
-	select XT_WAITI_DELAY
-	select AMD
-	select SCHEDULE_DMA_MULTI_CHANNEL
-	help
-	 Select if your target platform is renoir-compatible
-
 config REMBRANDT
 	bool "Build for Rembrandt"
 	select XT_INTERRUPT_LEVEL_5
@@ -211,32 +199,6 @@ config REMBRANDT
 	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	 Select if your target platform is rembrandt-compatible
-
-config VANGOGH
-	bool "Build for Vangogh"
-	select XT_INTERRUPT_LEVEL_5
-	select XT_INTERRUPT_LEVEL_3
-	select XT_INTERRUPT_LEVEL_1
-	select XT_INTERRUPT_LEVEL_4
-	select XT_WAITI_DELAY
-	select XTENSA_EXCLUSIVE
-	select AMD
-	select SCHEDULE_DMA_MULTI_CHANNEL
-	help
-	 Select if your target platform is vangogh-compatible
-
-config ACP_6_3
-	bool "Build for ACP_6_3"
-	select XT_INTERRUPT_LEVEL_5
-	select XT_INTERRUPT_LEVEL_3
-	select XT_INTERRUPT_LEVEL_1
-	select XT_INTERRUPT_LEVEL_4
-	select XT_WAITI_DELAY
-	select XTENSA_EXCLUSIVE
-	select AMD
-	select SCHEDULE_DMA_MULTI_CHANNEL
-	help
-	 Select if your target platform is acp_6_3-compatible
 
 config ACP_7_0
 	bool "Build for ACP_7_0"
@@ -560,10 +522,7 @@ config RIMAGE_SIGNING_SCHEMA
 	default "imx8m_cm7" if IMX8M_CM7
 	default "imx8ulp" if IMX8ULP
 	default "imx95" if IMX95
-	default "rn" if RENOIR
 	default "rmb" if REMBRANDT
-	default "vangogh" if VANGOGH
-	default "acp_6_3" if ACP_6_3
 	default "acp_7_0" if ACP_7_0
 	default "acp_7_x" if ACP_7_X
 	default "mt8186" if MT8186
