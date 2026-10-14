@@ -35,6 +35,8 @@
 #include <ipc4/header.h>
 #include <ipc4/module.h>
 #include <ipc4/notification.h>
+#include <kernel/abi.h>
+#include <kernel/header.h>
 
 #include <sof/audio/mfcc/mfcc_comp.h>
 #include "mww_model.h"
@@ -515,6 +517,19 @@ static int mww_prepare(struct processing_module *mod,
 
 		model_ptr = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
 		if (model_ptr && blob_size > 0) {
+			/* If packed behind a struct sof_abi_hdr ('SOF4' / 32 bytes), skip the header */
+			if (blob_size >= sizeof(struct sof_abi_hdr)) {
+				const struct sof_abi_hdr *hdr = (const struct sof_abi_hdr *)model_ptr;
+
+				if (hdr->magic == SOF_IPC4_ABI_MAGIC || hdr->magic == SOF_ABI_MAGIC) {
+					size_t payload_len = hdr->size ? hdr->size : (blob_size - sizeof(struct sof_abi_hdr));
+
+					comp_info(dev, "MWW: stripping ABI header (magic=0x%08x payload=%zu), total=%zu",
+						  hdr->magic, payload_len, blob_size);
+					model_ptr += sizeof(struct sof_abi_hdr);
+					blob_size = payload_len;
+				}
+			}
 			comp_info(dev, "MWW: loaded model from control blob, size=%zu", blob_size);
 		} else {
 			model_ptr = NULL;
