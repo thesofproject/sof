@@ -13,7 +13,7 @@
  */
 #if defined(CONFIG_AMD) && !defined(CONFIG_ZEPHYR_NATIVE_DRIVERS)
 /* imx currently has no IRQ driver in Zephyr so we force to xtos IRQ */
-#include "../../../xtos/include/rtos/interrupt.h"
+#include <rtos/interrupt-legacy.h>
 #else
 
 #include <zephyr/device.h>
