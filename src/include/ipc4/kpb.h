@@ -32,6 +32,8 @@ struct ipc4_kpb_module_cfg {
 enum ipc4_kpb_module_config_params {
 	/** Configure module IDs that execute within Fast Mode (FM) draining tasks. */
 	KP_BUF_CFG_FM_MODULE = 1,
+	/** Set history ring-buffer duration in milliseconds; 0 = use CONFIG_KPB_MAX_BUFF_TIME. */
+	KP_BUF_CFG_BUFF_TIME_MS = 2,
 	/** Real-time sink microphone channel selector ID. */
 	KP_BUF_CLIENT_MIC_SELECT = 11,
 };
