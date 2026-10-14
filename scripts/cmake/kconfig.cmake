@@ -13,16 +13,14 @@ if(NOT INIT_CONFIG_found)
 set(INIT_CONFIG "initial.config" CACHE STRING "Initial .config file")
 
 # - ".' is the top source directory.
-# - "src/arch/${arch}/configs" is for convenience and compatibility with
-#   defconfigs.cmake.
+# - "src/arch/host/configs" holds the library (testbench) configurations
+#   and is also used by defconfigs.cmake.
+# - "test/cmocka/configs" holds the unit test configurations.
 # - First found wins.
-# - If two archs ever use the same platform_defconfig name then a full
-#   path must be used, e.g.: -DINIT_CONFIG=src/arch/myarch/collision_defconfig
+# - If two directories ever use the same defconfig name then a full
+#   path must be used, e.g.: -DINIT_CONFIG=test/cmocka/configs/collision_defconfig
 
-set(init_config_search_list ".")
-foreach(arch "xtensa" "host")
-list(APPEND init_config_search_list "src/arch/${arch}/configs")
-endforeach()
+set(init_config_search_list "." "src/arch/host/configs" "test/cmocka/configs")
 
 find_file(INIT_CONFIG_found
 	NAMES ${INIT_CONFIG}
