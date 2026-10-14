@@ -70,7 +70,7 @@ struct drc_state {
 typedef void (*drc_func)(struct processing_module *mod,
 			 const struct cir_buf_source *source,
 			 struct cir_buf_sink *sink,
-			 uint32_t frames);
+			 size_t frames);
 
 /* DRC component private data */
 struct drc_comp_data {
@@ -95,7 +95,7 @@ extern const size_t drc_proc_fncount;
 
 void drc_default_pass(struct processing_module *mod,
 		      const struct cir_buf_source *source,
-		      struct cir_buf_sink *sink, uint32_t frames);
+		      struct cir_buf_sink *sink, size_t frames);
 /**
  * \brief Returns DRC processing function.
  */
