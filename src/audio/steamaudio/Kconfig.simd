@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2017-2024 Valve Corporation. All rights reserved.
+# Copyright (c) 2026 Intel Corporation. All rights reserved.
+
+comment "Steam Audio optimization level select"
+
+choice "STEAMAUDIO_SIMD_LEVEL_SELECT"
+	prompt "choose which SIMD level used for Steam Audio module"
+	depends on COMP_STEAMAUDIO
+	default STEAMAUDIO_HIFI_MAX
+
+	config STEAMAUDIO_HIFI_MAX
+		prompt "SIMD will be selected by toolchain pre-defined header"
+		bool
+		help
+		  When this is selected, optimization level will be determined
+		  by toolchain pre-defined macros in core-isa header file.
+
+	config STEAMAUDIO_HIFI_5
+		prompt "choose HIFI5 intrinsic optimized Steam Audio module"
+		bool
+		help
+		  This option is used to build HIFI5 optimized Steam Audio code.
+
+	config STEAMAUDIO_HIFI_4
+		prompt "choose HIFI4 intrinsic optimized Steam Audio module"
+		bool
+		help
+		  This option is used to build HIFI4 optimized Steam Audio code.
+
+	config STEAMAUDIO_HIFI_NONE
+		prompt "choose generic C Steam Audio module, no HIFI SIMD involved"
+		bool
+		help
+		  This option is used to build Steam Audio generic C code.
+endchoice

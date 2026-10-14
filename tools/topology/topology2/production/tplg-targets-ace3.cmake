@@ -112,6 +112,9 @@ EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 "dmic-wov-feature\;sof-dmic-4ch-wov\;PLATFORM=none,NUM_DMICS=4,\
 DMIC0_ID=5,DMIC1_ID=6,DMIC1_ENABLE=false,DMIC1_RATE=16000,INCLUDE_WOV=true"
 
+# Steam Audio 64-channel spatial audio & compressed metadata feature topology
+"steamaudio-feature\;sof-steamaudio-feature\;PLATFORM=none"
+
 "cavs-sdw\;sof-ptl-rt722-2ch\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=2,\
 PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
