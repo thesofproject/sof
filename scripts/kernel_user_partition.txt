@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Kernel / user-space partition of the SOF sources, used by
+# scripts/check_kernel_includes.py.
+#
+# Kernel code runs in Zephyr supervisor mode: hardware and MMIO access,
+# interrupts, thread and memory domain creation, cache/MMU, power and
+# clock management, DMA and DAI driver internals, IDC, LLEXT loading and
+# system call verification. User-space code is everything else and must
+# only use plain C, system-call backed Zephyr APIs and SOF system calls,
+# whether or not a given configuration actually runs it in user mode.
+#
+# Patterns are fnmatch globs relative to the SOF top directory, except
+# [zephyr-kernel-headers] which is relative to ZEPHYR_BASE. "*" also
+# matches "/".
+
+# Sources that must be user-space safe.
+[user-sources]
+src/audio/*
+src/math/*
+src/module/*
+src/samples/*
+src/ipc/ipc-helper.c
+src/ipc/ipc4/ams_helpers.c
+src/ipc/ipc4/dai.c
+src/ipc/ipc4/notification-user.c
+src/lib/objpool.c
+
+# Kernel sources inside the directories above.
+[not-user-sources]
+src/audio/base_fw.c
+src/audio/base_fw_intel.c
+src/audio/dai-legacy.c
+src/audio/host-legacy.c
+src/audio/intel_uaol.c
+src/audio/mic_privacy_manager/*
+src/audio/module_adapter/library/userspace_proxy.c
+
+# SOF headers that only kernel code may include.
+[kernel-headers]
+src/include/sof/drivers/*
+src/include/sof/platform.h
+src/include/sof/llext_manager.h
+src/include/sof/ipc/driver.h
+src/include/sof/trace/dma-trace.h
+src/include/sof/lib/agent.h
+src/include/sof/lib/cpu-clk-manager.h
+src/include/sof/lib/mailbox.h
+src/include/sof/lib/perf_cnt.h
+src/include/sof/lib/watchdog.h
+src/platform/*
+zephyr/include/rtos/clk.h
+zephyr/include/rtos/idc.h
+zephyr/include/rtos/init.h
+zephyr/include/rtos/interrupt.h
+zephyr/include/rtos/interrupt-legacy.h
+zephyr/include/rtos/timer.h
+zephyr/include/rtos/userspace_helper.h
+zephyr/include/sof/lib/dma-legacy.h
+zephyr/include/sof/lib/io.h
+zephyr/include/sof/lib/memory.h
+zephyr/include/sof/lib/mm_heap.h
+zephyr/include/sof/lib/pm_runtime.h
+zephyr/include/sof/lib/regions_mm.h
+zephyr/include/sof/lib/vpage.h
+
+# Zephyr headers that only kernel code may include: kernel internals and
+# driver APIs that are not system calls.
+[zephyr-kernel-headers]
+kernel/include/*
+include/zephyr/drivers/dma.h
+include/zephyr/pm/device_runtime.h
