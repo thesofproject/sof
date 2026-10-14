@@ -10,6 +10,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/app_memory/mem_domain.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/llext/symbol.h>
 #include <sof/lib/vpage.h>
 #include <sof/lib/vregion.h>
 #include <rtos/alloc.h>
