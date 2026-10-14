@@ -13,7 +13,6 @@
 #include <sof/drivers/afe-drv.h>
 #include <sof/drivers/afe-dai.h>
 #include <sof/drivers/afe-memif.h>
-#include <sof/drivers/afe-sgen.h>
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
 #include <sof/lib/dma.h>
@@ -110,9 +109,6 @@ static int memif_start(struct dma_chan_data *channel)
 		return -EINVAL;
 
 	channel->status = COMP_STATE_ACTIVE;
-#if CONFIG_TEST_SGEN
-	afe_sinegen_enable();
-#endif
 	/* Do the HW start of the DMA */
 	return afe_memif_set_enable(memif->afe, memif->memif_id, 1);
 }
@@ -132,9 +128,6 @@ static int memif_release(struct dma_chan_data *channel)
 	ret = afe_memif_set_enable(memif->afe, memif->memif_id, 0);
 	if (ret < 0)
 		return ret;
-#if CONFIG_TEST_SGEN
-	afe_sinegen_disable();
-#endif
 
 	return 0;
 }
