@@ -4,24 +4,9 @@ include(ExternalProject)
 
 add_library(cmocka STATIC IMPORTED)
 
-# Default use XCC unless user asks for GCC
-if(BUILD_UNIT_TESTS_HOST)
-	set(UT_CC_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/cmocka-host-gcc-toolchain.cmake)
-	set(UT_TOOLCHAIN "")
-	# TODO: add an option to support valgrind.
-	# In the mean time use scripts/run-mocks.sh for valgrind.
-	set(SIMULATOR "")
-elseif(BUILD_UNIT_TESTS_XTENSA_GCC)
-	# GCC xtensa build for future Qemu.
-	set(UT_CC_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/cmocka-xtensa-gcc-toolchain.cmake)
-	set(UT_TOOLCHAIN "-DTOOLCHAIN=${TOOLCHAIN}")
-	set(SIMULATOR xt-run --exit_with_target_code)
-else()
-	# xtensa XCC build for xt-run.
-	set(UT_CC_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/cmocka-xtensa-xt-toolchain.cmake)
-	set(UT_TOOLCHAIN "")
-	set(SIMULATOR xt-run --exit_with_target_code)
-endif()
+# TODO: add an option to support valgrind.
+# In the mean time use scripts/run-mocks.sh for valgrind.
+set(UT_CC_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/cmocka-host-gcc-toolchain.cmake)
 
 if(DEFINED CMOCKA_DIRECTORY)
 	# Prebuilt Cmocka lib
@@ -44,7 +29,6 @@ else()
 			-DWITH_EXAMPLES=OFF
 			-DWITH_POSITION_INDEPENDENT_CODE=OFF
 			-DWITH_TINY_CONFIG=ON
-			${UT_TOOLCHAIN}
 		BUILD_BYPRODUCTS "${cmocka_binary_directory}/src/libcmocka-static.a"
 		INSTALL_COMMAND ""
 	)
@@ -62,7 +46,6 @@ if(CONFIG_CAVS)
 elseif(CONFIG_ACE)
 	target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/intel/ace/include)
 endif()
-target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/arch/xtos-wrapper/include)
 
 # linker script, just for log entries
 set(memory_mock_lds_in ${PROJECT_SOURCE_DIR}/test/cmocka/memory_mock.x.in)
@@ -78,19 +61,11 @@ add_custom_command(OUTPUT ${memory_mock_lds_out}
 )
 
 add_custom_target(ld_script_memory_mock DEPENDS ${memory_mock_lds_out})
-SET(arch_src ${PROJECT_SOURCE_DIR}/src/arch/xtensa/idc.c)
 add_library(common_mock STATIC ${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c)
 add_dependencies(common_mock cmocka)
 target_include_directories(common_mock PRIVATE ${CMOCKA_INCLUDE_DIR})
 target_link_libraries(common_mock PRIVATE sof_options)
 target_link_libraries(common_mock PRIVATE m)
-
-# xtensa GCC require some extra options to link
-if(BUILD_UNIT_TESTS_XTENSA_GCC)
-	target_link_libraries(common_mock PRIVATE gcc)
-	target_link_libraries(common_mock PRIVATE c)
-	target_link_libraries(common_mock PRIVATE -nostdlib)
-endif()
 link_libraries(common_mock)
 sof_append_relative_path_definitions(common_mock)
 
@@ -113,12 +88,11 @@ function(cmocka_test test_name)
 	# Enable features those would be disabled in some platforms
 	target_compile_definitions(${test_name} PRIVATE -DCONFIG_NUMBERS_NORM -DCONFIG_NUMBERS_VECTOR_FIND)
 
-	# Skip running alloc test on HOST until it's fixed (it passes and is run
-	# with xt-run)
-	if( "alloc" STREQUAL "${test_name}" AND BUILD_UNIT_TESTS_HOST)
+	# Skip running alloc test until it's fixed on the host
+	if( "alloc" STREQUAL "${test_name}")
 		message(WARNING "SKIP alloc test on HOST, built but not run")
 	else()
-		add_test(NAME ${test_name} COMMAND ${SIMULATOR} ${test_name})
+		add_test(NAME ${test_name} COMMAND ${test_name})
 	endif()
 
 	sof_append_relative_path_definitions(${test_name})
