@@ -235,6 +235,19 @@ jobs:
             --no-tarball \
             ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
 
+      # Informational only for now, see scripts/check_kernel_includes.py
+      - name: kernel/user-space include report
+        if: always()
+        env:
+          PLATFORMS: ${{ matrix.IPC_platforms }}
+        run: |
+          for p in $PLATFORMS; do
+            test -f build-"$p"/build.ninja || continue
+            printf '\n==== %s ====\n' "$p"
+            ZEPHYR_BASE="$(pwd)"/zephyr \
+              python3 sof/scripts/check_kernel_includes.py --summary build-"$p" || true
+          done
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         if: always()
