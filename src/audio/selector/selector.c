@@ -1089,6 +1089,11 @@ static int selector_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "entry");
 
+	if (!num_of_sources || !num_of_sinks) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
 	ret = selector_params(mod);
 	if (ret < 0)
 		return ret;
