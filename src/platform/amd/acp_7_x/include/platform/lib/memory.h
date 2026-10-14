@@ -29,7 +29,7 @@
 #define DRAM1_BASE      0xE0010000
 #define DRAM1_SIZE      0x10000
 #define SRAM1_BASE      0x6000C000
-#define SRAM1_SIZE      0x274000
+#define SRAM1_SIZE      0x3F4000
 
 #define DMA0_BASE	PU_REGISTER_BASE
 #define DMA0_SIZE	0x4
