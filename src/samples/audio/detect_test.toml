@@ -2,7 +2,7 @@
 	name = "KDTEST"
 	uuid = UUIDREG_STR_KEYWORD
 	affinity_mask = "0x1"
-	instance_count = "1"
+	instance_count = "4"
 	domain_types = "0"
 	load_type = "0"
 	module_type = "8"
