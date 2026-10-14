@@ -549,4 +549,10 @@ COMPRESSED_1=true,COMPRESSED_2=false"
 "cavs-sdw\;sof-sdca-amp-compr\;SDW_JACK=false,NUM_HDMIS=0,COMPRESSED=true,\
 COMPRESSED_1=false,COMPRESSED_2=true"
 
+# SoundWire WoV topology on PTL (RT713 on L3, RT1320 on L12)
+"cavs-sdw\;sof-ptl-rt713-l3-rt1320-l12-wov\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=2,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+SDW_DMIC_WOV_SINGLE=true,MWW_PCAN=true"
+
 )
