@@ -3,51 +3,45 @@
  * Copyright(c) 2024 Intel Corporation.
  */
 
+/**
+ * \file include/user/debug_stream.h
+ * \brief User-space ABI stream protocol for passing abstract debug data objects to host.
+ * \ingroup debug_stream_api
+ */
+
 #ifndef __SOC_DEBUG_STREAM_H__
 #define __SOC_DEBUG_STREAM_H__
 
-/*
- * Debug Stream is a stream protocol for passing real-time debug
- * information from SOF system. It provides the framework for
- * passing pieces of abstract data objects from DSP side to host side
- * debugging tools.
- *
- * The details of Debug Stream protocol varies depending on transfer
- * method, but the stream should always start with a header that
- * consists of DEBUG_STREAM_IDENTIFIER and header size.
+/** Magic identifier at start of Debug Stream header (0x1ED15EED) */
+#define DEBUG_STREAM_IDENTIFIER 0x1ED15EED
+
+/**
+ * \brief Stream preamble header recognized by host debug tools.
+ * \ingroup debug_stream_api
  */
-
-#define DEBUG_STREAM_IDENTIFIER 0x1ED15EED /* value for 'magic' */
-
 struct debug_stream_hdr {
-	uint32_t magic;		/* Magic number to recognize stream start */
-	uint32_t hdr_size;	/* Header size */
+	uint32_t magic;		/**< Magic identifier (DEBUG_STREAM_IDENTIFIER) */
+	uint32_t hdr_size;	/**< Total size of stream header in bytes */
 } __packed;
 
-/*
- * After the header ('hdr_size' bytes from beginning of 'magic') a
- * stream of Debug Stream records should follow. Each record will
- * start with a record identifier and record size, after which the
- * record payload will follow.
- *
- * The abstract data is application specific and is passed from DSP
- * debug entity to user space debug tool for decoding and
- * presentation. The data is recognized by the 'id' and the 'size_words'
- * describes the amount of data. The 'seqno' is a running number of sent
- * record, increased by one after each record. The protocol is
- * agnostic about the contents of the records.
+/**
+ * \brief Abstract debug record envelope carrying application-specific payloads.
+ * \ingroup debug_stream_api
  */
-
 struct debug_stream_record {
-	uint32_t id;		/* Record id of abstract data record */
-	uint32_t seqno;		/* Increments after each record */
-	uint32_t size_words;	/* Size of the whole record in words */
-	uint32_t data[];
+	uint32_t id;		/**< Record identifier (DEBUG_STREAM_RECORD_ID_*) */
+	uint32_t seqno;		/**< Monotonically increasing sequence number */
+	uint32_t size_words;	/**< Total size of the record including header in 32-bit words */
+	uint32_t data[];	/**< Application-specific record payload */
 } __packed;
 
-/* Debug Stream record identifiers */
-#define DEBUG_STREAM_RECORD_ID_UNINITIALIZED	0 /* invalid record marker */
-#define DEBUG_STREAM_RECORD_ID_THREAD_INFO	1 /* Thread info record */
-#define DEBUG_STREAM_RECORD_ID_TEXT_MSG		2 /* Text message */
+/** \name Debug Stream Record Identifiers
+ *  Payload classification types for abstract debug stream records.
+ *  @{
+ */
+#define DEBUG_STREAM_RECORD_ID_UNINITIALIZED	0 /**< Invalid or uninitialized record marker */
+#define DEBUG_STREAM_RECORD_ID_THREAD_INFO	1 /**< DSP RTOS thread state snapshot record */
+#define DEBUG_STREAM_RECORD_ID_TEXT_MSG		2 /**< Formatted ASCII/UTF-8 debug text message record */
+/** @} */
 
 #endif /* __SOC_DEBUG_STREAM_H__ */

@@ -6,6 +6,12 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+/**
+ * \file include/sof/debug/debug.h
+ * \brief Early firmware bootstrap debug dumps, mailbox peek/poke, and diagnostic helpers.
+ * \ingroup debug_stream_api
+ */
+
 #ifndef __SOF_DEBUG_DEBUG_H__
 #define __SOF_DEBUG_DEBUG_H__
 
@@ -30,13 +36,14 @@
 
 #include <sof/lib/mailbox.h>
 
+/** Firmware ready flags describing debug capabilities (GDB, build flags) */
 #define DEBUG_SET_FW_READY_FLAGS					\
 (									\
 	SOF_IPC_INFO_BUILD |						\
 	(IS_ENABLED(CONFIG_GDB_DEBUG) ? SOF_IPC_INFO_GDB : 0)	\
 )
 
-/* dump file and line to start of mailbox or shared memory */
+/** \brief Dump current file name, function name, and line number to base of debug mailbox */
 #define dbg() \
 	do { \
 		volatile uint32_t *__m = (uint32_t *)mailbox_get_debug_base(); \
@@ -48,7 +55,7 @@
 		*__m = __LINE__; \
 	} while (0)
 
-/* dump file and line to offset in mailbox or shared memory */
+/** \brief Dump current file, function, and line to specific 32-bit word offset in debug mailbox */
 #define dbg_at(__x) \
 	do { \
 		volatile uint32_t *__m = \
@@ -61,7 +68,7 @@
 		*__m = __LINE__; \
 	} while (0)
 
-/* dump value to start of mailbox or shared memory */
+/** \brief Dump a 32-bit integer value directly to start of debug mailbox */
 #define dbg_val(__v) \
 	do { \
 		volatile uint32_t *__m = \
@@ -69,7 +76,7 @@
 		*__m = __v; \
 	} while (0)
 
-/* dump value to offset in mailbox or shared memory */
+/** \brief Dump a 32-bit integer value to specific word offset in debug mailbox */
 #define dbg_val_at(__v, __x) \
 	do { \
 		volatile uint32_t *__m = \
@@ -77,7 +84,7 @@
 		*__m = __v; \
 	} while (0)
 
-/* dump data area at addr and size count to start of mailbox or shared memory */
+/** \brief Dump raw memory buffer of given 32-bit word count to start of debug mailbox */
 #define dump(addr, count) \
 	do { \
 		volatile uint32_t *__m = (uint32_t *)mailbox_get_debug_base(); \
@@ -87,7 +94,7 @@
 			*(__m++) = *(__a++); \
 	} while (0)
 
-/* dump data area at addr and size count at mailbox offset or shared memory */
+/** \brief Dump memory buffer of given 32-bit word count to mailbox offset */
 #define dump_at(addr, count, offset) \
 	do { \
 		volatile uint32_t *__m = \
@@ -98,20 +105,21 @@
 			*(__m++) = *(__a++); \
 	} while (0)
 
-/* dump object to start of mailbox */
+/** \brief Dump a stack/global object and source location to start of debug mailbox */
 #define dump_object(__o) \
 	do {						\
 		dbg();					\
 		dump(&__o, sizeof(__o) >> 2);		\
 	} while (0)
 
-/* dump object from pointer at start of mailbox */
+/** \brief Dump an object from pointer and source location to start of debug mailbox */
 #define dump_object_ptr(__o) \
 	do {						\
 		dbg();					\
 		dump(__o, sizeof(*(__o)) >> 2);		\
 	} while (0)
 
+/** \brief Dump an object from pointer to specific offset in debug mailbox */
 #define dump_object_ptr_at(__o, __at) \
 	do {						\
 		dbg();					\

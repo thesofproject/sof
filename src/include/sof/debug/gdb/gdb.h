@@ -5,6 +5,12 @@
  * Author: Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
 
+/**
+ * \file include/sof/debug/gdb/gdb.h
+ * \brief GDB target debug stub, exception traps, and register accessors.
+ * \ingroup debug_stream_api
+ */
+
 #ifndef __SOF_DEBUG_GDB_GDB_H__
 #define __SOF_DEBUG_GDB_GDB_H__
 
@@ -35,12 +41,31 @@
 #define GDB_SPEC_REG_RANGE_END 0x300 /**< identifies spec registers range */
 #define GDB_REG_RANGE_END 0x400 /**< identifies spec registers range */
 
+/**
+ * \brief Exception handler hook triggered on GDB breakpoint or watchpoint trap.
+ * \ingroup debug_stream_api
+ */
 void gdb_handle_exception(void);
+
+/**
+ * \brief Output diagnostic debug string to connected GDB client.
+ * \ingroup debug_stream_api
+ * @param[in] str Null-terminated string to transmit.
+ */
 void gdb_debug_info(unsigned char *str);
+
+/**
+ * \brief Initialize debug exception vectors and trap handlers.
+ * \ingroup debug_stream_api
+ */
 void gdb_init_debug_exception(void);
 
 #endif /* CONFIG_GDB_DEBUG */
 
+/**
+ * \brief Initialize the GDB target debugging stub and register listeners.
+ * \ingroup debug_stream_api
+ */
 void gdb_init(void);
 
 #endif /* __SOF_DEBUG_GDB_GDB_H__ */

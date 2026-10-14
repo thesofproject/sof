@@ -3,6 +3,12 @@
  * Copyright(c) 2024 Intel Corporation.
  */
 
+/**
+ * \file include/user/debug_stream_slot.h
+ * \brief SRAM Memory Window 2 Debug Slot mapping and per-core circular buffers.
+ * \ingroup debug_stream_api
+ */
+
 #ifndef __SOC_DEBUG_WINDOW_SLOT_H__
 #define __SOC_DEBUG_WINDOW_SLOT_H__
 
@@ -85,47 +91,50 @@
 
 #include <stdint.h>
 
-/* Core specific section descriptor
+/**
+ * \brief Core-specific section descriptor within the debug window slot.
+ * \ingroup debug_stream_api
  *
- * Section descriptor defines core ID, offset and size of the circular
- * buffer in the debug window slot.
+ * Each descriptor maps a core-specific circular buffer inside Memory Window 2.
+ * The `offset` field defines the byte offset from the start of `debug_stream_slot_hdr`
+ * to the core's `debug_stream_circular_buf` structure (aligned to cache line and 4-byte
+ * word boundaries). The `buf_words` field defines the capacity of the circular buffer
+ * `data[]` array in 32-bit words.
  */
 struct debug_stream_section_descriptor {
-	uint32_t core_id;	/* Core ID */
-	uint32_t buf_words;	/* Circular buffer size in 32-bit words */
-	uint32_t offset;	/* Core section offset */
+	uint32_t core_id;	/**< Reporting DSP core identifier */
+	uint32_t buf_words;	/**< Circular buffer data capacity in 32-bit words */
+	uint32_t offset;	/**< Byte offset from slot base (4-byte aligned) */
 } __packed;
 
-/* Debug window slot header for Debug Stream.
- *
- * The header should be written in the beginning of the slot.
+/**
+ * \brief Preamble header placed at the beginning of Memory Window 2 Debug Slot.
+ * \ingroup debug_stream_api
  */
 struct debug_stream_slot_hdr {
-	struct debug_stream_hdr hdr;
-	uint32_t total_size;	/* total size of payload including all sections */
-	uint32_t num_sections;	/* number of core specific sections */
-	struct debug_stream_section_descriptor section_desc[];
+	struct debug_stream_hdr hdr;				/**< Base stream identifier and size */
+	uint32_t total_size;					/**< Total size of payload across all core sections */
+	uint32_t num_sections;					/**< Number of active core-specific sections */
+	struct debug_stream_section_descriptor section_desc[];	/**< Array of per-core section descriptors */
 } __packed;
 
+/**
+ * \brief Per-core circular buffer layout within a debug stream slot.
+ * \ingroup debug_stream_api
+ */
 struct debug_stream_circular_buf {
-	uint32_t next_seqno;
-	uint32_t w_ptr;
-	uint32_t data[];
+	uint32_t next_seqno;	/**< Sequence counter of next record to write */
+	uint32_t w_ptr;		/**< Current write position in 32-bit words */
+	uint32_t data[];	/**< Circular data buffer holding stream records */
 } __aligned(CONFIG_DCACHE_LINE_SIZE);
 
 struct debug_stream_record;
+
 /**
- * \brief Send debug stream records over debug window slot
- *
- * \param[in] rec the record to be written to circular buffer
- *
- * The debug window slot is initialized automatically at DSP boot
- * time, and the core specific circular buffer is selected
- * automatically.
- *
- * \return 0 on success
- *         -ENODEV if debug stream slot is not configured
- *         -ENOMEM if the record is too big
+ * \brief Send a debug stream record over the memory window debug slot.
+ * \ingroup debug_stream_api
+ * @param[in] rec Pointer to abstract debug stream record to transmit.
+ * @return 0 on success, -ENODEV if debug slot is unconfigured, or -ENOMEM if record exceeds capacity.
  */
 __syscall int debug_stream_slot_send_record(struct debug_stream_record *rec);
 

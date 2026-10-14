@@ -119,6 +119,30 @@
  */
 
 /**
+ * @defgroup trace_logging_api Trace DMA & Dictionary Logging
+ * @ingroup probe_api
+ * @brief Circular host DMA trace buffers, dictionary-based logger (.ldc), runtime log level filtering, and panic crash dumps.
+ */
+
+/**
+ * @defgroup audio_probe_api Audio Probes & Stream Tap Points
+ * @ingroup probe_api
+ * @brief Dynamic pipeline buffer extraction and injection probes, probe DMA frames, and synchronization sync words.
+ */
+
+/**
+ * @defgroup telemetry_perf_api Hardware Telemetry & Performance Monitoring
+ * @ingroup probe_api
+ * @brief Core system ticks, CPU cycle utilization, component performance tracking, and SRAM Window 0/3 telemetry status registers.
+ */
+
+/**
+ * @defgroup debug_stream_api Debug Streams & Low-Level Debugging
+ * @ingroup probe_api
+ * @brief Structured debug stream records, Memory Window 2 debug slots, mailbox debug dumps, and GDB target stub.
+ */
+
+/**
  * @defgroup platform_drivers_api Platform & Hardware Drivers
  * @brief Digital Audio Interfaces (DAI), Direct Memory Access (DMA), and Power Management (PM) runtime.
  */
