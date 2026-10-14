@@ -117,7 +117,7 @@ add_subdirectory(nxp)
 if(CONFIG_COMP_CHAIN_DMA)
 	add_local_sources(sof chain_dma.c)
 endif()
-if(CONFIG_COMP_KPB AND NOT CONFIG_LIBRARY_STATIC)
+if(CONFIG_COMP_KPB AND NOT CONFIG_LIBRARY)
 	add_local_sources(sof
 		kpb.c
 	)
