@@ -975,15 +975,6 @@ static int ipc_glb_gdb_debug(uint32_t header)
 #if CONFIG_GDBSTUB
 	ipc_enter_gdb = true;
 	return 0;
-// TODO: remove old GDB stub?
-#elif CONFIG_GDB_DEBUG
-	gdb_init_debug_exception();
-	gdb_init();
-	/* TODO: this asm should be in arch/include/debug/debug.h
-	 * with a generic name and trigger debug exception
-	 */
-	asm volatile("_break 0, 0");
-	return 0;
 #else
 	return -EINVAL;
 #endif

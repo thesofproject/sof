@@ -72,12 +72,6 @@ config DEBUG
 	help
 	  Select for debug build
 
-config GDB_DEBUG
-	bool "GDB Stub"
-	default n
-	help
-	  Select for GDB debugging
-
 config DEBUG_MEMORY_USAGE_SCAN
 	bool "Memory usage scan"
 	default y
