@@ -7,10 +7,9 @@
  */
 
 /**
- * \file include/ipc/probe.h
- * \brief Probe IPC definitions
- * \author Adrian Bonislawski <adrian.bonislawski@linux.intel.com>
- * \author Artur Kloniecki <arturx.kloniecki@linux.intel.com>
+ * \file include/ipc3/probe.h
+ * \brief IPC3 Audio probe points, DMA descriptors, and configuration commands.
+ * \ingroup audio_probe_api
  */
 
 #ifndef __IPC_PROBE_H__
@@ -20,48 +19,49 @@
 #include <rtos/bit.h>
 #include <stdint.h>
 
-/*
- * Buffer id used in the probe output stream headers for
- * logging data packet.
- */
+/** Buffer ID used in probe stream headers for extraction logging packets */
 #define PROBE_LOGGING_BUFFER_ID 0
 
-#define PROBE_PURPOSE_EXTRACTION	0x1
-#define PROBE_PURPOSE_INJECTION		0x2
-#define PROBE_PURPOSE_LOGGING		0x3
-#define PROBE_PURPOSE_TRACING		0x4
+/** \name Probe Tap Point Purpose
+ *  Intended direction and role of the probe connection.
+ *  @{
+ */
+#define PROBE_PURPOSE_EXTRACTION	0x1	/**< Extract audio stream from buffer to host */
+#define PROBE_PURPOSE_INJECTION		0x2	/**< Inject host audio stream into buffer */
+#define PROBE_PURPOSE_LOGGING		0x3	/**< Route probe packets to logging backend */
+#define PROBE_PURPOSE_TRACING		0x4	/**< Real-time pipeline trace capture */
+/** @} */
 
 /**
- * Description of probe dma
+ * \brief Host DMA channel descriptor allocated for audio probes.
+ * \ingroup audio_probe_api
  */
 struct probe_dma {
-	uint32_t stream_tag;		/**< Stream tag associated with this DMA */
-	uint32_t dma_buffer_size;	/**< Size of buffer associated with this DMA */
+	uint32_t stream_tag;		/**< Stream tag associated with this DMA channel */
+	uint32_t dma_buffer_size;	/**< Size of host DMA buffer in bytes */
 } __attribute__((packed, aligned(4)));
 
 /**
- * Description of probe point id
+ * \brief Packed identifier identifying target audio buffer for probe attachment.
+ * \ingroup audio_probe_api
  */
 typedef struct probe_point_id {
-	uint32_t full_id;
+	uint32_t full_id;		/**< Packed buffer identifier */
 } __attribute__((packed, aligned(4))) probe_point_id_t;
 
 /**
- * Description of probe point
+ * \brief Probe tap point descriptor binding a pipeline buffer to a probe purpose.
+ * \ingroup audio_probe_api
  */
 struct probe_point {
-	probe_point_id_t buffer_id;	/**< ID of buffer to which probe is attached */
-	uint32_t purpose;		/**< PROBE_PURPOSE_xxx */
-	uint32_t stream_tag;		/**< Stream tag of DMA via which data will be provided for injection.
-					 *   For extraction purposes, stream tag is ignored when received,
-					 *   but returned actual extraction stream tag via INFO function.
-					 */
+	probe_point_id_t buffer_id;	/**< ID of pipeline buffer to which probe is attached */
+	uint32_t purpose;		/**< Probe role (PROBE_PURPOSE_*) */
+	uint32_t stream_tag;		/**< Stream tag of DMA for injection; ignored on extraction request and populated on reply */
 } __attribute__((packed, aligned(4)));
 
 /**
- * \brief DMA ADD for probes.
- *
- * Used as payload for IPCs: SOF_IPC_PROBE_INIT, SOF_IPC_PROBE_DMA_ADD.
+ * \brief DMA ADD for probes payload (SOF_IPC_PROBE_INIT, SOF_IPC_PROBE_DMA_ADD).
+ * \ingroup audio_probe_api
  */
 struct sof_ipc_probe_dma_add_params {
 	struct sof_ipc_cmd_hdr hdr;	/**< Header */
@@ -70,9 +70,8 @@ struct sof_ipc_probe_dma_add_params {
 } __attribute__((packed, aligned(4)));
 
 /**
- * \brief Reply to INFO functions.
- *
- * Used as payload for IPCs: SOF_IPC_PROBE_DMA_INFO, SOF_IPC_PROBE_POINT_INFO.
+ * \brief Reply to INFO queries (SOF_IPC_PROBE_DMA_INFO, SOF_IPC_PROBE_POINT_INFO).
+ * \ingroup audio_probe_api
  */
 struct sof_ipc_probe_info_params {
 	struct sof_ipc_reply rhdr;			/**< Header */
@@ -84,9 +83,8 @@ struct sof_ipc_probe_info_params {
 } __attribute__((packed, aligned(4)));
 
 /**
- * \brief Probe DMA remove.
- *
- * Used as payload for IPC: SOF_IPC_PROBE_DMA_REMOVE
+ * \brief Probe DMA remove payload (SOF_IPC_PROBE_DMA_REMOVE).
+ * \ingroup audio_probe_api
  */
 struct sof_ipc_probe_dma_remove_params {
 	struct sof_ipc_cmd_hdr hdr;	/**< Header */
@@ -95,9 +93,8 @@ struct sof_ipc_probe_dma_remove_params {
 } __attribute__((packed, aligned(4)));
 
 /**
- * \brief Add probe points.
- *
- * Used as payload for IPC: SOF_IPC_PROBE_POINT_ADD
+ * \brief Add probe points payload (SOF_IPC_PROBE_POINT_ADD).
+ * \ingroup audio_probe_api
  */
 struct sof_ipc_probe_point_add_params {
 	struct sof_ipc_cmd_hdr hdr;		/**< Header */
@@ -106,9 +103,8 @@ struct sof_ipc_probe_point_add_params {
 } __attribute__((packed, aligned(4)));
 
 /**
- * \brief Remove probe point.
- *
- * Used as payload for IPC: SOF_IPC_PROBE_POINT_REMOVE
+ * \brief Remove probe points payload (SOF_IPC_PROBE_POINT_REMOVE).
+ * \ingroup audio_probe_api
  */
 struct sof_ipc_probe_point_remove_params {
 	struct sof_ipc_cmd_hdr hdr;	/**< Header */

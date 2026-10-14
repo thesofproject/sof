@@ -6,40 +6,54 @@
  *         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
  */
 
+/**
+ * \file include/user/trace.h
+ * \brief User-space ABI log levels and binary trace packet header definitions.
+ * \ingroup trace_logging_api
+ */
+
 #ifndef __USER_TRACE_H__
 #define __USER_TRACE_H__
 
 #include <stdint.h>
 
-/* trace event classes - high 8 bits*/
+/** Legacy trace event class (deprecated) */
 #define TRACE_CLASS_DEPRECATED	(0)
 
-#define LOG_ENABLE		1  /* Enable logging */
-#define LOG_DISABLE		0  /* Disable logging */
+#define LOG_ENABLE		1  /**< Enable active logging */
+#define LOG_DISABLE		0  /**< Disable logging */
 
-#define LOG_LEVEL_CRITICAL	1  /* (FDK fatal) */
-#define LOG_LEVEL_ERROR		LOG_LEVEL_CRITICAL
-#define LOG_LEVEL_WARNING	2
-#define LOG_LEVEL_INFO		3
-#define LOG_LEVEL_DEBUG		4
-#define LOG_LEVEL_VERBOSE	LOG_LEVEL_DEBUG
+/** \name Logging Severity Levels
+ *  Severity ranking for runtime message filtering.
+ *  @{
+ */
+#define LOG_LEVEL_CRITICAL	1  /**< Critical failure or unrecoverable error (fatal) */
+#define LOG_LEVEL_ERROR		LOG_LEVEL_CRITICAL /**< Alias for critical errors */
+#define LOG_LEVEL_WARNING	2  /**< Warning conditions requiring attention */
+#define LOG_LEVEL_INFO		3  /**< Normal informational operational messages */
+#define LOG_LEVEL_DEBUG		4  /**< Detailed debug logging */
+#define LOG_LEVEL_VERBOSE	LOG_LEVEL_DEBUG    /**< Verbose debug logging */
+/** @} */
 
-#define TRACE_ID_LENGTH 12 /* bit field length */
+/** Bitfield width of component and pipeline trace identifiers */
+#define TRACE_ID_LENGTH 12
 
-/*
- *  Log entry protocol header.
+/**
+ * \brief Binary log packet header preceding variable arguments in DMA trace stream.
+ * \ingroup trace_logging_api
  *
- * The header is followed by an array of arguments (uint32_t[]).
- * Number of arguments is specified by the params_num field of log_entry
+ * Each dictionary log packet in the DMA buffer begins with this header, followed
+ * by up to 4 parameters (uint32_t values) matching the format string referenced
+ * by log_entry_address in the ELF dictionary (.ldc).
  */
 struct log_entry_header {
-	uint32_t uid;
-	uint32_t id_0 : TRACE_ID_LENGTH; /* e.g. Pipeline ID */
-	uint32_t id_1 : TRACE_ID_LENGTH; /* e.g. Component ID */
-	uint32_t core_id : 8;		 /* Reporting core's id */
+	uint32_t uid;				/**< Unique log entry sequence number */
+	uint32_t id_0 : TRACE_ID_LENGTH;	/**< Primary identifier (e.g. Pipeline ID) */
+	uint32_t id_1 : TRACE_ID_LENGTH;	/**< Secondary identifier (e.g. Component ID) */
+	uint32_t core_id : 8;			/**< Reporting DSP core identifier */
 
-	uint64_t timestamp;		 /* Timestamp (in dsp ticks) */
-	uint32_t log_entry_address;	 /* Address of log entry in ELF */
+	uint64_t timestamp;			/**< High-resolution hardware clock timestamp in DSP ticks */
+	uint32_t log_entry_address;		/**< Linker address of static log entry descriptor in firmware ELF */
 } __attribute__((packed));
 
 #endif /* __USER_TRACE_H__ */

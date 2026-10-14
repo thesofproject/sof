@@ -3,6 +3,12 @@
  * Copyright(c) 2016,2024 Intel Corporation.
  */
 
+/**
+ * \file include/sof/trace/trace-soflogger.h
+ * \brief Dictionary-based trace logging engine, log filtering, and mailbox trace fallback.
+ * \ingroup trace_logging_api
+ */
+
 #ifndef __SOF_TRACE_TRACE_SOFLOGGER_H__
 #define __SOF_TRACE_TRACE_SOFLOGGER_H__
 
@@ -18,11 +24,15 @@ struct sof;
 struct trace;
 struct tr_ctx;
 
+/**
+ * \brief Runtime trace filter criteria for components and pipelines.
+ * \ingroup trace_logging_api
+ */
 struct trace_filter {
-	uint32_t uuid_id;	/**< type id, or 0 when not important */
-	int32_t comp_id;	/**< component id or -1 when not important */
-	int32_t pipe_id;	/**< pipeline id or -1 when not important */
-	int32_t log_level;	/**< new log level value */
+	uint32_t uuid_id;	/**< Component UUID type identifier, or 0 for wildcard */
+	int32_t comp_id;	/**< Component ID, or -1 for wildcard */
+	int32_t pipe_id;	/**< Pipeline ID, or -1 for wildcard */
+	int32_t log_level;	/**< Target log level threshold (LOG_LEVEL_*) */
 };
 
 /** The start of this linker output MUST match the 'ldc_entry_header'
@@ -52,6 +62,11 @@ struct trace_filter {
 
 #define _TRACE_EVENT_MAX_ARGUMENT_COUNT 4
 
+/**
+ * \brief Retrieve global trace subsystem context from SOF runtime.
+ * \ingroup trace_logging_api
+ * @return Pointer to struct trace.
+ */
 static inline struct trace *trace_get(void)
 {
 	return sof_get()->trace;
@@ -101,22 +116,94 @@ static inline struct trace *trace_get(void)
 				     ctx, id_1, id_2,			\
 				     format, ##__VA_ARGS__)
 
+/**
+ * \brief Flush buffered trace data from DMA buffer to Mailbox Window.
+ * \ingroup trace_logging_api
+ */
 void trace_flush_dma_to_mbox(void);
+
+/**
+ * \brief Globally resume trace event logging.
+ * \ingroup trace_logging_api
+ */
 void trace_on(void);
+
+/**
+ * \brief Globally pause trace event logging.
+ * \ingroup trace_logging_api
+ */
 void trace_off(void);
+
+/**
+ * \brief Initialize the trace subsystem and allocate global trace buffers.
+ * \ingroup trace_logging_api
+ * @param[in,out] sof Global SOF runtime context.
+ */
 void trace_init(struct sof *sof);
 
-/* All tracing macros in this file end up calling these functions in the end. */
+/**
+ * \brief Function pointer type for formatted trace logger backends.
+ * \ingroup trace_logging_api
+ * @param[in] send_atomic True if logging from atomic or interrupt context.
+ * @param[in] log_entry Pointer to static log entry descriptor.
+ * @param[in] ctx Pointer to caller trace context.
+ * @param[in] lvl Severity log level (LOG_LEVEL_*).
+ * @param[in] id_1 Primary component/pipe identifier.
+ * @param[in] id_2 Secondary component/subid identifier.
+ * @param[in] arg_count Number of variable arguments.
+ * @param[in] args Variable arguments list.
+ */
 typedef void (*log_func_t)(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
 			   uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list args);
 
+/**
+ * \brief Emit a filtered dictionary trace message.
+ * \ingroup trace_logging_api
+ * @param[in] send_atomic True if logging from atomic context.
+ * @param[in] log_entry Pointer to static log entry.
+ * @param[in] ctx Trace context.
+ * @param[in] lvl Log level.
+ * @param[in] id_1 Primary identifier.
+ * @param[in] id_2 Secondary identifier.
+ * @param[in] arg_count Argument count.
+ * @param[in] args Argument list.
+ */
 void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
 			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list args);
+
+/**
+ * \brief Emit an unfiltered dictionary trace message directly to buffers.
+ * \ingroup trace_logging_api
+ * @param[in] send_atomic True if logging from atomic context.
+ * @param[in] log_entry Pointer to static log entry.
+ * @param[in] ctx Trace context.
+ * @param[in] lvl Log level.
+ * @param[in] id_1 Primary identifier.
+ * @param[in] id_2 Secondary identifier.
+ * @param[in] arg_count Argument count.
+ * @param[in] args Argument list.
+ */
 void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
 			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list args);
+
+/**
+ * \brief Populate an IPC trace filter element array.
+ * \ingroup trace_logging_api
+ * @param[in,out] elem Pointer to current output filter element.
+ * @param[in] end Boundary pointer of element array.
+ * @param[in] filter Source trace filter configuration.
+ * @return Pointer to next available filter element slot.
+ */
 struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
 						    struct sof_ipc_trace_filter_elem *end,
 						    struct trace_filter *filter);
+
+/**
+ * \brief Update runtime trace filtering configuration from IPC payload.
+ * \ingroup trace_logging_api
+ * @param[in] elem Trace filter descriptor to apply.
+ * @return 0 on success, or negative error code on failure.
+ */
 int trace_filter_update(const struct trace_filter *elem);
 
 #define _trace_event_with_ids(lvl, class, ctx, id_1, id_2, format, ...)	\
@@ -126,17 +213,20 @@ int trace_filter_update(const struct trace_filter *elem);
 	_log_message(trace_log_filtered, true, lvl, class, ctx, id_1, id_2, format, ##__VA_ARGS__)
 
 /**
- * Appends one SOF dictionary entry and log statement to the ring buffer
- * implementing the 'etrace' in shared memory.
- *
+ * \brief Appends one SOF dictionary entry and log statement to shared memory mtrace.
+ * \ingroup trace_logging_api
  * @param atomic_context Take the trace->lock if false.
- * @param log_entry_pointer dictionary index produced by the
- *        _DECLARE_LOG_ENTRY macro.
- * @param n_args number of va_args
+ * @param log_entry_pointer Dictionary index produced by _DECLARE_LOG_ENTRY macro.
+ * @param n_args Number of variable arguments.
  */
 void mtrace_dict_entry(bool atomic_context, uint32_t log_entry_pointer, int n_args, ...);
 
-/** Posts a fully prepared log header + log entry */
+/**
+ * \brief Posts a fully prepared log header and log entry packet to mtrace buffer.
+ * \ingroup trace_logging_api
+ * @param complete_packet Pointer to prepared log packet buffer.
+ * @param length Packet size in bytes.
+ */
 void mtrace_event(const char *complete_packet, uint32_t length);
 
 #ifdef CONFIG_TRACEM /* Send everything to shared memory too */
@@ -152,7 +242,18 @@ void mtrace_event(const char *complete_packet, uint32_t length);
 #  define MTRACE_DUPLICATION_LEVEL LOG_LEVEL_ERROR
 #endif /* CONFIG_TRACEM */
 
-/* This function is _not_ passed the format string to save space */
+/**
+ * \brief Internal dictionary logger formatting and dispatch helper.
+ * \ingroup trace_logging_api
+ * @param sofdict_logf Backend log emission callback function.
+ * @param atomic True if executed in atomic context.
+ * @param log_entry Pointer to static log entry.
+ * @param ctx Trace context.
+ * @param lvl Log severity level.
+ * @param id_1 Primary identifier.
+ * @param id_2 Secondary identifier.
+ * @param arg_count Number of format arguments.
+ */
 void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
 		  const struct tr_ctx *ctx, const uint32_t lvl,
 		  uint32_t id_1, uint32_t id_2, int arg_count, ...);

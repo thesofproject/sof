@@ -3,6 +3,12 @@
  * Copyright(c) 2024 Intel Corporation. All rights reserved.
  */
 
+/**
+ * \file include/sof/debug/telemetry/telemetry.h
+ * \brief Hardware telemetry metrics, CPU cycle accounting, and Memory Window telemetry slots.
+ * \ingroup telemetry_perf_api
+ */
+
 #ifndef __SOF_TELEMETRY_H__
 #define __SOF_TELEMETRY_H__
 
@@ -12,102 +18,79 @@
 #endif
 
 #ifndef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
-/* Slot in memory window 2 (Debug Window) to be used as telemetry slot */
+/** Slot index in memory window 2 (Debug Window) allocated for telemetry structures */
 #define SOF_DW_TELEMETRY_SLOT 1
 #endif
 
-/* Memory of average algorithm of performance queue */
+/** Number of historic entries in circular performance measurement queue */
 #define SOF_AVG_PERF_MEAS_DEPTH 64
-/* Number of runs taken to calculate average (algorithm resolution) */
+/** Measurement period in runs over which rolling average is computed */
 #define SOF_AVG_PERF_MEAS_PERIOD 16
 
-/* Systick here is not to be confused with neither Zephyr tick nor SOF scheduler tick,
- * it's a legacy name for counting execution time
+/**
+ * \brief Per-core system tick and cycle execution metrics.
+ * \ingroup telemetry_perf_api
+ *
+ * @note In this context, "systick" is a legacy terminology for counting DSP execution
+ * time intervals. It is neither related to the Zephyr RTOS system tick nor the SOF
+ * scheduler tick.
  */
 struct system_tick_info {
-	uint32_t count;
-	uint32_t last_time_elapsed;
-	uint32_t max_time_elapsed;
-	uint32_t last_ccount;
-	uint32_t avg_utilization;
-	uint32_t peak_utilization;
-	uint32_t peak_utilization_4k;
-	uint32_t peak_utilization_8k;
-	uint32_t rsvd[2];
+	uint32_t count;			/**< Total tick / measurement iteration count */
+	uint32_t last_time_elapsed;	/**< Cycles consumed during previous tick interval */
+	uint32_t max_time_elapsed;	/**< Peak cycle consumption observed across all intervals */
+	uint32_t last_ccount;		/**< Cycle counter snapshot at end of previous tick */
+	uint32_t avg_utilization;	/**< Rolling average CPU utilization percentage (0-100) */
+	uint32_t peak_utilization;	/**< Peak CPU utilization percentage observed */
+	uint32_t peak_utilization_4k;	/**< Peak utilization over 4K sample rolling window */
+	uint32_t peak_utilization_8k;	/**< Peak utilization over 8K sample rolling window */
+	uint32_t rsvd[2];		/**< Reserved for padding and future metrics */
 } __packed;
 
-/*
- * This is the structure of telemetry data in memory window.
- * If you need to define a field, you should also define the fields before it to
- * keep the internal structures aligned with each other.
+/**
+ * \brief Layout of telemetry data published in shared Memory Window.
+ * \ingroup telemetry_perf_api
  */
 struct telemetry_wnd_data {
-	uint32_t separator_1;
-	struct system_tick_info system_tick_info[CONFIG_MAX_CORE_COUNT];
-	/*
-	 * uint32_t separator_2;
-	 * deadlock_info_s deadlock_info[FW_REPORTED_MAX_CORES_COUNT];
-	 * uint32_t separator_3;
-	 * assert_info_s assert_info;
-	 * uint32_t separator_4;
-	 * xxxruns_info_s xxxruns_info;
-	 * uint32_t separator_5;
-	 * performance_info_s performance_info;
-	 * uint32_t separator_6;
-	 * mem_pools_info_s mem_pools_info;
-	 * uint32_t separator_7;
-	 * timeout_info_s timeout_info;
-	 * uint32_t separator_8;
-	 * ulp_telemetry_s ulp_telemetry;
-	 * uint32_t separator_9;
-	 * transition_info_s   evad_transition_info;
-	 * uint32_t separator_10;
-	 * task_info_s task_info[FW_MAX_REPORTED_TASKS];
-	 * uint32_t separator_11;
-	 * transition_info_s d0i3_info[FW_REPORTED_MAX_CORES_COUNT];
-	 * uint32_t separator_12;
-	 * interrupt_stats_info_s interrupt_stats;
-	 * uint32_t separator_13;
-	 * loaded_libraries_s loaded_libraries;
-	 * //uint32_t __pad_for_exception_record;
-	 * uint32_t separator_exception;
-	 * CoreExceptionRecord core_exception_record[FW_REPORTED_MAX_CORES_COUNT];
-	 */
+	uint32_t separator_1;		/**< Header boundary delimiter */
+	struct system_tick_info system_tick_info[CONFIG_MAX_CORE_COUNT]; /**< Per-core execution metrics */
 } __packed;
 
-/* Reference FW used a normal Queue here.
- * Implementing simplified queue just for avg calculation.
- * Queue is circular, oldest element replaced by latest
+/**
+ * \brief Circular queue tracking execution cycle history for rolling averages.
+ * \ingroup telemetry_perf_api
  */
 struct telemetry_perf_queue {
-	size_t elements[SOF_AVG_PERF_MEAS_DEPTH];
-	/* next empty element, head if queue is full, else tail */
-	size_t index;
-	uint8_t full;
-	/* number of items AND index of next empty box */
-	size_t size;
-	size_t sum;
+	size_t elements[SOF_AVG_PERF_MEAS_DEPTH]; /**< Historic cycle measurements */
+	size_t index;				 /**< Current head index in circular queue */
+	uint8_t full;				 /**< 1 if queue has wrapped, 0 otherwise */
+	size_t size;				 /**< Number of valid measurements stored */
+	size_t sum;				 /**< Running cumulative sum of valid measurements */
 };
 
 /**
- * @brief Update periodic telemetry metrics with elapsed core clock cycles.
- * @param begin_ccount Cycle count at start of measurement window.
- * @param current_ccount Cycle count at current measurement point.
+ * \brief Update periodic telemetry metrics with elapsed core clock cycles.
+ * \ingroup telemetry_perf_api
+ * @param begin_ccount Cycle count snapshot at start of measurement interval.
+ * @param current_ccount Cycle count snapshot at end of measurement interval.
  */
 void telemetry_update(uint32_t begin_ccount, uint32_t current_ccount);
 
 #ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
 /**
- * @brief Get pointer to system tick telemetry information structure.
- * @return Pointer to struct system_tick_info.
+ * \brief Retrieve pointer to system tick telemetry structure for current core.
+ * \ingroup telemetry_perf_api
+ * @return Pointer to struct system_tick_info in shared memory.
  */
 struct system_tick_info *telemetry_get_systick_info_ptr(void);
 #endif
 
 #ifdef CONFIG_TIMING_FUNCTIONS
+/** Timestamp counter accessor using Zephyr timing functions */
 #define telemetry_timestamp timing_counter_get
 #else
+/** Timestamp counter accessor using hardware cycle counter */
 #define telemetry_timestamp sof_cycle_get_64
 #endif
 
-#endif /*__SOF_TELEMETRY_H__ */
+#endif /* __SOF_TELEMETRY_H__ */

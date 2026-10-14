@@ -5,88 +5,97 @@
  * Author: Tobiasz Dryjanski <tobiaszx.dryjanski@intel.com>
  */
 
+/**
+ * \file include/sof/debug/telemetry/performance_monitor.h
+ * \brief Component performance measurement, cycle accounting, and Memory Window 3 slots.
+ * \ingroup telemetry_perf_api
+ */
+
 #ifndef __SOF_PERFORMANCE_MONITOR_H__
 #define __SOF_PERFORMANCE_MONITOR_H__
 
 #include <ipc4/base_fw.h>
 
-/* to be moved to Zephyr */
+/** Base address of Memory Window 3 memory node from device tree */
 #define WIN3_MBASE DT_REG_ADDR(DT_PHANDLE(DT_NODELABEL(mem_window3), memory))
+/** Uncached pointer to ADSP Performance Measurement Window (PMW) in Window 3 */
 #define ADSP_PMW ((volatile uint32_t *) \
 		 (sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *) \
 				     (WIN3_MBASE + WIN3_OFFSET))))
 
-#if IS_ENABLED(CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS)
+#if IS_ENABLED(CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS) || defined(__DOXYGEN__)
 /**
- * Initializer for struct perf_data_item_comp
- *
- * @param[out] perf Struct to be initialized
- * @param[in] resource_id
- * @param[in] power_mode
+ * \brief Initializer for component performance data record.
+ * \ingroup telemetry_perf_api
+ * @param[out] perf Structure to be initialized.
+ * @param[in] resource_id Unique resource/component identifier.
+ * @param[in] power_mode Active power mode.
  */
 void perf_data_item_comp_init(struct perf_data_item_comp *perf, uint32_t resource_id,
 			      uint32_t power_mode);
 
 /**
- * Get next free performance data slot from Memory Window 3
- *
- * @return performance data record
+ * \brief Allocate next free performance data slot from Memory Window 3.
+ * \ingroup telemetry_perf_api
+ * @return Pointer to allocated performance data record, or NULL if window is full.
  */
 struct perf_data_item_comp *perf_data_getnext(void);
 
 /**
- * Free a performance data slot in Memory Window 3
- *
- * @return 0 if succeeded, in other case the slot is already free
+ * \brief Release an allocated performance data slot in Memory Window 3.
+ * \ingroup telemetry_perf_api
+ * @param[in,out] item Pointer to performance data item to release.
+ * @return 0 on success, or negative error code if slot was already free.
  */
 int free_performance_data(struct perf_data_item_comp *item);
 
 /**
- * Set performance measurements state
- *
- * @param[in] state Value to be set.
+ * \brief Set global performance measurement state machine.
+ * \ingroup telemetry_perf_api
+ * @param[in] state Target measurement state (disabled, paused, enabled).
  */
 void perf_meas_set_state(enum ipc4_perf_measurements_state_set state);
 
 /**
- * Get performance measurements state
- *
- * @return performance measurements state
+ * \brief Query current global performance measurement state.
+ * \ingroup telemetry_perf_api
+ * @return Current measurement state enumeration value.
  */
 enum ipc4_perf_measurements_state_set perf_meas_get_state(void);
 
 /**
- * Get global performance data entries.
- *
- * @param[out] global_perf_data Struct to be filled with data
- * @return 0 if succeeded, error code otherwise.
+ * \brief Retrieve global aggregated performance telemetry data.
+ * \ingroup telemetry_perf_api
+ * @param[out] global_perf_data Destination structure to populate.
+ * @return 0 on success, or negative error code on failure.
  */
 int get_performance_data(struct global_perf_data * const global_perf_data);
 
 /**
- * Get extended global performance data entries.
- *
- * @param[out] ext_global_perf_data Struct to be filled with data
- * @return 0 if succeeded, error code otherwise.
+ * \brief Retrieve extended global performance telemetry data with per-core breakdown.
+ * \ingroup telemetry_perf_api
+ * @param[out] ext_global_perf_data Destination structure to populate.
+ * @return 0 on success, or negative error code on failure.
  */
 int get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data);
 
 /**
- * Reset performance data values for all records.
- *
- * @return 0 if succeeded, error code otherwise.
+ * \brief Reset all performance measurement counters across all components.
+ * \ingroup telemetry_perf_api
+ * @return 0 on success, or negative error code on failure.
  */
 int reset_performance_counters(void);
 
 /**
- * Reinitialize performance data values for all created components;
- *
- * @return 0 if succeeded, error code otherwise.
+ * \brief Reinitialize and activate performance counters for all created components.
+ * \ingroup telemetry_perf_api
+ * @return 0 on success, or negative error code on failure.
  */
 int enable_performance_counters(void);
 
 /**
- * Unregister performance data records marked for removal.
+ * \brief Disable performance counters and unregister records marked for removal.
+ * \ingroup telemetry_perf_api
  */
 void disable_performance_counters(void);
 
