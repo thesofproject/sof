@@ -6,8 +6,6 @@ rsource "dw/Kconfig"
 
 rsource "imx/Kconfig"
 
-rsource "mediatek/Kconfig"
-
 rsource "amd/Kconfig"
 
 config DUMMY_DMA
