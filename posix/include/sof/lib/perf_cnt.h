@@ -6,7 +6,7 @@
  */
 
 /**
- * \file xtos/include/sof/lib/perf_cnt.h
+ * \file posix/include/sof/lib/perf_cnt.h
  * \brief Simple performance counters
  * \author Marcin Maka <marcin.maka@linux.intel.com>
  */

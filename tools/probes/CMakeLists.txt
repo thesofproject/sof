@@ -17,7 +17,7 @@ target_include_directories(sof-probes PRIVATE
 
 # TODO: probes should not need to include RTOS headers. FIX.
 target_include_directories(sof-probes PRIVATE
-	"../../xtos/include"
+	"../../posix/include"
 )
 
 install(TARGETS sof-probes DESTINATION bin)

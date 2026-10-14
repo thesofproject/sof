@@ -7,7 +7,7 @@
  */
 
 /**
- * \file xtos/include/sof/lib/dai.h
+ * \file posix/include/sof/lib/dai.h
  * \brief DAI Drivers definition
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>

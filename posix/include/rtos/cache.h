@@ -6,7 +6,7 @@
  */
 
 /**
- * \file xtos/include/rtos/cache.h
+ * \file posix/include/rtos/cache.h
  * \brief Cache header file
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */

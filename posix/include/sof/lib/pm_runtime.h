@@ -7,7 +7,7 @@
  */
 
 /**
- * \file xtos/include/sof/lib/pm_runtime.h
+ * \file posix/include/sof/lib/pm_runtime.h
  * \brief Runtime power management header file
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */

@@ -17,7 +17,6 @@ INPUT            = @top_srcdir@/src/include/ipc \
                    @top_srcdir@/src/include/kernel \
                    @top_srcdir@/src/include/user \
                    @top_srcdir@/src/include/sof \
-                   @top_srcdir@/xtos/include \
                    @top_srcdir@/zephyr/include \
                    @top_srcdir@/doc/groups.dox \
                    @top_srcdir@/doc/mainpage.dox

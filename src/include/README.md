@@ -26,7 +26,7 @@ Previously SOF had the following **mandatory** include PATHS
  logic and headers i.e.
 
 ```
-xtos/include
+posix/include
 zephyr/include
 ```
 
