@@ -88,9 +88,6 @@ zephyr/lib/cpu.c			@tmleman
 zephyr/lib/alloc.c			@dabekjakub
 zephyr/lib/regions_mm.c			@dabekjakub
 
-# installer
-# installer/**				TODO
-
 # CMake
 
 # Include only "top-level" CMakeLists.txt files; the other ones are just
