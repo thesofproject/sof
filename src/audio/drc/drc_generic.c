@@ -480,20 +480,19 @@ void drc_default_pass(struct processing_module *mod,
 	size_t bytes = (size_t)frames * cd->channels * sample_bytes;
 	const uint8_t *src = source->ptr;
 	uint8_t *dst = sink->ptr;
-	int n;
+	size_t n;
 
 	while (bytes) {
-		n = MIN((const uint8_t *)source->buf_end - src,
-			(uint8_t *)sink->buf_end - dst);
+		n = MIN(cir_buf_bytes_without_wrap(src, source->buf_end),
+			cir_buf_bytes_without_wrap(dst, sink->buf_end));
 		n = MIN(n, bytes);
 		if (!n) {
-			src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+			src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 			continue;
 		}
 		memcpy_s(dst, n, src, n);
-		src = cir_buf_wrap((void *)(src + n), (void *)source->buf_start,
-				   (void *)source->buf_end);
+		src = source_cir_buf_wrap(src + n, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst + n, sink->buf_start, sink->buf_end);
 		bytes -= n;
 	}
@@ -560,8 +559,8 @@ static void drc_s16_default(struct processing_module *mod,
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	int nch = cd->channels;
-	const int16_t *x = (int16_t *)source->ptr;
-	int16_t *y = (int16_t *)sink->ptr;
+	const int16_t *x = source->ptr;
+	int16_t *y = sink->ptr;
 	size_t samples = frames * nch;
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
@@ -704,8 +703,8 @@ static void drc_s24_default(struct processing_module *mod,
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	int nch = cd->channels;
-	const int32_t *x = (int32_t *)source->ptr;
-	int32_t *y = (int32_t *)sink->ptr;
+	const int32_t *x = source->ptr;
+	int32_t *y = sink->ptr;
 	size_t samples = frames * nch;
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
@@ -752,8 +751,8 @@ static void drc_s32_default(struct processing_module *mod,
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	int nch = cd->channels;
-	const int32_t *x = (int32_t *)source->ptr;
-	int32_t *y = (int32_t *)sink->ptr;
+	const int32_t *x = source->ptr;
+	int32_t *y = sink->ptr;
 	size_t samples = frames * nch;
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
