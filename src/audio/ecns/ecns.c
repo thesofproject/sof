@@ -90,6 +90,31 @@ static const uint32_t hp_100hz_20db_16k[13] = {
 	0x00004fd0
 };
 
+#if CONFIG_ECNS_HOST_HPF
+/**
+ * \brief 40 Hz second-order high-pass filters with +20 dB gain for Pin 1.
+ *
+ * Converted from highpass_40hz_20db_48khz.conf and highpass_40hz_20db_16khz.conf
+ * in tools/topology/topology2/include/components/eqiir/ with the same layout
+ * as hp_100hz_20db_16k.
+ */
+static const uint32_t hp_40hz_20db_48k[13] = {
+	0x00000001, 0x00000001, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0xc078df4c, 0x7f86ae23,
+	0x1ff51b12, 0xc015c9db, 0x1ff51b12, 0xfffffffc,
+	0x00004fd0
+};
+
+static const uint32_t hp_40hz_20db_16k[13] = {
+	0x00000001, 0x00000001, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0xc167f2ba, 0x7e940dc3,
+	0x1fb8bfff, 0xc08e8003, 0x1fb8bfff, 0xfffffffc,
+	0x00004fd0
+};
+
+#define ECNS_HOST_MAX_CHANNELS	4
+#endif
+
 struct ecns_comp_data {
 	struct ipc4_base_module_cfg base_cfg;
 	uint32_t sample_rate;
@@ -99,6 +124,11 @@ struct ecns_comp_data {
 	uint16_t test_signal_val;
 	struct iir_state_df1 hp_iir;
 	int32_t *hp_delay;
+#if CONFIG_ECNS_HOST_HPF
+	struct iir_state_df1 host_iir[ECNS_HOST_MAX_CHANNELS];
+	int32_t *host_delay;
+	int host_delay_size;
+#endif
 };
 
 static struct comp_dev *ecns_new(const struct comp_driver *drv,
@@ -160,6 +190,26 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 	iir_init_coef_df1(&cd->hp_iir, hp_hdr);
 	iir_init_delay_df1(&cd->hp_iir, &delay);
 
+#if CONFIG_ECNS_HOST_HPF
+	/* The 48 kHz and 16 kHz Pin 1 filters have the same section count */
+	hp_size = iir_delay_size_df1((struct sof_eq_iir_header *)hp_40hz_20db_48k);
+	if (hp_size < 0) {
+		rfree(cd->hp_delay);
+		rfree(cd);
+		comp_free_device(dev);
+		return NULL;
+	}
+
+	cd->host_delay_size = hp_size * ECNS_HOST_MAX_CHANNELS;
+	cd->host_delay = rzalloc(SOF_MEM_FLAG_USER, cd->host_delay_size);
+	if (!cd->host_delay) {
+		rfree(cd->hp_delay);
+		rfree(cd);
+		comp_free_device(dev);
+		return NULL;
+	}
+#endif
+
 	comp_info(dev, "ecns_new: rate=%u in_ch=%u sample_width=%u",
 		  cd->sample_rate, cd->channels, cd->sample_width);
 
@@ -171,6 +221,9 @@ static void ecns_free(struct comp_dev *dev)
 	struct ecns_comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "ecns_free");
+#if CONFIG_ECNS_HOST_HPF
+	rfree(cd->host_delay);
+#endif
 	rfree(cd->hp_delay);
 	rfree(cd);
 	comp_free_device(dev);
@@ -188,8 +241,38 @@ static int ecns_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	return 0;
 }
 
+#if CONFIG_ECNS_HOST_HPF
+static void ecns_host_iir_init(struct ecns_comp_data *cd, uint32_t rate)
+{
+	struct sof_eq_iir_header *hdr = (struct sof_eq_iir_header *)
+		(rate == 16000 ? hp_40hz_20db_16k : hp_40hz_20db_48k);
+	int32_t *delay = cd->host_delay;
+
+	memset_s(cd->host_delay, cd->host_delay_size, 0, cd->host_delay_size);
+	for (int c = 0; c < ECNS_HOST_MAX_CHANNELS; c++) {
+		iir_init_coef_df1(&cd->host_iir[c], hdr);
+		iir_init_delay_df1(&cd->host_iir[c], &delay);
+	}
+}
+
+static inline int32_t ecns_host_filter(struct ecns_comp_data *cd, uint32_t c, int32_t x)
+{
+	return c < ECNS_HOST_MAX_CHANNELS ? iir_df1(&cd->host_iir[c], x) : x;
+}
+#else
+static void ecns_host_iir_init(struct ecns_comp_data *cd, uint32_t rate)
+{
+}
+
+static inline int32_t ecns_host_filter(struct ecns_comp_data *cd, uint32_t c, int32_t x)
+{
+	return x;
+}
+#endif
+
 static int ecns_prepare(struct comp_dev *dev)
 {
+	struct ecns_comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *src0 = NULL;
 	struct comp_buffer *src1 = NULL;
 	struct comp_buffer *source;
@@ -241,6 +324,8 @@ static int ecns_prepare(struct comp_dev *dev)
 			ipc4_update_buffer_format(sink, &pin1_fmt);
 	}
 
+	ecns_host_iir_init(cd, pin1_fmt.sampling_frequency);
+
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }
 
@@ -257,6 +342,10 @@ static int ecns_reset(struct comp_dev *dev)
 		if (hp_size > 0)
 			memset_s(cd->hp_delay, hp_size, 0, hp_size);
 	}
+#if CONFIG_ECNS_HOST_HPF
+	if (cd->host_delay)
+		memset_s(cd->host_delay, cd->host_delay_size, 0, cd->host_delay_size);
+#endif
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
 
@@ -551,9 +640,10 @@ static uint32_t ecns_process_kpb(struct ecns_comp_data *cd,
 }
 
 /**
- * \brief Copy 32-bit input to 32-bit host capture sink
+ * \brief Filter 32-bit input to 32-bit host capture sink
  */
-static void ecns_host_s32_to_s32(struct comp_buffer *in1,
+static void ecns_host_s32_to_s32(struct ecns_comp_data *cd,
+				 struct comp_buffer *in1,
 				 uint32_t in1_ch,
 				 struct comp_buffer *snk1,
 				 uint32_t snk1_ch,
@@ -570,7 +660,7 @@ static void ecns_host_s32_to_s32(struct comp_buffer *in1,
 
 		for (uint32_t i = 0; i < n; i++) {
 			for (uint32_t c = 0; c < snk1_ch; c++)
-				snk_ptr[c] = (c < in1_ch) ? src_ptr[c] : 0;
+				snk_ptr[c] = (c < in1_ch) ? ecns_host_filter(cd, c, src_ptr[c]) : 0;
 			snk_ptr += snk1_ch;
 			src_ptr += in1_ch;
 		}
@@ -582,9 +672,10 @@ static void ecns_host_s32_to_s32(struct comp_buffer *in1,
 }
 
 /**
- * \brief Convert 16-bit input to 32-bit host capture sink
+ * \brief Filter 16-bit input to 32-bit host capture sink
  */
-static void ecns_host_s16_to_s32(struct comp_buffer *in1,
+static void ecns_host_s16_to_s32(struct ecns_comp_data *cd,
+				 struct comp_buffer *in1,
 				 uint32_t in1_ch,
 				 struct comp_buffer *snk1,
 				 uint32_t snk1_ch,
@@ -602,7 +693,7 @@ static void ecns_host_s16_to_s32(struct comp_buffer *in1,
 		for (uint32_t i = 0; i < n; i++) {
 			for (uint32_t c = 0; c < snk1_ch; c++)
 				snk_ptr[c] = (c < in1_ch) ?
-					(((int32_t)src_ptr[c]) << 16) : 0;
+					ecns_host_filter(cd, c, ((int32_t)src_ptr[c]) << 16) : 0;
 			snk_ptr += snk1_ch;
 			src_ptr += in1_ch;
 		}
@@ -614,9 +705,10 @@ static void ecns_host_s16_to_s32(struct comp_buffer *in1,
 }
 
 /**
- * \brief Convert 32-bit input to 16-bit host capture sink
+ * \brief Filter 32-bit input to 16-bit host capture sink
  */
-static void ecns_host_s32_to_s16(struct comp_buffer *in1,
+static void ecns_host_s32_to_s16(struct ecns_comp_data *cd,
+				 struct comp_buffer *in1,
 				 uint32_t in1_ch,
 				 struct comp_buffer *snk1,
 				 uint32_t snk1_ch,
@@ -634,7 +726,8 @@ static void ecns_host_s32_to_s16(struct comp_buffer *in1,
 		for (uint32_t i = 0; i < n; i++) {
 			for (uint32_t c = 0; c < snk1_ch; c++)
 				snk_ptr[c] = (c < in1_ch) ?
-					sat_int16(Q_SHIFT_RND(src_ptr[c], 31, 15)) : 0;
+					sat_int16(Q_SHIFT_RND(ecns_host_filter(cd, c, src_ptr[c]),
+							      31, 15)) : 0;
 			snk_ptr += snk1_ch;
 			src_ptr += in1_ch;
 		}
@@ -646,9 +739,10 @@ static void ecns_host_s32_to_s16(struct comp_buffer *in1,
 }
 
 /**
- * \brief Copy 16-bit input to 16-bit host capture sink
+ * \brief Filter 16-bit input to 16-bit host capture sink
  */
-static void ecns_host_s16_to_s16(struct comp_buffer *in1,
+static void ecns_host_s16_to_s16(struct ecns_comp_data *cd,
+				 struct comp_buffer *in1,
 				 uint32_t in1_ch,
 				 struct comp_buffer *snk1,
 				 uint32_t snk1_ch,
@@ -665,7 +759,10 @@ static void ecns_host_s16_to_s16(struct comp_buffer *in1,
 
 		for (uint32_t i = 0; i < n; i++) {
 			for (uint32_t c = 0; c < snk1_ch; c++)
-				snk_ptr[c] = (c < in1_ch) ? src_ptr[c] : 0;
+				snk_ptr[c] = (c < in1_ch) ?
+					sat_int16(Q_SHIFT_RND(ecns_host_filter(cd, c,
+									       ((int32_t)src_ptr[c]) << 16),
+							      31, 15)) : 0;
 			snk_ptr += snk1_ch;
 			src_ptr += in1_ch;
 		}
@@ -679,14 +776,17 @@ static void ecns_host_s16_to_s16(struct comp_buffer *in1,
 /**
  * \brief Process Pin 1: 48 kHz host capture stream
  *
- * Copies and converts audio samples from the input producer (48 kHz dmic01
- * or fallback src0) to the host sink buffer (supporting s16 or s32).
+ * Filters the audio from the input producer (48 kHz dmic01 or fallback
+ * src0) with the built-in 40 Hz HPF (+20 dB gain) per channel and writes
+ * it to the host sink buffer (supporting s16 or s32).
  *
+ * \param[in,out] cd   ECNS component data
  * \param[in]     in1  Input buffer
  * \param[in,out] snk1 Output buffer to host
  * \return Number of frames produced to snk1
  */
-static uint32_t ecns_process_host(struct comp_buffer *in1,
+static uint32_t ecns_process_host(struct ecns_comp_data *cd,
+				  struct comp_buffer *in1,
 				  struct comp_buffer *snk1)
 {
 	uint32_t in1_ch = audio_stream_get_channels(&in1->stream);
@@ -723,14 +823,14 @@ static uint32_t ecns_process_host(struct comp_buffer *in1,
 
 	if (snk_sample_bytes1 == sizeof(int32_t)) {
 		if (in1_sample_bytes == sizeof(int32_t))
-			ecns_host_s32_to_s32(in1, in1_ch, snk1, snk1_ch, frames1);
+			ecns_host_s32_to_s32(cd, in1, in1_ch, snk1, snk1_ch, frames1);
 		else
-			ecns_host_s16_to_s32(in1, in1_ch, snk1, snk1_ch, frames1);
+			ecns_host_s16_to_s32(cd, in1, in1_ch, snk1, snk1_ch, frames1);
 	} else {
 		if (in1_sample_bytes == sizeof(int32_t))
-			ecns_host_s32_to_s16(in1, in1_ch, snk1, snk1_ch, frames1);
+			ecns_host_s32_to_s16(cd, in1, in1_ch, snk1, snk1_ch, frames1);
 		else
-			ecns_host_s16_to_s16(in1, in1_ch, snk1, snk1_ch, frames1);
+			ecns_host_s16_to_s16(cd, in1, in1_ch, snk1, snk1_ch, frames1);
 	}
 
 	buffer_stream_writeback(snk1, snk_bytes);
@@ -818,7 +918,7 @@ static void ecns_consume_sources(struct comp_buffer *src0,
  *   - Pin 1 in: 48 kHz stream from dmic01 (2 or 4 channels, 16/32-bit)
  * Produces:
  *   - Pin 0 out: 16 kHz mono clean stream to KPB (averaged mono per Kconfig, 320 frames per 20ms)
- *   - Pin 1 out: 48 kHz stereo/4ch clean stream to Host PCM 11 (Straight copy, 960 frames per 20ms)
+ *   - Pin 1 out: 48 kHz stereo/4ch clean stream to Host PCM 11 (40 Hz HPF +20 dB, 960 frames per 20ms)
  * Sampling rates remain identical between input and output on each pin.
  */
 static int ecns_copy(struct comp_dev *dev)
@@ -864,7 +964,7 @@ static int ecns_copy(struct comp_dev *dev)
 	struct comp_buffer *in1 = src1 ? src1 : src0;
 
 	if (in1 && snk1)
-		frames1_produced = ecns_process_host(in1, snk1);
+		frames1_produced = ecns_process_host(cd, in1, snk1);
 
 	/* Consume from source buffers */
 	ecns_consume_sources(src0, src1, snk0, snk1, frames0_produced, frames1_produced);
