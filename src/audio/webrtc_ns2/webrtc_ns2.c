@@ -1,0 +1,406 @@
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// Copyright(c) 2026 Intel Corporation.
+//
+// webrtc_ns2 — SOF module_interface glue for the RNNoise deep-learning
+// noise suppressor.
+//
+// Pass-through PCM effect: audio flows source → sink after per-channel
+// RNNoise denoising. Each 480-sample (10 ms at 48 kHz) frame is
+// processed independently per channel. Partial pipeline periods are
+// accumulated until a full frame is ready.
+//
+// As a bonus, the per-frame VAD probability returned by RNNoise is
+// compared against a configurable threshold and a NOTIFIER_ID_VAD event
+// is fired, making this a drop-in combined denoiser + voice detector.
+
+#include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/audio_stream.h>
+#include <module/audio/source_api.h>
+#include <module/audio/sink_api.h>
+#include <sof/lib/notifier.h>
+#include <sof/math/numbers.h>
+#include <rtos/init.h>
+#include <rtos/string.h>
+#include <errno.h>
+#include <stdint.h>
+#include "webrtc_ns2.h"
+
+SOF_DEFINE_REG_UUID(webrtc_ns2);
+LOG_MODULE_REGISTER(webrtc_ns2, CONFIG_SOF_LOG_LEVEL);
+
+/* Normalisation constants for S16 ↔ float and S32 ↔ float. */
+#define NS2_S16_SCALE	32768.0f
+#define NS2_S32_SCALE	2147483648.0f
+
+/* ----------------------------------------------------------------
+ * Format conversion helpers  (interleaved PCM ↔ per-channel float)
+ * ---------------------------------------------------------------- */
+
+static inline void src_to_float(struct webrtc_ns2_comp_data *cd,
+				const void *raw, int n_frames, int frame0)
+{
+	int i, c, ch = cd->channels;
+
+	if (cd->is_s32) {
+		const int32_t *p = raw;
+
+		for (i = 0; i < n_frames; i++)
+			for (c = 0; c < ch; c++)
+				cd->in_buf[c][frame0 + i] =
+					(float)p[i * ch + c] / NS2_S32_SCALE;
+	} else {
+		const int16_t *p = raw;
+
+		for (i = 0; i < n_frames; i++)
+			for (c = 0; c < ch; c++)
+				cd->in_buf[c][frame0 + i] =
+					(float)p[i * ch + c] / NS2_S16_SCALE;
+	}
+}
+
+static inline void float_to_sink(struct webrtc_ns2_comp_data *cd,
+				 void *raw, int n_frames, int fifo_offset)
+{
+	int i, c, ch = cd->channels;
+
+	if (cd->is_s32) {
+		int32_t *p = raw;
+
+		for (i = 0; i < n_frames; i++) {
+			for (c = 0; c < ch; c++) {
+				float f = cd->out_fifo[c][fifo_offset + i] * NS2_S32_SCALE;
+
+				f = f >  2147483647.0f ?  2147483647.0f :
+				    f < -2147483648.0f ? -2147483648.0f : f;
+				p[i * ch + c] = (int32_t)f;
+			}
+		}
+	} else {
+		int16_t *p = raw;
+
+		for (i = 0; i < n_frames; i++) {
+			for (c = 0; c < ch; c++) {
+				float f = cd->out_fifo[c][fifo_offset + i] * NS2_S16_SCALE;
+
+				f = f >  32767.0f ?  32767.0f :
+				    f < -32768.0f ? -32768.0f : f;
+				p[i * ch + c] = (int16_t)f;
+			}
+		}
+	}
+}
+
+/* ----------------------------------------------------------------
+ * module_interface operations
+ * ---------------------------------------------------------------- */
+
+__cold static int webrtc_ns2_init(struct processing_module *mod)
+{
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
+	struct webrtc_ns2_comp_data *cd;
+	int ret;
+
+	assert_can_be_cold();
+	comp_info(dev, "webrtc_ns2: init");
+
+	cd = mod_zalloc(mod, sizeof(*cd));
+	if (!cd)
+		return -ENOMEM;
+
+	md->private = cd;
+	cd->backend = &webrtc_ns2_backend;
+#if CONFIG_WEBRTC_NS2_VAD_NOTIFY
+	cd->vad_threshold = (float)CONFIG_WEBRTC_NS2_VAD_THRESHOLD_PCT / 100.0f;
+#else
+	cd->vad_threshold = 0.5f;
+#endif
+
+	comp_info(dev, "webrtc_ns2: backend '%s' vad_threshold=%.2f",
+		  cd->backend->name, (double)cd->vad_threshold);
+
+	if (cd->backend->init) {
+		ret = cd->backend->init(mod);
+		if (ret) {
+			comp_err(dev, "webrtc_ns2: backend init failed %d", ret);
+			mod_free(mod, cd);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+__cold static int webrtc_ns2_prepare(struct processing_module *mod,
+				     struct sof_source **sources, int num_of_sources,
+				     struct sof_sink **sinks, int num_of_sinks)
+{
+	struct webrtc_ns2_comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	int rate, fmt, ret;
+
+	assert_can_be_cold();
+
+	if (num_of_sources != 1 || num_of_sinks != 1) {
+		comp_err(dev, "webrtc_ns2: need exactly 1 source and 1 sink");
+		return -EINVAL;
+	}
+
+	rate = source_get_rate(sources[0]);
+	fmt  = source_get_frm_fmt(sources[0]);
+	cd->channels = source_get_channels(sources[0]);
+
+	/* RNNoise is hard-wired to 48 kHz. */
+	if (rate != WEBRTC_NS2_SAMPLE_RATE) {
+		comp_err(dev, "webrtc_ns2: rate %d != required %d Hz; "
+			 "add an ASRC upstream", rate, WEBRTC_NS2_SAMPLE_RATE);
+		return -EINVAL;
+	}
+
+	if (cd->channels > WEBRTC_NS2_CHANNELS_MAX) {
+		comp_err(dev, "webrtc_ns2: %d channels exceeds max %d",
+			 cd->channels, WEBRTC_NS2_CHANNELS_MAX);
+		return -EINVAL;
+	}
+
+	switch (fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		cd->is_s32 = false;
+		break;
+	case SOF_IPC_FRAME_S32_LE:
+		cd->is_s32 = true;
+		break;
+	default:
+		comp_err(dev, "webrtc_ns2: unsupported format %d", fmt);
+		return -EINVAL;
+	}
+
+	comp_info(dev, "webrtc_ns2: rate=%d ch=%d %s frame=%d",
+		  rate, cd->channels, cd->is_s32 ? "S32" : "S16",
+		  WEBRTC_NS2_FRAME_SAMPLES);
+
+	if (cd->backend->configure) {
+		ret = cd->backend->configure(mod, cd->channels);
+		if (ret) {
+			comp_err(dev, "webrtc_ns2: backend configure failed %d", ret);
+			return ret;
+		}
+	}
+
+	cd->buffered_in_frames = 0;
+	for (ret = 0; ret < cd->channels; ret++)
+		memset(cd->out_fifo[ret], 0, sizeof(float) * WEBRTC_NS2_FRAME_SAMPLES);
+	cd->buffered_out_frames = WEBRTC_NS2_FRAME_SAMPLES;
+	cd->last_vad = -1; /* unknown */
+	cd->configured = true;
+	return 0;
+}
+
+static int webrtc_ns2_process(struct processing_module *mod,
+			      struct sof_source **sources, int num_of_sources,
+			      struct sof_sink **sinks, int num_of_sinks)
+{
+	struct webrtc_ns2_comp_data *cd = module_get_private_data(mod);
+	struct sof_source *src = sources[0];
+	struct sof_sink   *snk = sinks[0];
+	size_t sample_bytes = cd->is_s32 ? sizeof(int32_t) : sizeof(int16_t);
+	int frame_bytes = source_get_frame_bytes(src);
+	int avail = (int)source_get_data_frames_available(src);
+	int free_f = (int)sink_get_free_frames(snk);
+	int n = MIN(avail, free_f);
+	size_t nbytes, src_bytes, snk_bytes;
+	struct cir_buf_source source_buf;
+	struct cir_buf_sink sink_buf;
+	int ret, drain, c;
+
+	if (n <= 0)
+		return 0;
+
+	/* Cap to available space in input FIFO */
+	n = MIN(n, WEBRTC_NS2_FIFO_FRAMES - cd->buffered_in_frames);
+	if (n <= 0)
+		return 0;
+
+	nbytes = (size_t)n * frame_bytes;
+
+	ret = source_get_data(src, nbytes, &source_buf.ptr, &source_buf.buf_start, &src_bytes);
+	if (ret)
+		return ret;
+	source_buf.buf_end = (const char *)source_buf.buf_start + src_bytes;
+
+	ret = sink_get_buffer(snk, nbytes, &sink_buf.ptr, &sink_buf.buf_start, &snk_bytes);
+	if (ret) {
+		source_release_data(src, 0);
+		return ret;
+	}
+	sink_buf.buf_end = (char *)sink_buf.buf_start + snk_bytes;
+
+	/* Convert input PCM -> per-channel float buffer respecting circular wrapping */
+	{
+		size_t remaining = n;
+		size_t offset = cd->buffered_in_frames;
+		const void *r_ptr = source_buf.ptr;
+
+		while (remaining) {
+			size_t fmax = circ_buf_frames_without_wrap(r_ptr, source_buf.buf_end,
+								  sample_bytes, cd->channels);
+			size_t f = MIN(remaining, fmax);
+
+			src_to_float(cd, r_ptr, f, offset);
+			remaining -= f;
+			offset += f;
+			r_ptr = source_cir_buf_wrap((const char *)r_ptr + f * frame_bytes,
+						    source_buf.buf_start, source_buf.buf_end);
+		}
+	}
+	source_release_data(src, nbytes);
+	cd->buffered_in_frames += n;
+
+	/* Process complete 480-sample blocks into out_fifo */
+	while (cd->buffered_in_frames >= WEBRTC_NS2_FRAME_SAMPLES &&
+	       cd->buffered_out_frames + WEBRTC_NS2_FRAME_SAMPLES <= WEBRTC_NS2_FIFO_FRAMES) {
+		float vad_prob = 0.0f, ch_prob;
+
+		for (c = 0; c < cd->channels; c++) {
+			ch_prob = cd->backend->process_ch(
+					mod,
+					cd->in_buf[c],
+					&cd->out_fifo[c][cd->buffered_out_frames], c);
+			if (ch_prob >= 0.0f)
+				vad_prob += ch_prob;
+		}
+		vad_prob /= (float)cd->channels;
+
+		cd->buffered_out_frames += WEBRTC_NS2_FRAME_SAMPLES;
+		cd->buffered_in_frames -= WEBRTC_NS2_FRAME_SAMPLES;
+
+		if (cd->buffered_in_frames > 0) {
+			for (c = 0; c < cd->channels; c++)
+				memmove(cd->in_buf[c],
+					cd->in_buf[c] + WEBRTC_NS2_FRAME_SAMPLES,
+					(size_t)cd->buffered_in_frames * sizeof(float));
+		}
+
+#if CONFIG_WEBRTC_NS2_VAD_NOTIFY
+		{
+			int vad = (vad_prob >= cd->vad_threshold) ? 1 : 0;
+
+			if (vad != cd->last_vad) {
+				notifier_event(mod->dev, NOTIFIER_ID_VAD,
+					       NOTIFIER_TARGET_CORE_LOCAL,
+					       &vad, sizeof(vad));
+				cd->last_vad = vad;
+			}
+		}
+#endif
+	}
+
+	/* Drain exactly n frames from out_fifo to maintain symmetric period I/O */
+	drain = MIN(n, cd->buffered_out_frames);
+	if (drain > 0) {
+		size_t remaining = drain;
+		size_t offset = 0;
+		void *w_ptr = sink_buf.ptr;
+
+		while (remaining) {
+			size_t fmax = circ_buf_frames_without_wrap(w_ptr, sink_buf.buf_end,
+								  sample_bytes, cd->channels);
+			size_t f = MIN(remaining, fmax);
+
+			float_to_sink(cd, w_ptr, f, offset);
+			remaining -= f;
+			offset += f;
+			w_ptr = cir_buf_wrap((char *)w_ptr + f * frame_bytes,
+					     sink_buf.buf_start, sink_buf.buf_end);
+		}
+
+		cd->buffered_out_frames -= drain;
+		if (cd->buffered_out_frames > 0) {
+			for (c = 0; c < cd->channels; c++)
+				memmove(cd->out_fifo[c],
+					cd->out_fifo[c] + drain,
+					(size_t)cd->buffered_out_frames * sizeof(float));
+		}
+	}
+
+	if (drain < n) {
+		size_t remaining = n - drain;
+		void *w_ptr = (char *)sink_buf.ptr + drain * frame_bytes;
+		w_ptr = cir_buf_wrap(w_ptr, sink_buf.buf_start, sink_buf.buf_end);
+
+		while (remaining) {
+			size_t fmax = circ_buf_frames_without_wrap(w_ptr, sink_buf.buf_end,
+								  sample_bytes, cd->channels);
+			size_t f = MIN(remaining, fmax);
+
+			memset(w_ptr, 0, f * frame_bytes);
+			remaining -= f;
+			w_ptr = cir_buf_wrap((char *)w_ptr + f * frame_bytes,
+					     sink_buf.buf_start, sink_buf.buf_end);
+		}
+	}
+
+	sink_commit_buffer(snk, nbytes);
+	return 0;
+}
+
+static int webrtc_ns2_reset(struct processing_module *mod)
+{
+	struct webrtc_ns2_comp_data *cd = module_get_private_data(mod);
+	int c;
+
+	comp_dbg(mod->dev, "webrtc_ns2: reset");
+	cd->buffered_in_frames = 0;
+	for (c = 0; c < cd->channels; c++)
+		memset(cd->out_fifo[c], 0, sizeof(float) * WEBRTC_NS2_FRAME_SAMPLES);
+	cd->buffered_out_frames = WEBRTC_NS2_FRAME_SAMPLES;
+	cd->last_vad = -1;
+
+	if (cd->backend->reset)
+		return cd->backend->reset(mod);
+
+	return 0;
+}
+
+__cold static int webrtc_ns2_free(struct processing_module *mod)
+{
+	struct webrtc_ns2_comp_data *cd = module_get_private_data(mod);
+
+	assert_can_be_cold();
+	comp_dbg(mod->dev, "webrtc_ns2: free");
+
+	if (cd->backend->free)
+		cd->backend->free(mod);
+
+	mod_free(mod, cd);
+	return 0;
+}
+
+static const struct module_interface webrtc_ns2_interface = {
+	.init    = webrtc_ns2_init,
+	.prepare = webrtc_ns2_prepare,
+	.process = webrtc_ns2_process,
+	.reset   = webrtc_ns2_reset,
+	.free    = webrtc_ns2_free,
+};
+
+#if CONFIG_COMP_WEBRTC_NS2_MODULE
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
+	SOF_LLEXT_MODULE_MANIFEST("WRTCNS2", &webrtc_ns2_interface, 1,
+				  SOF_REG_UUID(webrtc_ns2), 40);
+
+SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_TR_CTX(webrtc_ns2_tr, SOF_UUID(webrtc_ns2_uuid), LOG_LEVEL_INFO);
+DECLARE_MODULE_ADAPTER(webrtc_ns2_interface, webrtc_ns2_uuid, webrtc_ns2_tr);
+SOF_MODULE_INIT(webrtc_ns2, sys_comp_module_webrtc_ns2_interface_init);
+
+#endif
