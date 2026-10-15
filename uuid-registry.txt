@@ -77,6 +77,7 @@ f6d15ad3-b122-458c-ae9b0ab0b5867aa0 dummy_dma
 43a90ce7-f3a5-41df-ac06ba98651ae6a3 eq_fir
 5150c0e6-27f9-4ec8-8351c705b642d12f eq_iir
 889f6dcd-ddcd-4e05-aa5b0d39f8bca961 esai
+1207af73-f9c0-4f65-92b49d45178fc9a8 ffmpeg_dec
 bfc7488c-75aa-4ce8-9dbed8da08a698c2 file
 93446e12-1864-4e04-afe03b1d778ffb79 fir
 61bca9a8-18d0-4a18-8e7b2639219804b7 gain
