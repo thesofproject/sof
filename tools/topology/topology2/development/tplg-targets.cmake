@@ -408,6 +408,13 @@ NHLT_BIN=nhlt-sof-adl-max98357a-rt5682-wov-multi.bin,SPK_ID=7,DEEPBUFFER_FW_DMA_
 INCLUDE_BT_OFFLOAD=false,DEEP_BUF_SPK=true,SPEAKER_CODEC_NAME=SSP2-Codec,SPEAKER_SSP_DAI_INDEX=2,\
 INCLUDE_WOV=multi"
 
+# Google Brya with multi-slot WoV feature on PDM0 stereo DMIC only
+"cavs-rt5682\;sof-adl-max98357a-rt5682-2ch-wov-multi\;PLATFORM=adl,NUM_DMICS=2,\
+PREPROCESS_PLUGINS=nhlt,NUM_HDMIS=4,DMIC_WOV_DAI_CHANNELS=2,\
+NHLT_BIN=nhlt-sof-adl-max98357a-rt5682-2ch-wov-multi.bin,SPK_ID=7,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
+INCLUDE_BT_OFFLOAD=false,DEEP_BUF_SPK=true,SPEAKER_CODEC_NAME=SSP2-Codec,SPEAKER_SSP_DAI_INDEX=2,\
+INCLUDE_WOV=multi"
+
 # RT721 eval board with PCH-DMIC, sof_sdw_quirk_table with SOC_SDW_PCH_DMIC
 # Enable FLOAT_LE and U8 PCM formats
 "cavs-sdw\;sof-ptl-rt721-4ch-allfmt\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
