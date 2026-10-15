@@ -1,0 +1,24 @@
+#ifndef LOAD_TYPE
+#define LOAD_TYPE "0"
+#endif
+
+	REM # RNNoise deep-learning noise suppressor module config.
+	REM # Single input, single output. 48 kHz only. Float-only.
+	[[module.entry]]
+	name = "WRTCNS2"
+	uuid = UUIDREG_STR_WEBRTC_NS2
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = LOAD_TYPE
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
+	REM # Single input (48 kHz PCM), single output.
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 1, 0, 0xfeef, 0xf, 0xf, 0x45ff]
+	REM # mod_cfg: RNNoise ~30KB state, ~10ms latency, 48kHz stereo S32
+	REM # [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 0, 5000000, 16384, 16384, 0, 5000, 0]
+
+	index = __COUNTER__
