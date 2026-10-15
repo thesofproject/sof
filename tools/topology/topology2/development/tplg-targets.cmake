@@ -308,6 +308,18 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-crossover.bin,EFX_CROSSOVE
 "development/cavs-nocodec-rtcaec\;sof-tgl-nocodec-rtcaec\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-rtcaec.bin"
 
+# WebRTC noise suppressor (webrtc_ns + webrtc_vad) on TGL nocodec SSP
+"development/cavs-nocodec-webrtc-ns\;sof-tgl-nocodec-webrtc-ns\;PLATFORM=tgl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-ns.bin"
+
+# WebRTC AECm echo canceller (dual SSP: mic + ref) on TGL nocodec
+"development/cavs-nocodec-webrtc-aec\;sof-tgl-nocodec-webrtc-aec\;PLATFORM=tgl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-aec.bin"
+
+# WebRTC NS2/RNNoise (48 kHz float) on TGL nocodec SSP
+"development/cavs-nocodec-webrtc-ns2\;sof-tgl-nocodec-webrtc-ns2\;PLATFORM=tgl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-ns2.bin"
+
 # Topology to test the USB audio offload on an HDA machine, load it with
 # snd_sof.tplg_filename=sof-hda-generic-uaol.tplg
 "development/sof-hda-generic-uaol\;sof-hda-generic-uaol\;HDA_CONFIG=mix,HDA_MIC_ENHANCED_CAPTURE=true,\
