@@ -226,6 +226,7 @@ rsource "tensorflow/Kconfig"
 rsource "tone/Kconfig"
 rsource "up_down_mixer/Kconfig"
 rsource "volume/Kconfig"
+rsource "webrtc_vad/Kconfig"
 # --- End Kconfig Sources (alphabetical order) ---
 
 rsource "level_multiplier/Kconfig"
