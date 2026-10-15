@@ -128,6 +128,12 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 			channel = dai->host_dma_config[0]->dma_channel_id;
 		break;
 #endif
+	case SOF_DAI_IMX_SAI:
+	case SOF_DAI_IMX_SPDIF:
+	case SOF_DAI_IMX_ESAI:
+	case SOF_DAI_IMX_MICFIL:
+		channel = 0;
+		break;
 	default:
 		/* other types of DAIs not handled for now */
 		comp_err(dev, "Unknown dai type %d", dai->type);
@@ -184,6 +190,12 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 
 		break;
 	case SOF_DAI_INTEL_UAOL:
+		break;
+	case SOF_DAI_IMX_SAI:
+	case SOF_DAI_IMX_SPDIF:
+	case SOF_DAI_IMX_ESAI:
+	case SOF_DAI_IMX_MICFIL:
+		dd->config.burst_elems = 2;
 		break;
 	default:
 		/* other types of DAIs not handled for now */
@@ -320,8 +332,12 @@ static int dai_init_llp_info(struct dai_data *dd, struct comp_dev *dev)
 	copier_cfg = dd->dai_spec_config;
 	node = copier_cfg->gtw_cfg.node_id;
 
-	/* HDA doesn't use llp slot */
-	if (dd->ipc_config.type == SOF_DAI_INTEL_HDA)
+	/* HDA and i.MX DAIs don't use llp slot */
+	if (dd->ipc_config.type == SOF_DAI_INTEL_HDA ||
+	    dd->ipc_config.type == SOF_DAI_IMX_SAI ||
+	    dd->ipc_config.type == SOF_DAI_IMX_SPDIF ||
+	    dd->ipc_config.type == SOF_DAI_IMX_ESAI ||
+	    dd->ipc_config.type == SOF_DAI_IMX_MICFIL)
 		return 0;
 
 	/* don't support more gateway like EVAD */
