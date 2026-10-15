@@ -60,7 +60,7 @@ rsource "Kconfig.xtos"
 
 rsource "src/Kconfig"
 
-if ZEPHYR_SOF_MODULE
+if ZEPHYR_SOF_MODULE || SOF_FULL_ZEPHYR_APPLICATION
 	rsource "Kconfig.zephyr-log"
 endif
 

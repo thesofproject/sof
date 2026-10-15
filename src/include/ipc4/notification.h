@@ -299,7 +299,7 @@ void send_mixer_underrun_notif_msg(uint32_t resource_id, uint32_t eos_flag, uint
  */
 void ipc4_update_notification_mask(uint32_t ntfy_mask, uint32_t enabled_mask);
 
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION) && defined(CONFIG_USERSPACE)
 
 /**
  * \brief Send generic resource event notification.
