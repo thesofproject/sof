@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_WEBRTC_AGC
+	tristate "WebRTC Automatic Gain Control (AGC) module"
+	default n
+	help
+	  Select to enable the WebRTC Automatic Gain Control (digital_agc) module.
+	  Normalizes speech levels and provides brickwall peak limiting.
+
+if COMP_WEBRTC_AGC
+
+config COMP_WEBRTC_AGC_STUB
+	bool "Build with pass-through stub backend"
+	default n
+	help
+	  Select to build with the pass-through stub backend instead of the real AGC.
+
+config WEBRTC_AGC_TARGET_DBFS
+	int "Target level in dBFS below full scale"
+	default 3
+	range 0 31
+	help
+	  Target envelope level in -dBFS (default 3 means -3 dBFS).
+
+config WEBRTC_AGC_COMPRESSION_GAIN_DB
+	int "Compression gain in dB"
+	default 9
+	range 0 90
+	help
+	  Maximum compression gain in dB (default 9 dB).
+
+config WEBRTC_AGC_LIMITER
+	bool "Enable digital saturation limiter"
+	default y
+	help
+	  Enables peak limiter to prevent saturation and clipping.
+
+endif # COMP_WEBRTC_AGC
