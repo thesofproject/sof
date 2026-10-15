@@ -10,6 +10,7 @@
 import os
 import sys
 import argparse
+import struct
 import subprocess
 from elftools.elf.elffile import ELFFile
 from elftools.elf.constants import SH_FLAGS
@@ -74,6 +75,77 @@ def prelink_relocatable():
 		   not p.startswith(('-l', '-L'))]
 
 	return merged, options + [merged]
+
+R_XTENSA_NONE = 0
+R_XTENSA_ASM_EXPAND = 11
+R_XTENSA_SLOT0_OP = 20
+
+# Check if the Zephyr LLEXT loader would leave this instruction unchanged,
+# see r_xtensa_slot0_op_relocate(): it only patches L32R and CALLn
+# instructions with an all-zero operand field
+def xtensa_slot0_resolved(insn):
+	b0, b1, b2 = insn
+	if b1 or b2:
+		return True
+	if (b0 & 0xf) == 1:
+		return False
+	return not ((b0 & 0xf) == 5 and not (b0 & 0xc0))
+
+# Most relocations in a partially linked Xtensa object need no action at
+# run time: R_XTENSA_NONE and R_XTENSA_ASM_EXPAND ones, and R_XTENSA_SLOT0_OP
+# ones for PC-relative references within a section, which the linker has
+# already resolved. Still the loader has to read each of them, together with
+# its symbol and the instruction in the module image, which is in slow DRAM.
+# Remove them from the relocation sections.
+def prune_xtensa_relocs(path):
+	RELA_SIZE = 12
+
+	with open(path, 'rb') as f:
+		elf = ELFFile(f)
+		if elf['e_machine'] != 'EM_XTENSA' or elf['e_type'] != 'ET_REL':
+			return
+
+		shoff = elf['e_shoff']
+		shentsize = elf['e_shentsize']
+		updates = []
+		dropped = 0
+		total = 0
+
+		for idx, section in enumerate(elf.iter_sections()):
+			if section['sh_type'] != 'SHT_RELA' or section['sh_entsize'] != RELA_SIZE:
+				continue
+
+			target = elf.get_section(section['sh_info'])
+			data = target.data() if target['sh_type'] != 'SHT_NOBITS' else b''
+			raw = section.data()
+			kept = bytearray()
+
+			for i in range(0, len(raw), RELA_SIZE):
+				r_offset, r_info = struct.unpack_from('<II', raw, i)
+				r_type = r_info & 0xff
+				total += 1
+
+				if r_type in (R_XTENSA_NONE, R_XTENSA_ASM_EXPAND) or \
+				   (r_type == R_XTENSA_SLOT0_OP and r_offset + 3 <= len(data) and
+				    xtensa_slot0_resolved(data[r_offset:r_offset + 3])):
+					dropped += 1
+					continue
+
+				kept += raw[i:i + RELA_SIZE]
+
+			if len(kept) != len(raw):
+				updates.append((idx, section['sh_offset'], len(raw), bytes(kept)))
+
+	with open(path, 'r+b') as f:
+		for idx, offset, size, kept in updates:
+			f.seek(offset)
+			f.write(kept + bytes(size - len(kept)))
+			# sh_size of an Elf32_Shdr is at offset 20
+			f.seek(shoff + idx * shentsize + 20)
+			f.write(struct.pack('<I', len(kept)))
+
+	print(f'llext_link_helper.py: dropped {dropped} of {total} relocations not needing '
+	      'run-time processing')
 
 def main():
 	global args
@@ -249,6 +321,9 @@ def main():
 	command.extend(params)
 
 	subprocess.run(command)
+
+	if '-r' in params:
+		prune_xtensa_relocs(f'{args.file}.tmp')
 
 	copy_command = [args.copy]
 
