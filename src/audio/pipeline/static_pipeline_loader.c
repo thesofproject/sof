@@ -875,8 +875,10 @@ static int sof_static_topology_prepare_comps(const struct sof_static_topology *t
 		if (!dev)
 			continue;
 
-		/* Only prepare components currently in READY state */
+		/* Only prepare components currently in READY state that are connected to buffers */
 		if (dev->state == COMP_STATE_READY) {
+			if (list_is_empty(&dev->bsource_list) && list_is_empty(&dev->bsink_list))
+				continue;
 			const struct sof_static_comp *cdesc = &topo->comps[i];
 			const struct sof_static_pipeline_desc *pdesc =
 				sof_static_find_pipeline_desc(topo, cdesc->pipeline_id);
