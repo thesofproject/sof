@@ -73,6 +73,7 @@ static inline int16_t ecns_mono_s16(const int16_t *frame, uint32_t start, uint32
 	return (int16_t)(acc / (int32_t)cnt);
 }
 
+#if CONFIG_ECNS_KPB_HPF
 /**
  * \brief 100 Hz second-order high-pass filter with +20 dB gain at 16 kHz.
  *
@@ -89,6 +90,7 @@ static const uint32_t hp_100hz_20db_16k[13] = {
 	0x1f32926e, 0xc19adb24, 0x1f32926e, 0xfffffffc,
 	0x00004fd0
 };
+#endif
 
 #if CONFIG_ECNS_HOST_HPF
 /**
@@ -169,6 +171,7 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 	dev->direction_set = true;
 	dev->state         = COMP_STATE_READY;
 
+#if CONFIG_ECNS_KPB_HPF
 	struct sof_eq_iir_header *hp_hdr = (struct sof_eq_iir_header *)hp_100hz_20db_16k;
 	int hp_size = iir_delay_size_df1(hp_hdr);
 	int32_t *delay;
@@ -189,18 +192,20 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 	delay = cd->hp_delay;
 	iir_init_coef_df1(&cd->hp_iir, hp_hdr);
 	iir_init_delay_df1(&cd->hp_iir, &delay);
+#endif
 
 #if CONFIG_ECNS_HOST_HPF
 	/* The 48 kHz and 16 kHz Pin 1 filters have the same section count */
-	hp_size = iir_delay_size_df1((struct sof_eq_iir_header *)hp_40hz_20db_48k);
-	if (hp_size < 0) {
+	int host_size = iir_delay_size_df1((struct sof_eq_iir_header *)hp_40hz_20db_48k);
+
+	if (host_size < 0) {
 		rfree(cd->hp_delay);
 		rfree(cd);
 		comp_free_device(dev);
 		return NULL;
 	}
 
-	cd->host_delay_size = hp_size * ECNS_HOST_MAX_CHANNELS;
+	cd->host_delay_size = host_size * ECNS_HOST_MAX_CHANNELS;
 	cd->host_delay = rzalloc(SOF_MEM_FLAG_USER, cd->host_delay_size);
 	if (!cd->host_delay) {
 		rfree(cd->hp_delay);
@@ -335,6 +340,7 @@ static int ecns_reset(struct comp_dev *dev)
 
 	comp_info(dev, "ecns_reset");
 	cd->test_signal_val = 0;
+#if CONFIG_ECNS_KPB_HPF
 	if (cd->hp_delay) {
 		struct sof_eq_iir_header *hp_hdr = (struct sof_eq_iir_header *)hp_100hz_20db_16k;
 		int hp_size = iir_delay_size_df1(hp_hdr);
@@ -342,6 +348,7 @@ static int ecns_reset(struct comp_dev *dev)
 		if (hp_size > 0)
 			memset_s(cd->hp_delay, hp_size, 0, hp_size);
 	}
+#endif
 #if CONFIG_ECNS_HOST_HPF
 	if (cd->host_delay)
 		memset_s(cd->host_delay, cd->host_delay_size, 0, cd->host_delay_size);
@@ -409,6 +416,15 @@ static void ecns_kpb_test_signal_s16(struct ecns_comp_data *cd,
 }
 #endif
 
+static inline int32_t ecns_kpb_filter(struct ecns_comp_data *cd, int32_t x)
+{
+#if CONFIG_ECNS_KPB_HPF
+	return iir_df1(&cd->hp_iir, x);
+#else
+	return x;
+#endif
+}
+
 /**
  * \brief Process 32-bit DMIC input to 32-bit KPB mono output
  */
@@ -433,7 +449,7 @@ static void ecns_kpb_s32_to_s32(struct ecns_comp_data *cd,
 		for (uint32_t i = 0; i < n; i++) {
 			int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
 
-			mono = iir_df1(&cd->hp_iir, mono);
+			mono = ecns_kpb_filter(cd, mono);
 			*snk_ptr++ = mono;
 			for (uint32_t c = 1; c < snk0_ch; c++)
 				*snk_ptr++ = 0;
@@ -470,7 +486,7 @@ static void ecns_kpb_s16_to_s32(struct ecns_comp_data *cd,
 		for (uint32_t i = 0; i < n; i++) {
 			int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
 
-			mono = iir_df1(&cd->hp_iir, mono);
+			mono = ecns_kpb_filter(cd, mono);
 			*snk_ptr++ = mono;
 			for (uint32_t c = 1; c < snk0_ch; c++)
 				*snk_ptr++ = 0;
@@ -507,7 +523,7 @@ static void ecns_kpb_s32_to_s16(struct ecns_comp_data *cd,
 		for (uint32_t i = 0; i < n; i++) {
 			int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
 
-			mono = iir_df1(&cd->hp_iir, mono);
+			mono = ecns_kpb_filter(cd, mono);
 			*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
 			for (uint32_t c = 1; c < snk0_ch; c++)
 				*snk_ptr++ = 0;
@@ -544,7 +560,7 @@ static void ecns_kpb_s16_to_s16(struct ecns_comp_data *cd,
 		for (uint32_t i = 0; i < n; i++) {
 			int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
 
-			mono = iir_df1(&cd->hp_iir, mono);
+			mono = ecns_kpb_filter(cd, mono);
 			*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
 			for (uint32_t c = 1; c < snk0_ch; c++)
 				*snk_ptr++ = 0;
@@ -561,7 +577,7 @@ static void ecns_kpb_s16_to_s16(struct ecns_comp_data *cd,
  * \brief Process Pin 0: 16 kHz detection stream -> Mono clean to KPB
  *
  * Averages selected source channels into a mono stream, filters with the
- * built-in 100 Hz HPF (+20 dB gain), and writes to the sink buffer (either
+ * built-in 100 Hz HPF (+20 dB gain, CONFIG_ECNS_KPB_HPF), and writes to the sink buffer (either
  * 16-bit or 32-bit container). Supports test signal generation when enabled.
  *
  * \param[in,out] cd   ECNS component data
