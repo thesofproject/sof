@@ -193,6 +193,17 @@ static size_t vol_zc_get_s32(struct cir_buf_source *source, const unsigned int c
 
 #endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_FLOAT
+static size_t vol_zc_get_float(struct cir_buf_source *source, const unsigned int channels,
+			       size_t frames, int64_t *prev_sum)
+{
+	(void)source;
+	(void)channels;
+	(void)prev_sum;
+	return frames;
+}
+#endif /* CONFIG_FORMAT_FLOAT */
+
 /**
  * \brief Map of formats with dedicated zc functions.
  *
@@ -208,7 +219,11 @@ __cold_rodata static const struct comp_zc_func_map zc_func_map[] = {
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, vol_zc_get_s32 },
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, vol_zc_get_float },
+#endif /* CONFIG_FORMAT_FLOAT */
 };
+
 
 #if CONFIG_COMP_VOLUME_LINEAR_RAMP
 /**

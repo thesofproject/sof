@@ -521,7 +521,11 @@ int module_adapter_sink_src_prepare(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_mod(dev);
 
+	if (!mod->num_of_sources && !mod->num_of_sinks)
+		module_adapter_multi_sink_source_prepare(dev);
+
 	/* Prepare module */
 	return module_prepare(mod, mod->sources, mod->num_of_sources,
 			      mod->sinks, mod->num_of_sinks);
 }
+
