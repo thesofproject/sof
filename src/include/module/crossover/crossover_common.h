@@ -34,10 +34,25 @@ struct crossover_state {
 	struct iir_state_df1 highpass[CROSSOVER_MAX_LR4];
 };
 
+#include <sof/math/iir_df1_float.h>
+
+/**
+ * Stores the state of one channel of the Crossover filter (Float)
+ */
+struct crossover_state_float {
+	/* Store the state for each LR4 filter. */
+	struct iir_state_df1_float lowpass[CROSSOVER_MAX_LR4];
+	struct iir_state_df1_float highpass[CROSSOVER_MAX_LR4];
+};
+
 typedef void (*crossover_split)(int32_t in, int32_t out[],
 				struct crossover_state *state);
 
+typedef void (*crossover_split_float)(float in, float out[],
+				      struct crossover_state_float *state);
+
 extern const crossover_split crossover_split_fnmap[];
+extern const crossover_split_float crossover_split_float_fnmap[];
 
 /* crossover init function */
 int crossover_init_coef_ch(struct processing_module *mod,
@@ -45,11 +60,26 @@ int crossover_init_coef_ch(struct processing_module *mod,
 			   struct crossover_state *ch_state,
 			   int32_t num_sinks);
 
+int crossover_init_coef_ch_float(struct processing_module *mod,
+				 struct sof_eq_iir_biquad *coef,
+				 struct crossover_state_float *ch_state,
+				 int32_t num_sinks);
+
 /**
  * \brief Reset the state of an LR4 filter.
  */
 static inline void crossover_reset_state_lr4(struct processing_module *mod,
 					     struct iir_state_df1 *lr4)
+{
+	mod_free(mod, lr4->coef);
+	mod_free(mod, lr4->delay);
+
+	lr4->coef = NULL;
+	lr4->delay = NULL;
+}
+
+static inline void crossover_reset_state_lr4_float(struct processing_module *mod,
+						   struct iir_state_df1_float *lr4)
 {
 	mod_free(mod, lr4->coef);
 	mod_free(mod, lr4->delay);
@@ -73,6 +103,17 @@ static inline void crossover_reset_state_ch(struct processing_module *mod,
 	}
 }
 
+static inline void crossover_reset_state_ch_float(struct processing_module *mod,
+						  struct crossover_state_float *ch_state)
+{
+	int i;
+
+	for (i = 0; i < CROSSOVER_MAX_LR4; i++) {
+		crossover_reset_state_lr4_float(mod, &ch_state->lowpass[i]);
+		crossover_reset_state_lr4_float(mod, &ch_state->highpass[i]);
+	}
+}
+
 /**
  * \brief Returns Crossover split function.
  */
@@ -83,6 +124,14 @@ static inline crossover_split crossover_find_split_func(int32_t num_sinks)
 		return NULL;
 	// The functions in the map are offset by 2 indices.
 	return crossover_split_fnmap[num_sinks - CROSSOVER_2WAY_NUM_SINKS];
+}
+
+static inline crossover_split_float crossover_find_split_func_float(int32_t num_sinks)
+{
+	if (num_sinks < CROSSOVER_2WAY_NUM_SINKS ||
+	    num_sinks > CROSSOVER_4WAY_NUM_SINKS)
+		return NULL;
+	return crossover_split_float_fnmap[num_sinks - CROSSOVER_2WAY_NUM_SINKS];
 }
 
 #endif /* __SOF_CROSSOVER_COMMON_H__ */

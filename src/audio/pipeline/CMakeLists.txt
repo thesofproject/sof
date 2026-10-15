@@ -13,3 +13,15 @@ add_local_sources_ifdef(CONFIG_STATIC_PIPELINE sof
   static_pipeline_modules.c
   static_pipeline_uac2.c
 )
+
+add_local_sources_ifdef(CONFIG_PLATFORM_ESP32P4 sof
+  sof_static_pipeline.c
+)
+
+add_local_sources_ifdef(CONFIG_PLATFORM_ESP32C6 sof
+  sof_static_pipeline.c
+)
+
+add_local_sources_ifdef(CONFIG_PLATFORM_ESP32S3 sof
+  sof_static_pipeline.c
+)

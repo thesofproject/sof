@@ -54,6 +54,24 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 		}
 
 		return 0;
+#if CONFIG_FORMAT_FLOAT
+	case SOF_IPC_FRAME_FLOAT: {
+		float *dst_f = (float *)dst;
+		float att_factor = 1.0f / (float)(1 << cd->attenuation);
+		while (remaining_samples) {
+			nmax = audio_stream_samples_without_wrap_s32(&sink->stream, (uint32_t *)dst_f);
+			n = MIN(remaining_samples, nmax);
+			for (i = 0; i < n; i++) {
+				*dst_f *= att_factor;
+				dst_f++;
+			}
+			remaining_samples -= n;
+			dst_f = audio_stream_wrap(&sink->stream, dst_f);
+		}
+
+		return 0;
+	}
+#endif
 	default:
 		comp_err(dev, "unsupported format %d for attenuation",
 			 audio_stream_get_frm_fmt(&sink->stream));

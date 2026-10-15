@@ -263,6 +263,7 @@ struct comp_dev *sof_static_module_create_default(const struct comp_driver *drv,
 		return NULL;
 	}
 
+#if CONFIG_IPC_MAJOR_4
 	struct ipc4_base_module_cfg base_cfg;
 
 	sof_static_init_base_cfg(&base_cfg, cdesc, period_us);
@@ -272,4 +273,14 @@ struct comp_dev *sof_static_module_create_default(const struct comp_driver *drv,
 	};
 
 	return drv->ops.create(drv, cfg, &base_proc_spec);
+#else
+	static const uint8_t dummy_buf[16] = {0};
+	struct ipc_config_process empty_proc_spec = {
+		.size = 0,
+		.data = dummy_buf,
+	};
+
+	return drv->ops.create(drv, cfg, &empty_proc_spec);
+#endif
 }
+
