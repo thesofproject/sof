@@ -1108,6 +1108,9 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 		goto err_unwind;
 	}
 
+	/* Publish topology as active before initializing kcontrols */
+	s_active_topo = topo;
+
 	/* Stage 7: Initialize kcontrols with default values */
 	ret = sof_static_topology_init_controls(topo);
 	if (ret < 0) {
@@ -1115,14 +1118,12 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 		goto err_unwind;
 	}
 
-	/* Publish topology as active only after all construction stages succeed */
-	s_active_topo = topo;
-
 	LOG_INF("Static audio topology initialized successfully (%zu pipelines, %zu comps, %zu buffers, %zu controls)",
 		topo->num_pipelines, topo->num_comps, topo->num_buffers, topo->num_controls);
 	return 0;
 
 err_unwind:
+	s_active_topo = NULL;
 	sof_static_topology_unwind();
 	return ret;
 }
