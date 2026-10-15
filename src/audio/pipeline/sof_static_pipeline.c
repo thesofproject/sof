@@ -114,9 +114,12 @@ void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 		void *buf = NULL;
 		if (k_mem_slab_alloc(&uac2_tx_slab, &buf, K_NO_WAIT) == 0) {
 			bool have_data = false;
+#if defined(CONFIG_COMP_BT_AUDIO)
 			if (g_status.audio_route == SOF_AUDIO_ROUTE_USB_BT) {
 				have_data = bt_audio_peek_capture_data(buf, frame_bytes);
-			} else {
+			} else
+#endif
+			{
 				have_data = usb_audio_peek_capture_data(buf, frame_bytes);
 			}
 
@@ -126,9 +129,12 @@ void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 				}
 				int ret = usbd_uac2_send(dev, CAPTURE_TERM_ID, buf, frame_bytes);
 				if (ret == 0) {
+#if defined(CONFIG_COMP_BT_AUDIO)
 					if (g_status.audio_route == SOF_AUDIO_ROUTE_USB_BT) {
 						bt_audio_consume_capture_data(frame_bytes);
-					} else {
+					} else
+#endif
+					{
 						usb_audio_consume_capture_data(frame_bytes);
 					}
 				} else {
@@ -199,9 +205,12 @@ void sof_uac2_data_recv_cb(const struct device *dev, uint8_t terminal,
 	}
 
 	if (buf && size > 0) {
+#if defined(CONFIG_COMP_BT_AUDIO)
 		if (g_status.audio_route == SOF_AUDIO_ROUTE_USB_BT) {
 			bt_audio_feed_playback_data(buf, size);
-		} else {
+		} else
+#endif
+		{
 			usb_audio_feed_playback_data(buf, size);
 		}
 	}
@@ -712,11 +721,15 @@ int sof_static_pipeline_set_capture_active(bool start)
 int sof_static_pipeline_set_bt_stream(bool enable)
 {
 	g_status.bt_stream_enabled = enable;
+#if defined(CONFIG_COMP_BT_AUDIO)
 	if (enable) {
 		return bt_service_start_broadcast();
 	} else {
 		return bt_service_stop_broadcast();
 	}
+#else
+	return 0;
+#endif
 }
 
 int sof_static_pipeline_set_route(enum sof_audio_route route)
