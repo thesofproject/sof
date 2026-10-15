@@ -512,7 +512,7 @@ static inline int32_t _pcm_shift(int32_t d, int32_t a)
  *            Use '0' for normal conversion to integers
  * \return (int32_t)src * 2**pow
  */
-static int32_t _pcm_convert_f_to_i(int32_t src, int32_t pow)
+static __maybe_unused int32_t _pcm_convert_f_to_i(int32_t src, int32_t pow)
 {
 	int32_t exponent, mantissa, dst;
 
@@ -546,7 +546,7 @@ static int32_t _pcm_convert_f_to_i(int32_t src, int32_t pow)
  *          operations library inclusion by compiler, when in whole topology
  *          only external component needs float input
  */
-static int32_t _pcm_convert_i_to_f(int32_t src, int32_t pow)
+static __maybe_unused int32_t _pcm_convert_i_to_f(int32_t src, int32_t pow)
 {
 	int sign, mantissa, exponent, dst, abs_clz;
 
@@ -566,6 +566,49 @@ static int32_t _pcm_convert_i_to_f(int32_t src, int32_t pow)
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_FLOAT && (CONFIG_PCM_CONVERTER_FORMAT_S16LE || CONFIG_PCM_CONVERTER_FORMAT_S24LE || CONFIG_PCM_CONVERTER_FORMAT_S32LE) */
 
 #if CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S16LE
+#if CONFIG_FPU
+static inline int32_t float_to_int32_rnd(float val)
+{
+#if defined(__riscv) && defined(__riscv_flen)
+	int32_t res;
+	__asm__ ("fcvt.w.s %0, %1, rne" : "=r"(res) : "f"(val));
+	return res;
+#else
+	return (int32_t)(val >= 0.0f ? (val + 0.5f) : (val - 0.5f));
+#endif
+}
+
+static void pcm_convert_s16_to_f_lin(const void *psrc, void *pdst,
+				     size_t samples)
+{
+	const int16_t *src = psrc;
+	float *dst = pdst;
+	const float scale = 1.0f / 32768.0f;
+	size_t i;
+
+	for (i = 0; i < samples; i++)
+		dst[i] = (float)src[i] * scale;
+}
+
+static void pcm_convert_f_to_s16_lin(const void *psrc, void *pdst,
+				     size_t samples)
+{
+	const float *src = psrc;
+	int16_t *dst = pdst;
+	const float scale = 32768.0f;
+	size_t i;
+
+	for (i = 0; i < samples; i++) {
+		float val = src[i] * scale;
+		if (val >= 32767.0f)
+			dst[i] = 32767;
+		else if (val <= -32768.0f)
+			dst[i] = -32768;
+		else
+			dst[i] = (int16_t)float_to_int32_rnd(val);
+	}
+}
+#else
 static void pcm_convert_s16_to_f_lin(const void *psrc, void *pdst,
 				     size_t samples)
 {
@@ -591,6 +634,7 @@ static void pcm_convert_f_to_s16_lin(const void *psrc, void *pdst,
 	for (i = 0; i < samples; i++)
 		dst[i] = sat_int16(_pcm_convert_f_to_i(src[i], 15));
 }
+#endif
 
 static int pcm_convert_s16_to_f(const struct cir_buf_source *source,
 				uint32_t src_channels, struct cir_buf_sink *sink,
@@ -610,6 +654,38 @@ static int pcm_convert_f_to_s16(const struct cir_buf_source *source,
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S16LE */
 
 #if CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S24LE
+#if CONFIG_FPU
+static void pcm_convert_s24_to_f_lin(const void *psrc, void *pdst,
+				     size_t samples)
+{
+	const int32_t *src = psrc;
+	float *dst = pdst;
+	const float scale = 1.0f / 8388608.0f;
+	size_t i;
+
+	for (i = 0; i < samples; i++)
+		dst[i] = (float)sign_extend_s24(src[i]) * scale;
+}
+
+static void pcm_convert_f_to_s24_lin(const void *psrc, void *pdst,
+				     size_t samples)
+{
+	const float *src = psrc;
+	int32_t *dst = pdst;
+	const float scale = 8388608.0f;
+	size_t i;
+
+	for (i = 0; i < samples; i++) {
+		float val = src[i] * scale;
+		if (val >= 8388607.0f)
+			dst[i] = 8388607;
+		else if (val <= -8388608.0f)
+			dst[i] = -8388608;
+		else
+			dst[i] = float_to_int32_rnd(val);
+	}
+}
+#else
 static void pcm_convert_s24_to_f_lin(const void *psrc, void *pdst,
 				     size_t samples)
 {
@@ -635,6 +711,7 @@ static void pcm_convert_f_to_s24_lin(const void *psrc, void *pdst,
 	for (i = 0; i < samples; i++)
 		dst[i] = sat_int24(_pcm_convert_f_to_i(src[i], 23));
 }
+#endif
 
 static int pcm_convert_s24_to_f(const struct cir_buf_source *source,
 				uint32_t src_channels, struct cir_buf_sink *sink,
@@ -654,6 +731,38 @@ static int pcm_convert_f_to_s24(const struct cir_buf_source *source,
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S24LE */
 
 #if CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S32LE
+#if CONFIG_FPU
+static void pcm_convert_s32_to_f_lin(const void *psrc, void *pdst,
+				     size_t samples)
+{
+	const int32_t *src = psrc;
+	float *dst = pdst;
+	const float scale = 1.0f / 2147483648.0f;
+	size_t i;
+
+	for (i = 0; i < samples; i++)
+		dst[i] = (float)src[i] * scale;
+}
+
+static void pcm_convert_f_to_s32_lin(const void *psrc, void *pdst,
+				     size_t samples)
+{
+	const float *src = psrc;
+	int32_t *dst = pdst;
+	const float scale = 2147483648.0f;
+	size_t i;
+
+	for (i = 0; i < samples; i++) {
+		float val = src[i] * scale;
+		if (val >= 2147483647.0f)
+			dst[i] = 2147483647;
+		else if (val <= -2147483648.0f)
+			dst[i] = -2147483648LL;
+		else
+			dst[i] = float_to_int32_rnd(val);
+	}
+}
+#else
 static void pcm_convert_s32_to_f_lin(const void *psrc, void *pdst,
 				     size_t samples)
 {
@@ -679,6 +788,7 @@ static void pcm_convert_f_to_s32_lin(const void *psrc, void *pdst,
 	for (i = 0; i < samples; i++)
 		dst[i] = _pcm_convert_f_to_i(src[i], 31);
 }
+#endif
 
 static int pcm_convert_s32_to_f(const struct cir_buf_source *source,
 				uint32_t src_channels, struct cir_buf_sink *sink,

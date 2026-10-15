@@ -1917,185 +1917,517 @@ void upmix32bit_quatro_to_5_1(struct up_down_mixer_data *cd, const uint8_t * con
 
 #else /* !XCHAL_HAVE_HIFI3 */
 
-/* TODO: replace with generic ANSI C version */
+/* Generic ANSI C & RISC-V implementation of up/down mixer routines */
 
 void upmix32bit_1_to_5_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			 const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	uint32_t frames = in_size / sizeof(int32_t);
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t s = in[i];
+		out[i * 6 + 0] = s; /* Left */
+		out[i * 6 + 1] = s; /* Right */
+		out[i * 6 + 2] = 0; /* Center */
+		out[i * 6 + 3] = 0; /* LFE */
+		out[i * 6 + 4] = s; /* Left Surround */
+		out[i * 6 + 5] = s; /* Right Surround */
+	}
 }
 
 void upmix16bit_1_to_5_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			 const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	const int16_t *in = (const int16_t *)in_data;
+	int16_t *out = (int16_t *)out_data;
+	uint32_t frames = in_size / sizeof(int16_t);
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int16_t s = in[i];
+		out[i * 6 + 0] = s;
+		out[i * 6 + 1] = s;
+		out[i * 6 + 2] = 0;
+		out[i * 6 + 3] = 0;
+		out[i * 6 + 4] = s;
+		out[i * 6 + 5] = s;
+	}
 }
 
 void upmix32bit_2_0_to_5_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			   const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	uint32_t frames = in_size / (2 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t l = in[i * 2 + 0];
+		int32_t r = in[i * 2 + 1];
+		out[i * 6 + 0] = l;
+		out[i * 6 + 1] = r;
+		out[i * 6 + 2] = 0;
+		out[i * 6 + 3] = 0;
+		out[i * 6 + 4] = l;
+		out[i * 6 + 5] = r;
+	}
 }
 
 void upmix16bit_2_0_to_5_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			   const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	const int16_t *in = (const int16_t *)in_data;
+	int16_t *out = (int16_t *)out_data;
+	uint32_t frames = in_size / (2 * sizeof(int16_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int16_t l = in[i * 2 + 0];
+		int16_t r = in[i * 2 + 1];
+		out[i * 6 + 0] = l;
+		out[i * 6 + 1] = r;
+		out[i * 6 + 2] = 0;
+		out[i * 6 + 3] = 0;
+		out[i * 6 + 4] = l;
+		out[i * 6 + 5] = r;
+	}
 }
 
 void upmix32bit_2_0_to_7_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			   const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	uint32_t frames = in_size / (2 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t l = in[i * 2 + 0];
+		int32_t r = in[i * 2 + 1];
+		out[i * 8 + 0] = l;
+		out[i * 8 + 1] = r;
+		out[i * 8 + 2] = 0;
+		out[i * 8 + 3] = 0;
+		out[i * 8 + 4] = l;
+		out[i * 8 + 5] = r;
+		out[i * 8 + 6] = l;
+		out[i * 8 + 7] = r;
+	}
 }
 
 void shiftcopy32bit_mono(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			 const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	uint32_t frames = in_size / sizeof(int32_t);
+
+	for (uint32_t i = 0; i < frames; i++) {
+		out[i * 2 + 0] = in[i];
+		out[i * 2 + 1] = in[i];
+	}
 }
 
 void shiftcopy32bit_stereo(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			   const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
-}
-
-void downmix32bit_2_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
-		      const uint32_t in_size, uint8_t * const out_data)
-{
-	sof_panic(0);
-}
-
-void downmix32bit_3_0(struct up_down_mixer_data *cd, const uint8_t * const in_data,
-		      const uint32_t in_size, uint8_t * const out_data)
-{
-	sof_panic(0);
-}
-
-void downmix32bit_3_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
-		      const uint32_t in_size, uint8_t * const out_data)
-{
-	sof_panic(0);
-}
-
-void downmix32bit(struct up_down_mixer_data *cd, const uint8_t * const in_data,
-		  const uint32_t in_size, uint8_t * const out_data)
-{
-	sof_panic(0);
-}
-
-void downmix32bit_4_0(struct up_down_mixer_data *cd, const uint8_t * const in_data,
-		      const uint32_t in_size, uint8_t * const out_data)
-{
-	sof_panic(0);
-}
-
-void downmix32bit_5_0_mono(struct up_down_mixer_data *cd, const uint8_t * const in_data,
-			   const uint32_t in_size, uint8_t * const out_data)
-{
-	sof_panic(0);
-}
-
-void downmix32bit_5_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
-		      const uint32_t in_size, uint8_t * const out_data)
-{
-	sof_panic(0);
-}
-
-void downmix32bit_7_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
-		      const uint32_t in_size, uint8_t * const out_data)
-{
-	sof_panic(0);
-}
-
-void downmix16bit_stereo(struct up_down_mixer_data *cd, const uint8_t * const in_data,
-			 const uint32_t in_size, uint8_t * const out_data)
-{
+	memcpy(out_data, in_data, in_size);
 }
 
 void shiftcopy16bit_mono(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			 const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	const int16_t *in = (const int16_t *)in_data;
+	int16_t *out = (int16_t *)out_data;
+	uint32_t frames = in_size / sizeof(int16_t);
+
+	for (uint32_t i = 0; i < frames; i++) {
+		out[i * 2 + 0] = in[i];
+		out[i * 2 + 1] = in[i];
+	}
 }
 
 void shiftcopy16bit_stereo(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			   const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
-}
-
-void downmix16bit(struct up_down_mixer_data *cd, const uint8_t * const in_data,
-		  const uint32_t in_size, uint8_t * const out_data)
-{
-	sof_panic(0);
-}
-
-void downmix16bit_5_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
-		      const uint32_t in_size, uint8_t * const out_data)
-{
-	sof_panic(0);
-}
-
-void downmix16bit_4ch_mono(struct up_down_mixer_data *cd, const uint8_t * const in_data,
-			   const uint32_t in_size, uint8_t * const out_data)
-{
-	sof_panic(0);
+	memcpy(out_data, in_data, in_size);
 }
 
 void downmix32bit_stereo(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			 const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	uint32_t frames = in_size / (2 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int64_t sum = (int64_t)in[i * 2 + 0] + (int64_t)in[i * 2 + 1];
+		out[i] = (int32_t)(sum >> 1);
+	}
+}
+
+void downmix16bit_stereo(struct up_down_mixer_data *cd, const uint8_t * const in_data,
+			 const uint32_t in_size, uint8_t * const out_data)
+{
+	const int16_t *in = (const int16_t *)in_data;
+	int16_t *out = (int16_t *)out_data;
+	uint32_t frames = in_size / (2 * sizeof(int16_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t sum = (int32_t)in[i * 2 + 0] + (int32_t)in[i * 2 + 1];
+		out[i] = (int16_t)(sum >> 1);
+	}
+}
+
+void downmix32bit_2_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
+		      const uint32_t in_size, uint8_t * const out_data)
+{
+	const uint8_t l_slot = get_channel_location(cd->in_channel_map, CHANNEL_LEFT);
+	const uint8_t r_slot = get_channel_location(cd->in_channel_map, CHANNEL_RIGHT);
+	const uint8_t lfe_slot = get_channel_location(cd->in_channel_map, CHANNEL_LFE);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	int32_t c_l = cd->downmix_coefficients[CHANNEL_LEFT];
+	int32_t c_r = cd->downmix_coefficients[CHANNEL_RIGHT];
+	int32_t c_lfe = cd->downmix_coefficients[CHANNEL_LFE];
+	uint32_t frames = in_size / (3 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t lfe = (lfe_slot < 0xF) ? in[i * 3 + lfe_slot] : 0;
+		int32_t l = (l_slot < 0xF) ? in[i * 3 + l_slot] : 0;
+		int32_t r = (r_slot < 0xF) ? in[i * 3 + r_slot] : 0;
+		int64_t lfe_term = ((int64_t)lfe * c_lfe) >> 31;
+		out[i * 2 + 0] = sat_int32((((int64_t)l * c_l) >> 31) + lfe_term);
+		out[i * 2 + 1] = sat_int32((((int64_t)r * c_r) >> 31) + lfe_term);
+	}
+}
+
+void downmix32bit_3_0(struct up_down_mixer_data *cd, const uint8_t * const in_data,
+		      const uint32_t in_size, uint8_t * const out_data)
+{
+	const uint8_t l_slot = get_channel_location(cd->in_channel_map, CHANNEL_LEFT);
+	const uint8_t c_slot = get_channel_location(cd->in_channel_map, CHANNEL_CENTER);
+	const uint8_t r_slot = get_channel_location(cd->in_channel_map, CHANNEL_RIGHT);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	int32_t c_l = cd->downmix_coefficients[CHANNEL_LEFT];
+	int32_t c_c = cd->downmix_coefficients[CHANNEL_CENTER];
+	int32_t c_r = cd->downmix_coefficients[CHANNEL_RIGHT];
+	uint32_t frames = in_size / (3 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t c = (c_slot < 0xF) ? in[i * 3 + c_slot] : 0;
+		int32_t l = (l_slot < 0xF) ? in[i * 3 + l_slot] : 0;
+		int32_t r = (r_slot < 0xF) ? in[i * 3 + r_slot] : 0;
+		int64_t c_term = ((int64_t)c * c_c) >> 31;
+		out[i * 2 + 0] = sat_int32((((int64_t)l * c_l) >> 31) + c_term);
+		out[i * 2 + 1] = sat_int32((((int64_t)r * c_r) >> 31) + c_term);
+	}
+}
+
+void downmix32bit_3_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
+		      const uint32_t in_size, uint8_t * const out_data)
+{
+	const uint8_t l_slot = get_channel_location(cd->in_channel_map, CHANNEL_LEFT);
+	const uint8_t c_slot = get_channel_location(cd->in_channel_map, CHANNEL_CENTER);
+	const uint8_t r_slot = get_channel_location(cd->in_channel_map, CHANNEL_RIGHT);
+	const uint8_t lfe_slot = get_channel_location(cd->in_channel_map, CHANNEL_LFE);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	int32_t c_l = cd->downmix_coefficients[CHANNEL_LEFT];
+	int32_t c_c = cd->downmix_coefficients[CHANNEL_CENTER];
+	int32_t c_r = cd->downmix_coefficients[CHANNEL_RIGHT];
+	int32_t c_lfe = cd->downmix_coefficients[CHANNEL_LFE];
+	uint32_t frames = in_size / (4 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t c = (c_slot < 0xF) ? in[i * 4 + c_slot] : 0;
+		int32_t l = (l_slot < 0xF) ? in[i * 4 + l_slot] : 0;
+		int32_t r = (r_slot < 0xF) ? in[i * 4 + r_slot] : 0;
+		int32_t lfe = (lfe_slot < 0xF) ? in[i * 4 + lfe_slot] : 0;
+		int64_t com = (((int64_t)c * c_c) >> 31) + (((int64_t)lfe * c_lfe) >> 31);
+		out[i * 2 + 0] = sat_int32((((int64_t)l * c_l) >> 31) + com);
+		out[i * 2 + 1] = sat_int32((((int64_t)r * c_r) >> 31) + com);
+	}
+}
+
+void downmix32bit(struct up_down_mixer_data *cd, const uint8_t * const in_data,
+		  const uint32_t in_size, uint8_t * const out_data)
+{
+	const uint8_t l_slot = get_channel_location(cd->in_channel_map, CHANNEL_LEFT);
+	const uint8_t r_slot = get_channel_location(cd->in_channel_map, CHANNEL_RIGHT);
+	const uint8_t ls_slot = get_channel_location(cd->in_channel_map, CHANNEL_LEFT_SURROUND);
+	const uint8_t rs_slot = get_channel_location(cd->in_channel_map, CHANNEL_RIGHT_SURROUND);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	int32_t c_l = cd->downmix_coefficients[CHANNEL_LEFT];
+	int32_t c_r = cd->downmix_coefficients[CHANNEL_RIGHT];
+	int32_t c_ls = cd->downmix_coefficients[CHANNEL_LEFT_SURROUND];
+	int32_t c_rs = cd->downmix_coefficients[CHANNEL_RIGHT_SURROUND];
+	uint32_t frames = in_size / (4 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t l = (l_slot < 0xF) ? in[i * 4 + l_slot] : 0;
+		int32_t r = (r_slot < 0xF) ? in[i * 4 + r_slot] : 0;
+		int32_t ls = (ls_slot < 0xF) ? in[i * 4 + ls_slot] : 0;
+		int32_t rs = (rs_slot < 0xF) ? in[i * 4 + rs_slot] : 0;
+		out[i * 2 + 0] = sat_int32((((int64_t)l * c_l) >> 31) + (((int64_t)ls * c_ls) >> 31));
+		out[i * 2 + 1] = sat_int32((((int64_t)r * c_r) >> 31) + (((int64_t)rs * c_rs) >> 31));
+	}
+}
+
+void downmix32bit_4_0(struct up_down_mixer_data *cd, const uint8_t * const in_data,
+		      const uint32_t in_size, uint8_t * const out_data)
+{
+	downmix32bit(cd, in_data, in_size, out_data);
+}
+
+void downmix32bit_5_0_mono(struct up_down_mixer_data *cd, const uint8_t * const in_data,
+			   const uint32_t in_size, uint8_t * const out_data)
+{
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	uint32_t frames = in_size / (5 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int64_t sum = 0;
+		for (int c = 0; c < 5; c++)
+			sum += in[i * 5 + c];
+		out[i] = sat_int32(sum / 5);
+	}
+}
+
+void downmix32bit_5_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
+		      const uint32_t in_size, uint8_t * const out_data)
+{
+	const uint8_t l_slot = get_channel_location(cd->in_channel_map, CHANNEL_LEFT);
+	const uint8_t c_slot = get_channel_location(cd->in_channel_map, CHANNEL_CENTER);
+	const uint8_t r_slot = get_channel_location(cd->in_channel_map, CHANNEL_RIGHT);
+	uint8_t ls_slot = get_channel_location(cd->in_channel_map, CHANNEL_LEFT_SURROUND);
+	uint8_t rs_slot = get_channel_location(cd->in_channel_map, CHANNEL_RIGHT_SURROUND);
+	const uint8_t lfe_slot = get_channel_location(cd->in_channel_map, CHANNEL_LFE);
+
+	if (ls_slot == 0xF && rs_slot == 0xF) {
+		ls_slot = get_channel_location(cd->in_channel_map, CHANNEL_LEFT_SIDE);
+		rs_slot = get_channel_location(cd->in_channel_map, CHANNEL_RIGHT_SIDE);
+	}
+
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	int32_t c_l = cd->downmix_coefficients[CHANNEL_LEFT];
+	int32_t c_c = cd->downmix_coefficients[CHANNEL_CENTER];
+	int32_t c_r = cd->downmix_coefficients[CHANNEL_RIGHT];
+	int32_t c_ls = cd->downmix_coefficients[CHANNEL_LEFT_SURROUND];
+	int32_t c_rs = cd->downmix_coefficients[CHANNEL_RIGHT_SURROUND];
+	int32_t c_lfe = cd->downmix_coefficients[CHANNEL_LFE];
+	uint32_t frames = in_size / (6 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t l = (l_slot < 0xF) ? in[i * 6 + l_slot] : 0;
+		int32_t c = (c_slot < 0xF) ? in[i * 6 + c_slot] : 0;
+		int32_t r = (r_slot < 0xF) ? in[i * 6 + r_slot] : 0;
+		int32_t ls = (ls_slot < 0xF) ? in[i * 6 + ls_slot] : 0;
+		int32_t rs = (rs_slot < 0xF) ? in[i * 6 + rs_slot] : 0;
+		int32_t lfe = (lfe_slot < 0xF) ? in[i * 6 + lfe_slot] : 0;
+
+		int64_t com = (((int64_t)c * c_c) >> 31) + (((int64_t)lfe * c_lfe) >> 31);
+		int64_t l_tot = (((int64_t)l * c_l) >> 31) + (((int64_t)ls * c_ls) >> 31) + com;
+		int64_t r_tot = (((int64_t)r * c_r) >> 31) + (((int64_t)rs * c_rs) >> 31) + com;
+
+		out[i * 2 + 0] = sat_int32(l_tot);
+		out[i * 2 + 1] = sat_int32(r_tot);
+	}
+}
+
+void downmix32bit_7_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
+		      const uint32_t in_size, uint8_t * const out_data)
+{
+	const uint8_t l_slot = get_channel_location(cd->in_channel_map, CHANNEL_LEFT);
+	const uint8_t c_slot = get_channel_location(cd->in_channel_map, CHANNEL_CENTER);
+	const uint8_t r_slot = get_channel_location(cd->in_channel_map, CHANNEL_RIGHT);
+	const uint8_t ls_slot = get_channel_location(cd->in_channel_map, CHANNEL_LEFT_SURROUND);
+	const uint8_t rs_slot = get_channel_location(cd->in_channel_map, CHANNEL_RIGHT_SURROUND);
+	const uint8_t lside_slot = get_channel_location(cd->in_channel_map, CHANNEL_LEFT_SIDE);
+	const uint8_t rside_slot = get_channel_location(cd->in_channel_map, CHANNEL_RIGHT_SIDE);
+	const uint8_t lfe_slot = get_channel_location(cd->in_channel_map, CHANNEL_LFE);
+
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	int32_t c_l = cd->downmix_coefficients[CHANNEL_LEFT];
+	int32_t c_c = cd->downmix_coefficients[CHANNEL_CENTER];
+	int32_t c_r = cd->downmix_coefficients[CHANNEL_RIGHT];
+	int32_t c_ls = cd->downmix_coefficients[CHANNEL_LEFT_SURROUND];
+	int32_t c_rs = cd->downmix_coefficients[CHANNEL_RIGHT_SURROUND];
+	int32_t c_lside = cd->downmix_coefficients[CHANNEL_LEFT_SIDE];
+	int32_t c_rside = cd->downmix_coefficients[CHANNEL_RIGHT_SIDE];
+	int32_t c_lfe = cd->downmix_coefficients[CHANNEL_LFE];
+	uint32_t frames = in_size / (8 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t l = (l_slot < 0xF) ? in[i * 8 + l_slot] : 0;
+		int32_t c = (c_slot < 0xF) ? in[i * 8 + c_slot] : 0;
+		int32_t r = (r_slot < 0xF) ? in[i * 8 + r_slot] : 0;
+		int32_t ls = (ls_slot < 0xF) ? in[i * 8 + ls_slot] : 0;
+		int32_t rs = (rs_slot < 0xF) ? in[i * 8 + rs_slot] : 0;
+		int32_t lside = (lside_slot < 0xF) ? in[i * 8 + lside_slot] : 0;
+		int32_t rside = (rside_slot < 0xF) ? in[i * 8 + rside_slot] : 0;
+		int32_t lfe = (lfe_slot < 0xF) ? in[i * 8 + lfe_slot] : 0;
+
+		int64_t com = (((int64_t)c * c_c) >> 31) + (((int64_t)lfe * c_lfe) >> 31);
+		int64_t l_tot = (((int64_t)l * c_l) >> 31) + (((int64_t)ls * c_ls) >> 31) +
+				(((int64_t)lside * c_lside) >> 31) + com;
+		int64_t r_tot = (((int64_t)r * c_r) >> 31) + (((int64_t)rs * c_rs) >> 31) +
+				(((int64_t)rside * c_rside) >> 31) + com;
+
+		out[i * 2 + 0] = sat_int32(l_tot);
+		out[i * 2 + 1] = sat_int32(r_tot);
+	}
+}
+
+void downmix16bit(struct up_down_mixer_data *cd, const uint8_t * const in_data,
+		  const uint32_t in_size, uint8_t * const out_data)
+{
+	const int16_t *in = (const int16_t *)in_data;
+	int16_t *out = (int16_t *)out_data;
+	uint32_t frames = in_size / (4 * sizeof(int16_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t l = in[i * 4 + 0];
+		int32_t r = in[i * 4 + 1];
+		int32_t ls = in[i * 4 + 2];
+		int32_t rs = in[i * 4 + 3];
+		out[i * 2 + 0] = sat_int16((l + ls) >> 1);
+		out[i * 2 + 1] = sat_int16((r + rs) >> 1);
+	}
+}
+
+void downmix16bit_5_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
+		      const uint32_t in_size, uint8_t * const out_data)
+{
+	const int16_t *in = (const int16_t *)in_data;
+	int16_t *out = (int16_t *)out_data;
+	uint32_t frames = in_size / (6 * sizeof(int16_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t l = in[i * 6 + 0];
+		int32_t c = in[i * 6 + 1];
+		int32_t r = in[i * 6 + 2];
+		int32_t ls = in[i * 6 + 3];
+		int32_t rs = in[i * 6 + 4];
+		int32_t lfe = in[i * 6 + 5];
+
+		int32_t com = (c + lfe) >> 1;
+		out[i * 2 + 0] = sat_int16(((l + ls) >> 1) + com);
+		out[i * 2 + 1] = sat_int16(((r + rs) >> 1) + com);
+	}
+}
+
+void downmix16bit_4ch_mono(struct up_down_mixer_data *cd, const uint8_t * const in_data,
+			   const uint32_t in_size, uint8_t * const out_data)
+{
+	const int16_t *in = (const int16_t *)in_data;
+	int16_t *out = (int16_t *)out_data;
+	uint32_t frames = in_size / (4 * sizeof(int16_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t sum = (int32_t)in[i * 4 + 0] + in[i * 4 + 1] + in[i * 4 + 2] + in[i * 4 + 3];
+		out[i] = sat_int16(sum >> 2);
+	}
 }
 
 void downmix32bit_3_1_mono(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			   const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	uint32_t frames = in_size / (4 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int64_t sum = (int64_t)in[i * 4 + 0] + in[i * 4 + 1] + in[i * 4 + 2] + in[i * 4 + 3];
+		out[i] = sat_int32(sum >> 2);
+	}
 }
 
 void downmix32bit_4_0_mono(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			   const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	downmix32bit_3_1_mono(cd, in_data, in_size, out_data);
 }
 
 void downmix32bit_quatro_mono(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			      const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	downmix32bit_3_1_mono(cd, in_data, in_size, out_data);
 }
 
 void downmix32bit_5_1_mono(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			   const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	uint32_t frames = in_size / (6 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int64_t sum = 0;
+		for (int c = 0; c < 6; c++)
+			sum += in[i * 6 + c];
+		out[i] = sat_int32(sum / 6);
+	}
 }
 
 void downmix32bit_7_1_mono(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			   const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	uint32_t frames = in_size / (8 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int64_t sum = 0;
+		for (int c = 0; c < 8; c++)
+			sum += in[i * 8 + c];
+		out[i] = sat_int32(sum / 8);
+	}
 }
 
 void downmix32bit_7_1_to_5_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			     const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	uint32_t frames = in_size / (8 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		out[i * 6 + 0] = in[i * 8 + 0]; /* L */
+		out[i * 6 + 1] = in[i * 8 + 1]; /* R */
+		out[i * 6 + 2] = in[i * 8 + 2]; /* C */
+		out[i * 6 + 3] = in[i * 8 + 3]; /* LFE */
+		/* Fold side channels into surround */
+		out[i * 6 + 4] = sat_int32(((int64_t)in[i * 8 + 4] + in[i * 8 + 6]) >> 1);
+		out[i * 6 + 5] = sat_int32(((int64_t)in[i * 8 + 5] + in[i * 8 + 7]) >> 1);
+	}
 }
 
 void upmix32bit_4_0_to_5_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			   const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	const int32_t *in = (const int32_t *)in_data;
+	int32_t *out = (int32_t *)out_data;
+	uint32_t frames = in_size / (4 * sizeof(int32_t));
+
+	for (uint32_t i = 0; i < frames; i++) {
+		out[i * 6 + 0] = in[i * 4 + 0]; /* L */
+		out[i * 6 + 1] = in[i * 4 + 1]; /* R */
+		out[i * 6 + 2] = 0;             /* C */
+		out[i * 6 + 3] = 0;             /* LFE */
+		out[i * 6 + 4] = in[i * 4 + 2]; /* Ls */
+		out[i * 6 + 5] = in[i * 4 + 3]; /* Rs */
+	}
 }
 
 void upmix32bit_quatro_to_5_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,
 			      const uint32_t in_size, uint8_t * const out_data)
 {
-	sof_panic(0);
+	upmix32bit_4_0_to_5_1(cd, in_data, in_size, out_data);
 }
 
 #endif

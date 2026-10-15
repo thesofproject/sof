@@ -21,8 +21,14 @@
 
 LOG_MODULE_REGISTER(static_pipeline_uac2, CONFIG_SOF_LOG_LEVEL);
 
-/* Standard 0 dB gain constant for SOF volume representation (Q1.31 format) */
+/* Standard 0 dB gain constant for SOF volume representation */
+#if CONFIG_IPC_MAJOR_3
+#define SOF_VOL_ZERO_DB 65536
+#define SOF_VOL_MAX_SHIFT 16
+#else
 #define SOF_VOL_ZERO_DB INT32_MAX
+#define SOF_VOL_MAX_SHIFT 31
+#endif
 
 #ifndef CONFIG_STATIC_PIPELINE_MAX_CONTROLS
 #define CONFIG_STATIC_PIPELINE_MAX_CONTROLS 64
@@ -100,7 +106,7 @@ static int32_t uac2_to_sof_volume(int16_t volume)
 	/* Convert negative dB (scaled by 256) to tenths of dB: 1 dB = ~6 dB per bit */
 	int32_t db_x10 = (int32_t)(-volume) * 10 / 256;
 	int shift = db_x10 / 60;
-	if (shift >= 31)
+	if (shift >= SOF_VOL_MAX_SHIFT)
 		return 0;
 
 	/*

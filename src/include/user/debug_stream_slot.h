@@ -136,8 +136,13 @@ struct debug_stream_record;
  * @param[in] rec Pointer to abstract debug stream record to transmit.
  * @return 0 on success, -ENODEV if debug slot is unconfigured, or -ENOMEM if record exceeds capacity.
  */
+#if defined(CONFIG_USERSPACE)
 __syscall int debug_stream_slot_send_record(struct debug_stream_record *rec);
 
 #include <zephyr/syscalls/debug_stream_slot.h>
+#else
+int z_impl_debug_stream_slot_send_record(struct debug_stream_record *rec);
+#define debug_stream_slot_send_record z_impl_debug_stream_slot_send_record
+#endif
 
 #endif /* __SOC_DEBUG_WINDOW_SLOT_H__ */

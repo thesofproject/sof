@@ -174,3 +174,5 @@ void eq_iir_s32_default(struct processing_module *mod, const struct cir_buf_sour
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
+
+

@@ -43,6 +43,9 @@ LOG_MODULE_REGISTER(tdfb, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(tdfb);
 
+static void tdfb_pass_same_format(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
+				  struct output_stream_buffer *bsink, int frames);
+
 static inline int set_func(struct processing_module *mod, enum sof_ipc_frame fmt)
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
@@ -66,6 +69,12 @@ static inline int set_func(struct processing_module *mod, enum sof_ipc_frame fmt
 		cd->tdfb_func = tdfb_fir_s32;
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_FLOAT
+	case SOF_IPC_FRAME_FLOAT:
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_FLOAT");
+		cd->tdfb_func = tdfb_fir_float;
+		break;
+#endif /* CONFIG_FORMAT_FLOAT */
 	default:
 		comp_err(mod->dev, "invalid frame_fmt");
 		return -EINVAL;
@@ -247,6 +256,12 @@ static inline int set_pass_func(struct processing_module *mod, enum sof_ipc_fram
 		cd->tdfb_func = tdfb_pass_s32;
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_FLOAT
+	case SOF_IPC_FRAME_FLOAT:
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_FLOAT");
+		cd->tdfb_func = tdfb_pass_same_format;
+		break;
+#endif /* CONFIG_FORMAT_FLOAT */
 	default:
 		comp_err(mod->dev, "invalid frame_fmt");
 		return -EINVAL;
@@ -272,6 +287,11 @@ static void tdfb_free_delaylines(struct processing_module *mod)
 	cd->fir_delay_size = 0;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir[i].delay = NULL;
+
+#if CONFIG_FORMAT_FLOAT
+	for (i = 0; i < SOF_TDFB_FIR_MAX_COUNT; i++)
+		cd->fir_f[i].delay = NULL;
+#endif
 }
 
 static int16_t *tdfb_filter_seek(struct sof_tdfb_config *config, int num_filters)
@@ -539,6 +559,47 @@ static int tdfb_init_coef(struct processing_module *mod)
 	/* Seek to proper filter for requested angle or beam off configuration */
 	coefp = tdfb_filter_seek(config, idx);
 
+#if CONFIG_FORMAT_FLOAT
+	if (cd->source_format == SOF_IPC_FRAME_FLOAT) {
+		int delay_size_sum = 0;
+		int coef_size_sum = 0;
+		int16_t *coefp_scan = coefp;
+		float *coef_ptr;
+
+		for (i = 0; i < config->num_filters; i++) {
+			coef_data = (struct sof_fir_coef_data *)coefp_scan;
+			int dsz = fir_delay_size_float(coef_data);
+			int csz = fir_coef_size_float(coef_data);
+
+			if (dsz < 0 || csz < 0)
+				return -EINVAL;
+			delay_size_sum += dsz;
+			coef_size_sum += csz;
+			coefp_scan = coef_data->coef + coef_data->length;
+		}
+
+		if (coef_size_sum > cd->fir_coef_f_size) {
+			mod_free(mod, cd->fir_coef_f);
+			cd->fir_coef_f = mod_balloc(mod, coef_size_sum);
+			if (!cd->fir_coef_f) {
+				comp_err(dev, "allocation failed for coef size %d",
+					 coef_size_sum);
+				return -ENOMEM;
+			}
+			cd->fir_coef_f_size = coef_size_sum;
+		}
+
+		coef_ptr = cd->fir_coef_f;
+		for (i = 0; i < config->num_filters; i++) {
+			coef_data = (struct sof_fir_coef_data *)coefp;
+			fir_init_coef_float(&cd->fir_f[i], coef_data, &coef_ptr);
+			coefp = coef_data->coef + coef_data->length;
+		}
+
+		return delay_size_sum;
+	}
+#endif
+
 	/* Initialize filter bank. FIR header bounds and length validity were
 	 * already checked when the blob entered the component.
 	 */
@@ -554,6 +615,18 @@ static int tdfb_init_coef(struct processing_module *mod)
 
 static void tdfb_init_delay(struct tdfb_comp_data *cd)
 {
+#if CONFIG_FORMAT_FLOAT
+	if (cd->source_format == SOF_IPC_FRAME_FLOAT) {
+		float *fir_delay = (float *)cd->fir_delay;
+		int i;
+
+		for (i = 0; i < cd->config->num_filters; i++) {
+			if (cd->fir_f[i].length > 0)
+				fir_init_delay_float(&cd->fir_f[i], &fir_delay);
+		}
+		return;
+	}
+#endif
 	int32_t *fir_delay = cd->fir_delay;
 	int i;
 
@@ -569,6 +642,10 @@ static int tdfb_setup(struct processing_module *mod, int source_nch, int sink_nc
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	int delay_size;
+
+#if CONFIG_FORMAT_FLOAT
+	cd->source_format = fmt;
+#endif
 
 	/* If beam on, restore processing function. If off, use for same source and
 	 * sink format the efficient 1:1 copy, otherwise faster pass-through processing
@@ -666,6 +743,10 @@ static int tdfb_init(struct processing_module *mod)
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
+#if CONFIG_FORMAT_FLOAT
+	for (i = 0; i < SOF_TDFB_FIR_MAX_COUNT; i++)
+		fir_reset_float(&cd->fir_f[i]);
+#endif
 
 	 /* Allow different number  of channels in source and sink, in other
 	  * aspects TDFB is simple component type.
@@ -693,6 +774,9 @@ static int tdfb_free(struct processing_module *mod)
 
 	mod_ipc_msg_free(mod, cd->msg);
 	tdfb_free_delaylines(mod);
+#if CONFIG_FORMAT_FLOAT
+	mod_free(mod, cd->fir_coef_f);
+#endif
 	mod_data_blob_handler_free(mod, cd->model_handler);
 	tdfb_direction_free(mod);
 	mod_free(mod, cd->ctrl_data);
@@ -767,21 +851,28 @@ static int tdfb_process(struct processing_module *mod,
 	 * optimized filter function loads the successive input samples from
 	 * internal delay line with a 64 bit load operation.
 	 */
-	frame_count = MIN(frame_count, cd->max_frames) & ~0x1;
+	int max_f = cd->max_frames > 0 ? cd->max_frames : frame_count;
+	frame_count = MIN(frame_count, max_f) & ~0x1;
 	if (frame_count) {
-		cd->tdfb_func(cd, input_buffers, output_buffers, frame_count);
+		if (cd->tdfb_func) {
+			cd->tdfb_func(cd, input_buffers, output_buffers, frame_count);
+		} else {
+			tdfb_pass_same_format(cd, &input_buffers[0], &output_buffers[0], frame_count);
+		}
 		module_update_buffer_position(input_buffers, output_buffers, frame_count);
 
-		/* Update sound direction estimate */
-		tdfb_direction_estimate(cd, frame_count, audio_stream_get_channels(source));
-		comp_dbg(dev, "tdfb_dint %u %d %d %d", cd->direction.trigger, cd->direction.level,
-			 (int32_t)(cd->direction.level_ambient >> 32), cd->direction.az_slow);
+		if (cd->config) {
+			/* Update sound direction estimate */
+			tdfb_direction_estimate(cd, frame_count, audio_stream_get_channels(source));
+			comp_dbg(dev, "tdfb_dint %u %d %d %d", cd->direction.trigger, cd->direction.level,
+				 (int32_t)(cd->direction.level_ambient >> 32), cd->direction.az_slow);
 
-		if (cd->direction_updates && cd->direction_change) {
-			tdfb_send_ipc_notification(mod);
-			cd->direction_change = false;
-			comp_dbg(dev, "tdfb_dupd %d %d",
-				 cd->az_value_estimate, cd->direction.az_slow);
+			if (cd->direction_updates && cd->direction_change) {
+				tdfb_send_ipc_notification(mod);
+				cd->direction_change = false;
+				comp_dbg(dev, "tdfb_dupd %d %d",
+					 cd->az_value_estimate, cd->direction.az_slow);
+			}
 		}
 	}
 
@@ -841,8 +932,14 @@ static int tdfb_prepare(struct processing_module *mod,
 	/* Initialize filter */
 	cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
 	if (!cd->config) {
-		ret = -EINVAL;
-		goto out;
+		if (source_channels == sink_channels) {
+			cd->tdfb_func = tdfb_pass_same_format;
+		} else {
+			set_pass_func(mod, frame_fmt);
+		}
+		cd->max_frames = INT32_MAX;
+		comp_info(dev, "no blob, set to pass-through");
+		return 0;
 	}
 
 	/* Re-validate now that the stream channel counts are cached: the
