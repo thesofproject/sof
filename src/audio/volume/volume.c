@@ -194,19 +194,20 @@ static size_t vol_zc_get_s32(struct cir_buf_source *source, const unsigned int c
 #endif /* CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_FLOAT
-static uint32_t vol_zc_get_float(struct cir_buf_source *source, const int channels,
-				 uint32_t frames, int64_t *prev_sum)
+static size_t vol_zc_get_float(struct cir_buf_source *source, const unsigned int channels,
+			       size_t frames, int64_t *prev_sum)
 {
-	uint32_t curr_frames = frames;
+	size_t curr_frames = frames;
 	const float *x = source->ptr;
-	int bytes;
-	int nmax;
-	int i, j, n;
-	int remaining_samples = frames * channels;
+	size_t bytes;
+	size_t nmax;
+	size_t i, n;
+	unsigned int j;
+	size_t remaining_samples = frames * channels;
 
 	/* Go to last channel */
-	x = cir_buf_wrap((const char *)x + (remaining_samples - 1) * sizeof(float),
-			 source->buf_start, source->buf_end);
+	x = source_cir_buf_wrap(x + remaining_samples - 1,
+				source->buf_start, source->buf_end);
 	while (remaining_samples) {
 		bytes = cir_buf_bytes_without_wrap_rewind(x, source->buf_start);
 		nmax = (bytes / sizeof(float)) + 1;
@@ -945,6 +946,7 @@ static struct comp_dev *vol_static_create(const struct comp_driver *drv,
 					  const struct sof_static_comp *cdesc,
 					  uint32_t period_us)
 {
+#if CONFIG_IPC_MAJOR_4
 	struct static_ipc4_vol_init_cfg vol_cfg;
 
 	memset(&vol_cfg, 0, sizeof(vol_cfg));
@@ -959,6 +961,20 @@ static struct comp_dev *vol_static_create(const struct comp_driver *drv,
 		.data = (const uint8_t *)&vol_cfg,
 	};
 	return drv->ops.create(drv, cfg, &spec);
+#else
+	static const struct ipc_config_volume vol_cfg = {
+		.channels = 2,
+		.min_value = 0,
+		.max_value = 0x7fffffff,
+		.ramp = 0,
+		.initial_ramp = 0,
+	};
+	struct ipc_config_process spec = {
+		.size = sizeof(vol_cfg),
+		.data = (const uint8_t *)&vol_cfg,
+	};
+	return drv->ops.create(drv, cfg, &spec);
+#endif
 }
 
 static int vol_static_apply_volume(struct comp_dev *dev, uint32_t channels, int32_t val)

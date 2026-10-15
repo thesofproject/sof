@@ -500,7 +500,9 @@ static int bt_audio_reset(struct comp_dev *dev)
 static const struct comp_driver comp_bt_audio = {
 	.type = SOF_COMP_HOST,
 	.uid = SOF_RT_UUID(bt_audio_uuid),
+#if !CONFIG_ZEPHYR_LOG
 	.tctx = &bt_audio_tr,
+#endif
 	.ops = {
 		.create = bt_audio_new,
 		.free = bt_audio_free,

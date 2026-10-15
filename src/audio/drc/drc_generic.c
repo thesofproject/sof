@@ -862,22 +862,22 @@ static void drc_s32_default(struct processing_module *mod,
 
 #if CONFIG_FORMAT_FLOAT
 static void drc_float_default(struct processing_module *mod,
-			      const struct audio_stream *source,
-			      struct audio_stream *sink,
+			      const struct cir_buf_source *source,
+			      struct cir_buf_sink *sink,
 			      uint32_t frames)
 {
-	int32_t *x = audio_stream_get_rptr(source);
-	int32_t *y = audio_stream_get_wptr(sink);
-	int nch = audio_stream_get_channels(source);
-	int samples = frames * nch;
 	struct drc_comp_data *cd = module_get_private_data(mod);
+	int nch = cd->channels;
+	const int32_t *x = (int32_t *)source->ptr;
+	int32_t *y = (int32_t *)sink->ptr;
+	size_t samples = frames * nch;
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params;
-	int fragment_samples;
-	int fragment;
+	size_t fragment_samples;
+	size_t fragment;
 
 	if (!cd->enabled) {
-		drc_delay_input_sample_s32(state, source, sink, &x, &y, samples);
+		drc_delay_input_sample_s32(state, source, sink, &x, &y, samples, nch);
 		return;
 	}
 
@@ -892,7 +892,7 @@ static void drc_float_default(struct processing_module *mod,
 			(state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK);
 		fragment_samples = fragment * nch;
 		fragment_samples = MIN(samples, fragment_samples);
-		drc_delay_input_sample_s32(state, source, sink, &x, &y, fragment_samples);
+		drc_delay_input_sample_s32(state, source, sink, &x, &y, fragment_samples, nch);
 		samples -= fragment_samples;
 
 		if ((state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK) == 0)

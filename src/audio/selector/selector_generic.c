@@ -437,41 +437,33 @@ static void process_frame_float(float dst[], int dst_channels,
 	}
 }
 
-static void sel_float(struct processing_module *mod, struct input_stream_buffer *bsource,
-		      struct output_stream_buffer *bsink, uint32_t frames)
+static void sel_float(struct processing_module *mod,
+		      const struct cir_buf_source *source,
+		      struct cir_buf_sink *sink, size_t frames)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-	float *src = (float *)audio_stream_get_rptr(source);
-	float *dest = (float *)audio_stream_get_wptr(sink);
-	int nmax;
-	int i;
-	int n;
-	int processed = 0;
-	int source_frame_bytes = audio_stream_frame_bytes(source);
-	int sink_frame_bytes = audio_stream_frame_bytes(sink);
-	int n_chan_source = MIN(SEL_SOURCE_CHANNELS_MAX, audio_stream_get_channels(source));
-	int n_chan_sink = MIN(SEL_SINK_CHANNELS_MAX, audio_stream_get_channels(sink));
+	const unsigned int src_channels = cd->config.in_channels_count;
+	const unsigned int dst_channels = cd->config.out_channels_count;
+	const unsigned int n_chan_source = MIN(SEL_SOURCE_CHANNELS_MAX, src_channels);
+	const unsigned int n_chan_sink = MIN(SEL_SINK_CHANNELS_MAX, dst_channels);
+	const float *src = source->ptr;
+	float *dst = sink->ptr;
+	size_t i, n, processed = 0;
 
 	while (processed < frames) {
 		n = frames - processed;
-		nmax = audio_stream_bytes_without_wrap(source, src) / source_frame_bytes;
-		n = MIN(n, nmax);
-		nmax = audio_stream_bytes_without_wrap(sink, dest) / sink_frame_bytes;
-		n = MIN(n, nmax);
+		n = MIN(n, cir_buf_samples_without_wrap_s32((const int32_t *)src, source->buf_end) / src_channels);
+		n = MIN(n, cir_buf_samples_without_wrap_s32((const int32_t *)dst, sink->buf_end) / dst_channels);
 		for (i = 0; i < n; i++) {
-			process_frame_float(dest, n_chan_sink, src, n_chan_source,
+			process_frame_float(dst, n_chan_sink, src, n_chan_source,
 					    &cd->coeffs_config);
-			src += audio_stream_get_channels(source);
-			dest += audio_stream_get_channels(sink);
+			src += src_channels;
+			dst += dst_channels;
 		}
-		src = audio_stream_wrap(source, src);
-		dest = audio_stream_wrap(sink, dest);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		processed += n;
 	}
-
-	module_update_buffer_position(bsource, bsink, frames);
 }
 #endif /* CONFIG_FORMAT_FLOAT */
 #endif /* CONFIG_FORMAT_S32LE */

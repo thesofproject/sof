@@ -534,7 +534,9 @@ static int usb_audio_reset(struct comp_dev *dev)
 static const struct comp_driver comp_usb_audio = {
 	.type = SOF_COMP_HOST,
 	.uid = SOF_RT_UUID(usb_audio_uuid),
+#if !CONFIG_ZEPHYR_LOG
 	.tctx = &usb_audio_tr,
+#endif
 	.ops = {
 		.create = usb_audio_new,
 		.free = usb_audio_free,

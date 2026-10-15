@@ -439,39 +439,83 @@ const crossover_split_float crossover_split_float_fnmap[] = {
 	crossover_generic_split_4way_float,
 };
 
-static void crossover_float_default(struct comp_data *cd,
-				    struct input_stream_buffer *bsource,
-				    struct output_stream_buffer **bsinks,
-				    int32_t num_sinks,
-				    uint32_t frames)
+static int crossover_float_default(struct comp_data *cd,
+				   struct sof_source *source,
+				   struct sof_sink **sinks,
+				   unsigned int num_sinks,
+				   size_t frames)
 {
-	struct audio_stream *sink_stream[SOF_CROSSOVER_MAX_STREAMS] = { NULL };
+	float *y[SOF_CROSSOVER_MAX_STREAMS];
+	float *y_start[SOF_CROSSOVER_MAX_STREAMS];
+	float *y_end[SOF_CROSSOVER_MAX_STREAMS];
+	int out_idx[SOF_CROSSOVER_MAX_STREAMS];
+	float out[SOF_CROSSOVER_MAX_STREAMS];
 	struct crossover_state_float *state;
-	const struct audio_stream *source_stream = bsource->data;
-	float *x, *y;
-	int ch, i, j;
-	int idx;
-	int active_sinks = 0;
-	int nch = audio_stream_get_channels(source_stream);
-	float out[num_sinks];
+	float const *x, *x_start, *x_end;
+	size_t x_samples, y_samples;
+	unsigned int nch = source_get_channels(source);
+	size_t bytes = frames * source_get_frame_bytes(source);
+	unsigned int active_sinks = 0;
+	size_t remaining_samples;
+	size_t i, n;
+	unsigned int ch, j;
+	int ret;
 
+	ret = source_get_data_s32(source, bytes, (const int32_t **)&x,
+				  (const int32_t **)&x_start, &x_samples);
+	if (ret)
+		return ret;
+	x_end = x_start + x_samples;
+
+	/* Identify active sinks, keeping the band index for correct routing */
 	for (j = 0; j < num_sinks; j++) {
-		if (bsinks[j])
-			sink_stream[active_sinks++] = bsinks[j]->data;
+		if (!sinks[j])
+			continue;
+		ret = sink_get_buffer_s32(sinks[j], bytes, (int32_t **)&y[active_sinks],
+					  (int32_t **)&y_start[active_sinks], &y_samples);
+		if (ret) {
+			while (active_sinks--) {
+				sink_commit_buffer(sinks[out_idx[active_sinks]], 0);
+			}
+			source_release_data(source, 0);
+			return ret;
+		}
+		y_end[active_sinks] = y_start[active_sinks] + y_samples;
+		out_idx[active_sinks] = j;
+		active_sinks++;
 	}
 
-	for (ch = 0; ch < nch; ch++) {
-		state = &cd->state_f[ch];
-		for (i = 0, idx = ch; i < frames; i++, idx += nch) {
-			x = (float *)audio_stream_read_frag_s32(source_stream, idx);
-			cd->crossover_split_f(*x, out, state);
+	remaining_samples = frames * nch;
+	while (remaining_samples) {
+		n = MIN(remaining_samples, cir_buf_samples_without_wrap_s32((const int32_t *)x, (const int32_t *)x_end));
+		for (j = 0; j < active_sinks; j++)
+			n = MIN(n, cir_buf_samples_without_wrap_s32((const int32_t *)y[j], (const int32_t *)y_end[j]));
 
-			for (j = 0; j < active_sinks; j++) {
-				y = (float *)audio_stream_write_frag_s32(sink_stream[j], idx);
-				*y = out[j];
+		for (ch = 0; ch < nch; ch++) {
+			state = &cd->state_f[ch];
+			for (i = ch; i < n; i += nch) {
+				cd->crossover_split_f(x[i], out, state);
+				for (j = 0; j < active_sinks; j++)
+					y[j][i] = out[out_idx[j]];
 			}
 		}
+
+		remaining_samples -= n;
+		x = (const float *)cir_buf_wrap((const int32_t *)x + n, (const int32_t *)x_start, (const int32_t *)x_end);
+		for (j = 0; j < active_sinks; j++)
+			y[j] = (float *)cir_buf_wrap((int32_t *)y[j] + n, (int32_t *)y_start[j], (int32_t *)y_end[j]);
 	}
+
+	ret = source_release_data(source, bytes);
+	if (ret)
+		return ret;
+	for (j = 0; j < active_sinks; j++) {
+		ret = sink_commit_buffer(sinks[out_idx[j]], bytes);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
 }
 #endif /* CONFIG_FORMAT_FLOAT */
 

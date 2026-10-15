@@ -12,6 +12,10 @@
 #include <stdlib.h>
 #include <math.h>
 
+#ifndef fabsf
+#define fabsf(x) __builtin_fabsf(x)
+#endif
+
 LOG_MODULE_DECLARE(volume_riscv, CONFIG_SOF_LOG_LEVEL);
 
 #include "volume.h"

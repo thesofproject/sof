@@ -16,10 +16,6 @@ extern const struct sof_uuid eq_iir_uuid;
 extern const struct sof_uuid drc_uuid;
 extern const struct sof_uuid tdfb_uuid;
 extern const struct sof_uuid dai_uuid;
-extern const struct sof_uuid tone_uuid;
-extern const struct sof_uuid level_multiplier_uuid;
-extern const struct sof_uuid selector_uuid;
-extern const struct sof_uuid mixer_uuid;
 extern const struct sof_uuid bt_audio_uuid;
 
 /* UAC2 Device Tree Entity IDs (static constant initializers) */
@@ -135,28 +131,6 @@ static const struct sof_static_comp esp32p4_comps[] = {
 		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_S16_LE, 48000, 2),
 		.ep.usb.terminal_id = CAPTURE_TERM_ID
 	),
-
-	/* --- Float Synth & Routing Test Pipeline (Pipeline 3) --- */
-	SOF_STATIC_COMP_MODULE(
-		.id = 11, .pipeline_id = 3, .name = "TONE_TEST",
-		.uuid = &tone_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
-		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
-	),
-	SOF_STATIC_COMP_MODULE(
-		.id = 12, .pipeline_id = 3, .name = "LEVEL_TEST",
-		.uuid = &level_multiplier_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
-		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
-	),
-	SOF_STATIC_COMP_MODULE(
-		.id = 13, .pipeline_id = 3, .name = "SEL_TEST",
-		.uuid = &selector_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
-		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
-	),
-	SOF_STATIC_COMP_MODULE(
-		.id = 14, .pipeline_id = 1, .name = "MIXER_PB",
-		.uuid = &mixer_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
-		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
-	),
 };
 
 /* -------------------------------------------------------------------------
@@ -175,11 +149,6 @@ static const struct sof_static_buffer esp32p4_buffers[] = {
 	SOF_STATIC_BUFFER(.id = 6, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
 	SOF_STATIC_BUFFER(.id = 7, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
 	SOF_STATIC_BUFFER(.id = 8, .size = 3072, .fmt = SOF_IPC_FRAME_S16_LE),
-
-	/* Test Pipeline Buffers */
-	SOF_STATIC_BUFFER(.id = 11, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
-	SOF_STATIC_BUFFER(.id = 12, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
-	SOF_STATIC_BUFFER(.id = 13, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
 };
 
 /* -------------------------------------------------------------------------
@@ -193,11 +162,6 @@ static const struct sof_static_route esp32p4_routes[] = {
 	/* Capture Route: DAI (6) -> [5] -> VOL (9) -> [8] -> USB (10) */
 	SOF_STATIC_ROUTE(.src_comp_id = 6, .buffer_id = 5, .sink_comp_id = 9),
 	SOF_STATIC_ROUTE(.src_comp_id = 9, .buffer_id = 8, .sink_comp_id = 10),
-
-	/* Test Route: TONE (11) -> [11] -> LEVEL (12) -> [12] -> SEL (13) -> [13] -> MIXER (14) */
-	SOF_STATIC_ROUTE(.src_comp_id = 11, .buffer_id = 11, .sink_comp_id = 12),
-	SOF_STATIC_ROUTE(.src_comp_id = 12, .buffer_id = 12, .sink_comp_id = 13),
-	SOF_STATIC_ROUTE(.src_comp_id = 13, .buffer_id = 13, .sink_comp_id = 14),
 };
 
 /* -------------------------------------------------------------------------
@@ -286,24 +250,6 @@ static const struct sof_static_kcontrol esp32p4_controls[] = {
 		.min = 0, .max = 2, .def = 0, .channels = 1,
 		.uac2_entity_id = 0
 	),
-	SOF_STATIC_KCONTROL_VOLUME(
-		.id = 11, .name = "Test Level Gain",
-		.target_comp_id = 12,
-		.min = 0, .max = 0x7FFFFFFF, .def = 0x7FFFFFFF, .channels = 2,
-		.uac2_entity_id = 0
-	),
-	SOF_STATIC_KCONTROL_SWITCH(
-		.id = 12, .name = "Test Level Mute",
-		.target_comp_id = 12,
-		.def = 1,
-		.uac2_entity_id = 0
-	),
-	SOF_STATIC_KCONTROL_ENUM(
-		.id = 13, .name = "Test Selector Channel",
-		.target_comp_id = 13,
-		.min = 0, .max = 1, .def = 0, .channels = 1,
-		.uac2_entity_id = 0
-	),
 	SOF_STATIC_KCONTROL_ENUM(
 		.id = 14, .name = "BT Audio Format",
 		.target_comp_id = 1,
@@ -341,19 +287,6 @@ static const struct sof_static_pipeline_desc esp32p4_pipelines[] = {
 		.sched_comp_id = 10,
 		.source_comp_id = 6,
 		.sink_comp_id = 10,
-	},
-	{
-		.pipeline_id = 3,
-		.name = "Float Synth & Route Test",
-		.direction = SOF_IPC_STREAM_PLAYBACK,
-		.priority = 0,
-		.core = 0,
-		.period = 1000, /* 1ms */
-		.frames_per_sched = 48,
-		.time_domain = SOF_TIME_DOMAIN_TIMER,
-		.sched_comp_id = 11,
-		.source_comp_id = 11,
-		.sink_comp_id = 13,
 	},
 };
 

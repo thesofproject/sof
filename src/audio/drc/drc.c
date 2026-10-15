@@ -39,7 +39,11 @@
 
 LOG_MODULE_DECLARE(drc, CONFIG_SOF_LOG_LEVEL);
 
+#if CONFIG_COMP_DRC_MODULE
 extern const struct sof_uuid drc_uuid;
+#else
+SOF_DEFINE_REG_UUID(drc);
+#endif
 extern struct tr_ctx drc_tr;
 
 /* Called from drc_setup() from drc_process(), so cannot be __cold */

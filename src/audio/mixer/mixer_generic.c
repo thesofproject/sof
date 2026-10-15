@@ -203,29 +203,25 @@ static void mix_n_s32(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 
 #if CONFIG_FORMAT_FLOAT
 /* Mix n float source streams to one sink stream */
-static void mix_n_float(struct comp_dev *dev, struct audio_stream *sink,
-			const struct audio_stream **sources, uint32_t num_sources,
-			uint32_t frames)
+static void mix_n_float(struct cir_buf_sink *sink, struct cir_buf_source *sources,
+			int num_sources, size_t samples)
 {
-	float *src[PLATFORM_MAX_CHANNELS];
-	float *dest;
+	const float *src[PLATFORM_MAX_CHANNELS];
+	float *dest = sink->ptr;
 	float val;
-	int nmax;
-	int i, j, n, ns;
-	int processed = 0;
-	int nch = audio_stream_get_channels(sink);
-	int samples = frames * nch;
+	size_t nmax, ns, n, i;
+	size_t processed = 0;
+	int j;
 
-	dest = audio_stream_get_wptr(sink);
 	for (j = 0; j < num_sources; j++)
-		src[j] = audio_stream_get_rptr(sources[j]);
+		src[j] = sources[j].ptr;
 
 	while (processed < samples) {
 		nmax = samples - processed;
-		n = audio_stream_samples_without_wrap_s32(sink, dest);
+		n = cir_buf_samples_without_wrap_s32(dest, sink->buf_end);
 		n = MIN(n, nmax);
-		for (i = 0; i < num_sources; i++) {
-			ns = audio_stream_samples_without_wrap_s32(sources[i], src[i]);
+		for (j = 0; j < num_sources; j++) {
+			ns = cir_buf_samples_without_wrap_s32(src[j], sources[j].buf_end);
 			n = MIN(n, ns);
 		}
 
@@ -245,8 +241,8 @@ static void mix_n_float(struct comp_dev *dev, struct audio_stream *sink,
 			for (; i < n; i++) {
 				*dest++ = *s0++ + *s1++;
 			}
-			src[0] = (float *)s0;
-			src[1] = (float *)s1;
+			src[0] = s0;
+			src[1] = s1;
 		} else {
 			for (i = 0; i < n; i++) {
 				val = 0.0f;
@@ -259,9 +255,10 @@ static void mix_n_float(struct comp_dev *dev, struct audio_stream *sink,
 		}
 
 		processed += n;
-		dest = audio_stream_wrap(sink, dest);
-		for (i = 0; i < num_sources; i++)
-			src[i] = audio_stream_wrap(sources[i], src[i]);
+		dest = cir_buf_wrap(dest, sink->buf_start, sink->buf_end);
+		for (j = 0; j < num_sources; j++)
+			src[j] = source_cir_buf_wrap(src[j], sources[j].buf_start,
+						     sources[j].buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_FLOAT */

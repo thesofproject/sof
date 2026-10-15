@@ -1368,5 +1368,12 @@ static struct sof_static_module_ops sel4_static_ops = {
 	.apply_enum = sel_static_apply_enum,
 };
 DECLARE_STATIC_MODULE_OPS(selector4, &sel4_static_ops);
+#else
+static struct sof_static_module_ops sel_static_ops = {
+	.uuid = &selector_uuid,
+	.create = sel_static_create,
+	.apply_enum = sel_static_apply_enum,
+};
+DECLARE_STATIC_MODULE_OPS(selector, &sel_static_ops);
 #endif
 #endif /* CONFIG_STATIC_PIPELINE */
