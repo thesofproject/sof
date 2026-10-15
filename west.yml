@@ -41,6 +41,25 @@ manifest:
       path: sof/tools/rimage/tomlc99
       revision: e3a03f5ec7d8d33be705c5ce8a632d998ce9b4d1
 
+    # libfvad: pure-C BSD-3 extraction of WebRTC GMM VAD for webrtc_vad
+    - name: libfvad
+      repo-path: libfvad
+      path: modules/audio/libfvad
+      revision: e4b0c4d00b3db23f5825631ae8f84058e7a1b366
+
+    # webrtc-audio-processing — WebRTC APM with AEC3 C++17 core, AECm, NS, and AGC
+    - name: webrtc-apm
+      repo-path: webrtc-audio-processing
+      path: modules/audio/webrtc-apm
+      revision: 3e9c41a268fbeb36a7de2c5cb2f1b02bc7fef098
+
+    # rnnoise — xiph/rnnoise deep-learning noise suppressor (webrtc_ns2)
+    - name: rnnoise
+      repo-path: rnnoise
+      path: modules/audio/rnnoise
+      revision: 24dbb35115c6d27f9f14cc654bf0a32417f70bf9
+
+
     - name: zephyr
       repo-path: zephyr
       revision: beeac475263ea55a74a7b61274cd4867c53c973d

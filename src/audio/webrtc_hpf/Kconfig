@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_WEBRTC_HPF
+	tristate "WebRTC High-Pass Filter (HPF) module"
+	default n
+	help
+	  Select to enable the WebRTC High-Pass Filter module.
+	  Removes DC offset and low-frequency rumble (<80 Hz) using a 2nd-order cascaded biquad IIR.
+
+if COMP_WEBRTC_HPF
+
+config COMP_WEBRTC_HPF_STUB
+	bool "Build with pass-through stub backend"
+	default n
+	help
+	  Select to build with the pass-through stub backend instead of the real filter.
+
+endif # COMP_WEBRTC_HPF
