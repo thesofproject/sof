@@ -8,7 +8,9 @@
 # line parameters to this script and call the linker directly.
 
 import os
+import sys
 import argparse
+import struct
 import subprocess
 from elftools.elf.elffile import ELFFile
 from elftools.elf.constants import SH_FLAGS
@@ -48,6 +50,103 @@ def max_alignment(addr, align1, align2):
 	upper = addr + align1 - 1
 	return upper - (upper % align1)
 
+# A partial (-r) link keeps every per-function section and every C++ COMDAT
+# group as a separate section. Below, all executable sections except .text
+# are linked to run from DRAM, and sections only pulled in from libraries
+# wouldn't be seen in the input object at all and would stay at address 0.
+# So for relocatable modules first partially link all objects and libraries
+# into a single object, dissolving section groups and merging sections of
+# the same type, and then calculate addresses for that object.
+# Returns the merged object and the linker parameters to use with it, or
+# None if the linker doesn't support this.
+def prelink_relocatable():
+	merged = f'{args.file}.merged'
+	script = pathlib.Path(__file__).parent / 'llext_merge_sections.ld'
+
+	command = [args.command] + args.params + ['-Wl,--force-group-allocation',
+						  f'-Wl,-T,{script}', '-o', merged]
+	if subprocess.run(command).returncode != 0:
+		print('llext_link_helper.py: WARNING: pre-linking failed, '
+		      'linking without merging sections', file=sys.stderr)
+		return None
+
+	# All objects and libraries are in the merged object now, keep options
+	options = [p for p in args.params if p.startswith('-') and
+		   not p.startswith(('-l', '-L'))]
+
+	return merged, options + [merged]
+
+R_XTENSA_NONE = 0
+R_XTENSA_ASM_EXPAND = 11
+R_XTENSA_SLOT0_OP = 20
+
+# Check if the Zephyr LLEXT loader would leave this instruction unchanged,
+# see r_xtensa_slot0_op_relocate(): it only patches L32R and CALLn
+# instructions with an all-zero operand field
+def xtensa_slot0_resolved(insn):
+	b0, b1, b2 = insn
+	if b1 or b2:
+		return True
+	if (b0 & 0xf) == 1:
+		return False
+	return not ((b0 & 0xf) == 5 and not (b0 & 0xc0))
+
+# Most relocations in a partially linked Xtensa object need no action at
+# run time: R_XTENSA_NONE and R_XTENSA_ASM_EXPAND ones, and R_XTENSA_SLOT0_OP
+# ones for PC-relative references within a section, which the linker has
+# already resolved. Still the loader has to read each of them, together with
+# its symbol and the instruction in the module image, which is in slow DRAM.
+# Remove them from the relocation sections.
+def prune_xtensa_relocs(path):
+	RELA_SIZE = 12
+
+	with open(path, 'rb') as f:
+		elf = ELFFile(f)
+		if elf['e_machine'] != 'EM_XTENSA' or elf['e_type'] != 'ET_REL':
+			return
+
+		shoff = elf['e_shoff']
+		shentsize = elf['e_shentsize']
+		updates = []
+		dropped = 0
+		total = 0
+
+		for idx, section in enumerate(elf.iter_sections()):
+			if section['sh_type'] != 'SHT_RELA' or section['sh_entsize'] != RELA_SIZE:
+				continue
+
+			target = elf.get_section(section['sh_info'])
+			data = target.data() if target['sh_type'] != 'SHT_NOBITS' else b''
+			raw = section.data()
+			kept = bytearray()
+
+			for i in range(0, len(raw), RELA_SIZE):
+				r_offset, r_info = struct.unpack_from('<II', raw, i)
+				r_type = r_info & 0xff
+				total += 1
+
+				if r_type in (R_XTENSA_NONE, R_XTENSA_ASM_EXPAND) or \
+				   (r_type == R_XTENSA_SLOT0_OP and r_offset + 3 <= len(data) and
+				    xtensa_slot0_resolved(data[r_offset:r_offset + 3])):
+					dropped += 1
+					continue
+
+				kept += raw[i:i + RELA_SIZE]
+
+			if len(kept) != len(raw):
+				updates.append((idx, section['sh_offset'], len(raw), bytes(kept)))
+
+	with open(path, 'r+b') as f:
+		for idx, offset, size, kept in updates:
+			f.seek(offset)
+			f.write(kept + bytes(size - len(kept)))
+			# sh_size of an Elf32_Shdr is at offset 20
+			f.seek(shoff + idx * shentsize + 20)
+			f.write(struct.pack('<I', len(kept)))
+
+	print(f'llext_link_helper.py: dropped {dropped} of {total} relocations not needing '
+	      'run-time processing')
+
 def main():
 	global args
 
@@ -84,7 +183,16 @@ def main():
 
 	text_found = False
 
-	elf = ELFFile(open(args.file, 'rb'))
+	params = args.params
+	elf_file = args.file
+
+	if '-r' in params:
+		merged = prelink_relocatable()
+		if merged:
+			params = merged[1]
+			elf_file = merged[0]
+
+	elf = ELFFile(open(elf_file, 'rb'))
 
 	# Create an object file with sections grouped by their properties,
 	# similar to how program segments are created: all executable sections,
@@ -210,9 +318,12 @@ def main():
 		start_addr += section.header['sh_size']
 
 	command.extend(['-o', f'{args.file}.tmp'])
-	command.extend(args.params)
+	command.extend(params)
 
 	subprocess.run(command)
+
+	if '-r' in params:
+		prune_xtensa_relocs(f'{args.file}.tmp')
 
 	copy_command = [args.copy]
 
