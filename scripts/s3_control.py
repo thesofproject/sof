@@ -42,10 +42,18 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 PIN_MAP_FILE = os.path.join(SCRIPT_DIR, "s3_pins.json")
 FIRMWARE_BIN = os.path.join(PROJECT_ROOT, "build_s3", "zephyr", "zephyr.bin")
+if not os.path.exists(FIRMWARE_BIN):
+    alt_bin = os.path.join(os.path.dirname(PROJECT_ROOT), "build_s3", "zephyr", "zephyr.bin")
+    if os.path.exists(alt_bin):
+        FIRMWARE_BIN = alt_bin
 
 ESPTOOL_PATH = os.path.join(PROJECT_ROOT, ".venv", "bin", "esptool")
 if not os.path.exists(ESPTOOL_PATH):
-    ESPTOOL_PATH = "esptool"
+    alt_esptool = os.path.join(os.path.dirname(PROJECT_ROOT), ".venv", "bin", "esptool")
+    if os.path.exists(alt_esptool):
+        ESPTOOL_PATH = alt_esptool
+    else:
+        ESPTOOL_PATH = "esptool"
 
 
 def check_safety(dev_path):
@@ -330,7 +338,7 @@ def flash_board(target, bridge, pin_map):
     for _ in range(10):
         devices = glob.glob("/dev/serial/by-id/*")
         for d in devices:
-            if mac in d.upper():
+            if mac in d.upper() or mac.replace(":", "") in d.upper():
                 target_dev = d
                 break
         if target_dev:
@@ -348,9 +356,9 @@ def flash_board(target, bridge, pin_map):
         ESPTOOL_PATH,
         "--port", target_dev,
         "--baud", "921600",
-        "--before", "default_reset",
-        "--after", "no_reset",
-        "write_flash", "0x0", FIRMWARE_BIN
+        "--before", "default-reset",
+        "--after", "no-reset",
+        "write-flash", "0x0", FIRMWARE_BIN
     ]
     res = subprocess.run(flash_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if res.returncode != 0:
