@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_WEBRTC_NS
+	tristate "WebRTC Noise Suppression (classic spectral Wiener filter)"
+	help
+	  Select to include the WebRTC Noise Suppression module. It wraps
+	  the classic WebRTC NS algorithm — a frequency-domain spectral
+	  subtraction / Wiener filter — as a single-input, single-output
+	  PCM effect module.
+
+	  The NS module reduces stationary and slowly-varying background
+	  noise (HVAC hum, fan noise, electrical hiss). It is independent
+	  of the ffmpeg afftdn filter already available through ffmpeg_dec,
+	  providing users a build-time choice between the two.
+
+	  The real backend uses the pure-C noise_suppression module
+	  extracted from webrtc-audio-processing 0.3.x (no abseil, no C++,
+	  BSD-3-Clause). Source is fetched via west (west update).
+
+	  Without the source, or for CI/testing, select COMP_WEBRTC_NS_STUB.
+
+if COMP_WEBRTC_NS
+
+config COMP_WEBRTC_NS_STUB
+	bool "WebRTC NS stub backend (no WebRTC source dependency)"
+	default y if COMP_STUBS
+	help
+	  Build the webrtc_ns module against a dependency-free stub backend
+	  that passes audio through unmodified. Useful for CI validation of
+	  the SOF module glue, LLEXT packaging, and topology wiring without
+	  needing the cross-built libwebrtc_ns archive.
+
+config WEBRTC_NS_LEVEL
+	int "Noise suppression level (0=mild, 1=moderate, 2=aggressive, 3=very_aggressive)"
+	range 0 3
+	default 1
+	help
+	  Controls the aggressiveness of the noise suppressor:
+	    0 - Mild (minimal suppression, lowest distortion)
+	    1 - Moderate (recommended for most use cases)
+	    2 - Aggressive
+	    3 - Very aggressive (maximum suppression, most distortion)
+
+config WEBRTC_NS_SAMPLE_RATE_HZ
+	int "NS processing sample rate in Hz"
+	default 16000
+	help
+	  The internal processing sample rate. The WebRTC NS algorithm works
+	  best at 16000 Hz. When the pipeline runs at 48000 Hz the module
+	  can downsample to 16 kHz for NS processing and upsample back to
+	  48 kHz, saving significant CPU. Set to 48000 to process at full
+	  rate (higher quality, higher CPU cost).
+	  Valid values: 8000, 16000, 32000, 48000.
+
+endif # COMP_WEBRTC_NS
