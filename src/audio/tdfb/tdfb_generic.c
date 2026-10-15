@@ -201,5 +201,93 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 }
 #endif
 
+#if CONFIG_FORMAT_FLOAT
+static inline void tdfb_core_float(struct tdfb_comp_data *cd, int in_nch, int out_nch)
+{
+	struct fir_state_float *filter;
+	float y0;
+	float y1;
+	int is2;
+	int is;
+	int om;
+	int i;
+	int k;
+	const int num_filters = cd->config->num_filters;
+
+	/* Clear output mix */
+	memset(cd->out_f, 0, 2 * out_nch * sizeof(float));
+
+	/* Run and mix all filters to their output channel */
+	for (i = 0; i < num_filters; i++) {
+		is = cd->input_channel_select[i];
+		is2 = is + in_nch;
+		om = cd->output_channel_mix[i];
+		filter = &cd->fir_f[i];
+
+		fir_float_2x(filter, cd->in_f[is], cd->in_f[is2], &y0, &y1);
+
+		for (k = 0; k < out_nch; k++) {
+			if (om & 1) {
+				cd->out_f[k] += y0;
+				cd->out_f[k + out_nch] += y1;
+			}
+			om = om >> 1;
+		}
+	}
+}
+
+void tdfb_fir_float(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
+		    struct output_stream_buffer *bsink, int frames)
+{
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
+	float *x = audio_stream_get_rptr(source);
+	float *y = audio_stream_get_wptr(sink);
+	int fmax;
+	int i;
+	int j;
+	int f;
+	const int in_nch = audio_stream_get_channels(source);
+	const int out_nch = audio_stream_get_channels(sink);
+	int remaining_frames = frames;
+	int emp_ch = 0;
+
+	while (remaining_frames) {
+		fmax = audio_stream_frames_without_wrap(source, x);
+		f = MIN(remaining_frames, fmax);
+		fmax = audio_stream_frames_without_wrap(sink, y);
+		f = MIN(f, fmax);
+		for (j = 0; j < f; j += 2) {
+			/* Read two frames from all input channels */
+			for (i = 0; i < 2 * in_nch; i++) {
+				cd->in_f[i] = *x;
+				if (cd->direction_updates) {
+					float val = *x;
+					if (val > 1.0f)
+						val = 1.0f;
+					else if (val < -1.0f)
+						val = -1.0f;
+					tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch,
+								     (int32_t)(val * 2147483647.0f));
+				}
+				x++;
+			}
+
+			/* Process */
+			tdfb_core_float(cd, in_nch, out_nch);
+
+			/* Write two frames of output */
+			for (i = 0; i < 2 * out_nch; i++) {
+				*y = cd->out_f[i];
+				y++;
+			}
+		}
+		remaining_frames -= f;
+		x = audio_stream_wrap(source, x);
+		y = audio_stream_wrap(sink, y);
+	}
+}
+#endif
+
 #endif /* TDFB_GENERIC */
 

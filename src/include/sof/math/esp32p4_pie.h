@@ -28,6 +28,16 @@
  *   a2     : Broadcast scalar / control value
  */
 
+/* Enable / Disable PIE Coprocessor via CSR 0x7F2 (CSR_PIE_STATE_REG) */
+static inline void esp_pie_enable(void)
+{
+	__asm__ volatile ("csrw 0x7F2, %0" :: "r"(1));
+}
+
+static inline void esp_pie_disable(void)
+{
+	__asm__ volatile ("csrw 0x7F2, %0" :: "r"(0));
+}
 /* Zeroing */
 #define ESP_PIE_ZERO_Q0()         __asm__ volatile (".word 0x0040005b") /* esp.zero.q q0 */
 #define ESP_PIE_ZERO_Q1()         __asm__ volatile (".word 0x004000db") /* esp.zero.q q1 */
