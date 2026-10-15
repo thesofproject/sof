@@ -191,6 +191,7 @@ config PLATFORM_ESP32P4
 	bool "Build for Espressif ESP32-P4 RISC-V SoC (Zephyr-only)"
 	select ZEPHYR_LOG
 	select ZEPHYR_NATIVE_DRIVERS
+	select STATIC_PIPELINE
 	help
 	  Select if your target platform is Espressif ESP32-P4 RISC-V SoC.
 
@@ -198,6 +199,7 @@ config PLATFORM_ESP32C6
 	bool "Build for Espressif ESP32-C6 RISC-V SoC (Zephyr-only)"
 	select ZEPHYR_LOG
 	select ZEPHYR_NATIVE_DRIVERS
+	select STATIC_PIPELINE
 	help
 	  Select if your target platform is Espressif ESP32-C6 RISC-V SoC.
 
