@@ -8,6 +8,7 @@
 # line parameters to this script and call the linker directly.
 
 import os
+import sys
 import argparse
 import subprocess
 from elftools.elf.elffile import ELFFile
@@ -48,6 +49,32 @@ def max_alignment(addr, align1, align2):
 	upper = addr + align1 - 1
 	return upper - (upper % align1)
 
+# A partial (-r) link keeps every per-function section and every C++ COMDAT
+# group as a separate section. Below, all executable sections except .text
+# are linked to run from DRAM, and sections only pulled in from libraries
+# wouldn't be seen in the input object at all and would stay at address 0.
+# So for relocatable modules first partially link all objects and libraries
+# into a single object, dissolving section groups and merging sections of
+# the same type, and then calculate addresses for that object.
+# Returns the merged object and the linker parameters to use with it, or
+# None if the linker doesn't support this.
+def prelink_relocatable():
+	merged = f'{args.file}.merged'
+	script = pathlib.Path(__file__).parent / 'llext_merge_sections.ld'
+
+	command = [args.command] + args.params + ['-Wl,--force-group-allocation',
+						  f'-Wl,-T,{script}', '-o', merged]
+	if subprocess.run(command).returncode != 0:
+		print('llext_link_helper.py: WARNING: pre-linking failed, '
+		      'linking without merging sections', file=sys.stderr)
+		return None
+
+	# All objects and libraries are in the merged object now, keep options
+	options = [p for p in args.params if p.startswith('-') and
+		   not p.startswith(('-l', '-L'))]
+
+	return merged, options + [merged]
+
 def main():
 	global args
 
@@ -84,7 +111,16 @@ def main():
 
 	text_found = False
 
-	elf = ELFFile(open(args.file, 'rb'))
+	params = args.params
+	elf_file = args.file
+
+	if '-r' in params:
+		merged = prelink_relocatable()
+		if merged:
+			params = merged[1]
+			elf_file = merged[0]
+
+	elf = ELFFile(open(elf_file, 'rb'))
 
 	# Create an object file with sections grouped by their properties,
 	# similar to how program segments are created: all executable sections,
@@ -210,7 +246,7 @@ def main():
 		start_addr += section.header['sh_size']
 
 	command.extend(['-o', f'{args.file}.tmp'])
-	command.extend(args.params)
+	command.extend(params)
 
 	subprocess.run(command)
 
