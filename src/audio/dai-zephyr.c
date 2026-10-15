@@ -1310,6 +1310,7 @@ static int dai_prepare(struct comp_dev *dev)
 
 void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 {
+#if !defined(CONFIG_PLATFORM_NORDIC)
 	struct dma_sg_config *config = &dd->config;
 
 	/*
@@ -1330,6 +1331,7 @@ void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 		buffer_free(dd->dma_buffer);
 		dd->dma_buffer = NULL;
 	}
+#endif
 
 	dd->wallclock = 0;
 	dd->total_data_processed = 0;
@@ -1402,6 +1404,9 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		if (!(dd->dai->dma_caps & SOF_DMA_CAP_HDA))
 			audio_stream_reset(&dd->dma_buffer->stream);
 
+#if defined(CONFIG_PLATFORM_NORDIC)
+		dd->xrun = 0;
+#endif
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* recover valid start position */
@@ -1466,6 +1471,9 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 	case COMP_TRIGGER_PRE_START:
 	case COMP_TRIGGER_PRE_RELEASE:
 		/* only start the DAI if we are not XRUN handling */
+#if defined(CONFIG_PLATFORM_NORDIC)
+		dd->xrun = 0;
+#endif
 		if (dd->xrun)
 			dd->xrun = 0;
 		else
@@ -1473,16 +1481,11 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		break;
 	}
 
-#ifdef CONFIG_IPC_MAJOR_3
-	/* TODO: investigate why making this IPC version-agnostic
-	 * breaks some Intel tests and check if doing so would be
-	 * possible (or even make sense) on Intel platforms.
-	 *
-	 * See issue #8920 for details.
-	 */
+#if defined(CONFIG_IPC_MAJOR_3) || defined(CONFIG_PLATFORM_NORDIC)
+	/* On static topology platforms (Nordic), DAI state must transition cleanly */
 	if (!ret)
 		return comp_set_state(dev, cmd);
-#endif /* CONFIG_IPC_MAJOR_3 */
+#endif /* CONFIG_IPC_MAJOR_3 || CONFIG_PLATFORM_NORDIC */
 
 	return ret;
 }

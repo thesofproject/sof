@@ -15,3 +15,9 @@ EXPORT_SYMBOL(log_const_drc);
 #ifdef CONFIG_LOG_RUNTIME_FILTERING
 EXPORT_SYMBOL(log_dynamic_drc);
 #endif
+
+#if !CONFIG_COMP_DRC_MODULE
+extern void sys_comp_module_drc_interface_init(void);
+static void (*drc_init_ref)(void) __used = sys_comp_module_drc_interface_init;
+#endif
+

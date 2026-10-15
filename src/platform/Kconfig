@@ -187,6 +187,12 @@ config IMX95
 	help
 	  Select if your target platform is imx95-compatible.
 
+config PLATFORM_NORDIC
+	bool "Build for Nordic Semiconductor nRF54L Series SoC (Zephyr-only)"
+	select ZEPHYR_LOG
+	select ZEPHYR_NATIVE_DRIVERS
+	help
+	  Select if your target platform is Nordic Semiconductor nRF54L Series SoC.
 config RENOIR
 	bool "Build for Renoir"
 	select XT_INTERRUPT_LEVEL_5
@@ -360,6 +366,26 @@ config ESP32P4_PIE_SIMD
 	help
 	  Enable ESP32-P4 custom Processor Instruction Extensions (PIE / Xespv2p2)
 	  128-bit vector SIMD engine for audio processing kernels (volume, mixer, etc.).
+
+if PLATFORM_NORDIC
+
+choice
+	prompt "Nordic Target SoC"
+	default PLATFORM_NRF54L15
+
+config PLATFORM_NRF54L15
+	bool "Nordic nRF54L15 (ARM Cortex-M33 @ 128 MHz, 256KB RAM)"
+	help
+	  Select for nRF54L15-DK board.
+
+config PLATFORM_NRF54LM20
+	bool "Nordic nRF54LM20 (ARM Cortex-M33 @ 128 MHz, 512KB RAM, High-Speed USB)"
+	help
+	  Select for nRF54LM20-DK board.
+
+endchoice
+
+endif
 
 #
 # For non-Zephyr builds like testbench, cmocka and SOF ALSA plugin,
