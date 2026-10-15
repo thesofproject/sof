@@ -23,6 +23,11 @@
 #define ECNS_FRAME_SAMPLES_48K	960	/* 20ms @ 48 kHz */
 #define ECNS_FRAME_SAMPLES	ECNS_FRAME_SAMPLES_16K
 
+/* IPC4 channel maps, one nibble per channel index, 0xF marks unused */
+#define ECNS_CH_MAP_MONO	0xFFFFFFF0
+#define ECNS_CH_MAP_STEREO	0xFFFFFF10
+#define ECNS_CH_MAP_4CH		0xFFFF3210
+
 void sys_comp_ecns_init(void);
 
 #endif /* __SOF_AUDIO_ECNS_H__ */

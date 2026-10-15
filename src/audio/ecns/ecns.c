@@ -299,6 +299,12 @@ static int ecns_prepare(struct comp_dev *dev)
 			src1 = source;
 	}
 
+	/* Pin 1 output follows the dmic01 input channel count (2 or 4) */
+	uint32_t pin1_ch = 2;
+
+	if (src1)
+		pin1_ch = audio_stream_get_channels(&src1->stream) == 2 ? 2 : 4;
+
 	struct ipc4_audio_format pin0_fmt = {
 		.sampling_frequency = 16000,
 		.channels_count = 1,
@@ -306,18 +312,18 @@ static int ecns_prepare(struct comp_dev *dev)
 		.valid_bit_depth = src1 ? 16 : 32,
 		.s_type = src1 ? IPC4_TYPE_SIGNED_INTEGER : IPC4_TYPE_MSB_INTEGER,
 		.interleaving_style = IPC4_CHANNELS_INTERLEAVED,
-		.ch_map = src1 ? 0xFFFFFFF0 : 0x01,
-		.ch_cfg = 0,
+		.ch_map = ECNS_CH_MAP_MONO,
+		.ch_cfg = IPC4_CHANNEL_CONFIG_MONO,
 	};
 	struct ipc4_audio_format pin1_fmt = {
 		.sampling_frequency = src1 ? 48000 : 16000,
-		.channels_count = src1 ? 4 : 2,
+		.channels_count = pin1_ch,
 		.depth = src1 ? 16 : 32,
 		.valid_bit_depth = src1 ? 16 : 32,
 		.s_type = src1 ? IPC4_TYPE_SIGNED_INTEGER : IPC4_TYPE_MSB_INTEGER,
 		.interleaving_style = IPC4_CHANNELS_INTERLEAVED,
-		.ch_map = src1 ? 0xFFFF3210 : 0x10,
-		.ch_cfg = src1 ? 4 : 1,
+		.ch_map = pin1_ch == 4 ? ECNS_CH_MAP_4CH : ECNS_CH_MAP_STEREO,
+		.ch_cfg = pin1_ch == 4 ? IPC4_CHANNEL_CONFIG_3_POINT_1 : IPC4_CHANNEL_CONFIG_STEREO,
 	};
 
 	comp_dev_for_each_consumer(dev, sink) {
