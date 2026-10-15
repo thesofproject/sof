@@ -309,7 +309,14 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	if (!cpu_is_me(icd->core))
 		return ipc_process_on_core(icd->core, false);
 
-	/* check state */
+	/* check state: if not ready, stop and reset to release resources before freeing */
+	if (icd->cd->state != COMP_STATE_READY) {
+		if (icd->cd->state == COMP_STATE_ACTIVE)
+			comp_trigger(icd->cd, COMP_TRIGGER_STOP);
+		comp_reset(icd->cd);
+		comp_set_state(icd->cd, COMP_TRIGGER_RESET);
+	}
+
 	if (icd->cd->state != COMP_STATE_READY) {
 		tr_err(&ipc_tr, "comp id: 0x%x state is %d cannot be freed",
 		       comp_id, icd->cd->state);

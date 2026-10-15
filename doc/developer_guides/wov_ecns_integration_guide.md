@@ -26,68 +26,96 @@ The pipeline separates real-time audio ingest into two primary scheduling domain
 - **Data Processing (DP) Domain (20 ms period)**: Runs block-based processing for acoustic echo cancellation, noise suppression, circular buffering, feature extraction, and neural network keyword classification.
 
 ```mermaid
-graph TD
-    subgraph P100["Pipeline 100 — 4ch DMIC Ingest (Core 0, LL 1ms)"]
-        DAI["DAI Copier (dmic01 / dmic16k)<br>4ch · 16 kHz · S16_LE<br>Ch 0,1: Microphones | Ch 2,3: Far-End Echo Ref"]
-        MIX100["mixin 100.1<br>(4ch Pass-through)"]
-        DAI --> MIX100
+flowchart TD
+    %% Hardware PDM Interfaces
+    subgraph PDM_INTERFACES ["Digital Microphone Interfaces (2 Separate PDM DAIs)"]
+        direction LR
+        PDM_48K["<b>PDM Interface: dmic01</b><br/>DAI Index: 0 (PDM0)<br/>Rate: <b>48 kHz</b> · 2ch Stereo · 16-bit"]
+        PDM_16K["<b>PDM Interface: dmic16k</b><br/>DAI Index: 1 (PDM1)<br/>Rate: <b>16 kHz</b> · 2ch Stereo · 16-bit"]
     end
 
-    subgraph P105["Pipeline 105 — ECNS Processing (Core 0, DP 20ms)"]
-        MO105["mixout 105.1<br>(4ch input)"]
-        ECNS["ecns.105.1<br>(Custom ECNS DP Module, 20ms = 320 frames)<br>Echo Cancellation + Noise Reduction"]
-        MIX105_1["mixin 105.1<br>(Pin 0: 1ch Mono Clean)"]
-        MIX105_2["mixin 105.2<br>(Pin 1: 2ch Stereo Clean)"]
-        MO105 --> ECNS
-        ECNS -- "Pin 0 (1ch Mono)" --> MIX105_1
-        ECNS -- "Pin 1 (2ch Stereo)" --> MIX105_2
+    %% Pipeline 110: 48 kHz DAI Capture
+    subgraph P110 ["Pipeline 110: 48 kHz DAI Ingest (Core 0, LL 1ms)"]
+        DAI_48K["dai-copier.DMIC.dmic01.capture<br/>(48 kHz · 2ch · S16_LE)"]
+        MIXIN_110["mixin.110.1<br/>(48 kHz · 2ch)"]
+        DAI_48K --> MIXIN_110
     end
 
-    subgraph P106["Pipeline 106 — KPB History Buffer (Core 0, DP 20ms)"]
-        MO106["mixout 106.1<br>(1ch mono)"]
-        KPB["kpb.106.1<br>(2.0s mono circular history = 64 KB)<br>16 kHz · 1ch · S16_LE"]
-        MIX106["mixin 106.1<br>(Fan-out Bus)"]
-        MO106 --> KPB
-        KPB --> MIX106
+    %% Pipeline 119: 16 kHz DAI Capture
+    subgraph P119 ["Pipeline 119: 16 kHz DAI Ingest (Core 0, LL 1ms)"]
+        DAI_16K["dai-copier.DMIC.dmic16k.capture<br/>(16 kHz · 2ch · S16_LE)"]
+        MIXIN_119["mixin.119.1<br/>(16 kHz · 2ch)"]
+        DAI_16K --> MIXIN_119
     end
 
-    subgraph WOV_Slots["Pipelines 101–103 — Concurrent WOV Keyword Spotters (Core 0, DP 20ms)"]
-        subgraph Slot0["Slot 0 (Pipeline 101)"]
-            MO101["mixout 101.1"] --> FE0["Feature Extract<br>(e.g. MFCC)"] --> WOV0["WOV Engine 0<br>(e.g. Strawberry)"]
+    PDM_48K --> DAI_48K
+    PDM_16K --> DAI_16K
+
+    %% Pipeline 115: Dual-Rate ECNS DP Pipeline
+    subgraph P115 ["Pipeline 115: ECNS Processing (Core 0, DP 20ms, lp_mode 1)"]
+        direction TB
+
+        MIXOUT_115_2["mixout.115.2<br/>(Pin 0 In: 16 kHz · 2ch stereo)"]
+        MIXOUT_115_1["mixout.115.1<br/>(Pin 1 In: 48 kHz · 2ch stereo)"]
+
+        ECNS["ecns.115.1 (Custom ECNS DP Module · 20ms Period)<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><b>Pin 0 In:</b> 16 kHz, 2ch (IBS 1280 bytes)<br/><b>Pin 1 In:</b> 48 kHz, 2ch (IBS 3840 bytes)<br/>─────────────────────────────────<br/><b>Processing:</b><br/>• Pin 0: Extract Left Ch → 16k Mono Clean<br/>• Pin 1: 1-to-1 Stereo Copy → 48k Stereo Clean<br/>─────────────────────────────────<br/><b>Pin 0 Out:</b> 16 kHz, 1ch mono (OBS 640 bytes)<br/><b>Pin 1 Out:</b> 48 kHz, 2ch stereo (OBS 3840 bytes)"]
+
+        MIXOUT_115_2 -->|"Pin 0 In (16k)"| ECNS
+        MIXOUT_115_1 -->|"Pin 1 In (48k)"| ECNS
+    end
+
+    MIXIN_119 --> MIXOUT_115_2
+    MIXIN_110 --> MIXOUT_115_1
+
+    %% Pipeline 117: Host Capture PCM 11
+    subgraph P117 ["Pipeline 117: ECNS Clean Host Capture (Core 0, LL 1ms)"]
+        HOST_11["host-copier.11.capture<br/>(PCM 11: hw:0,11)<br/>2ch Stereo Clean Speech<br/>capture_compatible_d0i3: true"]
+    end
+
+    %% Pipeline 116: KPB History Buffer
+    subgraph P116 ["Pipeline 116: KPB History Buffer (Core 0, DP 20ms)"]
+        KPB["kpb.116.1<br/>(2.0s mono circular history = 64 KB)"]
+        MIXIN_116["mixin.116.1<br/>(Fan-out Bus)"]
+        KPB -->|"Pin 0 (Live Feed)"| MIXIN_116
+    end
+
+    ECNS -->|"Pin 1 (Stereo 48k clean direct)"| HOST_11
+    ECNS -->|"Pin 0 (Mono 16k clean direct)"| KPB
+
+    %% WOV Keyword Spotter Slots
+    subgraph WOV_Slots ["Pipelines 111–113: Concurrent WOV Keyword Spotters (Core 0, DP 10ms)"]
+        subgraph Slot0 ["Slot 0 (Pipeline 111)"]
+            M1["mixout.111.1"] --> FE0["Feature Extract<br>(MFCC)"] --> WOV0["WOV Engine 0<br>(e.g. Strawberry)"]
         end
-        subgraph Slot1["Slot 1 (Pipeline 102)"]
-            MO102["mixout 102.1"] --> FE1["Feature Extract<br>(e.g. MFCC)"] --> WOV1["WOV Engine 1<br>(e.g. Banana)"]
+        subgraph Slot1 ["Slot 1 (Pipeline 112)"]
+            M2["mixout.112.1"] --> FE1["Feature Extract<br>(MFCC)"] --> WOV1["WOV Engine 1<br>(e.g. Banana)"]
         end
-        subgraph Slot2["Slot 2 (Pipeline 103)"]
-            MO103["mixout 103.1"] --> FE2["Feature Extract<br>(e.g. MFCC)"] --> WOV2["WOV Engine 2<br>(e.g. Orange)"]
+        subgraph Slot2 ["Slot 2 (Pipeline 113)"]
+            M3["mixout.113.1"] --> FE2["Feature Extract<br>(MFCC)"] --> WOV2["WOV Engine 2<br>(e.g. Orange)"]
         end
     end
 
-    subgraph P104["Pipeline 104 — WOV Arbiter (Core 0, DP 20ms)"]
-        ARB["wov-arbiter.104.1<br>(Priority / First-Detect Selector)"]
+    MIXIN_116 --> M1
+    MIXIN_116 --> M2
+    MIXIN_116 --> M3
+
+    %% Pipeline 114: WOV Arbiter & Host Capture PCM 12
+    subgraph P114 ["Pipeline 114: WOV Arbiter & Capture (Core 0, LL 1ms)"]
+        ARB["wov-arbiter.114.1<br/>(Priority / First-Detect Selector)"]
+        HOST_12["host-copier.12.capture<br/>(PCM 12: hw:0,12)<br/>1ch Pre-roll + Live Keyword Speech<br/>capture_compatible_d0i3: true"]
+        ARB --> HOST_12
     end
 
-    subgraph Host_Capture["Host Capture Interfaces (ALSA PCMs)"]
-        HC10["host-copier.10.capture<br>(PCM 10: hw:0,10)<br>2ch Stereo Clean Speech"]
-        HC11["host-copier.11.capture<br>(PCM 11: hw:0,11)<br>1ch Pre-roll + Live Keyword Speech"]
-    end
-
-    MIX100 --> MO105
-    MIX105_1 --> MO106
-    MIX105_2 --> MO107["mixout 107.1"] --> HC10
-    MIX106 --> MO101
-    MIX106 --> MO102
-    MIX106 --> MO103
-    WOV0 --> ARB
-    WOV1 --> ARB
-    WOV2 --> ARB
-    ARB --> HC11
+    KPB -->|"Pin 1 (Host Sink Drain)"| ARB
+    WOV0 -->|"Pin 1 (Trigger 0)"| ARB
+    WOV1 -->|"Pin 2 (Trigger 1)"| ARB
+    WOV2 -->|"Pin 3 (Trigger 2)"| ARB
 
     style ECNS fill:#1b4f72,stroke:#5dade2,color:#fff
     style KPB fill:#1c4966,stroke:#5dade2,color:#fff
     style ARB fill:#4a235a,stroke:#bb8fce,color:#fff
-    style HC10 fill:#1e8449,stroke:#58d68d,color:#fff
-    style HC11 fill:#2d5a27,stroke:#58d68d,color:#fff
+    style HOST_11 fill:#1e8449,stroke:#58d68d,color:#fff
+    style HOST_12 fill:#2d5a27,stroke:#58d68d,color:#fff
 ```
 
 ---

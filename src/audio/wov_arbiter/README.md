@@ -35,129 +35,135 @@ The Multi-Slot WOV subsystem supports two primary topology architectures:
 
 ---
 
-### Architecture A: 4-Channel Native 16 kHz DMIC with ECNS & microWakeWord (MWW) Multi-Slot WOV
+#### Architecture A: Dual-Rate DMIC with ECNS & microWakeWord (MWW) Multi-Slot WOV
 
-In this architecture, a 4-channel 16 kHz DMIC stream (Channels 0, 1 = physical microphones; Channels 2, 3 = echo reference) feeds the **ECNS DP module** running at a 20 ms period (320 samples). The ECNS module outputs:
-- **Pin 0 (mono clean mic)**: routes to KPB (2.0s history depth = 64 KB mono buffer), then fans out via mixin 106.1 to 3 concurrent **microWakeWord (MWW)** keyword spotting slots (running MFCC feature extraction + TFLM streaming graph in lock-step). Upon keyword detection, the detector notifies KPB (`NOTIFIER_ID_KPB_CLIENT_EVT`) to drain and the WOV arbiter (`NOTIFIER_ID_WOV_DETECT`) to set `wov_active_slot` and pause sibling slots. The WOV arbiter routes the active slot audio (pre-roll + live) to ALSA PCM 11 (`hw:0,11`).
-- **Pin 1 (stereo clean mic)**: routes via a host mixin/mixout bridge to Host Copier 10 (ALSA PCM 10, `hw:0,10`, stereo 16 kHz).
+In this architecture, two dedicated physical PDM digital microphone interfaces feed the **ECNS DP module** running at a 20 ms period:
+- **PDM1 (`dmic16k`)**: Dedicated 16 kHz stereo stream via Pipeline 119 feeding ECNS Input Pin 0.
+- **PDM0 (`dmic01`)**: Dedicated 48 kHz stereo stream via Pipeline 110 feeding ECNS Input Pin 1.
+
+The ECNS module processes both streams and outputs:
+- **Pin 0 (mono clean speech)**: Extracts the Left channel from Pin 0 in to produce a 16 kHz mono clean stream. Routes to KPB (Pipeline 116, 2.0s history depth = 64 KB mono buffer), then fans out via `mixin.116.1` to 3 concurrent **microWakeWord (MWW)** keyword spotting slots (running MFCC feature extraction + TFLM streaming graph in lock-step). Upon keyword detection, the detector notifies KPB (`NOTIFIER_ID_KPB_CLIENT_EVT`) to drain and the WOV Arbiter (`NOTIFIER_ID_WOV_DETECT`) to set `wov_active_slot` and pause sibling slots. The WOV Arbiter routes the active slot audio (pre-roll + live) to ALSA PCM 12 (`hw:0,12`, `DMIC Multi-WOV`, `capture_compatible_d0i3: true`).
+- **Pin 1 (stereo clean speech)**: Performs a 1-to-1 copy of Pin 1 in to produce a 48 kHz stereo clean stream routed to Host Copier 11 (ALSA PCM 11, `hw:0,11`, `DMIC ECNS Capture`, `capture_compatible_d0i3: true`).
 
 ```mermaid
-graph TD
-    subgraph P100["Pipeline 100 — 4ch DMIC Capture  (Core 0, LL 1ms)"]
-        DAI["DAI Copier (dmic01)\n4ch · 16 kHz · S16_LE\nCh 0,1: Mics | Ch 2,3: Echo Ref"]
-        MIX100["mixin 100.1\n(4ch pass-through)"]
-        DAI --> MIX100
+flowchart TD
+    %% Hardware PDM Interfaces
+    subgraph PDM_INTERFACES ["Digital Microphone Interfaces (2 Separate PDM DAIs)"]
+        direction LR
+        PDM_48K["<b>PDM Interface: dmic01</b><br/>DAI Index: 0 (PDM0)<br/>Rate: <b>48 kHz</b> · 2ch Stereo · 16-bit"]
+        PDM_16K["<b>PDM Interface: dmic16k</b><br/>DAI Index: 1 (PDM1)<br/>Rate: <b>16 kHz</b> · 2ch Stereo · 16-bit"]
     end
 
-    subgraph P105["Pipeline 105 — ECNS DP Processing  (Core 0, DP 20ms)"]
-        MO105["mixout 105.1\n(4ch input)"]
-        ECNS["ecns.105.1\n(ECNS DP Module, 20ms = 320 frames)\nCh 0,1: Mic | Ch 2,3: Echo Ref"]
-        MIX105_1["mixin 105.1\nPin 0: Ch 0 Mono Clean"]
-        MIX105_2["mixin 105.2\nPin 1: Ch 0,1 Stereo Clean"]
-        MO105 --> ECNS
-        ECNS -- "Pin 0 (Mono)" --> MIX105_1
-        ECNS -- "Pin 1 (Stereo)" --> MIX105_2
+    %% Pipeline 110: 48 kHz DAI Capture
+    subgraph P110 ["Pipeline 110: 48 kHz DAI Capture (Core 0, LL 1ms)"]
+        DAI_48K["dai-copier.DMIC.dmic01.capture<br/>(48 kHz · 2ch · S16_LE)"]
+        MIXIN_110["mixin.110.1<br/>(48 kHz · 2ch)"]
+        DAI_48K --> MIXIN_110
     end
 
-    subgraph P106["Pipeline 106 — KPB History Buffer  (Core 0, DP 20ms)"]
-        MO106["mixout 106.1\n(1ch mono)"]
-        KPB["kpb.106.1\n(2.0s mono history = 64 KB)\n16 kHz · 1ch · S16_LE"]
-        MIX106["mixin 106.1\n(3-way fanout mixin)"]
-        MO106 --> KPB --> MIX106
+    %% Pipeline 119: 16 kHz DAI Capture
+    subgraph P119 ["Pipeline 119: 16 kHz DAI Capture (Core 0, LL 1ms)"]
+        DAI_16K["dai-copier.DMIC.dmic16k.capture<br/>(16 kHz · 2ch · S16_LE)"]
+        MIXIN_119["mixin.119.1<br/>(16 kHz · 2ch)"]
+        DAI_16K --> MIXIN_119
     end
 
-    subgraph P101["Pipeline 101 — Slot 0: 'strawberry'  (Core 0, DP 10ms)"]
-        MO101["mixout 101.1"]
-        MFCC0["mfcc.101.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
-        MWW0["mww.101.1\n(microWakeWord)\nModel: 'strawberry'"]
-        MO101 --> MFCC0 --> MWW0
+    PDM_48K --> DAI_48K
+    PDM_16K --> DAI_16K
+
+    %% Pipeline 115: Dual-Rate ECNS DP Pipeline
+    subgraph P115 ["Pipeline 115: ECNS Engine (Core 0, DP 20ms, lp_mode 1)"]
+        direction TB
+
+        MIXOUT_115_2["mixout.115.2<br/>(Pin 0 In: 16 kHz · 2ch stereo)"]
+        MIXOUT_115_1["mixout.115.1<br/>(Pin 1 In: 48 kHz · 2ch stereo)"]
+
+        ECNS["ecns.115.1 (DP Component · 20ms Period)<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><b>Pin 0 In:</b> 16 kHz, 2ch (IBS 1280 bytes)<br/><b>Pin 1 In:</b> 48 kHz, 2ch (IBS 3840 bytes)<br/>─────────────────────────────<br/><b>Processing:</b><br/>• Pin 0: Extract Left Ch → 16k Mono Clean<br/>• Pin 1: 1-to-1 Stereo Copy → 48k Stereo Clean<br/>─────────────────────────────<br/><b>Pin 0 Out:</b> 16 kHz, 1ch mono (OBS 640 bytes)<br/><b>Pin 1 Out:</b> 48 kHz, 2ch stereo (OBS 3840 bytes)"]
+
+        MIXOUT_115_2 -->|"Pin 0 In (16k)"| ECNS
+        MIXOUT_115_1 -->|"Pin 1 In (48k)"| ECNS
     end
 
-    subgraph P102["Pipeline 102 — Slot 1: 'banana'  (Core 0, DP 10ms)"]
-        MO102["mixout 102.1"]
-        MFCC1["mfcc.102.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
-        MWW1["mww.102.1\n(microWakeWord)\nModel: 'banana'"]
-        MO102 --> MFCC1 --> MWW1
+    MIXIN_119 --> MIXOUT_115_2
+    MIXIN_110 --> MIXOUT_115_1
+
+    %% Pipeline 117: Host Capture PCM 11
+    subgraph P117 ["Pipeline 117: ECNS Clean Host Capture (Core 0, LL 1ms)"]
+        HOST_11["host-copier.11.capture<br/>(PCM 11: 'DMIC ECNS Capture'<br/>hw:0,11 · d0i3_compatible=true)"]
     end
 
-    subgraph P103["Pipeline 103 — Slot 2: 'orange'  (Core 0, DP 10ms)"]
-        MO103["mixout 103.1"]
-        MFCC2["mfcc.103.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
-        MWW2["mww.103.1\n(microWakeWord)\nModel: 'orange'"]
-        MO103 --> MFCC2 --> MWW2
+    %% Pipeline 116: KPB History Buffer
+    subgraph P116 ["Pipeline 116: Key Phrase Buffer (Core 0, DP 20ms)"]
+        KPB["kpb.116.1<br/>(2000 ms mono history = 64 KB)"]
+        MIXIN_116["mixin.116.1<br/>(3-way detector fanout)"]
+        KPB -->|"Pin 0 (Live Feed)"| MIXIN_116
     end
 
-    subgraph P104["Pipeline 104 — WOV Host PCM Capture  (Core 0, LL 1ms)"]
-        ARB["wov_arbiter.104.1\n(3 input pins, 1 output pin\n1ch mono 16 kHz)"]
-        HC11["host-copier.11\n(hw:0,11 · PCM 11)\n1ch · 16 kHz · S16_LE / S32_LE"]
-        ARB --> HC11
+    ECNS -->|"Pin 1 Out (Stereo 48k clean direct)"| HOST_11
+    ECNS -->|"Pin 0 Out (Mono 16k clean direct)"| KPB
+
+    %% WoV 3-Slot Detector Subgraph
+    subgraph SLOTS ["Wake-on-Voice Keyword Detector Slots (16 kHz mono)"]
+        subgraph S1 ["Slot 0 (Pipeline 111)"]
+            M1["mixout.111.1"] --> MF1["mfcc.111.1"] --> MW1["mww.111.1"]
+        end
+        subgraph S2 ["Slot 1 (Pipeline 112)"]
+            M2["mixout.112.1"] --> MF2["mfcc.112.1"] --> MW2["mww.112.1"]
+        end
+        subgraph S3 ["Slot 2 (Pipeline 113)"]
+            M3["mixout.113.1"] --> MF3["mfcc.113.1"] --> MW3["mww.113.1"]
+        end
     end
 
-    subgraph P107["Pipeline 107 — ECNS Host PCM Capture  (Core 0, LL 1ms)"]
-        MO107["mixout 107.1\n(2ch stereo)"]
-        HC10["host-copier.10\n(hw:0,10 · PCM 10)\n2ch · 16 kHz · S16_LE / S32_LE"]
-        MO107 --> HC10
+    MIXIN_116 --> M1
+    MIXIN_116 --> M2
+    MIXIN_116 --> M3
+
+    %% Pipeline 114: WoV Arbiter & Host Capture PCM 12
+    subgraph P114 ["Pipeline 114: WoV Arbiter (Core 0, LL 1ms)"]
+        ARB["wov-arbiter.114.1<br/>• Pin 0: Drained audio stream<br/>• Pins 1-3: Keyword triggers"]
+        HOST_12["host-copier.12.capture<br/>(PCM 12: 'DMIC Multi-WOV'<br/>hw:0,12 · d0i3_compatible=true)"]
+        ARB --> HOST_12
     end
 
-    MIX100 --> MO105
-    MIX105_1 --> MO106
-    MIX105_2 --> MO107
-    MIX106 --> MO101
-    MIX106 --> MO102
-    MIX106 --> MO103
+    KPB -->|"Pin 1 (Host Sink Drain)"| ARB
+    MW1 -->|"Pin 1 (Trigger 0)"| ARB
+    MW2 -->|"Pin 2 (Trigger 1)"| ARB
+    MW3 -->|"Pin 3 (Trigger 2)"| ARB
 
-    MWW0 --> ARB
-    MWW1 --> ARB
-    MWW2 --> ARB
-
-    MWW0 -. "Notifier WOV_DETECT (slot=0)" .-> ARB
-    MWW1 -. "Notifier WOV_DETECT (slot=1)" .-> ARB
-    MWW2 -. "Notifier WOV_DETECT (slot=2)" .-> ARB
-    MWW0 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
-    MWW1 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
-    MWW2 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
-    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MWW0
-    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MWW1
-    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MWW2
+    MW1 -. "Notifier WOV_DETECT (slot=0)" .-> ARB
+    MW2 -. "Notifier WOV_DETECT (slot=1)" .-> ARB
+    MW3 -. "Notifier WOV_DETECT (slot=2)" .-> ARB
+    MW1 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
+    MW2 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
+    MW3 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
+    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MW1
+    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MW2
+    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MW3
 
     style ECNS fill:#1b4f72,stroke:#555,color:#fff
-    style KPB  fill:#1c4966,stroke:#555,color:#fff
-    style MFCC0 fill:#7d6608,stroke:#555,color:#fff
-    style MFCC1 fill:#7d6608,stroke:#555,color:#fff
-    style MFCC2 fill:#7d6608,stroke:#555,color:#fff
-    style MWW0 fill:#922b21,stroke:#555,color:#fff
-    style MWW1 fill:#b7950b,stroke:#555,color:#fff
-    style MWW2 fill:#d35400,stroke:#555,color:#fff
-    style ARB  fill:#4a235a,stroke:#555,color:#fff
-    style HC11 fill:#2d5a27,stroke:#555,color:#fff
-    style HC10 fill:#1e8449,stroke:#555,color:#fff
+    style KPB fill:#1c4966,stroke:#555,color:#fff
+    style ARB fill:#4a235a,stroke:#555,color:#fff
+    style HOST_11 fill:#1e8449,stroke:#555,color:#fff
+    style HOST_12 fill:#2d5a27,stroke:#555,color:#fff
 ```
 
-#### 4-Channel Architecture Specifications across Target Platforms (PTL, TGL, WCL)
+#### Dual-Rate Architecture Specifications across Target Platforms (PTL, TGL, WCL)
 
-The identical pipeline topology is deployed across **Panther Lake (PTL)**, **Tiger Lake (TGL)**, and **Wildcat Lake (WCL)**:
-- **PTL Target**: [`dmic-wov-multi-ptl-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf) $\rightarrow$ `sof-ptl-dmic-wov-multi-4ch.tplg` (`DMIC_DRIVER_VERSION 5`)
-- **TGL Target**: [`dmic-wov-multi-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf) $\rightarrow$ `sof-tgl-dmic-wov-multi-4ch.tplg` (`DMIC_DRIVER_VERSION 1`)
-- **WCL Target**: [`dmic-wov-multi-wcl-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-wcl-4ch-manifest.conf) $\rightarrow$ `sof-wcl-dmic-wov-multi-4ch.tplg` (`DMIC_DRIVER_VERSION 5`)
+The dual-rate DMIC architecture is deployed across **Panther Lake (PTL)**, **Tiger Lake (TGL)**, and **Wildcat Lake (WCL)** via `platform/intel/dmic-wov-multi.conf` and `dmic-wov-feature.conf`:
 
-| Property | ECNS Stream (PCM 10) | WOV Stream (PCM 11) |
+| Property | ECNS Clean Stream (PCM 11) | WOV Stream (PCM 12) |
 |---|---|---|
-| ALSA Device | `hw:0,10` (`pcmC0D10c`) | `hw:0,11` (`pcmC0D11c`) |
-| Sample Rate | 16 kHz | 16 kHz |
+| ALSA Device | `hw:0,11` (`pcmC0D11c`) | `hw:0,12` (`pcmC0D12c`) |
+| Sample Rate | 48 kHz | 16 kHz |
 | Channels | 2 (Stereo clean mic) | 1 (Mono clean mic) |
 | Sample Format | S16_LE / S32_LE | S16_LE / S32_LE |
 | History / Pre-roll | Live streaming | 2.0 s (64 KB mono buffer in KPB) |
 | Keyword Spotters | N/A | 3 concurrent slots: 0="strawberry", 1="banana", 2="orange" |
-| Keyword Control | N/A | `wov_active_slot` enum (0=Listening, 1=Slot 1, 2=Slot 2, 3=Slot 3) |
+| Keyword Control | N/A | `wov_active_slot` enum (0=Listening, 1=Slot 0, 2=Slot 1, 3=Slot 2) |
 | Scheduling | Core 0 (LL 1ms) | Core 0 (LL 1ms arbiter + DP 20ms KPB + DP 10ms MWW) |
-| Processing Source | ECNS Pin 1 | ECNS Pin 0 via KPB, MFCC, MWW & WOV Arbiter |
-| ALSA Device | `hw:0,10` (`pcmC0D10c`) | `hw:0,11` (`pcmC0D11c`) |
-| Sample Rate | 16 kHz | 16 kHz |
-| Channels | 2 (Stereo clean mic) | 1 (Mono clean mic) |
-| Sample Format | S16_LE / S32_LE | S16_LE / S32_LE |
-| History / Pre-roll | Live streaming | 2.0 s (64 KB mono buffer in KPB) |
-| Scheduling | Core 0 (LL 1ms) | Core 0 (LL 1ms arbiter + DP 20ms KPB) |
-| Processing Source | ECNS Pin 1 | ECNS Pin 0 via KPB & WOV Arbiter |
+| Processing Source | ECNS Pin 1 (1-to-1 copy of 48k `dmic01`) | ECNS Pin 0 (mono Left ch of 16k `dmic16k`) via KPB & WOV Arbiter |
+| D0i3 Low Power | **Yes** (`capture_compatible_d0i3: true`) | **Yes** (`capture_compatible_d0i3: true`) |
 
 ---
 
@@ -234,7 +240,7 @@ graph TD
 | Slot 2 core affinity | DSP Core 1 (cross-core scheduling validation) |
 | Host capture device | card 0, device 11 — `hw:0,11` / `pcmC0D11c` (ALSA PCM) |
 | Audio Delivery | Standard ALSA PCM capture stream (16 kHz, 2-channel, 16-bit / 32-bit) |
-| D0i3 / S0iX | Supported — `capture_compatible_d0i3 1` on host-copier and PCM widget |
+| D0i3 / S0iX | Supported — `capture_compatible_d0i3 true` on host-copier and PCM widget |
 
 ---
 
@@ -629,10 +635,10 @@ The WOV capture stream supports D0i3 runtime PM autosuspend and wake-up transiti
 ```text
 # dmic-wov-multi-manifest.conf
 Object.Widget.host-copier."...":
-    capture_compatible_d0i3  1   # host-copier allows D0i3
+    capture_compatible_d0i3  true   # host-copier allows D0i3
 
 Object.PCM.pcm."$DMIC_PCM_ID":
-    capture_compatible_d0i3  1   # PCM object allows D0i3
+    capture_compatible_d0i3  true   # PCM object allows D0i3
 ```
 
 ### IPC4 Module Control via `sof-ctl`
