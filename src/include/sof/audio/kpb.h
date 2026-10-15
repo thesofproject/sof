@@ -257,7 +257,7 @@ struct kpb_fmt_dev_list {
 
 #if CONFIG_KPB_CLI_Q
 void kpb_notifier_schedule(struct kpb_client *cli);
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION) && defined(CONFIG_USERSPACE)
 #include <sof/compiler_attributes.h>
 __syscall void kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli);
 #include <zephyr/syscalls/kpb.h>

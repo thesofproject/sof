@@ -276,8 +276,19 @@ APP_SYSUSER_DATA struct sof_dma dma[] = {
 		.devs		= SOF_DMA_DEV_HOST,
 		.channels	= DT_PROP(DT_NODELABEL(host_dma), dma_channels),
 		.period_count	= 4,
-	},
 	.z_dev		= DEVICE_DT_GET(DT_NODELABEL(host_dma)),
+},
+#endif
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(edma0), okay) && defined(CONFIG_PLATFORM_TEENSY41)
+{
+	.plat_data = {
+		.dir		= SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,
+		.caps		= SOF_DMA_CAP_GP_LP | SOF_DMA_CAP_GP_HP,
+		.devs		= SOF_DMA_DEV_SAI | SOF_DMA_DEV_SPDIF,
+		.channels	= 32,
+		.period_count	= 2,
+	},
+	.z_dev		= DEVICE_DT_GET(DT_NODELABEL(edma0)),
 },
 #endif
 };

@@ -8,6 +8,10 @@ if(CONFIG_ZEPHYR_POSIX)
 	set(ARCH host)
 	set(PLATFORM "posix")
 	set(PLATFORM_HEADERS "posix")
+elseif(CONFIG_PLATFORM_TEENSY41)
+	set(ARCH host)
+	set(PLATFORM "teensy41")
+	set(PLATFORM_HEADERS "teensy41")
 else()
 	# firmware build supports only xtensa arch for now
 	set(ARCH xtensa)
@@ -196,7 +200,7 @@ zephyr_include_directories(${SOF_SRC_PATH}/include/sof/audio/module_adapter/libr
 
 # XTOS duplicate in sof/scripts/misc.cmake; keep in sync
 macro(is_zephyr ret)
-	if(CONFIG_ZEPHYR_SOF_MODULE)
+	if(CONFIG_ZEPHYR_SOF_MODULE OR CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 		set(${ret} TRUE)
 	else()
 		set(${ret} FALSE)
@@ -456,6 +460,18 @@ if (CONFIG_SOC_MIMX9596_M7)
 	board_set_rimage_target(imx95)
 endif()
 
+if (CONFIG_PLATFORM_TEENSY41)
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/teensy41/platform.c
+		${SOF_PLATFORM_PATH}/teensy41/teensy41_pipeline_def.c
+		${SOF_PLATFORM_PATH}/teensy41/lib/clk.c
+		lib/dma.c
+	)
+
+	set(PLATFORM "teensy41")
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/teensy41/include)
+endif()
+
 # AMD RMB platforms
 if (CONFIG_SOC_ACP_6_0)
     zephyr_library_sources(
@@ -655,6 +671,7 @@ set(SOF_ROOT_BINARY_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 # This generated/ directory is shared with Zephyr.
 # PROJECT_BINARY_DIR is build/zephyr/
 set(GENERATED_DIRECTORY ${PROJECT_BINARY_DIR}/include/generated)
+zephyr_include_directories(${GENERATED_DIRECTORY})
 
 set(VERSION_H_PATH ${GENERATED_DIRECTORY}/sof_versions.h)
 

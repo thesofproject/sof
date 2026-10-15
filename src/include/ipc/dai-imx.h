@@ -61,4 +61,10 @@ struct sof_ipc_dai_micfil_params {
 	uint32_t pdm_ch;
 } __attribute__((packed, aligned(4)));
 
+/* S/PDIF Configuration Request - SOF_IPC_DAI_SPDIF_CONFIG */
+struct sof_ipc_dai_spdif_params {
+	uint32_t sample_rate;
+	uint32_t reserved[3];
+} __attribute__((packed, aligned(4)));
+
 #endif /* __IPC_DAI_IMX_H__ */

@@ -878,6 +878,19 @@ static int sof_static_topology_prepare_comps(const struct sof_static_topology *t
 		/* Only prepare components currently in READY state */
 		if (dev->state == COMP_STATE_READY) {
 			const struct sof_static_comp *cdesc = &topo->comps[i];
+
+			/* Skip unrouted components that have no buffers connected */
+			if (list_is_empty(&dev->bsource_list) && list_is_empty(&dev->bsink_list)) {
+				LOG_DBG("Skipping unrouted component %u ('%s')", cdesc->id, cdesc->name);
+				continue;
+			}
+			if (cdesc->type != SOF_STATIC_COMP_HOST && cdesc->type != SOF_STATIC_COMP_DAI) {
+				if (list_is_empty(&dev->bsource_list) || list_is_empty(&dev->bsink_list)) {
+					LOG_DBG("Skipping unrouted module %u ('%s')", cdesc->id, cdesc->name);
+					continue;
+				}
+			}
+
 			const struct sof_static_pipeline_desc *pdesc =
 				sof_static_find_pipeline_desc(topo, cdesc->pipeline_id);
 
@@ -941,6 +954,11 @@ static int sof_static_topology_prepare_comps(const struct sof_static_topology *t
 				return ret_prms;
 			}
 			int ret_prep = comp_prepare(dev);
+			if (ret_prep == -ENOTCONN) {
+				LOG_DBG("Component %u ('%s') not connected, skipping prepare",
+					dev_comp_id(dev), cdesc->name);
+				continue;
+			}
 			if (ret_prep < 0) {
 				LOG_ERR("Component %u ('%s') prepare failed: %d",
 					dev_comp_id(dev), cdesc->name, ret_prep);
@@ -1108,6 +1126,9 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 		goto err_unwind;
 	}
 
+	/* Publish topology as active before initializing kcontrols */
+	s_active_topo = topo;
+
 	/* Stage 7: Initialize kcontrols with default values */
 	ret = sof_static_topology_init_controls(topo);
 	if (ret < 0) {
@@ -1115,14 +1136,12 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 		goto err_unwind;
 	}
 
-	/* Publish topology as active only after all construction stages succeed */
-	s_active_topo = topo;
-
 	LOG_INF("Static audio topology initialized successfully (%zu pipelines, %zu comps, %zu buffers, %zu controls)",
 		topo->num_pipelines, topo->num_comps, topo->num_buffers, topo->num_controls);
 	return 0;
 
 err_unwind:
+	s_active_topo = NULL;
 	sof_static_topology_unwind();
 	return ret;
 }
