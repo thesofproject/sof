@@ -18,13 +18,19 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/buffer.h>
+#include <sof/audio/audio_buffer.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 #include <sof/audio/format.h>
 #include <sof/audio/component_dai.h>
+#include <sof/ipc/topology.h>
 #include <sof/lib/dai.h>
 #include <ipc/topology.h>
 #include <ipc/control.h>
 #include <ipc/dai.h>
 #include <ipc4/gateway.h>
+#include <ipc4/header.h>
+#include <ipc4/module.h>
 #include <kernel/header.h>
 #include <module/ipc4/base-config.h>
 #include <rtos/sof.h>
@@ -78,8 +84,12 @@ static APP_SYSUSER_BSS uint32_t s_pipeline_rates[MAX_STATIC_PIPELINES];
 static APP_SYSUSER_BSS size_t s_num_pipelines;
 
 static APP_SYSUSER_BSS struct comp_dev *s_comps[MAX_STATIC_COMPS];
+static APP_SYSUSER_BSS struct ipc_comp_dev s_ipc_comps[MAX_STATIC_COMPS];
 static APP_SYSUSER_BSS uint32_t s_comp_ids[MAX_STATIC_COMPS];
 static APP_SYSUSER_BSS size_t s_num_comps;
+#ifndef CONFIG_SOF_USERSPACE_LL
+static APP_SYSUSER_BSS struct ipc s_fallback_ipc;
+#endif
 
 static APP_SYSUSER_BSS struct comp_buffer *s_buffers[MAX_STATIC_BUFFERS];
 static APP_SYSUSER_BSS uint32_t s_buffer_ids[MAX_STATIC_BUFFERS];
@@ -230,12 +240,11 @@ static int send_comp_config(struct comp_dev *dev, const void *abi_blob, size_t a
  *
  * Configures the IPC stream parameters (sampling rate, channel count, frame format,
  * container sizes, valid bit depth, host period bytes, and ALSA channel map) and
- * synchronizes the underlying audio stream (buf->stream) as well as its associated
- * sink and source interfaces.
+ * synchronizes the buffer's sink and source interfaces via the SOF Sink/Source APIs.
  *
  * Intermediate circular buffers connect adjacent processing components in the
- * graph. Initializing their stream parameters and reset state ensures that
- * buffer_set_params() and sink/source getters establish identical format
+ * graph. Initializing their sink/source parameters and reset state ensures that
+ * downstream consumers and upstream producers establish identical format
  * expectations prior to component parameter negotiation and streaming.
  *
  * \param[in,out] buf Pointer to allocated intermediate component buffer.
@@ -281,36 +290,32 @@ static void init_buffer_params(struct comp_buffer *buf, uint32_t dir, enum sof_i
 			params.chmap[c] = SOF_CHMAP_NA;
 	}
 
-	/* Apply stream parameters to buffer structure */
-	buffer_set_params(buf, &params, BUFFER_UPDATE_FORCE);
-
-	/* Configure circular audio stream parameters and byte alignment */
-	audio_stream_set_valid_fmt(&buf->stream, fmt);
-	audio_stream_set_rate(&buf->stream, rate);
-	audio_stream_set_channels(&buf->stream, channels);
-	audio_stream_set_frm_fmt(&buf->stream, fmt);
-	audio_stream_set_align(SOF_FRAME_BYTE_ALIGN, sample_bytes, &buf->stream);
-	audio_stream_reset(&buf->stream);
-
-	/* Synchronize sink interface parameters so downstream consumers match */
+	/* Synchronize sink interface parameters so upstream producers match */
 	struct sof_sink *sink = audio_buffer_get_sink(&buf->audio_buffer);
 	if (sink) {
+		sink_set_params(sink, &params, BUFFER_UPDATE_FORCE);
 		sink_set_valid_fmt(sink, fmt);
 		sink_set_rate(sink, rate);
 		sink_set_channels(sink, channels);
 		sink_set_frm_fmt(sink, fmt);
 		sink_set_alignment_constants(sink, SOF_FRAME_BYTE_ALIGN, sample_bytes);
+		sink_set_min_free_space(sink, params.host_period_bytes);
 	}
 
-	/* Synchronize source interface parameters so upstream producers match */
+	/* Synchronize source interface parameters so downstream consumers match */
 	struct sof_source *source = audio_buffer_get_source(&buf->audio_buffer);
 	if (source) {
+		source_set_params(source, &params, BUFFER_UPDATE_FORCE);
 		source_set_valid_fmt(source, fmt);
 		source_set_rate(source, rate);
 		source_set_channels(source, channels);
 		source_set_frm_fmt(source, fmt);
 		source_set_alignment_constants(source, SOF_FRAME_BYTE_ALIGN, sample_bytes);
+		source_set_min_available(source, params.host_period_bytes);
 	}
+
+	/* Reset read/write pointers and zero buffer contents via audio_buffer API */
+	audio_buffer_reset(&buf->audio_buffer);
 }
 
 /**
@@ -541,6 +546,20 @@ static struct comp_dev *sof_static_init_module_comp(const struct sof_static_comp
  */
 static int sof_static_topology_init_comps(const struct sof_static_topology *topo)
 {
+	struct ipc *ipc = ipc_get();
+
+#ifndef CONFIG_SOF_USERSPACE_LL
+	if (!ipc && sof_get()) {
+		memset(&s_fallback_ipc, 0, sizeof(s_fallback_ipc));
+		list_init(&s_fallback_ipc.comp_list);
+		list_init(&s_fallback_ipc.msg_list);
+		sof_get()->ipc = &s_fallback_ipc;
+		ipc = &s_fallback_ipc;
+	}
+#endif
+	if (ipc && !ipc->comp_list.next)
+		list_init(&ipc->comp_list);
+
 	for (size_t i = 0; i < topo->num_comps && i < MAX_STATIC_COMPS; i++) {
 		const struct sof_static_comp *cdesc = &topo->comps[i];
 		uint32_t drv_type = (cdesc->type == SOF_STATIC_COMP_HOST) ? SOF_COMP_HOST :
@@ -607,9 +626,16 @@ static int sof_static_topology_init_comps(const struct sof_static_topology *topo
 			}
 		}
 
-		/* Record component instance in static tracking array */
+		/* Record component instance in static tracking array and IPC component registry */
 		s_comps[s_num_comps] = dev;
 		s_comp_ids[s_num_comps] = cdesc->id;
+		if (ipc) {
+			s_ipc_comps[s_num_comps].type = COMP_TYPE_COMPONENT;
+			s_ipc_comps[s_num_comps].core = dev->ipc_config.core;
+			s_ipc_comps[s_num_comps].id = cdesc->id;
+			s_ipc_comps[s_num_comps].cd = dev;
+			list_item_append(&s_ipc_comps[s_num_comps].list, &ipc->comp_list);
+		}
 		s_num_comps++;
 
 		LOG_INF("Component %u ('%s') created in pipeline %u", cdesc->id, cdesc->name, cdesc->pipeline_id);
@@ -704,9 +730,10 @@ static int sof_static_topology_init_buffers(const struct sof_static_topology *to
 }
 
 /**
- * \brief Stage 4: Connect pipeline graph routes.
+ * \brief Stage 4: Connect pipeline graph routes and bind sink/source interfaces.
  *
- * Establish graph connections: producer comp -> intermediate buffer -> consumer comp.
+ * Establish graph connections: producer comp -> intermediate buffer -> consumer comp,
+ * and bind the buffer's sof_sink and sof_source interfaces to the connected components.
  *
  * \param[in] topo Topology descriptor pointer.
  * \return 0 on success, negative errno on failure.
@@ -725,6 +752,65 @@ static int sof_static_topology_init_routes(const struct sof_static_topology *top
 			return -EINVAL;
 		}
 
+		struct sof_sink *buf_sink = audio_buffer_get_sink(&buf->audio_buffer);
+		struct sof_source *buf_source = audio_buffer_get_source(&buf->audio_buffer);
+		if (!buf_sink || !buf_source) {
+			LOG_ERR("Buffer %u missing sink/source interface", r->buffer_id);
+			return -EINVAL;
+		}
+
+		/* Preserve initial buffer format parameters configured in Stage 3 */
+		enum sof_ipc_frame init_frm_fmt = source_get_frm_fmt(buf_source);
+		enum sof_ipc_frame init_valid_fmt = source_get_valid_fmt(buf_source);
+		uint32_t init_rate = source_get_rate(buf_source);
+		uint32_t init_channels = source_get_channels(buf_source);
+
+		/* Determine source and destination queue indices for IPC4 module binding */
+		uint32_t src_queue = 0;
+		uint32_t dst_queue = 0;
+
+		for (size_t j = 0; j < i; j++) {
+			if (topo->routes[j].src_comp_id == r->src_comp_id)
+				src_queue++;
+			if (topo->routes[j].sink_comp_id == r->sink_comp_id)
+				dst_queue++;
+		}
+
+		/*
+		 * Validate per-component connection counts and IPC4 3-bit queue field bounds
+		 * before connecting and binding: module_adapter_multi_sink_source_prepare()
+		 * indexes fixed CONFIG_MODULE_MAX_CONNECTIONS arrays, and IPC4 bind commands
+		 * pack src_queue/dst_queue into 3-bit bitfields (0..7).
+		 */
+		if (src_queue >= CONFIG_MODULE_MAX_CONNECTIONS ||
+		    src_queue >= BIT(SOF_IPC4_SRC_QUEUE_ID_BITFIELD_SIZE) ||
+		    dst_queue >= CONFIG_MODULE_MAX_CONNECTIONS ||
+		    dst_queue >= BIT(SOF_IPC4_DST_QUEUE_ID_BITFIELD_SIZE)) {
+			LOG_ERR("Route %u -> [buf %u] -> %u queue index out of bounds (src_q %u, dst_q %u)",
+				r->src_comp_id, r->buffer_id, r->sink_comp_id, src_queue, dst_queue);
+			return -EINVAL;
+		}
+		if (dev_comp_type(src) == SOF_COMP_MODULE_ADAPTER) {
+			struct processing_module *src_mod = comp_mod(src);
+
+			if (src_mod && src_mod->max_sinks && src_queue >= src_mod->max_sinks) {
+				LOG_ERR("Component %u sink count %u exceeds max_sinks %u",
+					r->src_comp_id, src_queue + 1, src_mod->max_sinks);
+				return -EINVAL;
+			}
+		}
+		if (dev_comp_type(sink) == SOF_COMP_MODULE_ADAPTER) {
+			struct processing_module *sink_mod = comp_mod(sink);
+
+			if (sink_mod && sink_mod->max_sources && dst_queue >= sink_mod->max_sources) {
+				LOG_ERR("Component %u source count %u exceeds max_sources %u",
+					r->sink_comp_id, dst_queue + 1, sink_mod->max_sources);
+				return -EINVAL;
+			}
+		}
+
+		buf_sink->audio_stream_params->id = IPC4_COMP_ID(src_queue, dst_queue);
+
 		/* Connect producer component to buffer and buffer to consumer component */
 		int ret = pipeline_connect(src, buf, PPL_CONN_DIR_COMP_TO_BUFFER);
 		if (ret < 0) {
@@ -740,7 +826,65 @@ static int sof_static_topology_init_routes(const struct sof_static_topology *top
 			return ret;
 		}
 
-		LOG_DBG("Connected: %u -> [buf %u] -> %u", r->src_comp_id, r->buffer_id, r->sink_comp_id);
+		/* Bind sink/source API handles to producer and consumer components */
+		struct ipc4_module_bind_unbind bu = { 0 };
+
+		bu.primary.r.module_id = IPC4_MOD_ID(r->src_comp_id);
+		bu.primary.r.instance_id = IPC4_INST_ID(r->src_comp_id);
+		bu.primary.r.type = SOF_IPC4_MOD_BIND;
+		bu.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_MODULE_MSG;
+		bu.extension.r.dst_module_id = IPC4_MOD_ID(r->sink_comp_id);
+		bu.extension.r.dst_instance_id = IPC4_INST_ID(r->sink_comp_id);
+		bu.extension.r.src_queue = src_queue;
+		bu.extension.r.dst_queue = dst_queue;
+
+		struct bind_info bind_data = {
+			.ipc4_data = &bu,
+			.bind_type = COMP_BIND_TYPE_SINK,
+			.sink = buf_sink,
+		};
+
+		ret = comp_bind(src, &bind_data);
+		if (ret < 0) {
+			LOG_ERR("Failed comp_bind src %u -> buf %u: %d",
+				r->src_comp_id, r->buffer_id, ret);
+			return ret;
+		}
+
+		bind_data.bind_type = COMP_BIND_TYPE_SOURCE;
+		bind_data.source = buf_source;
+		ret = comp_bind(sink, &bind_data);
+		if (ret < 0) {
+			LOG_ERR("Failed comp_bind buf %u -> sink %u: %d",
+				r->buffer_id, r->sink_comp_id, ret);
+			return ret;
+		}
+
+		/* Restore Stage 3 buffer format parameters and configure IBS/OBS thresholds */
+		sink_set_frm_fmt(buf_sink, init_frm_fmt);
+		sink_set_valid_fmt(buf_sink, init_valid_fmt);
+		sink_set_rate(buf_sink, init_rate);
+		sink_set_channels(buf_sink, init_channels);
+		source_set_frm_fmt(buf_source, init_frm_fmt);
+		source_set_valid_fmt(buf_source, init_valid_fmt);
+		source_set_rate(buf_source, init_rate);
+		source_set_channels(buf_source, init_channels);
+
+		if (dev_comp_type(src) == SOF_COMP_MODULE_ADAPTER) {
+			struct processing_module *src_mod = comp_mod(src);
+
+			if (src_mod && src_mod->priv.cfg.base_cfg.obs)
+				sink_set_min_free_space(buf_sink, src_mod->priv.cfg.base_cfg.obs);
+		}
+		if (dev_comp_type(sink) == SOF_COMP_MODULE_ADAPTER) {
+			struct processing_module *sink_mod = comp_mod(sink);
+
+			if (sink_mod && sink_mod->priv.cfg.base_cfg.ibs)
+				source_set_min_available(buf_source, sink_mod->priv.cfg.base_cfg.ibs);
+		}
+
+		LOG_DBG("Connected and bound: %u -> [buf %u] -> %u",
+			r->src_comp_id, r->buffer_id, r->sink_comp_id);
 	}
 
 	return 0;
@@ -860,6 +1004,87 @@ static int sof_static_topology_init_pipeline_endpoints(const struct sof_static_t
 }
 
 /**
+ * \brief Check whether a component has any bound sink or source interfaces.
+ *
+ * Uses the SOF Sink/Source APIs (processing_module bound sources/sinks for
+ * module adapter components, and sof_audio_buffer sink/source state for
+ * endpoint components) rather than inspecting legacy comp_buffer lists.
+ *
+ * \param[in] topo Active topology descriptor.
+ * \param[in] dev Component device to inspect.
+ * \return True if the component has at least one active sink or source, false otherwise.
+ */
+static bool sof_static_comp_has_sink_source(const struct sof_static_topology *topo,
+					    struct comp_dev *dev)
+{
+	/* Reject NULL component pointer */
+	if (!dev)
+		return false;
+
+	/*
+	 * Fast-path for IPC4 module adapter components (Volume, EQ, DRC, Mixer, etc.):
+	 * Stage 4 comp_bind() invokes module_adapter_bind() ->
+	 * module_adapter_multi_sink_source_prepare(), which populates mod->sources[]
+	 * and mod->sinks[] and updates mod->num_of_sources / mod->num_of_sinks.
+	 * A non-zero count on either side confirms the module is bound to a route.
+	 */
+	if (dev_comp_type(dev) == SOF_COMP_MODULE_ADAPTER) {
+		struct processing_module *mod = comp_mod(dev);
+
+		return mod && (mod->num_of_sources > 0 || mod->num_of_sinks > 0);
+	}
+
+	/* Non-adapter endpoints (Host / DAI) require scanning the declarative route table */
+	if (!topo)
+		return false;
+
+	uint32_t comp_id = dev_comp_id(dev);
+
+	/*
+	 * Fallback path for legacy/endpoint components (SOF_COMP_HOST, SOF_COMP_DAI)
+	 * that do not wrap a struct processing_module: inspect every route referencing
+	 * this component ID and query the attached sof_audio_buffer's source/sink
+	 * state via the SOF Sink/Source APIs.
+	 */
+	for (size_t i = 0; i < topo->num_routes; i++) {
+		const struct sof_static_route *r = &topo->routes[i];
+
+		/* Skip routes that do not reference this component as producer or consumer */
+		if (r->src_comp_id != comp_id && r->sink_comp_id != comp_id)
+			continue;
+
+		/* Look up the intermediate buffer for this route */
+		struct comp_buffer *buf = sof_static_buffer_get(r->buffer_id);
+		if (!buf)
+			continue;
+
+		/*
+		 * If the component is the upstream producer of this route, check whether
+		 * the buffer's source interface reports a valid connected producer state.
+		 */
+		if (r->src_comp_id == comp_id) {
+			struct sof_source *source = audio_buffer_get_source(&buf->audio_buffer);
+
+			if (source && source_get_comp_state(source) != COMP_STATE_NOT_EXIST)
+				return true;
+		}
+
+		/*
+		 * If the component is the downstream consumer of this route, check whether
+		 * the buffer's sink interface reports a valid connected consumer state.
+		 */
+		if (r->sink_comp_id == comp_id) {
+			struct sof_sink *sink = audio_buffer_get_sink(&buf->audio_buffer);
+
+			if (sink && sink_get_state(sink) != COMP_STATE_NOT_EXIST)
+				return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * \brief Stage 6: Explicitly configure and prepare all components.
  *
  * Ensure every instantiated component transitions to COMP_STATE_PREPARE,
@@ -876,8 +1101,10 @@ static int sof_static_topology_prepare_comps(const struct sof_static_topology *t
 		if (!dev)
 			continue;
 
-		/* Only prepare components currently in READY state */
+		/* Only prepare components currently in READY state that have bound sinks/sources */
 		if (dev->state == COMP_STATE_READY) {
+			if (!sof_static_comp_has_sink_source(topo, dev))
+				continue;
 			const struct sof_static_comp *cdesc = &topo->comps[i];
 			const struct sof_static_pipeline_desc *pdesc =
 				sof_static_find_pipeline_desc(topo, cdesc->pipeline_id);
@@ -1005,17 +1232,84 @@ static int sof_static_topology_init_controls(const struct sof_static_topology *t
  */
 static void sof_static_topology_unwind(void)
 {
-	/* Free allocated intermediate buffers */
+	/* Unbind, disconnect, and free allocated intermediate buffers */
 	for (size_t i = 0; i < s_num_buffers; i++) {
 		if (s_buffers[i]) {
-			buffer_free(s_buffers[i]);
+			/*
+			 * Phase 1: Retrieve the buffer's sof_sink and sof_source handles,
+			 * connected upstream producer (src) and downstream consumer (sink)
+			 * components, and packed IPC4 pin queue indices.
+			 */
+			struct comp_buffer *buf = s_buffers[i];
+			struct sof_sink *buf_sink = audio_buffer_get_sink(&buf->audio_buffer);
+			struct sof_source *buf_source = audio_buffer_get_source(&buf->audio_buffer);
+			struct comp_dev *src = comp_buffer_get_source_component(buf);
+			struct comp_dev *sink = comp_buffer_get_sink_component(buf);
+			uint32_t queue_id = buf_sink ? sink_get_id(buf_sink) : 0;
+			struct ipc4_module_bind_unbind bu = { 0 };
+
+			/*
+			 * Phase 2: Populate the IPC4 SOF_IPC4_MOD_UNBIND descriptor with
+			 * source/destination queue indices and endpoint module/instance IDs.
+			 */
+			bu.primary.r.type = SOF_IPC4_MOD_UNBIND;
+			bu.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_MODULE_MSG;
+			bu.extension.r.src_queue = IPC4_SRC_QUEUE_ID(queue_id);
+			bu.extension.r.dst_queue = IPC4_SINK_QUEUE_ID(queue_id);
+
+			if (src) {
+				bu.primary.r.module_id = IPC4_MOD_ID(dev_comp_id(src));
+				bu.primary.r.instance_id = IPC4_INST_ID(dev_comp_id(src));
+			}
+			if (sink) {
+				bu.extension.r.dst_module_id = IPC4_MOD_ID(dev_comp_id(sink));
+				bu.extension.r.dst_instance_id = IPC4_INST_ID(dev_comp_id(sink));
+			}
+
+			/*
+			 * Phase 3: Unbind the upstream producer component from the buffer's
+			 * sink interface and disconnect the producer-to-buffer graph link.
+			 */
+			if (src && buf_sink) {
+				struct bind_info unbind_src = {
+					.ipc4_data = &bu,
+					.bind_type = COMP_BIND_TYPE_SINK,
+					.sink = buf_sink,
+				};
+				comp_unbind(src, &unbind_src);
+				pipeline_disconnect(src, buf, PPL_CONN_DIR_COMP_TO_BUFFER);
+			}
+
+			/*
+			 * Phase 4: Unbind the downstream consumer component from the buffer's
+			 * source interface and disconnect the buffer-to-consumer graph link.
+			 */
+			if (sink && buf_source) {
+				struct bind_info unbind_sink = {
+					.ipc4_data = &bu,
+					.bind_type = COMP_BIND_TYPE_SOURCE,
+					.source = buf_source,
+				};
+				comp_unbind(sink, &unbind_sink);
+				pipeline_disconnect(sink, buf, PPL_CONN_DIR_BUFFER_TO_COMP);
+			}
+
+			/*
+			 * Phase 5: Release the underlying sof_audio_buffer instance and
+			 * clear the static buffer tracking slot.
+			 */
+			audio_buffer_free(&buf->audio_buffer);
 			s_buffers[i] = NULL;
 		}
 	}
 	s_num_buffers = 0;
 
-	/* Free instantiated components */
+	/* Free instantiated components and remove from IPC component registry */
 	for (size_t i = 0; i < s_num_comps; i++) {
+		if (s_ipc_comps[i].cd) {
+			list_item_del(&s_ipc_comps[i].list);
+			s_ipc_comps[i].cd = NULL;
+		}
 		if (s_comps[i]) {
 			comp_free(s_comps[i]);
 			s_comps[i] = NULL;
@@ -1694,6 +1988,55 @@ int sof_static_pipeline_trigger(uint32_t pipeline_id, bool start)
 }
 
 /**
+ * \brief Resolve the effective input sampling rate for a component within a pipeline.
+ *
+ * Walks upstream along the declarative route table from @p comp_id within @p pipeline_id.
+ * If an upstream rate converter (e.g. SRC or ASRC with a fixed non-zero caps.sink_rate)
+ * is encountered, components downstream of that converter operate at its fixed output
+ * rate (sink_rate) rather than the pipeline's requested input rate.
+ *
+ * \param[in] topo Active topology descriptor.
+ * \param[in] pipeline_id Target pipeline identifier.
+ * \param[in] comp_id Component identifier whose effective input rate is being resolved.
+ * \param[in] req_rate Requested pipeline sample rate in Hz.
+ * \return Effective input sample rate in Hz for @p comp_id.
+ */
+static uint32_t sof_static_resolve_comp_in_rate(const struct sof_static_topology *topo,
+						uint32_t pipeline_id, uint32_t comp_id,
+						uint32_t req_rate)
+{
+	if (!topo)
+		return req_rate;
+
+	uint32_t cur_id = comp_id;
+
+	/* Walk upstream up to num_comps hops to locate any preceding rate converter */
+	for (size_t depth = 0; depth < topo->num_comps; depth++) {
+		const struct sof_static_comp *upstream = NULL;
+
+		for (size_t r = 0; r < topo->num_routes; r++) {
+			if (topo->routes[r].sink_comp_id == cur_id) {
+				upstream = sof_static_find_comp_desc(topo,
+								     topo->routes[r].src_comp_id);
+				break;
+			}
+		}
+
+		/* Stop once the start of the pipeline or a cross-pipeline boundary is reached */
+		if (!upstream || upstream->pipeline_id != pipeline_id)
+			break;
+
+		/* If the upstream producer has a fixed output rate, it governs downstream modules */
+		if (upstream->caps.sink_rate)
+			return upstream->caps.sink_rate;
+
+		cur_id = upstream->id;
+	}
+
+	return req_rate;
+}
+
+/**
  * \brief Re-negotiate the stream sample rate for a specific static pipeline.
  *
  * Re-negotiates the sample rate for the designated pipeline and its constituent
@@ -1722,15 +2065,24 @@ int sof_static_pipeline_set_sample_rate(uint32_t pipeline_id, uint32_t rate)
 		return -EBUSY;
 	}
 
-	/* Validate requested sample rate against component capability masks */
-	uint32_t rmask = sof_static_rate_to_mask(rate);
+	/*
+	 * Validate each component's effective input sample rate against its capability mask.
+	 * Components downstream of a fixed-output rate converter (caps.sink_rate != 0)
+	 * are validated at that converter's sink_rate rather than the upstream rate.
+	 */
 	if (s_active_topo) {
 		for (size_t c = 0; c < s_active_topo->num_comps; c++) {
 			const struct sof_static_comp *cdesc = &s_active_topo->comps[c];
 			if (cdesc->pipeline_id == pipeline_id && cdesc->caps.rates) {
+				uint32_t eff_rate = sof_static_resolve_comp_in_rate(s_active_topo,
+										    pipeline_id,
+										    cdesc->id,
+										    rate);
+				uint32_t rmask = sof_static_rate_to_mask(eff_rate);
+
 				if (!(cdesc->caps.rates & rmask)) {
 					LOG_ERR("sof_static_pipeline_set_sample_rate: rate %u Hz unsupported by comp %u ('%s')",
-						rate, cdesc->id, cdesc->name);
+						eff_rate, cdesc->id, cdesc->name);
 					return -EINVAL;
 				}
 			}
@@ -1745,8 +2097,69 @@ int sof_static_pipeline_set_sample_rate(uint32_t pipeline_id, uint32_t rate)
 		}
 	}
 
-	/* Update buffer parameters for all buffers whose producer belongs to this pipeline */
+	/* Update IPC4 module base_cfg and buffer parameters for components in this pipeline */
 	if (s_active_topo) {
+		for (size_t c = 0; c < s_active_topo->num_comps; c++) {
+			const struct sof_static_comp *cdesc = &s_active_topo->comps[c];
+
+			if (cdesc->pipeline_id != pipeline_id)
+				continue;
+
+			/*
+			 * Phase 1: Resolve effective input and output rates for this component.
+			 * Assumption: modules upstream of (or without) a rate converter run at
+			 * the requested pipeline rate; modules downstream of a rate converter
+			 * run at that converter's fixed caps.sink_rate. A rate converter itself
+			 * consumes at in_rate and produces at caps.sink_rate.
+			 */
+			uint32_t in_rate = sof_static_resolve_comp_in_rate(s_active_topo,
+									   pipeline_id,
+									   cdesc->id, rate);
+			uint32_t out_rate = cdesc->caps.sink_rate ? cdesc->caps.sink_rate : in_rate;
+			struct comp_dev *cdev = sof_static_comp_get(cdesc->id);
+
+			if (!cdev)
+				continue;
+
+			/*
+			 * Phase 2: Compute input and output frame counts per scheduling period.
+			 * Assumption: default to a 1000 us (1 ms) period when cdev->period is
+			 * unset, and fall back to 48 frames (1 ms at 48 kHz) if integer division
+			 * yields zero so IPC4 IBS/OBS buffer sizes remain non-zero.
+			 */
+			uint32_t period_us = cdev->period ? cdev->period : 1000;
+			uint32_t in_frames = (in_rate * period_us) / 1000000;
+			uint32_t out_frames = (out_rate * period_us) / 1000000;
+
+			if (in_frames == 0)
+				in_frames = 48;
+			if (out_frames == 0)
+				out_frames = 48;
+			cdev->frames = out_frames;
+
+			/*
+			 * Phase 3: Update IPC4 base_cfg sampling_frequency, input block size (ibs),
+			 * and output block size (obs) for module adapter components.
+			 * Assumption: frame_bytes is derived from container byte depth (depth / 8)
+			 * multiplied by the configured channel count.
+			 */
+			if (dev_comp_type(cdev) == SOF_COMP_MODULE_ADAPTER) {
+				struct processing_module *mod = comp_mod(cdev);
+
+				if (mod) {
+					struct ipc4_base_module_cfg *bcfg = &mod->priv.cfg.base_cfg;
+					uint32_t frame_bytes = (bcfg->audio_fmt.depth / 8) *
+							       bcfg->audio_fmt.channels_count;
+
+					bcfg->audio_fmt.sampling_frequency = in_rate;
+					if (frame_bytes) {
+						bcfg->ibs = in_frames * frame_bytes;
+						bcfg->obs = out_frames * frame_bytes;
+					}
+				}
+			}
+		}
+
 		for (size_t r = 0; r < s_active_topo->num_routes; r++) {
 			const struct sof_static_route *route = &s_active_topo->routes[r];
 			const struct sof_static_comp *src_cdesc =
@@ -1756,10 +2169,66 @@ int sof_static_pipeline_set_sample_rate(uint32_t pipeline_id, uint32_t rate)
 				struct comp_buffer *buf = sof_static_buffer_get(route->buffer_id);
 
 				if (buf) {
+					/*
+					 * Phase 1: Retrieve the buffer's sof_sink and sof_source
+					 * handles and preserve its configured PCM frame format and
+					 * channel count (falling back to S16_LE stereo if unset).
+					 */
+					struct sof_sink *sink =
+						audio_buffer_get_sink(&buf->audio_buffer);
+					struct sof_source *source =
+						audio_buffer_get_source(&buf->audio_buffer);
+					enum sof_ipc_frame fmt = source ?
+						source_get_frm_fmt(source) : SOF_IPC_FRAME_S16_LE;
+					uint32_t channels = source ?
+						source_get_channels(source) : 2;
+
+					/*
+					 * Phase 2: Resolve the buffer's effective sample rate from
+					 * its upstream producer's output rate (sink_rate for rate
+					 * converters, or the producer's effective input rate) and
+					 * reinitialize the buffer's stream and sink/source params.
+					 */
+					uint32_t src_in_rate =
+						sof_static_resolve_comp_in_rate(s_active_topo,
+										pipeline_id,
+										src_cdesc->id,
+										rate);
+					uint32_t buf_rate = src_cdesc->caps.sink_rate ?
+						src_cdesc->caps.sink_rate : src_in_rate;
+
 					init_buffer_params(buf, src_cdesc->direction,
-							   audio_stream_get_frm_fmt(&buf->stream),
-							   rate,
-							   audio_stream_get_channels(&buf->stream));
+							   fmt, buf_rate, channels);
+
+					/*
+					 * Phase 3: Synchronize the buffer's sof_sink minimum free
+					 * space threshold with the producer module's base_cfg.obs,
+					 * and the sof_source minimum available threshold with the
+					 * consumer module's base_cfg.ibs.
+					 */
+					struct comp_dev *src_dev =
+						sof_static_comp_get(route->src_comp_id);
+					struct comp_dev *sink_dev =
+						sof_static_comp_get(route->sink_comp_id);
+
+					if (sink && src_dev &&
+					    dev_comp_type(src_dev) == SOF_COMP_MODULE_ADAPTER) {
+						struct processing_module *src_mod =
+							comp_mod(src_dev);
+
+						if (src_mod && src_mod->priv.cfg.base_cfg.obs)
+							sink_set_min_free_space(sink,
+										src_mod->priv.cfg.base_cfg.obs);
+					}
+					if (source && sink_dev &&
+					    dev_comp_type(sink_dev) == SOF_COMP_MODULE_ADAPTER) {
+						struct processing_module *sink_mod =
+							comp_mod(sink_dev);
+
+						if (sink_mod && sink_mod->priv.cfg.base_cfg.ibs)
+							source_set_min_available(source,
+										 sink_mod->priv.cfg.base_cfg.ibs);
+					}
 				}
 			}
 		}
@@ -1772,6 +2241,9 @@ int sof_static_pipeline_set_sample_rate(uint32_t pipeline_id, uint32_t rate)
 		if (s_active_topo)
 			pdesc = sof_static_find_pipeline_desc(s_active_topo, pipeline_id);
 
+		uint32_t start_rate = s_active_topo ?
+			sof_static_resolve_comp_in_rate(s_active_topo, pipeline_id,
+							dev_comp_id(host_or_sched), rate) : rate;
 		uint32_t channels = 2;
 		enum sof_ipc_frame fmt = host_or_sched->ipc_config.frame_fmt;
 		if (!fmt)
@@ -1780,13 +2252,13 @@ int sof_static_pipeline_set_sample_rate(uint32_t pipeline_id, uint32_t rate)
 		uint32_t cont_bytes = get_sample_bytes(fmt);
 		uint32_t valid_bytes = static_get_sample_valid_bytes(fmt);
 		uint32_t period_us = (pdesc && pdesc->period) ? pdesc->period : 1000;
-		uint32_t frames = (rate * period_us) / 1000000;
+		uint32_t frames = (start_rate * period_us) / 1000000;
 		if (frames == 0)
 			frames = 48;
 
 		struct sof_ipc_pcm_params prms;
 		memset(&prms, 0, sizeof(prms));
-		prms.params.rate = rate;
+		prms.params.rate = start_rate;
 		prms.params.channels = channels;
 		prms.params.frame_fmt = fmt;
 		prms.params.sample_container_bytes = cont_bytes;
