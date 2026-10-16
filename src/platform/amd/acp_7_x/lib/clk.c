@@ -4,6 +4,7 @@
  *
  * Author: Sneha Voona <sneha.voona@amd.com>
  *         Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
+ *         DineshKumar Kalva <DineshKumar.Kalva@amd.com>
  */
 
 #include <sof/common.h>
@@ -18,6 +19,7 @@
 #include <sof/drivers/acp_dai_dma.h>
 #include <rtos/interrupt.h>
 #include <rtos/timer.h>
+#include <rtos/wait.h>
 #include <rtos/alloc.h>
 #include <rtos/clk.h>
 #include <sof/lib/cpu.h>
@@ -68,6 +70,16 @@ typedef enum _acp_clock_type_ {
 	acp_clock_type_force = 0xFF
 } acp_clock_type_t;
 
+/* AGT measures CLK6 for 100 us against the 48 MHz reference. A threshold of
+ * 4800 counts gives the same 0.01 MHz resolution as agt_internal.
+ */
+#define ACP_CLK_MEASURE_THRESHOLD	4800
+#define ACP_CLK_MEASURE_REFCLK_MHZ	48
+#define ACP_CLK_MEASURE_SETTLE_US	120
+#define CLK_POLL_DELAY_US		10
+#define CLK_POLL_COUNT			10
+#define ACP_DFS_BYPASS_EXIT_RETRIES	4
+
 /* Static variables */
 static struct clock_info platform_clocks_info[NUM_CLOCKS];
 
@@ -92,6 +104,9 @@ int acp_get_current_clk(acp_clock_type_t clk_type,
 /* Static function prototypes */
 static int acp_reg_read_via_smn(uint32_t reg_offset, uint32_t size);
 static void acp_reg_write_via_smn(uint32_t reg_offset, uint32_t reg_value, uint32_t size);
+static void acp_log_current_aclk(const char *state);
+static void acp_log_dfs_dividers(const char *state);
+static void acp_log_clk_sources(const char *state);
 
 static int acp_reg_read_via_smn(uint32_t reg_offset,
 				uint32_t size)
@@ -174,11 +189,37 @@ void acp_cpl_audioclk_poll_dfs_div_req_idle(uint32_t timeout_cnt)
 
 	do {
 		clk_dfs_status.u32All = acp_reg_read_via_smn(
-				mmCLK6_PLL0_DFS0_STATUS, sizeof(uint32_t));
+				ACP_CLK6_PLL0_DFS0_STATUS, sizeof(uint32_t));
 		timeout++;
 	} while ((clk_dfs_status.bitfields.PLL0_DFS0_DFS_DIV_REQ_IDLE == 0) &
 		 (timeout < timeout_cnt));
 
+}
+
+/**
+ * \brief Name a PMFW response code read from MP1_C2PMSG_38.
+ *
+ * \param resp Response register value.
+ * \return Printable description of the response.
+ */
+static const char *mp1_resp_name(uint32_t resp)
+{
+	switch (resp) {
+	case 0x0:
+		return "no response";
+	case 0x1:
+		return "OK";
+	case 0xFF:
+		return "FAIL";
+	case 0xFE:
+		return "UNKNOWN CMD";
+	case 0xFD:
+		return "BAD PREREQ";
+	case 0xFC:
+		return "BUSY";
+	default:
+		return "unexpected";
+	}
 }
 
 uint32_t mp1_mailbox_send(uint32_t _reg_id, uint32_t _value)
@@ -193,6 +234,8 @@ uint32_t mp1_mailbox_send(uint32_t _reg_id, uint32_t _value)
 		}
 		wait_cnt++;
 	}
+		tr_info(&acp_clk_tr, "MP1 send msg 0x%x arg 0x%x: C2PMSG_38 before 0x%x (%s) after %u polls",
+		_reg_id, _value, ready, mp1_resp_name(ready), wait_cnt);
 	if (ready == 0) {
 		return 0;
 	}
@@ -214,7 +257,9 @@ uint32_t mp1_mailbox_send(uint32_t _reg_id, uint32_t _value)
 			break;
 		}
 	} while (resp == 0);
-	/* Optionally, read back the argument register if needed (not used here) */
+	tr_info(&acp_clk_tr, "PllPowerState msg 0x%x arg 0x%x response 0x%x (%s) after %d polls, "
+		"expect 0x1 (OK)",
+		_reg_id, _value, resp, mp1_resp_name(resp), count);
 
 	return resp;
 }
@@ -226,23 +271,161 @@ void acp_clk_tick_cnt_enable(void)
 	clk_tick_config.u32All = acp_reg_read_via_smn(
 			CLK_TICK_CNT_CONFIG_REG, sizeof(uint32_t));
 	clk_tick_config.bitfields.TIMER_ENABLE = 1;
-	clk_tick_config.bitfields.TIMER_THRESHOLD = 0x1E0;
+	clk_tick_config.bitfields.TIMER_THRESHOLD = ACP_CLK_MEASURE_THRESHOLD;
 	acp_reg_write_via_smn(CLK_TICK_CNT_CONFIG_REG,
 			      clk_tick_config.u32All, sizeof(uint32_t));
 }
 
+/* Stop waiting for PMFW 500 us after the mailbox request is posted. */
+#define ACP_PMFW_POLL_US	500
+
+/**
+ * \brief Send one PMFW mailbox message and wait up to 500 us for a reply.
+ *
+ * \param msg Message id written to MP1_C2PMSG_37.
+ * \param arg Argument written to MP1_C2PMSG_39.
+ * \return Last value read from MP1_C2PMSG_38. Non-zero means PMFW answered.
+ */
+static uint32_t acp_pmfw_poll_response(uint32_t msg, uint32_t arg)
+{
+	uint32_t resp = 0;
+	int try = 0;
+	uint64_t start;
+	uint64_t deadline;
+	uint32_t elapsed_us;
+
+	acp_reg_write_via_smn(mmMP1_C2PMSG_38, 0, sizeof(uint32_t));
+	acp_reg_write_via_smn(mmMP1_C2PMSG_39, arg, sizeof(uint32_t));
+	acp_reg_write_via_smn(mmMP1_C2PMSG_37, msg, sizeof(uint32_t));
+
+	start = sof_cycle_get_64();
+	deadline = start + k_us_to_cyc_ceil64(ACP_PMFW_POLL_US);
+
+	do {
+		resp = acp_reg_read_via_smn(mmMP1_C2PMSG_38, sizeof(uint32_t));
+		try++;
+		if (resp || sof_cycle_get_64() >= deadline) {
+			break;
+		}
+		wait_delay_us(1000);/*1ms delay to avoid busy loop*/
+	} while (sof_cycle_get_64() < deadline);
+
+	elapsed_us = (uint32_t)k_cyc_to_us_floor64(sof_cycle_get_64() - start);
+	tr_info(&acp_clk_tr,
+		"PMFW mailbox response: msg=0x%x arg=0x%x resp=0x%x tries=%d elapsed_us=%u limit_us=%u",
+		msg, arg, resp, try, elapsed_us, ACP_PMFW_POLL_US);
+
+	return resp;
+}
+
+/* ACP_CLKMUX_SEL divides ACLK inside ACP; slice select stays with CLK6. */
+static void acp_clkmux_sel(uint32_t div_val)
+{
+	acp7x_clkmux_sel_t mux_sel;
+
+	mux_sel.u32All = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_CLKMUX_SEL);
+	mux_sel.bitfields.DIV_SEL = div_val;
+	io_reg_write(PU_REGISTER_BASE + ACP_CLKMUX_SEL, mux_sel.u32All);
+}
+
+/* Post a DFS bypass request and wait for CLK6 to clear it. */
+static void acp_clk_dfsbypass_request(uint32_t req_bit, uint32_t timeout_cnt)
+{
+	uint32_t value;
+	uint32_t count;
+
+	value = acp_reg_read_via_smn(ACP_CLK6_PLL0_DFSBYPASS_CONTROL, sizeof(uint32_t));
+	acp_reg_write_via_smn(ACP_CLK6_PLL0_DFSBYPASS_CONTROL, value | req_bit,
+			      sizeof(uint32_t));
+
+	for (count = 0; count < timeout_cnt; count++) {
+		value = acp_reg_read_via_smn(ACP_CLK6_PLL0_DFSBYPASS_CONTROL,
+					    sizeof(uint32_t));
+		if (!(value & req_bit)) {
+			return;
+		}
+		wait_delay_us(CLK_POLL_DELAY_US);
+	}
+
+	tr_warn(&acp_clk_tr, "DFS bypass request 0x%x still pending: cntl 0x%x",
+		req_bit, value);
+}
+
+/* Configure CLK6 slice 5, which feeds S5_REFCLK. */
+static void acp_s5_refclk_config(uint32_t postdiv_id, uint32_t bypass_sel,
+				 uint32_t bypass_div)
+{
+	clk6_clk_postdiv_cntl_u_t postdiv_cntl;
+	clk6_bypass_cntl_u_t bypass_cntl;
+
+	postdiv_cntl.u32All = 0;
+	postdiv_cntl.bitfields.CLK0_POSTDIV_DIV_ID = postdiv_id;
+	postdiv_cntl.bitfields.CLK0_POSTDIV_RAMP_STEP = 1;
+	acp_reg_write_via_smn(ACP_CLK6_CLK5_POSTDIV_CNTL, postdiv_cntl.u32All,
+			      sizeof(uint32_t));
+
+	bypass_cntl.u32All = 0;
+	bypass_cntl.bitfields.CLK_BYPASS_SEL = bypass_sel;
+	bypass_cntl.bitfields.CLK_BYPASS_DIV = bypass_div;
+	acp_reg_write_via_smn(ACP_CLK6_CLK5_BYPASS_CNTL, bypass_cntl.u32All,
+			      sizeof(uint32_t));
+}
+
+/* Keep ACLK out of deep sleep while a stream is active. */
+static void acp_aclk_deepsleep_disable(void)
+{
+	clk6_clk_ds_cntl_u_t ds_cntl;
+
+	io_reg_write(PU_REGISTER_BASE + ACP_ACLK_AUDIOCLK_CTRL, ACP_DEEPSLEEP_DISABLE);
+
+	ds_cntl.u32All = acp_reg_read_via_smn(ACP_CLK6_CLK1_DS_CNTL, sizeof(uint32_t));
+	ds_cntl.bitfields.CLK_ALLOW_DS = 0;
+	ds_cntl.bitfields.CLK_DS_DIV_ID = 3;
+	ds_cntl.bitfields.CLK_DS_DEGL_SET = 1;
+	acp_reg_write_via_smn(ACP_CLK6_CLK1_DS_CNTL, ds_cntl.u32All, sizeof(uint32_t));
+}
+
+/* Restore the clock inputs used by PDM and SoundWire consumers. */
+static void acp_io_clk_sel_restore(void)
+{
+	io_reg_write(PU_REGISTER_BASE + ACP_SW_48MHz_CLK_SEL, ACP_SW_CLK_SEL_49152KHZ);
+	io_reg_write(PU_REGISTER_BASE + ACP_PDM_CORE_CLK_SEL, 0);
+	io_reg_write(PU_REGISTER_BASE + ACP_AUDIO_CLK_SEL, 0);
+}
+
+/**
+ * \brief Power the audio PLL and move AUDIOCLK and ACLK onto it.
+ *
+ * Called once from platform_init(). PDM and SoundWire run from these
+ * clocks, so DMA start and stop must not run this sequence again while
+ * any stream is active.
+ *
+ * \param clock_freq Requested ACLK frequency in Hz.
+ */
 void acp_clk_d0_sequence(uint32_t clock_freq)
 {
-	/* Send message to PMFW to power on Audio PLL */
-	mp1_mailbox_send(ACPSMC_MSG_PllPowerState, ACP_AUDIOPLL_POWER_ON_REQ);
+	uint32_t retry;
 
-	change_clock_notify(clock_freq);
+	if (!mp1_mailbox_send(ACPSMC_MSG_PllPowerState, ACP_AUDIOPLL_POWER_ON_REQ)) {
+		tr_err(&acp_clk_tr, "Audio PLL power on failed, staying on bypass clock");
+		return;
+	}
+
+	/* Take AUDIOCLK (slice 0) and ACLK (slice 1) out of DFS bypass */
+	for (retry = 0; retry < ACP_DFS_BYPASS_EXIT_RETRIES; retry++) {
+		acp_clk_dfsbypass_request(ACP_DFS_BYPASS_EXIT_AUDIOCLK, CLK_POLL_COUNT / 2);
+		acp_clk_dfsbypass_request(ACP_DFS_BYPASS_EXIT_ACLK, CLK_POLL_COUNT / 2);
+	}
 
 	/* Audio PLL DFS Output for AUDIOCLK */
-	acp_reg_write_via_smn(mmCLK6_CLK0_BYPASS_CNTL, 0, sizeof(uint32_t));
+	acp_reg_write_via_smn(ACP_CLK6_CLK0_BYPASS_CNTL, 0, sizeof(uint32_t));
 	/* Audio PLL DFS Output for ACLK */
-	acp_reg_write_via_smn(mmCLK6_CLK1_BYPASS_CNTL, 0, sizeof(uint32_t));
-
+	acp_reg_write_via_smn(ACP_CLK6_CLK1_BYPASS_CNTL, 0, sizeof(uint32_t));
+	/* Run ACP off the undivided ACLK enable acp_clkmux_sel(ACP_CLK_DIV_BY_1);*/
+	/* Only now program the DFS divider: the slice is off bypass */
+	change_clock_notify(clock_freq);
+	/* S5_REFCLK back on the 24 MHz reference with the postdiv reset to enable it acp_s5_refclk_config(0, ACP_CLK_BYPASS_SEL_REFCLK_24MHZ, 0);*/
+	/* restore io clk acp_io_clk_sel_restore();*/
 }
 
 void acp_clk_d3_sequence(void)
@@ -253,14 +436,17 @@ void acp_clk_d3_sequence(void)
 	bypass_cntl.bitfields.CLK_BYPASS_SEL = 4;
 
 	/* SET AUDIOCLK TO LPPLL 196.608MHz */
-	acp_reg_write_via_smn(mmCLK6_CLK0_BYPASS_CNTL, bypass_cntl.u32All, sizeof(uint32_t));
+	acp_reg_write_via_smn(ACP_CLK6_CLK0_BYPASS_CNTL, bypass_cntl.u32All, sizeof(uint32_t));
 
 	bypass_cntl.u32All = 0;
 	bypass_cntl.bitfields.CLK_BYPASS_SEL = 2;
 
 	/* SET ACLK TO LPPLL 393MHz */
-	acp_reg_write_via_smn(mmCLK6_CLK1_BYPASS_CNTL, bypass_cntl.u32All, sizeof(uint32_t));
-	/* mp1_mailbox_send(ACPSMC_MSG_PllPowerState, ACP_AUDIOPLL_POWER_OFF_REQ); */
+	acp_reg_write_via_smn(ACP_CLK6_CLK1_BYPASS_CNTL, bypass_cntl.u32All, sizeof(uint32_t));
+
+	/* Both slices must be in DFS bypass before the PLL goes down */
+	acp_clk_dfsbypass_request(ACP_DFS_BYPASS_ENTER_AUDIOCLK, CLK_POLL_COUNT);
+	acp_clk_dfsbypass_request(ACP_DFS_BYPASS_ENTER_ACLK, CLK_POLL_COUNT);
 
 	/* Send message to PMFW to power off Audio PLL */
 	mp1_mailbox_send(ACPSMC_MSG_PllPowerState, ACP_AUDIOPLL_POWER_OFF_REQ_WITH_WOV_EN);
@@ -272,17 +458,25 @@ void change_clock_notify(uint32_t clock_freq)
 	float did = 0.0f;
 	float fraction_val = 0.0f;
 	uint32_t int_did_val = 0;
+	uint32_t raw_did_x100;
 	float boot_ref_clk = 0.0f;
 	acp_clock_type_t clock_type = acp_aclk_clock;
+	uint32_t err_before = io_reg_read(PU_REGISTER_BASE + ACP_ERROR_STATUS);
 
 	acp_7_x_get_boot_ref_clock(&boot_ref_clk);
 
 	tr_info(&acp_clk_tr, "acp_change_clock_notify clock_freq : %d clock_type : %d", clock_freq, clock_type);
+	tr_info(&acp_clk_tr, "boot_ref_clk SMN: ACP_ERROR_STATUS 0x%x -> 0x%x smn_refused %u",
+		err_before, io_reg_read(PU_REGISTER_BASE + ACP_ERROR_STATUS),
+		(io_reg_read(PU_REGISTER_BASE + ACP_ERROR_STATUS) >> 20) & 1);
 
 	fraction_val = (float)(clock_freq / (float)1000000.0f);   /*converting Hz to Mhz*/
 	clock_freq   = (clock_freq / 1000000);                    /*converting Hz to Mhz*/
 
 	did  = (float)(boot_ref_clk/(float)fraction_val);
+	raw_did_x100 = (uint32_t)(did * 100.0f);
+	tr_info(&acp_clk_tr, "aclk req %d MHz boot_ref_clk %d MHz raw_did %d/%dMHz",
+		clock_freq, (uint32_t)boot_ref_clk, raw_did_x100, clock_freq);
 	if (did > 62.0f) {
 		final_did = 0x7F;
 	} else {
@@ -323,6 +517,7 @@ void change_clock_notify(uint32_t clock_freq)
 		}
 	}
 
+	tr_info(&acp_clk_tr, "aclk final_did 0x%x", final_did);
 	acp_clk_update_dfs_did((uint32_t)final_did, clock_type);
 
 }
@@ -347,7 +542,8 @@ uint32_t acp_clk_update_dfs_did(uint32_t did, uint32_t clk_type)
 	} else if (clk_type == acp_sclk_clock) {
 		acp_cpl_audioclk_dfs_did_update(true, 10, did);
 	}
-
+	wait_delay_us(ACP_CLK_MEASURE_SETTLE_US);
+	acp_log_current_aclk("D0");
 	acp_get_current_clk(acp_aclk_clock, (float *)&updated_clk);
 	return updated_clk;
 
@@ -437,4 +633,53 @@ int acp_get_current_clk(acp_clock_type_t clk_type, float *clk_value)
 
 	*clk_value = temp_clk_value / (clk_tick_config.bitfields.TIMER_THRESHOLD / 48.0f);
 	return 0; /* Success */
+}
+
+/**
+ * \brief Print one CLK6 slice the way agt_internal prints Current <clk>: MHz.
+ *
+ * Frequency is count * 48 MHz / TIMER_THRESHOLD, shown to 0.01 MHz.
+ *
+ * \param state Clock transition that initiated the measurement.
+ * \param name ACLK or AUDIOCLK.
+ * \param clk_type CLK6 slice to read.
+ */
+static void acp_log_agt_clk(const char *state, const char *name, acp_clock_type_t clk_type)
+{
+	clk_tick_cnt_config_reg_t clk_tick_config;
+	uint32_t clk_mhz_x100;
+	uint32_t threshold;
+	int count;
+	uint32_t cnt_reg;
+
+	cnt_reg = (clk_type == acp_sclk_clock) ? CLK0_CURRENT_CNT : CLK1_CURRENT_CNT;
+	clk_tick_config.u32All = acp_reg_read_via_smn(CLK_TICK_CNT_CONFIG_REG, sizeof(uint32_t));
+	count = acp_reg_read_via_smn(cnt_reg, sizeof(uint32_t));
+	threshold = clk_tick_config.bitfields.TIMER_THRESHOLD;
+
+	if (count < 0 || !threshold) {
+		tr_warn(&acp_clk_tr, "%s Current %s: measurement unavailable count %d threshold %u",
+			state, name, count, threshold);
+		return;
+	}
+
+	/* AGT: MHz = CURRENT_CNT * 48 MHz / TIMER_THRESHOLD, printed to 0.01 MHz. */
+	clk_mhz_x100 = (uint32_t)(((uint64_t)count * ACP_CLK_MEASURE_REFCLK_MHZ * 100U +
+				   (threshold / 2U)) / threshold);
+	tr_info(&acp_clk_tr, "%s Current %s: %u.%02u MHz (count %u threshold %u)",
+		state, name, clk_mhz_x100 / 100U, clk_mhz_x100 % 100U,
+		(uint32_t)count, threshold);
+}
+
+/**
+ * \brief Log ACLK and AUDIOCLK with the agt_internal tick-counter measurement.
+ *
+ * \param state Clock transition that initiated the measurement.
+ */
+static void acp_log_current_aclk(const char *state)
+{
+	acp_clk_tick_cnt_enable();
+	wait_delay_us(ACP_CLK_MEASURE_SETTLE_US);
+	acp_log_agt_clk(state, "ACLK", acp_aclk_clock);
+	acp_log_agt_clk(state, "AUDIOCLK", acp_sclk_clock);
 }

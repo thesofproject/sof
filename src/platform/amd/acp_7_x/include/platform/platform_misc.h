@@ -20,6 +20,7 @@
 #define ACP_DSP_SW_INTR_CNTL           0x1241860
 #define ACP_DSP_SW_INTR_STAT           0x1241864
 #define ACP_AXI2DAGB_SEM_0             0x12418F4
+#define ACP_ERROR_STATUS               0x1241A88
 #define ACP_SRBM_CLIENT_BASE_ADDR      0x1241BF0
 #define ACP_SRBM_CLIENT_RDDATA         0x1241BF4
 #define ACP_SRBM_CYCLE_STS             0x1241BF8
@@ -36,23 +37,43 @@
 #define ACP_7X_SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_AI_FREQ_CTRL9_BRDS     0x6D20C
 
 /* Registers from CLK6 block */
-#define mmCLK6_PLL0_DFS0_CNTL                           0x6D014
-#define mmCLK6_PLL0_DFS0_STATUS                         0x6D018
-#define mmCLK6_PLL0_DFS1_CNTL                           0x6D01C
-#define mmCLK6_PLL0_DFS1_STATUS                         0x6D020
-#define mmCLK6_CLK0_BYPASS_CNTL                         0x6D06C
-#define mmCLK6_CLK1_BYPASS_CNTL                         0x6D08C
-#define mmCLK6_CLK_TICK_CNT_CONFIG_REG                  0x6D188
-#define mmCLK6_CLK0_CURRENT_CNT                         0x6D190
-#define mmCLK6_CLK1_CURRENT_CNT                         0x6D194
+#define ACP_CLK6_PLL0_DFS0_CNTL                           0x6D014
+#define ACP_CLK6_PLL0_DFS0_STATUS                         0x6D018
+#define ACP_CLK6_PLL0_DFS1_CNTL                           0x6D01C
+#define ACP_CLK6_PLL0_DFS1_STATUS                         0x6D020
+#define ACP_CLK6_CLK0_BYPASS_CNTL                         0x6D06C
+#define ACP_CLK6_CLK1_DS_CNTL                             0x6D074
+#define ACP_CLK6_CLK1_BYPASS_CNTL                         0x6D08C
+#define ACP_CLK6_CLK5_POSTDIV_CNTL                        0x6D100
+#define ACP_CLK6_CLK5_BYPASS_CNTL                         0x6D10C
+#define ACP_CLK6_PLL0_DFSBYPASS_CONTROL                   0x6D180
+#define ACP_CLK6_CLK_TICK_CNT_CONFIG_REG                  0x6D188
+#define ACP_CLK6_CLK0_CURRENT_CNT                         0x6D190
+#define ACP_CLK6_CLK1_CURRENT_CNT                         0x6D194
 
+#define ACP_DFS_BYPASS_ENTER_AUDIOCLK                   0x00000001
+#define ACP_DFS_BYPASS_ENTER_ACLK                       0x00000002
+#define ACP_DFS_BYPASS_EXIT_AUDIOCLK                    0x00010000
+#define ACP_DFS_BYPASS_EXIT_ACLK                        0x00020000
+#define ACP_CLK_BYPASS_SEL_AUDIO_PLL                    0x0
+#define ACP_CLK_BYPASS_SEL_LPPLL                        0x4
+#define ACP_CLK_BYPASS_SEL_REFCLK_24MHZ                 0x5
+#define ACP_CLK_DIV_BY_1                                0x0
+#define ACP_CLK_DIV_BY_16                               0x4
+#define ACP_CLKMUX_SEL       0x124102C
+#define ACP_SW_48MHz_CLK_SEL 0x1241030
+#define ACP_ACLK_AUDIOCLK_CTRL 0x1241464
+
+#define ACP_DEEPSLEEP_DISABLE   0x0
+#define ACP_DEEPSLEEP_ENABLE    0x3
+#define ACP_SW_CLK_SEL_49152KHZ 0x1F
 /* CLK6 register aliases without mm prefix for clock management code */
-#define CLK6_PLL0_DFS0_CNTL                    mmCLK6_PLL0_DFS0_CNTL
-#define CLK6_PLL0_DFS1_CNTL                    mmCLK6_PLL0_DFS1_CNTL
-#define CLK6_PLL0_DFS1_STATUS                  mmCLK6_PLL0_DFS1_STATUS
-#define CLK0_CURRENT_CNT                       mmCLK6_CLK0_CURRENT_CNT
-#define CLK1_CURRENT_CNT                       mmCLK6_CLK1_CURRENT_CNT
-#define CLK_TICK_CNT_CONFIG_REG                mmCLK6_CLK_TICK_CNT_CONFIG_REG
+#define CLK6_PLL0_DFS0_CNTL                    ACP_CLK6_PLL0_DFS0_CNTL
+#define CLK6_PLL0_DFS1_CNTL                    ACP_CLK6_PLL0_DFS1_CNTL
+#define CLK6_PLL0_DFS1_STATUS                  ACP_CLK6_PLL0_DFS1_STATUS
+#define CLK0_CURRENT_CNT                       ACP_CLK6_CLK0_CURRENT_CNT
+#define CLK1_CURRENT_CNT                       ACP_CLK6_CLK1_CURRENT_CNT
+#define CLK_TICK_CNT_CONFIG_REG                ACP_CLK6_CLK_TICK_CNT_CONFIG_REG
 
 /* SYSTEMPLL2P0 register aliases without ACP_7X prefix */
 #define SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_NON_AI_CTRL0_BRDS    ACP_7X_SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_NON_AI_CTRL0_BRDS
@@ -477,6 +498,42 @@ typedef  union clk6_clk_bypass_cntl_u {
 	int32_t     i32All;
 	float       f32All;
 } clk6_bypass_cntl_u_t;
+
+typedef union clk6_clk_ds_cntl_u {
+	struct {
+	    uint32_t                 CLK_DS_DIV_ID:4;
+	    uint32_t                 CLK_ALLOW_DS:1;
+	    uint32_t                 CLK_DS_DEGL_SET:3;
+	    uint32_t                 CLK_DS_OVERRIDE:2;
+	    uint32_t:22;
+	} bitfields, bits;
+	uint32_t    u32All;
+	int32_t     i32All;
+	float       f32All;
+} clk6_clk_ds_cntl_u_t;
+
+typedef union clk6_clk_postdiv_cntl_u {
+	struct {
+	    uint32_t                 CLK0_POSTDIV_DIV_ID:8;
+	    uint32_t                 CLK0_POSTDIV_RAMP_DIS:1;
+	    uint32_t:7;
+	    uint32_t                 CLK0_POSTDIV_RAMP_STEP:4;
+	    uint32_t:12;
+	} bitfields, bits;
+	uint32_t    u32All;
+	int32_t     i32All;
+	float       f32All;
+} clk6_clk_postdiv_cntl_u_t;
+
+typedef union acp7x_clkmux_sel_u {
+	struct {
+	    uint32_t                 DIV_SEL:4;
+	    uint32_t:28;
+	} bitfields, bits;
+	uint32_t    u32All;
+	int32_t     i32All;
+	float       f32All;
+} acp7x_clkmux_sel_t;
 
 typedef	union acp_dsp_sw_intr_stat {
 	struct {

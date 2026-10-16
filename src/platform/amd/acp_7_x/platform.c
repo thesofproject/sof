@@ -150,6 +150,8 @@ int platform_init(struct sof *sof)
 	/*CONFIG_SYSTICK_PERIOD hardcoded as 200000*/
 	sa_init(sof, 200000);
 	acp_clk_tick_cnt_enable();
+	/* Boot-time ACLK setup only. Stream start must not call this. */
+	acp_change_clock_notify(CLK_MAX_CPU_HZ);
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
 	/*

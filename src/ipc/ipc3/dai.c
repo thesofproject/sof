@@ -190,6 +190,27 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 		if (dd->dma_buffer)
 			audio_stream_set_frm_fmt(&dd->dma_buffer->stream,
 						 dev->ipc_config.frame_fmt);
+#if defined(CONFIG_AMD) && !defined(CONFIG_SOC_ACP_6_0)
+		{
+			struct acp_dma_dev_data *dmic_data = dd->dma->z_dev->data;
+			struct dmic_context *dmic_ctx;
+
+			/* Allocate coherent memory for DMIC context shared between
+			 * IPC and DMA contexts.
+			 */
+			if (!dmic_data->dai_index_ptr) {
+				dmic_ctx = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+						   sizeof(*dmic_ctx));
+				if (!dmic_ctx) {
+					return -ENOMEM;
+				}
+				dmic_data->dai_index_ptr = dmic_ctx;
+			} else {
+				dmic_ctx = (struct dmic_context *)dmic_data->dai_index_ptr;
+			}
+			dmic_ctx->index = dd->dai->index;
+		}
+#endif
 		break;
 	case SOF_DAI_AMD_BT:
 	case SOF_DAI_AMD_SP:
