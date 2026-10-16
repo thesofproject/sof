@@ -124,6 +124,8 @@ set(TPLGS
 	"sof-acp_7_0_sdw\;sof-acp_7_0-rt722-l0"
 	"sof-acp_7_x_sdw\;sof-acp7x-rt721-l0"
 	"sof-acp_7_x_i2s\;sof-acp7x"
+	"sof-acp_7_x_i2s\;sof-acp7x-smart-amp\;-DSMART_UUID=maxim_dsm_smart_amp_uuid"
+	"sof-acp_7_x_i2s\;sof-acp7x-smart-amp-passthru\;-DSMART_UUID=passthru_smart_amp_uuid"
 	"sof-acp_7_x_i2s_24bit\;sof-acp7x-24bit"
 )
 
@@ -138,6 +140,12 @@ add_subdirectory(production)
 add_custom_target(topologies1 ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory production ${SOF_TOPOLOGY_BINARY_DIRECTORY}
 )
+
+# Extra m4 include() dependencies, per input topology.  MAIN_DEPENDENCY below
+# only tracks the top-level .m4, so a topology that include()s another file must
+# list it here or editing that file leaves a stale .tplg behind.
+set(sof-acp_7_x_i2s_M4_DEPS
+	${CMAKE_CURRENT_SOURCE_DIR}/platform/amd/acp_7_x-tdm2-smart-amp.m4)
 
 foreach(tplg ${TPLGS})
 	list(GET tplg 0 input)
@@ -171,7 +179,7 @@ foreach(tplg ${TPLGS})
 		# a rebuild. 'abi_v1' is the target that avoids a race
 		# to rebuild abi.h. See the CMake FAQ or (better) Sam
 		# Thursfield's blog about custom targets.
-		DEPENDS abi_v1 ${CMAKE_CURRENT_BINARY_DIR}/abi.h
+		DEPENDS abi_v1 ${CMAKE_CURRENT_BINARY_DIR}/abi.h ${${input}_M4_DEPS}
 		VERBATIM
 		USES_TERMINAL
 	)
