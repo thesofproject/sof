@@ -5,47 +5,33 @@
 // Author: Curtis Malainey <cujomalainey@chromium.org>
 //
 
-/* Stub implementation of the Maxim DSM closed source API.
+/* Stub implementation of the Maxim DSM API.
  *
- * The upstream stub returns DSM_API_OK from every function without writing
- * any output fields.  That satisfies the compiler (the Kconfig help text
- * also says "only be used for CI and testing"), but always fails at runtime
- * during comp_new:
+ * The upstream stub returns DSM_API_OK from every function without writing any
+ * output field, which compiles but cannot run: with omemsizerequestedbytes left
+ * unset the handle size comes out 0, smart_amp_alloc_mod_memblk() skips the
+ * allocation, dsmhandle stays NULL and maxim_dsm_init() returns -EINVAL, so
+ * widget setup and card registration fail.
  *
- *   dsm_api_get_mem() never writes omemsizerequestedbytes
- *     -> maxim_dsm_get_handle_size() returns 0
- *     -> smart_amp_alloc_mod_memblk(): the `if (ret == 0) return 0` branch
- *        skips both the allocation and the set_memblk() call
- *     -> hspk->dsmhandle remains NULL
- *     -> maxim_dsm_init(): `if (!hspk->dsmhandle) return -EINVAL` fires
- *     -> host sees `ipc tx error for 0x30010000 ... -22`
- *        + `Failed to setup widget SMART_AMP2.0`, card registration fails.
- *
- * This stub fills all output fields read back by the caller so that the
- * smart_amp Maxim glue layer can fully initialise and run the data path.
- * Feed-forward processing is a straight pass-through (input -> output), so
- * audio is still audible under the stub, allowing the glue layer + topology
- * + blob layout to be validated independently from the closed-source
- * libdsm.a itself.
+ * This stub writes every field the caller reads back, and passes feed-forward
+ * audio straight through, so the glue layer, topology and blob layout can be
+ * exercised without libdsm.a.
  */
 
 #include "dsm_api_public.h"
 
-/* Must match DSM_FRM_SZ in smart_amp_maxim_dsm.c: that file hard-codes
- * DSM_FRM_SZ samples per frame in its ff/fb interleave/de-interleave loops,
- * and a mismatch here causes sample misalignment.
+/* must match DSM_FRM_SZ in smart_amp_maxim_dsm.c, which hard-codes it in the
+ * ff/fb interleave loops; a mismatch misaligns the samples
  */
 #define DSM_STUB_FRAME_SZ_SAMPLES	48
 
-/* The real libdsm.a handle size is unknown.  The stub itself does not use
- * this memory; any non-zero value works.  4 KB is chosen to also exercise
- * the PRIVATE memblk allocation path.
+/* any non-zero value works -- the stub never touches this memory; 4 KB also
+ * exercises the PRIVATE memblk allocation path
  */
 #define DSM_STUB_HANDLE_SZ_BYTES	4096
 
-/* maxim_dsm_get_volatile_param() iterates up to DSM_API_ADAPTIVE_PARAM_END
- * (0x14); the parameter count must exceed that value or caldata overflows.
- * Use the maximum value the API allows.
+/* must exceed DSM_API_ADAPTIVE_PARAM_END, which
+ * maxim_dsm_get_volatile_param() iterates up to, or caldata overflows
  */
 #define DSM_STUB_MAX_NUM_PARAM		DSM_DEFAULT_MAX_NUM_PARAM
 
@@ -141,11 +127,9 @@ enum DSM_API_MESSAGE dsm_api_get_params(void *ipmodulehandler, int icommandnumbe
 	if (!cmdblock)
 		return DSM_API_MSG_NULL_PARAM_POINTER;
 
-	/* Caller places the command id in cmdblock[DSM_GET_ID_IDX]; return
-	 * values are read from CH1/CH2.  The upstream stub leaves these fields
-	 * unwritten, so the caller reads uninitialised stack data.
-	 * maxim_dsm_get_num_param() is especially critical: it uses this result
-	 * to size the caldata allocation.
+	/* The upstream stub leaves CH1/CH2 unwritten and the caller reads
+	 * uninitialised stack data -- maxim_dsm_get_num_param() sizes the
+	 * caldata allocation from it.
 	 */
 	if (DSM_CH_MASK(cmdblock[DSM_GET_ID_IDX]) == DSM_API_GET_MAXIMUM_CMD_ID) {
 		cmdblock[DSM_GET_CH1_IDX] = DSM_STUB_MAX_NUM_PARAM;

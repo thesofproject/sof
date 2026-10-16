@@ -66,10 +66,21 @@
 #define SMART_AMP_FF_BUF_SZ	(SMART_AMP_FRM_SZ * SMART_AMP_FF_MAX_CH_NUM)
 #define SMART_AMP_FB_BUF_SZ	(SMART_AMP_FRM_SZ * SMART_AMP_FB_MAX_CH_NUM)
 
+/* The longest SOF period, in whole milliseconds, that one process() call can
+ * carry.  Inner models run at 48 kHz with a 1 ms frame size, so the period must
+ * be a whole number of milliseconds as well: a fractional one leaves a residual
+ * that walks the model's output read pointer down until it underruns.  Raising
+ * this costs roughly 3 kB of heap per millisecond per instance.
+ */
+#define SMART_AMP_MAX_PERIOD_MS	5
+
+/* Capacity of the generic-layer remap buffers, in samples: one full period at
+ * the widest channel count the remap functions can write.
+ */
 #define SMART_AMP_FF_BUF_DB_SZ\
-	(SMART_AMP_FF_BUF_SZ * SMART_AMP_FF_MAX_CH_NUM)
+	(SMART_AMP_FF_BUF_SZ * SMART_AMP_MAX_PERIOD_MS)
 #define SMART_AMP_FB_BUF_DB_SZ\
-	(SMART_AMP_FB_BUF_SZ * SMART_AMP_FB_MAX_CH_NUM)
+	(SMART_AMP_FB_BUF_SZ * SMART_AMP_MAX_PERIOD_MS)
 
 struct inner_model_ops;
 
