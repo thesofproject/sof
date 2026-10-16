@@ -420,8 +420,9 @@ static const char *get_component_name(uint32_t trace_class, uint32_t uid_ptr)
 	/* if uid_ptr is non-zero, find name in the ldc file */
 	if (uid_ptr) {
 		if (uid_ptr < uids_dict->base_address ||
-		    uid_ptr >= uids_dict->base_address +
-		    uids_dict->data_length)
+		    uids_dict->data_length < sizeof(struct sof_uuid_entry) ||
+		    uid_ptr - uids_dict->base_address >
+		    uids_dict->data_length - sizeof(struct sof_uuid_entry))
 			return "<uid?>";
 		uid_entry = get_uuid_entry(uid_ptr);
 		return uid_entry->name;
@@ -1125,6 +1126,16 @@ int convert(void)
 	if (strncmp((char *)uids_hdr.sig, SND_SOF_UIDS_SIG,
 		    SND_SOF_UIDS_SIG_SIZE)) {
 		log_err("invalid uuid section signature.\n");
+		return -EINVAL;
+	}
+	/*
+	 * The uuid entries are always read right after the header below, so
+	 * any other data_offset would make every dictionary lookup through
+	 * uids_dict->data_offset point outside of the allocation.
+	 */
+	if (uids_hdr.data_offset != sizeof(uids_hdr)) {
+		log_err("invalid uuid section data offset %u.\n",
+			uids_hdr.data_offset);
 		return -EINVAL;
 	}
 	config->uids_dict = calloc(1, sizeof(uids_hdr) + uids_hdr.data_length);
