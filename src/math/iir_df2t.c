@@ -21,8 +21,12 @@ int iir_delay_size_df2t(struct sof_eq_iir_header *config)
 	if (!n || n > SOF_EQ_IIR_BIQUADS_MAX)
 		return -EINVAL;
 
+	/* The filter runs num_sections_in_series biquads per parallel
+	 * branch, so the sections must split evenly into branches.
+	 */
 	if (!config->num_sections_in_series ||
-	    config->num_sections_in_series > n)
+	    config->num_sections_in_series > n ||
+	    n % config->num_sections_in_series)
 		return -EINVAL;
 
 	return 2 * n * sizeof(int64_t);
