@@ -51,7 +51,8 @@
 #include <sof/lib/ams.h>
 #include <sof/lib/ams_msg.h>
 #include <ipc4/ams_helpers.h>
-#else
+#endif
+#if CONFIG_KPB_NOTIFIER
 #include <sof/lib/notifier.h>
 #endif
 
@@ -120,10 +121,13 @@ struct comp_data {
 static struct k_queue *kpb_q;
 static struct k_thread kpb_thread;
 K_KERNEL_STACK_DEFINE(kpb_stack, 4096);
-#elif !CONFIG_AMS
+#endif
+
+#if CONFIG_KPB_NOTIFIER
 static void kpb_event_handler(void *arg, enum notify_id type, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 #endif
+
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli);
 static enum task_state kpb_draining_task(void *arg);
 static int kpb_buffer_data(struct comp_dev *dev,
@@ -762,10 +766,12 @@ static void kpb_free(struct comp_dev *dev)
 					     kpb_ams_kpd_notification);
 	if (ret)
 		comp_err(dev, "AMS unregister error %d", ret);
-#else
+#endif/* CONFIG_KPB_CLI_Q */
+
+#if CONFIG_KPB_NOTIFIER
 	/* Unregister KPB from notifications */
 	notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
-#endif/* CONFIG_KPB_CLI_Q */
+#endif/* CONFIG_KPB_NOTIFIER */
 
 	/* Reclaim memory occupied by history buffer */
 	kpb_free_history_buffer(kpb->hd.c_hb);
@@ -930,23 +936,33 @@ static int kpb_prepare(struct comp_dev *dev)
 		kpb->clients[i].r_ptr = NULL;
 	}
 
-#if !CONFIG_KPB_CLI_Q
-#if CONFIG_AMS
-	/* AMS Register KPB for notification */
-	ret = ams_helper_register_consumer(dev, &kpb->kpd_uuid_id,
-					   ams_kpd_msg_uuid,
-					   kpb_ams_kpd_notification);
-#else
+#if CONFIG_KPB_NOTIFIER
 	/* Register KPB for notification *on the current core* */
 	ret = notifier_register(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT, kpb_event_handler);
-#endif /* CONFIG_AMS */
-#endif
 
 	if (ret < 0) {
 		kpb_free_history_buffer(kpb->hd.c_hb);
 		kpb->hd.c_hb = NULL;
 		return -ENOMEM;
 	}
+#endif
+
+#if !CONFIG_KPB_CLI_Q
+#if CONFIG_AMS
+	/* AMS Register KPB for notification */
+	ret = ams_helper_register_consumer(dev, &kpb->kpd_uuid_id,
+					   ams_kpd_msg_uuid,
+					   kpb_ams_kpd_notification);
+	if (ret < 0) {
+#if CONFIG_KPB_NOTIFIER
+		notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
+#endif
+		kpb_free_history_buffer(kpb->hd.c_hb);
+		kpb->hd.c_hb = NULL;
+		return -ENOMEM;
+	}
+#endif /* CONFIG_AMS */
+#endif
 
 #ifndef CONFIG_IPC_MAJOR_4
 	/* Search for KPB related sinks.
@@ -1072,7 +1088,7 @@ static int kpb_reset(struct comp_dev *dev)
 			kpb_reset_history_buffer(kpb->hd.c_hb);
 		}
 
-#if !CONFIG_KPB_CLI_Q && !CONFIG_AMS
+#if CONFIG_KPB_NOTIFIER
 		/* Unregister KPB from notifications */
 		notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
 #endif
@@ -1576,7 +1592,6 @@ static int kpb_buffer_data(struct comp_dev *dev,
 	return ret;
 }
 
-#ifndef CONFIG_AMS
 /**
  * \brief Main event dispatcher.
  * \param[in] arg - KPB component internal data.
@@ -1584,6 +1599,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
  * \param[in] event_data - event specific data.
  * \return none.
  */
+#if CONFIG_KPB_NOTIFIER
 static void kpb_event_handler(void *arg, enum notify_id type, void *event_data)
 {
 	struct comp_dev *dev = arg;
@@ -1599,7 +1615,14 @@ static void kpb_event_handler(void *arg, enum notify_id type, void *event_data)
 		kpb_register_client(kpb, cli);
 		break;
 	case KPB_EVENT_UNREGISTER_CLIENT:
-		/*TODO*/
+		if (!cli || cli->id >= KPB_MAX_NO_OF_CLIENTS ||
+		    kpb->clients[cli->id].state == KPB_CLIENT_UNREGISTERED)
+			break;
+
+		kpb->clients[cli->id].state = KPB_CLIENT_UNREGISTERED;
+		kpb->clients[cli->id].r_ptr = NULL;
+		kpb->clients[cli->id].sink = NULL;
+		kpb->kpb_no_of_clients--;
 		break;
 	case KPB_EVENT_BEGIN_DRAINING:
 		kpb_init_draining(dev, cli);
@@ -1656,7 +1679,7 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 
 	return ret;
 }
-#endif /* CONFIG_AMS */
+#endif /* CONFIG_KPB_NOTIFIER */
 
 /**
  * \brief Prepare history buffer for draining.
