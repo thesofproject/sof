@@ -136,6 +136,20 @@ DAI_CONFIG(ACPTDM, 1, 1, acp-i2s1-codec,
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback_pipeline, capture_pipeline)
 PCM_DUPLEX_ADD(I2STDM1, 1, PIPELINE_PCM_1, PIPELINE_PCM_4)
 
+dnl TDM instance 2 is the speaker path, and it comes in two forms.  The default
+dnl is the passthrough below, same as TDM0 and TDM1.  Defining SMART_UUID runs
+dnl playback through that smart_amp solution instead, with an IV feedback branch
+dnl off an echo reference capture pipeline; that needs a firmware built with the
+dnl matching CONFIG_*_SMART_AMP (see app/maxim_dsm_overlay.conf).  SMART_UUID is
+dnl the macro the playback pipe already reads to pick a solution, so it doubles
+dnl as the switch here rather than adding a second one.  CMakeLists.txt builds a
+dnl tplg for each.
+dnl
+dnl The block below is an m4 argument now, so keep it free of apostrophes and
+dnl backticks: either one would end the quote silently and the failure surfaces
+dnl much later, as an alsatplg syntax error.  The smart_amp form carries prose
+dnl comments for that reason and lives in its own file.
+ifdef(`SMART_UUID',`include(`platform/amd/acp_7_x-tdm2-smart-amp.m4')',`dnl
 #====================================================================================================================
 # TDM instance 2
 
@@ -183,5 +197,6 @@ DAI_CONFIG(ACPTDM, 2, 2, acp-i2s2-codec,
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback_pipeline, capture_pipeline)
 PCM_DUPLEX_ADD(I2STDM2, 2, PIPELINE_PCM_2, PIPELINE_PCM_5)
 #====================================================================================================================
+')dnl
 
 DEBUG_END

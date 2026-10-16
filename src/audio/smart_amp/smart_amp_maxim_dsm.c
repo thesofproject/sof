@@ -27,8 +27,44 @@ LOG_MODULE_DECLARE(smart_amp, CONFIG_SOF_LOG_LEVEL);
 #define DSM_FF_BUF_SZ		(DSM_FRM_SZ * SMART_AMP_FF_MAX_CH_NUM)
 #define DSM_FB_BUF_SZ		(DSM_FRM_SZ * SMART_AMP_FB_MAX_CH_NUM)
 
-#define DSM_FF_BUF_DB_SZ	(DSM_FF_BUF_SZ * SMART_AMP_FF_MAX_CH_NUM)
-#define DSM_FB_BUF_DB_SZ	(DSM_FB_BUF_SZ * SMART_AMP_FB_MAX_CH_NUM)
+/* Capacity of the ff accumulation and output ring buffers.  libdsm's frame size
+ * is fixed at 1 ms, so a period of P ms arrives as P frames of DSM_FF_BUF_SZ
+ * samples.  maxim_dsm_flush() pre-fills one frame of silence for delay
+ * alignment and it stays resident, so both rings peak at that frame plus one
+ * whole period -- which the generic layer caps at SMART_AMP_FF_BUF_DB_SZ.
+ */
+#define DSM_FF_BUF_DB_SZ	(DSM_FF_BUF_SZ + SMART_AMP_FF_BUF_DB_SZ)
+
+/* IV format for the feedback path.  Upstream de-interleaves at 4*idx, assuming
+ * 4 TDM slots in VIVI order.  This platform has 2: each max98388 owns one slot
+ * and alternates V and I within it using the sample MSB as the flag, i.e.
+ * libdsm's DSM_IV_FORMAT_INTERLEAVED_16_BIT_MSB (ivFormat=3), where libdsm
+ * reads its two input buffers as left/right channel streams and splits each by
+ * MSB itself.  The 4*idx stride would pick one polarity and leave the other
+ * class empty, making libdsm return DSM_API_MSG_INSUFFICIENT_INPUT_DATA.
+ */
+#define MAXIM_DSM_FB_IVFMT3	1
+
+/* Command ID and IV format enum from the full dsm_api.h; not included in
+ * SOF's trimmed dsm_api_public.h.
+ */
+#define DSM_API_SETGET_IV_FORMAT		146
+#define DSM_IV_FORMAT_INTERLEAVED_16_BIT_MSB	3
+
+/* Samples consumed from the accumulation buffer per DSM fb frame: one frame per
+ * channel x 2 physical channels, against 4-channel VIVI upstream.
+ */
+#if MAXIM_DSM_FB_IVFMT3
+#define DSM_FB_FRM_SZ		(DSM_FRM_SZ * 2)
+#else
+#define DSM_FB_FRM_SZ		DSM_FB_BUF_SZ
+#endif
+
+/* Capacity of the fb accumulation ring buffer.  No pre-fill here, but the drain
+ * loop consumes whole DSM_FB_FRM_SZ frames, so up to one frame short of it can
+ * carry over when a period is not a multiple of the fb frame size.
+ */
+#define DSM_FB_BUF_DB_SZ	(DSM_FB_FRM_SZ + SMART_AMP_FB_BUF_DB_SZ)
 
 /* DSM parameter table structure
  * +--------------+-----------------+---------------------------------+
@@ -167,6 +203,21 @@ static int maxim_dsm_init(struct smart_amp_mod_struct_t *hspk)
 		hspk->ibsamples = hspk->fb_fr_sz_samples
 			* initparam.ichannels;
 	}
+
+#if MAXIM_DSM_FB_IVFMT3
+	/* dsm_api_init_ext_t has no ivFormat field and libdsm defaults to
+	 * deinterleaved(0), so set it explicitly -- before
+	 * maxim_dsm_get_all_param() so the parameter db captures it.
+	 */
+	{
+		int value[DSM_SET_PARAM_SZ_PAYLOAD];
+
+		value[DSM_SET_ID_IDX] = DSM_SET_CMD_ID(DSM_API_SETGET_IV_FORMAT);
+		value[DSM_SET_VALUE_IDX] = DSM_IV_FORMAT_INTERLEAVED_16_BIT_MSB;
+		if (dsm_api_set_params(hspk->dsmhandle, 1, value) != DSM_API_OK)
+			comp_err(dev, "[DSM] set ivFormat failed");
+	}
+#endif
 
 	comp_dbg(dev, "[DSM] Initialization completed. (module:%p, dsm:%p)",
 		 (uintptr_t)hspk,
@@ -351,6 +402,7 @@ static int maxim_dsm_get_param(struct smart_amp_mod_struct_t *hspk,
 		cdata->data->abi = SOF_ABI_VERSION;
 		cdata->data->size = 0;
 	}
+
 	return 0;
 }
 
@@ -468,6 +520,25 @@ static int maxim_dsm_set_config(struct smart_amp_mod_data_base *mod,
 	return maxim_dsm_set_param(hspk, cdata);
 }
 
+/* Shift the unconsumed tail of an accumulation buffer down to its base: copy
+ * @count samples of @szsample bytes from [@offset, @offset + @count) to
+ * [0, @count).
+ *
+ * Not memcpy_s(): SOF's implementation rejects overlapping src/dst with -EINVAL
+ * and copies nothing, the ranges overlap as soon as count > offset (every cycle
+ * at any period above 2 ms), and the call sites advance their write pointer
+ * regardless of the return value, so the buffer would silently desynchronise.
+ * Each caller's overflow test already holds offset + count inside the buffer.
+ */
+static void dsm_buf_shift_down(void *base, int offset, int count, int szsample)
+{
+	if (count <= 0)
+		return;
+
+	memmove(base, (char *)base + (size_t)offset * szsample,
+		(size_t)count * szsample);
+}
+
 static int maxim_dsm_ff_proc(struct smart_amp_mod_data_base *mod,
 			     uint32_t frames,
 			     struct smart_amp_mod_stream *in,
@@ -484,7 +555,6 @@ static int maxim_dsm_ff_proc(struct smart_amp_mod_data_base *mod,
 	bool is_16bit = (in->frame_fmt == SOF_IPC_FRAME_S16_LE);
 	int szsample = (is_16bit ? 2 : 4);
 	int nsamples = frames * in->channels;
-	int remain;
 	int idx;
 	int ret = 0;
 
@@ -503,11 +573,16 @@ static int maxim_dsm_ff_proc(struct smart_amp_mod_data_base *mod,
 	 * must be smaller than buffer size limit
 	 */
 	if (*w_ptr + nsamples <= DSM_FF_BUF_DB_SZ) {
+		/* dest_size is the space left in the ring, not the copy
+		 * length, or memcpy_s()'s check never fires
+		 */
 		if (is_16bit)
-			memcpy_s(&buf.buf16[*w_ptr], nsamples * szsample,
+			memcpy_s(&buf.buf16[*w_ptr],
+				 (DSM_FF_BUF_DB_SZ - *w_ptr) * szsample,
 				 in->buf.data, nsamples * szsample);
 		else
-			memcpy_s(&buf.buf32[*w_ptr], nsamples * szsample,
+			memcpy_s(&buf.buf32[*w_ptr],
+				 (DSM_FF_BUF_DB_SZ - *w_ptr) * szsample,
 				 in->buf.data, nsamples * szsample);
 		*w_ptr += nsamples;
 	} else {
@@ -518,8 +593,12 @@ static int maxim_dsm_ff_proc(struct smart_amp_mod_data_base *mod,
 		goto error;
 	}
 
-	/* Run DSM Feedforward process if the buffer is ready */
-	if (*w_ptr >= DSM_FF_BUF_SZ) {
+	/* Run DSM Feedforward process if the buffer is ready.  while, not if:
+	 * a P ms period holds P DSM frames, and draining one per call would
+	 * grow w_ptr by a frame every period until it overflows.
+	 */
+	while (*w_ptr >= DSM_FF_BUF_SZ &&
+	       *r_ptr + DSM_FF_BUF_SZ <= DSM_FF_BUF_DB_SZ) {
 		if (is_16bit) {
 			/* Buffer ordering for DSM : LRLR... -> LL...RR... */
 			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
@@ -535,19 +614,18 @@ static int maxim_dsm_ff_proc(struct smart_amp_mod_data_base *mod,
 			}
 		}
 
-		remain = (*w_ptr - DSM_FF_BUF_SZ);
-		if (remain) {
-			if (is_16bit)
-				memcpy_s(&buf.buf16[0], remain * szsample,
-					 &buf.buf16[DSM_FF_BUF_SZ],
-					 remain * szsample);
-			else
-				memcpy_s(&buf.buf32[0], remain * szsample,
-					 &buf.buf32[DSM_FF_BUF_SZ],
-					 remain * szsample);
-		}
+		/* drop the frame just de-interleaved; the ranges overlap at any
+		 * period above 2 ms, hence dsm_buf_shift_down()
+		 */
+		dsm_buf_shift_down(hspk->buf.ff.buf, DSM_FF_BUF_SZ,
+				   *w_ptr - DSM_FF_BUF_SZ, szsample);
 		*w_ptr -= DSM_FF_BUF_SZ;
 
+		/* One call covers both sample widths: input/input32 are typed
+		 * views of one buffer and the short * is vestigial -- libdsm
+		 * strides by iSampleByteWidth, which dsm_api_init() derived
+		 * from initparam.isamplebitwidth.
+		 */
 		hspk->ifsamples = hspk->nchannels * hspk->ff_fr_sz_samples;
 		dsm_api_ff_process(hspk->dsmhandle, hspk->channelmask,
 				   input, &hspk->ifsamples,
@@ -561,9 +639,6 @@ static int maxim_dsm_ff_proc(struct smart_amp_mod_data_base *mod,
 					output[idx + DSM_FRM_SZ];
 			}
 		} else {
-			dsm_api_ff_process(hspk->dsmhandle, hspk->channelmask,
-					   (short *)input32, &hspk->ifsamples,
-					   (short *)output32, &hspk->ofsamples);
 			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
 				buf_out.buf32[*r_ptr + 2 * idx] = output32[idx];
 				buf_out.buf32[*r_ptr + 2 * idx + 1] =
@@ -576,24 +651,19 @@ static int maxim_dsm_ff_proc(struct smart_amp_mod_data_base *mod,
 
 	/* Output buffer preparation */
 	if (*r_ptr >= nsamples) {
+		/* dest_size is the sink-side buffer; see the input copy above */
 		if (is_16bit)
-			memcpy_s(out->buf.data, nsamples * szsample,
+			memcpy_s(out->buf.data, out->buf.size,
 				 buf_out.buf16, nsamples * szsample);
 		else
-			memcpy_s(out->buf.data, nsamples * szsample,
+			memcpy_s(out->buf.data, out->buf.size,
 				 buf_out.buf32, nsamples * szsample);
 
-		remain = (*r_ptr - nsamples);
-		if (remain) {
-			if (is_16bit)
-				memcpy_s(&buf_out.buf16[0], remain * szsample,
-					 &buf_out.buf16[nsamples],
-					 remain * szsample);
-			else
-				memcpy_s(&buf_out.buf32[0], remain * szsample,
-					 &buf_out.buf32[nsamples],
-					 remain * szsample);
-		}
+		/* same on the output side: it does not overlap at today's
+		 * periods, but only as an emergent property of the loop guard
+		 */
+		dsm_buf_shift_down(hspk->buf.ff_out.buf, nsamples,
+				   *r_ptr - nsamples, szsample);
 		*r_ptr -= nsamples;
 		return ret;
 	}
@@ -626,7 +696,6 @@ static int maxim_dsm_fb_proc(struct smart_amp_mod_data_base *mod,
 	bool is_16bit = (in->frame_fmt == SOF_IPC_FRAME_S16_LE);
 	int szsample = (is_16bit ? 2 : 4);
 	int nsamples = frames * in->channels;
-	int remain;
 	int idx;
 
 	buf.buf16 = (int16_t *)hspk->buf.fb.buf;
@@ -641,11 +710,14 @@ static int maxim_dsm_fb_proc(struct smart_amp_mod_data_base *mod,
 	 * must be smaller than buffer size limit
 	 */
 	if (*w_ptr + nsamples <= DSM_FB_BUF_DB_SZ) {
+		/* dest_size is the space left in the ring; see maxim_dsm_ff_proc() */
 		if (is_16bit)
-			memcpy_s(&buf.buf16[*w_ptr], nsamples * szsample,
+			memcpy_s(&buf.buf16[*w_ptr],
+				 (DSM_FB_BUF_DB_SZ - *w_ptr) * szsample,
 				 in->buf.data, nsamples * szsample);
 		else
-			memcpy_s(&buf.buf32[*w_ptr], nsamples * szsample,
+			memcpy_s(&buf.buf32[*w_ptr],
+				 (DSM_FB_BUF_DB_SZ - *w_ptr) * szsample,
 				 in->buf.data, nsamples * szsample);
 		*w_ptr += nsamples;
 	} else {
@@ -654,9 +726,23 @@ static int maxim_dsm_fb_proc(struct smart_amp_mod_data_base *mod,
 		return -EOVERFLOW;
 	}
 
-	/* Run DSM Feedback process if the buffer is ready */
-	if (*w_ptr >= DSM_FB_BUF_SZ) {
+	/* Run DSM Feedback process if the buffer is ready.  while, not if:
+	 * same reason as the ff path.
+	 */
+	while (*w_ptr >= DSM_FB_FRM_SZ) {
 		if (is_16bit) {
+#if MAXIM_DSM_FB_IVFMT3
+			/* In ivFormat=3 libdsm takes icurrbuffer as the left
+			 * channel (slot0/amp0) and ivoltbuffer as the right
+			 * (slot1/amp1), splitting V and I out of each by MSB.
+			 * The i/v names are inherited from the VIVI path and
+			 * mislead here: both hold interleaved V+I.
+			 */
+			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
+				i[idx] = buf.buf16[2 * idx];		/* slot0 / amp0 -> left  */
+				v[idx] = buf.buf16[2 * idx + 1];	/* slot1 / amp1 -> right */
+			}
+#else
 			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
 			/* Buffer ordering for DSM : VIVI... -> VV... II...*/
 				v[idx] = buf.buf16[4 * idx];
@@ -664,6 +750,7 @@ static int maxim_dsm_fb_proc(struct smart_amp_mod_data_base *mod,
 				v[idx + DSM_FRM_SZ] = buf.buf16[4 * idx + 2];
 				i[idx + DSM_FRM_SZ] = buf.buf16[4 * idx + 3];
 			}
+#endif
 		} else {
 			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
 				v[idx] = buf.buf32[4 * idx];
@@ -675,28 +762,26 @@ static int maxim_dsm_fb_proc(struct smart_amp_mod_data_base *mod,
 			}
 		}
 
-		remain = (*w_ptr - DSM_FB_BUF_SZ);
-		if (remain) {
-			if (is_16bit)
-				memcpy_s(&buf.buf16[0], remain * szsample,
-					 &buf.buf16[DSM_FB_BUF_SZ],
-					 remain * szsample);
-			else
-				memcpy_s(&buf.buf32[0], remain * szsample,
-					 &buf.buf32[DSM_FB_BUF_SZ],
-					 remain * szsample);
-		}
-		*w_ptr -= DSM_FB_BUF_SZ;
+		/* drop the frame just de-interleaved; see dsm_buf_shift_down() */
+		dsm_buf_shift_down(hspk->buf.fb.buf, DSM_FB_FRM_SZ,
+				   *w_ptr - DSM_FB_FRM_SZ, szsample);
+		*w_ptr -= DSM_FB_FRM_SZ;
 
+		/* *ipNrSamples is the total across both buffers whatever the
+		 * ivFormat: this path divides it by the channel count and then
+		 * requires a multiple of ffFrameSize, so it must be
+		 * fb_fr_sz_samples * nchannels -- passing one frame's worth
+		 * returns INVALID_PARAM every call.  Only the v2 entry point
+		 * skips that divide.
+		 */
 		hspk->ibsamples = hspk->fb_fr_sz_samples * hspk->nchannels;
 		if (is_16bit)
-			dsm_api_fb_process(hspk->dsmhandle,
-					   hspk->channelmask,
+			dsm_api_fb_process(hspk->dsmhandle, hspk->channelmask,
 					   i, v, &hspk->ibsamples);
 		else
-			dsm_api_fb_process(hspk->dsmhandle,
-					   hspk->channelmask,
-					   (short *)i32, (short *)v32, &hspk->ibsamples);
+			dsm_api_fb_process(hspk->dsmhandle, hspk->channelmask,
+					   (short *)i32, (short *)v32,
+					   &hspk->ibsamples);
 	}
 	return 0;
 }
