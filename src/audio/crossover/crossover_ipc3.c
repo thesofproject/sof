@@ -84,6 +84,7 @@ int crossover_check_config(struct processing_module *mod, const uint8_t *fragmen
 /**
  * \brief IPC4 specific component prepare, updates source and sink buffers formats from base_cfg
  */
-void crossover_params(struct processing_module *mod)
+void crossover_params(struct processing_module *mod, struct sof_source *source,
+		      struct sof_sink **sinks, int num_of_sinks)
 {
 }
