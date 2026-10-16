@@ -109,7 +109,7 @@ static unsigned int crossover_assign_sinks(struct processing_module *mod,
 		unsigned int sink_id, state;
 
 		sink_id = crossover_get_sink_id(cd, sink_get_pipeline_id(snk), j);
-		state = comp_buffer_get_sink_state(comp_buffer_get_from_sink(snk));
+		state = sink_get_state(snk);
 		if (state != dev->state)
 			continue;
 
@@ -233,12 +233,13 @@ int crossover_init_coef_ch(struct processing_module *mod,
  *
  * \param nch number of channels in the audio stream.
  */
-static int crossover_init_coef(struct processing_module *mod, int nch)
+static int crossover_init_coef(struct processing_module *mod, unsigned int nch)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct sof_eq_iir_biquad *crossover;
 	struct sof_crossover_config *config = cd->config;
-	int ch, err;
+	unsigned int ch;
+	int err;
 
 	if (!config) {
 		comp_err(mod->dev, "no config is set");
@@ -247,7 +248,7 @@ static int crossover_init_coef(struct processing_module *mod, int nch)
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS) {
-		comp_err(mod->dev, "invalid channels count (%i)", nch);
+		comp_err(mod->dev, "invalid channels count (%u)", nch);
 		return -EINVAL;
 	}
 
@@ -274,7 +275,7 @@ static int crossover_init_coef(struct processing_module *mod, int nch)
 /**
  * \brief Setup the state, coefficients and processing functions for crossover.
  */
-static int crossover_setup(struct processing_module *mod, int nch)
+static int crossover_setup(struct processing_module *mod, unsigned int nch)
 {
 	int ret = 0;
 
@@ -558,38 +559,36 @@ static int crossover_prepare(struct processing_module *mod,
 {
 	struct comp_data *cd =  module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *source, *sink;
 	size_t data_size;
-	int channels;
-	int ret;
+	unsigned int channels;
+	int i, ret;
 
 	comp_info(dev, "entry");
 
-	source = comp_dev_get_first_data_producer(dev);
-	if (!source) {
-		comp_err(dev, "no source buffer");
+	if (num_of_sources != 1) {
+		comp_err(dev, "expected 1 source, got %d", num_of_sources);
 		return -ENOTCONN;
 	}
 
-	crossover_params(mod);
+	crossover_params(mod, sources[0], sinks, num_of_sinks);
 
 	/* Crossover has a variable number of sinks */
 	mod->max_sinks = SOF_CROSSOVER_MAX_STREAMS;
 
 	/* Get source data format */
-	cd->source_format = audio_stream_get_frm_fmt(&source->stream);
-	channels = audio_stream_get_channels(&source->stream);
+	cd->source_format = source_get_frm_fmt(sources[0]);
+	channels = source_get_channels(sources[0]);
 
-	/* Validate frame format and buffer size of sinks */
-	comp_dev_for_each_consumer(dev, sink) {
-		if (cd->source_format != audio_stream_get_frm_fmt(&sink->stream)) {
+	/* Validate frame format of sinks */
+	for (i = 0; i < num_of_sinks; i++) {
+		if (cd->source_format != sink_get_frm_fmt(sinks[i])) {
 			comp_err(dev, "Source fmt %d and sink fmt %d are different.",
-				 cd->source_format, audio_stream_get_frm_fmt(&sink->stream));
+				 cd->source_format, sink_get_frm_fmt(sinks[i]));
 			return -EINVAL;
 		}
 	}
 
-	comp_info(dev, "source_format=%d, sink_formats=%d, nch=%d",
+	comp_info(dev, "source_format=%d, sink_formats=%d, nch=%u",
 		  cd->source_format, cd->source_format, channels);
 
 	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);

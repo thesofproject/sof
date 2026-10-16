@@ -87,10 +87,9 @@ extern const size_t crossover_proc_fncount;
 /**
  * \brief Returns Crossover processing function.
  */
-static inline crossover_process_func
-	crossover_find_proc_func(enum sof_ipc_frame src_fmt)
+static inline crossover_process_func crossover_find_proc_func(enum sof_ipc_frame src_fmt)
 {
-	int i;
+	size_t i;
 
 	/* Find suitable processing function from map */
 	for (i = 0; i < crossover_proc_fncount; i++)
@@ -103,10 +102,9 @@ static inline crossover_process_func
 /**
  * \brief Returns Crossover passthrough functions.
  */
-static inline crossover_process_func
-	crossover_find_proc_func_pass(enum sof_ipc_frame src_fmt)
+static inline crossover_process_func crossover_find_proc_func_pass(enum sof_ipc_frame src_fmt)
 {
-	int i;
+	size_t i;
 
 	/* Find suitable processing function from map */
 	for (i = 0; i < crossover_proc_fncount; i++)
@@ -140,7 +138,8 @@ int crossover_output_pin_init(struct processing_module *mod);
 int crossover_check_sink_assign(struct processing_module *mod,
 				struct sof_crossover_config *config);
 int crossover_check_config(struct processing_module *mod, const uint8_t *fragment);
-void crossover_params(struct processing_module *mod);
+void crossover_params(struct processing_module *mod, struct sof_source *source,
+		      struct sof_sink **sinks, int num_of_sinks);
 int crossover_get_stream_index(struct processing_module *mod,
 			       struct sof_crossover_config *config, uint32_t pipe_id);
 

@@ -184,7 +184,7 @@ static int crossover_s16_default(struct comp_data *cd,
 		}
 
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, x_start, x_end);
+		x = source_cir_buf_wrap(x + n, x_start, x_end);
 		for (j = 0; j < active_sinks; j++)
 			y[j] = cir_buf_wrap(y[j] + n, y_start[j], y_end[j]);
 	}
@@ -263,7 +263,7 @@ static int crossover_s24_default(struct comp_data *cd,
 		}
 
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, x_start, x_end);
+		x = source_cir_buf_wrap(x + n, x_start, x_end);
 		for (j = 0; j < active_sinks; j++)
 			y[j] = cir_buf_wrap(y[j] + n, y_start[j], y_end[j]);
 	}
@@ -360,7 +360,7 @@ static int crossover_s32_default(struct comp_data *cd,
 		}
 
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, x_start, x_end);
+		x = source_cir_buf_wrap(x + n, x_start, x_end);
 		for (j = 0; j < active_sinks; j++)
 			y[j] = cir_buf_wrap(y[j] + n, y_start[j], y_end[j]);
 	}

@@ -107,22 +107,20 @@ int crossover_check_config(struct processing_module *mod, const uint8_t *fragmen
 /**
  * \brief IPC4 specific component prepare, updates source and sink buffers formats from base_cfg
  */
-void crossover_params(struct processing_module *mod)
+void crossover_params(struct processing_module *mod, struct sof_source *source,
+		      struct sof_sink **sinks, int num_of_sinks)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
+	int i;
 
 	comp_dbg(dev, "entry");
 
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
 
-	/* First producer verified by the caller */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
+	ipc4_update_source_format(source, &mod->priv.cfg.base_cfg.audio_fmt);
 
-	comp_dev_for_each_consumer(dev, sinkb) {
-		ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
-	}
+	for (i = 0; i < num_of_sinks; i++)
+		ipc4_update_sink_format(sinks[i], &mod->priv.cfg.base_cfg.audio_fmt);
 }
