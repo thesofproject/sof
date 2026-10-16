@@ -41,6 +41,7 @@ struct notify_data {
 	enum notify_id type;
 	uint32_t data_size;
 	void *data;
+	bool pending;	/* set by sender, cleared by target core after callbacks */
 };
 
 #ifdef CLK_SSP

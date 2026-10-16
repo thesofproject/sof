@@ -10,6 +10,7 @@
 #include <rtos/interrupt.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
+#include <rtos/kernel.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
@@ -18,6 +19,7 @@
 #include <rtos/sof.h>
 #include <rtos/symbol.h>
 #include <ipc/topology.h>
+#include <errno.h>
 #include <stdint.h>
 
 LOG_MODULE_REGISTER(notifier, CONFIG_SOF_LOG_LEVEL);
@@ -27,6 +29,7 @@ SOF_DEFINE_REG_UUID(notifier);
 DECLARE_TR_CTX(nt_tr, SOF_UUID(notifier_uuid), LOG_LEVEL_INFO);
 
 static struct notify_data notify_data_shared[CONFIG_CORE_COUNT];
+static struct k_spinlock notify_data_lock;
 
 struct callback_handle {
 	void *receiver;
@@ -143,6 +146,7 @@ void notifier_notify_remote(void)
 				notify_data->data);
 	}
 
+	notify_data->pending = false;
 }
 
 void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
@@ -150,6 +154,8 @@ void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 {
 	struct notify_data *notify_data;
 	struct idc_msg notify_msg = { IDC_MSG_NOTIFY, IDC_MSG_NOTIFY_EXT };
+	k_spinlock_key_t key;
+	int ret;
 	int i;
 
 	/* notify selected targets */
@@ -160,6 +166,17 @@ void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 			} else if (cpu_is_core_enabled(i)) {
 				notify_msg.core = i;
 				notify_data = notify_data_get() + i;
+
+				/* previous event to this core is still queued, don't overwrite it */
+				key = k_spin_lock(&notify_data_lock);
+				if (notify_data->pending) {
+					k_spin_unlock(&notify_data_lock, key);
+					tr_err(&nt_tr, "core %d busy, event %d dropped", i, type);
+					continue;
+				}
+				notify_data->pending = true;
+				k_spin_unlock(&notify_data_lock, key);
+
 				notify_data->caller = caller;
 				notify_data->type = type;
 
@@ -172,7 +189,18 @@ void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 				dcache_writeback_region((__sparse_force void __sparse_cache *)
 							notify_data->data, data_size);
 
-				idc_send_msg(&notify_msg, IDC_NON_BLOCKING);
+				/* Wait for completion: back-to-back events to the same core would
+				 * otherwise reuse a queued IDC work item and overwrite notify_data.
+				 * Blocking is not allowed in ISR context.
+				 */
+				ret = idc_send_msg(&notify_msg, k_is_in_isr() ?
+						   IDC_NON_BLOCKING : IDC_BLOCKING);
+				if (ret < 0) {
+					tr_err(&nt_tr, "event %d to core %d failed %d", type, i, ret);
+					/* on timeout the work stays queued and clears pending */
+					if (ret == -EACCES)
+						notify_data->pending = false;
+				}
 			}
 		}
 	}
@@ -196,8 +224,10 @@ __cold void init_system_notify(struct sof *sof)
 	for (i = NOTIFIER_ID_CPU_FREQ; i < NOTIFIER_ID_COUNT; i++)
 		list_init(&(*notify)->list[i]);
 
-	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID)
+	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID) {
+		k_spinlock_init(&notify_data_lock);
 		sof->notify_data = notify_data_shared;
+	}
 }
 
 void free_system_notify(void)
