@@ -35,9 +35,8 @@ static void remap_s32_to_s32(struct smart_amp_mod_stream *src_mod, uint32_t fram
 		n = MIN(num_samples_remaining, nmax);
 
 		for (ch = 0; ch < src_mod->channels; ch++) {
-			/* skip unmapped (-1) and out-of-range source channels;
-			 * the uint8_t cast folds the negative case into the
-			 * single upper-bound check (-1 becomes 255 >= src_ch)
+			/* skip unmapped (-1) and out-of-range channels: the
+			 * cast folds -1 into the upper-bound check as 255
 			 */
 			if ((uint8_t)chan_map[ch] >= src_ch)
 				continue;
@@ -107,10 +106,7 @@ static void remap_s16_to_s16(struct smart_amp_mod_stream *src_mod, uint32_t fram
 		n = MIN(num_samples_remaining, nmax);
 
 		for (ch = 0; ch < src_mod->channels; ch++) {
-			/* skip unmapped (-1) and out-of-range source channels;
-			 * the uint8_t cast folds the negative case into the
-			 * single upper-bound check (-1 becomes 255 >= src_ch)
-			 */
+			/* skip unmapped (-1) and out-of-range channels */
 			if ((uint8_t)chan_map[ch] >= src_ch)
 				continue;
 
@@ -155,10 +151,7 @@ static void remap_s16_to_b32(struct smart_amp_mod_stream *src_mod, uint32_t fram
 		n = MIN(num_samples_remaining, nmax);
 
 		for (ch = 0; ch < src_mod->channels; ch++) {
-			/* skip unmapped (-1) and out-of-range source channels;
-			 * the uint8_t cast folds the negative case into the
-			 * single upper-bound check (-1 becomes 255 >= src_ch)
-			 */
+			/* skip unmapped (-1) and out-of-range channels */
 			if ((uint8_t)chan_map[ch] >= src_ch)
 				continue;
 

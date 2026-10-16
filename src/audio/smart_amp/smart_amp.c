@@ -51,6 +51,8 @@ struct smart_amp_data {
 	struct smart_amp_mod_stream ff_mod; /**< feed-forward buffer for mod */
 	struct smart_amp_mod_stream fb_mod; /**< feedback buffer for mod */
 	struct smart_amp_mod_stream out_mod; /**< output buffer for mod */
+	uint32_t ff_max_frames; /**< frames of ff_mod/out_mod capacity, per process() */
+	uint32_t fb_max_frames; /**< frames of fb_mod capacity, per process() */
 
 	struct smart_amp_buf mod_mems[MOD_MEMBLK_MAX]; /**< memory blocks for mod */
 
@@ -90,16 +92,10 @@ static inline void smart_amp_free_mod_memories(struct smart_amp_data *sad)
 	sad->mod_data = NULL;
 }
 
-/* Alignment required for every buffer handed to the inner model.
- *
- * mod_alloc() requests no particular alignment, and on platforms built with
- * CONFIG_SYS_HEAP_SMALL_ONLY=y and without CONFIG_SOF_ZEPHYR_HEAP_CACHED the
- * Zephyr sys_heap chunk header is only 4 bytes, so every returned pointer is
- * 4 modulo 8 (see chunk_mem() in zephyr/lib/heap/heap.c). Inner models using
- * Xtensa HiFi 8-byte loads and stores (AE_L32X2 / AE_S32X2 / AE_L64 / AE_S64)
- * then take an unhandled LoadStoreAlignmentCause exception. Ask for 16 bytes
- * explicitly, matching the alignment the vendor libraries lay their internal
- * memory blocks out on.
+/* Alignment required for every buffer handed to the inner model: mod_alloc()
+ * requests none, and the 4-byte Zephyr sys_heap chunk header leaves pointers at
+ * 4 modulo 8, which faults inner models using Xtensa HiFi 8-byte loads and
+ * stores (LoadStoreAlignmentCause). 16 matches the inner models' own.
  */
 #define SMART_AMP_BUF_ALIGN 16
 
@@ -302,9 +298,8 @@ static int smart_amp_get_config(struct processing_module *mod,
 	comp_dbg(dev, "actual blob size = %zu, expected blob size = %zu",
 		 bs, sizeof(struct sof_smart_amp_config));
 
-	/* bs is the host-set config.size and is used as the memcpy source
-	 * length from the fixed-size sad->config, so bound it by the struct
-	 * size. memcpy_s() below already bounds it against the destination.
+	/* bs is host-set and used as the memcpy source length from the
+	 * fixed-size sad->config, so bound it by the struct size
 	 */
 	if (bs == 0 || bs > sizeof(struct sof_smart_amp_config))
 		return -EINVAL;
@@ -538,11 +533,8 @@ static int smart_amp_ff_process(struct processing_module *mod,
 		return 0;
 	}
 
-	/*
-	 * The remap functions write frames * ff_mod.channels samples into
-	 * ff_mod.buf, which holds SMART_AMP_FF_BUF_DB_SZ samples. Bound the
-	 * total sample count, not just the frame count, so an unexpected
-	 * channel count cannot overflow the buffer.
+	/* the remap writes frames * channels samples, so bound the total
+	 * sample count rather than just the frame count
 	 */
 	if ((uint64_t)frames * sad->ff_mod.channels > SMART_AMP_FF_BUF_DB_SZ) {
 		comp_err(dev, "feed forward frame size overflow: %u frames, %u ch",
@@ -620,7 +612,18 @@ static int smart_amp_process(struct processing_module *mod,
 	avail_passthrough_frames = audio_stream_avail_frames(&source_buf->stream,
 							     &sink_buf->stream);
 
-	avail_frames = avail_passthrough_frames;
+	/* The mod buffers hold one SMART_AMP_MAX_PERIOD_MS period, but the
+	 * stream buffers are sized at 2 periods, so a missed cycle can leave
+	 * more than that available.  Process what fits and leave the rest for
+	 * the next cycle: the overflow checks below would otherwise reject the
+	 * whole call and emit a period of silence, and the LL pipeline drains
+	 * one period per tick, so the backlog does not grow.  A permanently
+	 * oversized period is smart_amp_prepare()'s warning, not this cap.
+	 */
+	avail_frames = MIN(avail_passthrough_frames, sad->ff_max_frames);
+	if (avail_frames < avail_passthrough_frames)
+		comp_dbg(dev, "capped to %u of %u available frames",
+			 avail_frames, avail_passthrough_frames);
 
 	if (sad->feedback_buf) {
 		struct comp_buffer *feedback_buf = sad->feedback_buf;
@@ -630,14 +633,17 @@ static int smart_amp_process(struct processing_module *mod,
 			avail_feedback_frames =
 				audio_stream_get_avail_frames(&feedback_buf->stream);
 
-			avail_feedback_frames = MIN(avail_passthrough_frames,
-						    avail_feedback_frames);
+			/* one fb frame per ff frame, and never more than the
+			 * fb buffer holds (its channel count may exceed ff's)
+			 */
+			avail_feedback_frames = MIN(avail_feedback_frames, avail_frames);
+			avail_feedback_frames = MIN(avail_feedback_frames, sad->fb_max_frames);
 
 			feedback_bytes = avail_feedback_frames *
 				audio_stream_frame_bytes(&feedback_buf->stream);
 
-			comp_dbg(dev, "processing %u feedback frames (avail_passthrough_frames: %u)",
-				 avail_feedback_frames, avail_passthrough_frames);
+			comp_dbg(dev, "processing %u feedback frames (avail_frames: %u)",
+				 avail_feedback_frames, avail_frames);
 
 			/* perform buffer writeback after source_buf process */
 			buffer_stream_invalidate(feedback_buf, feedback_bytes);
@@ -759,12 +765,13 @@ static int smart_amp_prepare(struct processing_module *mod,
 
 	/* In module API, state is managed by the framework, so no comp_set_state needed */
 
-	/* Neither pointer is cleared by smart_amp_reset(), so a re-prepare after
-	 * the feedback branch was disconnected would otherwise keep using the
-	 * stale buffer from the previous run.
+	/* smart_amp_reset() does not clear these, so a re-prepare after the
+	 * feedback branch was disconnected would reuse the stale buffer
 	 */
 	sad->source_buf = NULL;
 	sad->feedback_buf = NULL;
+	sad->ff_max_frames = 0;
+	sad->fb_max_frames = 0;
 
 	for (i = 0; i < num_of_sources; i++) {
 		struct comp_buffer *buf = comp_buffer_get_from_source(sources[i]);
@@ -776,19 +783,13 @@ static int smart_amp_prepare(struct processing_module *mod,
 		}
 
 		/*
-		 * Tell the feedback source from the playback one.
+		 * Tell the feedback source from the playback one by pipeline id:
+		 * the feedback buffer is filled by the echo reference capture
+		 * pipeline's demux, the playback source by our own pipeline's host.
 		 *
-		 * Do not use sources[i]->bound_module here: it is only ever assigned by
-		 * module_bind(), whose sole caller lives in module_adapter_ipc4.c, so it
-		 * stays NULL on IPC3 platforms (e.g. AMD ACP7x) and dereferencing it
-		 * faults the DSP.
-		 *
-		 * The feedback buffer is filled by the demux of the echo reference
-		 * capture pipeline, so its producer belongs to a different pipeline than
-		 * this module, while the playback source is filled by the host component
-		 * of our own pipeline. Comparing pipeline ids works under both IPC
-		 * versions, and unlike comp_dev::direction it is already valid here even
-		 * when the capture pipeline has not been parametrised yet.
+		 * Not sources[i]->bound_module: only module_bind() assigns it and
+		 * its sole caller is in module_adapter_ipc4.c, so it stays NULL on
+		 * IPC3 and dereferencing it faults the DSP.
 		 */
 		producer = comp_buffer_get_source_component(buf);
 		if (producer && dev_comp_pipe_id(producer) != dev_comp_pipe_id(dev))
@@ -815,6 +816,21 @@ static int smart_amp_prepare(struct processing_module *mod,
 				   audio_stream_get_channels(&sad->source_buf->stream));
 	sad->out_mod.channels = sad->ff_mod.channels;
 
+	if (!sad->ff_mod.channels) {
+		comp_err(dev, "no channels on playback source buffer");
+		return -EINVAL;
+	}
+	sad->ff_max_frames = SMART_AMP_FF_BUF_DB_SZ / sad->ff_mod.channels;
+
+	/* smart_amp_process() caps each call at ff_max_frames, which absorbs a
+	 * transient backlog, but a scheduled period permanently above the cap
+	 * would underrun the DAI forever.  Name the knob rather than let that
+	 * look like an amp fault.
+	 */
+	if (dev->frames > sad->ff_max_frames)
+		comp_warn(dev, "period of %u frames exceeds the %u frames buffered for %u ms, raise SMART_AMP_MAX_PERIOD_MS",
+			  dev->frames, sad->ff_max_frames, SMART_AMP_MAX_PERIOD_MS);
+
 	/* the least bitdepth required for inner model, which should not be lower than the bitdepth
 	 * for input samples of feed-forward, and feedback if exists.
 	 */
@@ -828,6 +844,11 @@ static int smart_amp_prepare(struct processing_module *mod,
 		fb_src_fmt = audio_stream_get_frm_fmt(&sad->feedback_buf->stream);
 		sad->fb_mod.channels = MIN(SMART_AMP_FB_MAX_CH_NUM,
 					   audio_stream_get_channels(&sad->feedback_buf->stream));
+		if (!sad->fb_mod.channels) {
+			comp_err(dev, "no channels on feedback source buffer");
+			return -EINVAL;
+		}
+		sad->fb_max_frames = SMART_AMP_FB_BUF_DB_SZ / sad->fb_mod.channels;
 		least_req_depth = MAX(least_req_depth, get_sample_bitdepth(fb_src_fmt));
 	}
 
