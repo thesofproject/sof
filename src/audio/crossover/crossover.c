@@ -233,12 +233,13 @@ int crossover_init_coef_ch(struct processing_module *mod,
  *
  * \param nch number of channels in the audio stream.
  */
-static int crossover_init_coef(struct processing_module *mod, int nch)
+static int crossover_init_coef(struct processing_module *mod, unsigned int nch)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct sof_eq_iir_biquad *crossover;
 	struct sof_crossover_config *config = cd->config;
-	int ch, err;
+	unsigned int ch;
+	int err;
 
 	if (!config) {
 		comp_err(mod->dev, "no config is set");
@@ -247,7 +248,7 @@ static int crossover_init_coef(struct processing_module *mod, int nch)
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS) {
-		comp_err(mod->dev, "invalid channels count (%i)", nch);
+		comp_err(mod->dev, "invalid channels count (%u)", nch);
 		return -EINVAL;
 	}
 
@@ -274,7 +275,7 @@ static int crossover_init_coef(struct processing_module *mod, int nch)
 /**
  * \brief Setup the state, coefficients and processing functions for crossover.
  */
-static int crossover_setup(struct processing_module *mod, int nch)
+static int crossover_setup(struct processing_module *mod, unsigned int nch)
 {
 	int ret = 0;
 
