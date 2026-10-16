@@ -17,6 +17,8 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <ipc/control.h>
+#include <user/eq.h>
+#include <errno.h>
 
 #include "../../util.h"
 #include "../../../include/cmocka_chirp_2ch.h"
@@ -517,11 +519,32 @@ static struct test_parameters parameters[] = {
 
 };
 
+static void test_iir_delay_size_df1_series(void **state)
+{
+	struct sof_eq_iir_header hdr = { .num_sections = 11 };
+	const int size = 4 * 11 * sizeof(int32_t);
+
+	(void)state;
+
+	hdr.num_sections_in_series = 11;
+	assert_int_equal(iir_delay_size_df1(&hdr), size);
+
+	hdr.num_sections_in_series = 1;
+	assert_int_equal(iir_delay_size_df1(&hdr), size);
+
+	/* iir_df1() would run 20 biquads against 11 sections of state */
+	hdr.num_sections_in_series = 10;
+	assert_int_equal(iir_delay_size_df1(&hdr), -EINVAL);
+}
+
 int main(void)
 {
-	int i;
+	int i, ret;
 
 	struct CMUnitTest tests[ARRAY_SIZE(parameters)];
+	const struct CMUnitTest validator_tests[] = {
+		cmocka_unit_test(test_iir_delay_size_df1_series),
+	};
 
 	for (i = 0; i < ARRAY_SIZE(parameters); i++) {
 		tests[i].name = "test_audio_eq_iir";
@@ -533,5 +556,8 @@ int main(void)
 
 	cmocka_set_message_output(CM_OUTPUT_TAP);
 
-	return cmocka_run_group_tests(tests, setup_group, NULL);
+	ret = cmocka_run_group_tests(tests, setup_group, NULL);
+	ret += cmocka_run_group_tests(validator_tests, NULL, NULL);
+
+	return ret;
 }
