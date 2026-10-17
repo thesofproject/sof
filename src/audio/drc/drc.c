@@ -70,11 +70,11 @@ void drc_reset_state(struct processing_module *mod, struct drc_state *state)
 int drc_init_pre_delay_buffers(struct processing_module *mod,
 			       struct drc_state *state,
 			       size_t sample_bytes,
-			       int channels)
+			       unsigned int channels)
 {
 	size_t bytes_per_channel = sample_bytes * CONFIG_DRC_MAX_PRE_DELAY_FRAMES;
 	size_t bytes_total = bytes_per_channel * channels;
-	int i;
+	unsigned int i;
 
 	/* Allocate pre-delay (lookahead) buffers */
 	state->pre_delay_buffers[0] = mod_alloc(mod, bytes_total);
@@ -122,17 +122,17 @@ int drc_set_pre_delay_time(struct drc_state *state,
 }
 
 /* Called from drc_process(), so cannot be __cold */
-static int drc_setup(struct processing_module *mod, uint16_t channels, uint32_t rate)
+static int drc_setup(struct processing_module *mod, unsigned int channels, uint32_t rate)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
-	uint32_t sample_bytes = get_sample_bytes(cd->source_format);
+	size_t sample_bytes = get_sample_bytes(cd->source_format);
 	int ret;
 
 	/* Reset any previous state */
 	drc_reset_state(mod, &cd->state);
 
 	/* Allocate pre-delay buffers */
-	ret = drc_init_pre_delay_buffers(mod, &cd->state, (size_t)sample_bytes, (int)channels);
+	ret = drc_init_pre_delay_buffers(mod, &cd->state, sample_bytes, channels);
 	if (ret < 0)
 		return ret;
 
@@ -285,7 +285,7 @@ static int drc_process(struct processing_module *mod,
 	size_t sink_frame_bytes = sink_get_frame_bytes(sink);
 	size_t source_bytes, sink_bytes;
 	size_t source_buf_size, sink_buf_size;
-	uint32_t frames;
+	size_t frames;
 	int ret;
 
 	comp_dbg(dev, "entry");
@@ -360,10 +360,10 @@ static int drc_process(struct processing_module *mod,
 }
 
 #if CONFIG_IPC_MAJOR_4
-static void drc_params(struct processing_module *mod)
+static void drc_params(struct processing_module *mod, struct sof_source *source,
+		       struct sof_sink *sink)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "entry");
@@ -372,12 +372,8 @@ static void drc_params(struct processing_module *mod)
 	component_set_nearest_period_frames(dev, params->rate);
 
 	/* The caller has verified, that sink and source buffers are connected */
-
-	sinkb = comp_dev_get_first_data_consumer(dev);
-	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
-
-	sourceb = comp_dev_get_first_data_producer(dev);
-	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
+	ipc4_update_sink_format(sink, &mod->priv.cfg.base_cfg.audio_fmt);
+	ipc4_update_source_format(source, &mod->priv.cfg.base_cfg.audio_fmt);
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
 
@@ -386,30 +382,28 @@ static int drc_prepare(struct processing_module *mod,
 		       struct sof_sink **sinks, int num_of_sinks)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
-	int channels;
+	unsigned int channels;
 	int rate;
 	int ret;
 
 	comp_info(dev, "entry");
 
 	/* DRC component will only ever have 1 source and 1 sink buffer */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	sinkb = comp_dev_get_first_data_consumer(dev);
-	if (!sourceb || !sinkb) {
-		comp_err(dev, "no source or sink buffer");
+	if (num_of_sources != 1 || num_of_sinks != 1) {
+		comp_err(dev, "expected 1 source and 1 sink, got %d sources and %d sinks",
+			 num_of_sources, num_of_sinks);
 		return -ENOTCONN;
 	}
 
 #if CONFIG_IPC_MAJOR_4
-	drc_params(mod);
+	drc_params(mod, sources[0], sinks[0]);
 #endif
 
 	/* get source data format */
-	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
-	channels = audio_stream_get_channels(&sinkb->stream);
-	rate = audio_stream_get_rate(&sinkb->stream);
+	cd->source_format = source_get_frm_fmt(sources[0]);
+	channels = sink_get_channels(sinks[0]);
+	rate = sink_get_rate(sinks[0]);
 	cd->channels = channels;
 
 	/* Initialize DRC */

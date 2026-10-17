@@ -41,13 +41,13 @@
 /* This is the knee part of the compression curve. Returns the output level
  * given the input level x.
  */
-static inline void set_circular_buf0(void *buf, void *buf_end)
+static inline void set_circular_buf0(const void *buf, const void *buf_end)
 {
 	AE_SETCBEGIN0(buf);
 	AE_SETCEND0(buf_end);
 }
 
-static inline void set_circular_buf1(void *buf, void *buf_end)
+static inline void set_circular_buf1(const void *buf, const void *buf_end)
 {
 	AE_SETCBEGIN1(buf);
 	AE_SETCEND1(buf_end);
@@ -113,13 +113,14 @@ static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 /* Update detector_average from the last input division. */
 void drc_update_detector_average(struct drc_state *state,
 				 const struct sof_drc_params *p,
-				 int nbyte,
-				 int nch)
+				 size_t nbyte,
+				 unsigned int nch)
 {
 	ae_f32 detector_average = state->detector_average; /* Q2.30 */
 	ae_int32 abs_input_array[DRC_DIVISION_FRAMES] __attribute__((aligned(8))); /* Q1.31 */
 	ae_int32 *abs_input_array_p;
-	int div_start, i, ch;
+	int div_start, i;
+	unsigned int ch;
 	ae_int16 *sample16_p; /* for s16 format case */
 	ae_int32 *sample32_p; /* for s24 and s32 format cases */
 	ae_int32x2 sample32;
@@ -323,15 +324,16 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
  */
 void drc_compress_output(struct drc_state *state,
 			 const struct sof_drc_params *p,
-			 int nbyte,
-			 int nch)
+			 size_t nbyte,
+			 unsigned int nch)
 {
 	const int count = DRC_DIVISION_FRAMES >> 2;
 	ae_f32 x[4]; /* Q2.30 */
 	ae_f32 c, base, r, r2, r4; /* Q2.30 */
 	ae_f32 post_warp_compressor_gain;
 	ae_f32 total_gain;
-	int i, j, ch;
+	int i, j;
+	unsigned int ch;
 	int inc = state->pre_delay_read_index;
 	int16_t *sample16_p; /* for s16 format case */
 	int32_t *sample32_p; /* for s24 and s32 format cases */
@@ -517,8 +519,8 @@ void drc_compress_output(struct drc_state *state,
  */
 static void drc_process_one_division(struct drc_state *state,
 				     const struct sof_drc_params *p,
-				     int nbyte,
-				     int nch)
+				     size_t nbyte,
+				     unsigned int nch)
 {
 	drc_update_detector_average(state, p, nbyte, nch);
 	drc_update_envelope(state, p);
@@ -527,27 +529,26 @@ static void drc_process_one_division(struct drc_state *state,
 
 void drc_default_pass(struct processing_module *mod,
 		      const struct cir_buf_source *source,
-		      struct cir_buf_sink *sink, uint32_t frames)
+		      struct cir_buf_sink *sink, size_t frames)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
-	const int sample_bytes = get_sample_bytes(cd->source_format);
-	size_t bytes = (size_t)frames * cd->channels * sample_bytes;
+	const size_t sample_bytes = get_sample_bytes(cd->source_format);
+	size_t bytes = frames * cd->channels * sample_bytes;
 	const uint8_t *src = source->ptr;
 	uint8_t *dst = sink->ptr;
-	int n;
+	size_t n;
 
 	while (bytes) {
-		n = MIN((const uint8_t *)source->buf_end - src,
-			(uint8_t *)sink->buf_end - dst);
+		n = MIN(cir_buf_bytes_without_wrap(src, source->buf_end),
+			cir_buf_bytes_without_wrap(dst, sink->buf_end));
 		n = MIN(n, bytes);
 		if (!n) {
-			src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+			src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 			continue;
 		}
 		memcpy_s(dst, n, src, n);
-		src = cir_buf_wrap((void *)(src + n), (void *)source->buf_start,
-				   (void *)source->buf_end);
+		src = source_cir_buf_wrap(src + n, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst + n, sink->buf_start, sink->buf_end);
 		bytes -= n;
 	}
@@ -562,19 +563,20 @@ static inline void drc_pre_delay_index_inc(int *idx, int increment)
 static void drc_delay_input_sample_s16(struct drc_state *state,
 				       const struct cir_buf_source *source,
 				       struct cir_buf_sink *sink,
-				       int16_t **x, int16_t **y, int samples, int nch)
+				       const ae_int16 **x, ae_int16 **y, size_t samples,
+				       unsigned int nch)
 {
-	ae_int16 *x1;
+	const ae_int16 *x1;
 	ae_int16 *y1;
 	ae_int16 *pd;
 	ae_int16 *pd_r;
 	ae_int16 *pd_w;
-	int nbuf, npcm, nfrm;
-	int ch;
-	int i;
-	ae_int16 *x0 = (ae_int16 *)*x;
-	ae_int16 *y0 = (ae_int16 *)*y;
-	int remaining_samples = samples;
+	size_t nbuf, npcm, nfrm;
+	unsigned int ch;
+	size_t i;
+	const ae_int16 *x0 = *x;
+	ae_int16 *y0 = *y;
+	size_t remaining_samples = samples;
 	const int sample_inc = nch * sizeof(int16_t);
 	const int delay_inc = sizeof(int16_t);
 	ae_int16x4 sample;
@@ -601,35 +603,36 @@ static void drc_delay_input_sample_s16(struct drc_state *state,
 			}
 		}
 		remaining_samples -= npcm;
-		x0 = cir_buf_wrap(x0 + npcm, source->buf_start, source->buf_end);
+		x0 = source_cir_buf_wrap(x0 + npcm, source->buf_start, source->buf_end);
 		y0 = cir_buf_wrap(y0 + npcm, sink->buf_start, sink->buf_end);
 		drc_pre_delay_index_inc(&state->pre_delay_write_index, nfrm);
 		drc_pre_delay_index_inc(&state->pre_delay_read_index, nfrm);
 	}
 
-	*x = (int16_t *)x0;
-	*y = (int16_t *)y0;
+	*x = x0;
+	*y = y0;
 }
 
 static void drc_s16_default(struct processing_module *mod,
 			    const struct cir_buf_source *source,
 			    struct cir_buf_sink *sink,
-			    uint32_t frames)
+			    size_t frames)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
-	int nch = cd->channels;
-	int16_t *x = (int16_t *)source->ptr;
-	int16_t *y = (int16_t *)sink->ptr;
-	int samples = frames * nch;
+	const unsigned int nch = cd->channels;
+	const ae_int16 *x = source->ptr;
+	ae_int16 *y = sink->ptr;
+	size_t samples = frames * nch;
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
-	int fragment;
+	size_t fragment;
 	ae_int16 *pd;
 	ae_int16 *pd_r;
 	ae_int16 *pd_w;
-	ae_int16 *x1;
+	const ae_int16 *x1;
 	ae_int16 *y1;
-	int i, ch;
+	size_t i;
+	unsigned int ch;
 	ae_int16x4 sample;
 	const int sample_inc = nch * sizeof(ae_int16);
 	const int delay_inc = sizeof(ae_int16);
@@ -649,7 +652,7 @@ static void drc_s16_default(struct processing_module *mod,
 		state->processed = 1;
 	}
 
-	set_circular_buf0((void *)source->buf_start, (void *)source->buf_end);
+	set_circular_buf0(source->buf_start, source->buf_end);
 	set_circular_buf1(sink->buf_start, sink->buf_end);
 
 	while (frames) {
@@ -659,8 +662,8 @@ static void drc_s16_default(struct processing_module *mod,
 
 		for (ch = 0; ch < nch; ++ch) {
 			pd = (ae_int16 *)state->pre_delay_buffers[ch];
-			x1 = (ae_int16 *)x + ch;
-			y1 = (ae_int16 *)y + ch;
+			x1 = x + ch;
+			y1 = y + ch;
 			pd_r = pd + state->pre_delay_read_index;
 			pd_w = pd + state->pre_delay_write_index;
 
@@ -680,7 +683,7 @@ static void drc_s16_default(struct processing_module *mod,
 		}
 		drc_pre_delay_index_inc(&state->pre_delay_write_index, fragment);
 		drc_pre_delay_index_inc(&state->pre_delay_read_index, fragment);
-		x = cir_buf_wrap(x + fragment * nch, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + fragment * nch, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + fragment * nch, sink->buf_start, sink->buf_end);
 		frames -= fragment;
 
@@ -695,21 +698,22 @@ static void drc_s16_default(struct processing_module *mod,
 static void drc_delay_input_sample_s32(struct drc_state *state,
 				       const struct cir_buf_source *source,
 				       struct cir_buf_sink *sink,
-				       int32_t **x, int32_t **y, int samples, int nch)
+				       const ae_int32 **x, ae_int32 **y, size_t samples,
+				       unsigned int nch)
 {
-	ae_int32 *x1;
+	const ae_int32 *x1;
 	ae_int32 *y1;
 	ae_int32 *pd_r;
 	ae_int32 *pd_w;
 	ae_int32 *pd;
-	int nbuf, npcm, nfrm;
-	int ch;
-	int i;
-	ae_int32 *x0 = (ae_int32 *)*x;
-	ae_int32 *y0 = (ae_int32 *)*y;
+	size_t nbuf, npcm, nfrm;
+	unsigned int ch;
+	size_t i;
+	const ae_int32 *x0 = *x;
+	ae_int32 *y0 = *y;
 	ae_int32x2 sample;
 
-	int remaining_samples = samples;
+	size_t remaining_samples = samples;
 	const int sample_inc = nch * sizeof(int32_t);
 	const int delay_inc = sizeof(int32_t);
 
@@ -738,14 +742,14 @@ static void drc_delay_input_sample_s32(struct drc_state *state,
 			}
 		}
 		remaining_samples -= npcm;
-		x0 = cir_buf_wrap(x0 + npcm, source->buf_start, source->buf_end);
+		x0 = source_cir_buf_wrap(x0 + npcm, source->buf_start, source->buf_end);
 		y0 = cir_buf_wrap(y0 + npcm, sink->buf_start, sink->buf_end);
 		drc_pre_delay_index_inc(&state->pre_delay_write_index, nfrm);
 		drc_pre_delay_index_inc(&state->pre_delay_read_index, nfrm);
 	}
 
-	*x = (int32_t *)x0;
-	*y = (int32_t *)y0;
+	*x = x0;
+	*y = y0;
 }
 #endif
 
@@ -754,22 +758,23 @@ static void drc_delay_input_sample_s32(struct drc_state *state,
 static void drc_s24_default(struct processing_module *mod,
 			    const struct cir_buf_source *source,
 			    struct cir_buf_sink *sink,
-			    uint32_t frames)
+			    size_t frames)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
-	int nch = cd->channels;
-	int32_t *x = (int32_t *)source->ptr;
-	int32_t *y = (int32_t *)sink->ptr;
-	int samples = frames * nch;
+	const unsigned int nch = cd->channels;
+	const ae_int32 *x = source->ptr;
+	ae_int32 *y = sink->ptr;
+	size_t samples = frames * nch;
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
-	int fragment;
+	size_t fragment;
 	ae_int32 *pd;
 	ae_int32 *pd_r;
 	ae_int32 *pd_w;
-	ae_int32 *x1;
+	const ae_int32 *x1;
 	ae_int32 *y1;
-	int i, ch;
+	size_t i;
+	unsigned int ch;
 	ae_int32x2 sample;
 	const int sample_inc = nch * sizeof(int32_t);
 	const int delay_inc = sizeof(int32_t);
@@ -789,7 +794,7 @@ static void drc_s24_default(struct processing_module *mod,
 		state->processed = 1;
 	}
 
-	set_circular_buf0((void *)source->buf_start, (void *)source->buf_end);
+	set_circular_buf0(source->buf_start, source->buf_end);
 	set_circular_buf1(sink->buf_start, sink->buf_end);
 
 	while (frames) {
@@ -799,8 +804,8 @@ static void drc_s24_default(struct processing_module *mod,
 
 		for (ch = 0; ch < nch; ++ch) {
 			pd = (ae_int32 *)state->pre_delay_buffers[ch];
-			x1 = (ae_int32 *)x + ch;
-			y1 = (ae_int32 *)y + ch;
+			x1 = x + ch;
+			y1 = y + ch;
 			pd_r = pd + state->pre_delay_read_index;
 			pd_w = pd + state->pre_delay_write_index;
 
@@ -827,7 +832,7 @@ static void drc_s24_default(struct processing_module *mod,
 		}
 		drc_pre_delay_index_inc(&state->pre_delay_write_index, fragment);
 		drc_pre_delay_index_inc(&state->pre_delay_read_index, fragment);
-		x = cir_buf_wrap(x + fragment * nch, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + fragment * nch, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + fragment * nch, sink->buf_start, sink->buf_end);
 		frames -= fragment;
 
@@ -842,21 +847,22 @@ static void drc_s24_default(struct processing_module *mod,
 static void drc_s32_default(struct processing_module *mod,
 			    const struct cir_buf_source *source,
 			    struct cir_buf_sink *sink,
-			    uint32_t frames)
+			    size_t frames)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
-	int nch = cd->channels;
-	int32_t *x = (int32_t *)source->ptr;
-	int32_t *y = (int32_t *)sink->ptr;
+	const unsigned int nch = cd->channels;
+	const ae_int32 *x = source->ptr;
+	ae_int32 *y = sink->ptr;
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
-	int fragment;
+	size_t fragment;
 	ae_int32 *pd;
 	ae_int32 *pd_r;
 	ae_int32 *pd_w;
-	ae_int32 *x1;
+	const ae_int32 *x1;
 	ae_int32 *y1;
-	int i, ch;
+	size_t i;
+	unsigned int ch;
 	ae_int32x2 sample;
 	const int sample_inc = nch * sizeof(int32_t);
 	const int delay_inc = sizeof(int32_t);
@@ -876,7 +882,7 @@ static void drc_s32_default(struct processing_module *mod,
 		state->processed = 1;
 	}
 
-	set_circular_buf0((void *)source->buf_start, (void *)source->buf_end);
+	set_circular_buf0(source->buf_start, source->buf_end);
 	set_circular_buf1(sink->buf_start, sink->buf_end);
 
 	while (frames) {
@@ -886,8 +892,8 @@ static void drc_s32_default(struct processing_module *mod,
 
 		for (ch = 0; ch < nch; ++ch) {
 			pd = (ae_int32 *)state->pre_delay_buffers[ch];
-			x1 = (ae_int32 *)x + ch;
-			y1 = (ae_int32 *)y + ch;
+			x1 = x + ch;
+			y1 = y + ch;
 			pd_r = pd + state->pre_delay_read_index;
 			pd_w = pd + state->pre_delay_write_index;
 
@@ -909,7 +915,7 @@ static void drc_s32_default(struct processing_module *mod,
 		}
 		drc_pre_delay_index_inc(&state->pre_delay_write_index, fragment);
 		drc_pre_delay_index_inc(&state->pre_delay_read_index, fragment);
-		x = cir_buf_wrap(x + fragment * nch, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + fragment * nch, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + fragment * nch, sink->buf_start, sink->buf_end);
 		frames -= fragment;
 

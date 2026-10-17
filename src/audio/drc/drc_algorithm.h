@@ -20,7 +20,7 @@ void drc_reset_state(struct processing_module *mod, struct drc_state *state);
 int drc_init_pre_delay_buffers(struct processing_module *mod,
 			       struct drc_state *state,
 			       size_t sample_bytes,
-			       int channels);
+			       unsigned int channels);
 int drc_set_pre_delay_time(struct drc_state *state,
 			   int32_t pre_delay_time,
 			   int32_t rate);
@@ -28,12 +28,12 @@ int drc_set_pre_delay_time(struct drc_state *state,
 /* drc process functions */
 void drc_update_detector_average(struct drc_state *state,
 				 const struct sof_drc_params *p,
-				 int nbyte,
-				 int nch);
+				 size_t nbyte,
+				 unsigned int nch);
 void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p);
 void drc_compress_output(struct drc_state *state,
 			 const struct sof_drc_params *p,
-			 int nbyte,
-			 int nch);
+			 size_t nbyte,
+			 unsigned int nch);
 
 #endif //  __SOF_AUDIO_DRC_DRC_ALGORITHM_H__

@@ -70,7 +70,7 @@ struct drc_state {
 typedef void (*drc_func)(struct processing_module *mod,
 			 const struct cir_buf_source *source,
 			 struct cir_buf_sink *sink,
-			 uint32_t frames);
+			 size_t frames);
 
 /* DRC component private data */
 struct drc_comp_data {
@@ -81,7 +81,7 @@ struct drc_comp_data {
 	bool enabled;                       /**< control processing via blob and switch */
 	bool enable_switch;                 /**< enable switch state */
 	enum sof_ipc_frame source_format;   /**< source frame format */
-	int channels;                       /**< number of channels */
+	unsigned int channels;              /**< number of channels */
 	drc_func drc_func;                  /**< processing function */
 };
 
@@ -95,7 +95,7 @@ extern const size_t drc_proc_fncount;
 
 void drc_default_pass(struct processing_module *mod,
 		      const struct cir_buf_source *source,
-		      struct cir_buf_sink *sink, uint32_t frames);
+		      struct cir_buf_sink *sink, size_t frames);
 /**
  * \brief Returns DRC processing function.
  */
