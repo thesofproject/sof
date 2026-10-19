@@ -21,6 +21,14 @@ config COMP_MWW_DEBUG_TRACE
 	  Enable mww per-hop and per-inference debug prints in the hot path.
 	  Leave disabled for production and normal capture tuning.
 
+config COMP_MWW_PROFILE
+	bool "Per-operator inference cycle profiling"
+	default n
+	help
+	  Measure CCOUNT cycles spent in each TFLM operator of the MWW
+	  model and log the per-inference averages in the stream shutdown
+	  summary. Only effective for the static (non-LLEXT) build.
+
 config COMP_MWW_MODEL_FROM_CONTROL
 	bool "Load MWW model from bytes control instead of built-in header"
 	default n

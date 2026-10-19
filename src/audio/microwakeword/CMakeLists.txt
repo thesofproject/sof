@@ -225,6 +225,10 @@ if(EXISTS "${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/ibuffer_allocator.
 		${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/ibuffer_allocator.cc)
 endif()
 
+if(CONFIG_COMP_MWW_PROFILE)
+	target_compile_definitions(mww_tflm_lib PRIVATE MWW_PROFILE=1)
+endif()
+
 add_local_sources(sof mww.c)
 
 zephyr_link_libraries(mww_tflm_lib)

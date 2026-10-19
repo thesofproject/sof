@@ -397,6 +397,36 @@ __cold static void mww_log_summary_at_shutdown(struct processing_module *mod)
 		comp_info(dev, "%s", stats_buf);
 	printk("%s\n", stats_buf);
 #endif
+
+#if CONFIG_COMP_MWW_PROFILE
+	const char *tag;
+	uint32_t avg, total = 0, n = 0, k;
+	size_t len = 0;
+	int i;
+
+	/* Several ops per line, a line per op overflows the mtrace buffer */
+	for (i = 0; (k = MWW_ProfileGet(&cd->mwc, i, &tag, &avg)) > 0; i++) {
+		n = k;
+		total += avg;
+		if (!len)
+			len = snprintk(summary_buf, sizeof(summary_buf),
+				       "[MWW PROFILE Slot %u]", cd->wov_slot_id);
+		len += snprintk(summary_buf + len, sizeof(summary_buf) - len,
+				" %d:%s=%u", i, tag, avg);
+		if ((i % 6) == 5) {
+			if (dev)
+				comp_info(dev, "%s", summary_buf);
+			len = 0;
+		}
+	}
+	if (len && dev)
+		comp_info(dev, "%s", summary_buf);
+	snprintk(summary_buf, sizeof(summary_buf),
+		 "[MWW PROFILE Slot %u] %d ops total avg_ccount=%u over %u inferences",
+		 cd->wov_slot_id, i, total, n);
+	if (dev)
+		comp_info(dev, "%s", summary_buf);
+#endif
 }
 
 #if CONFIG_IPC_MAJOR_4
