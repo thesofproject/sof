@@ -302,9 +302,10 @@ static void mww_fake_wake_fire(struct processing_module *mod, struct comp_dev *d
 	cd->paused = false;
 	cd->detections++;
 	cd->kpb_trigger_events++;
-	mww_notify_kpb(mod);
+	/* arbiter discards KPB output until a slot is active, so activate it first */
 	notifier_event(dev, NOTIFIER_ID_WOV_DETECT, NOTIFIER_TARGET_CORE_ALL_MASK,
 		       &payload, sizeof(payload));
+	mww_notify_kpb(mod);
 }
 
 #if CONFIG_IPC_MAJOR_4
@@ -862,11 +863,12 @@ static int mww_process(struct processing_module *mod,
 						  cd->wov_slot_id,
 						  cd->consecutive_detects, cd->detections);
 					cd->kpb_trigger_events++;
-					mww_notify_kpb(mod);
 					struct wov_detect_notif payload = { .slot_id = cd->wov_slot_id };
+					/* activate arbiter before KPB drains, see mww_fake_wake_fire() */
 					notifier_event(dev, NOTIFIER_ID_WOV_DETECT,
 						       NOTIFIER_TARGET_CORE_ALL_MASK,
 						       &payload, sizeof(payload));
+					mww_notify_kpb(mod);
 					cd->consecutive_detects = 0;
 				}
 			} else {
