@@ -35,6 +35,8 @@ SOF_DEFINE_REG_UUID(dolby_dax_audio_processing);
 #define DAX_ENUM_PROFILE_CONTROL_ID 0
 #define DAX_ENUM_DEVICE_CONTROL_ID 1
 
+#define IPC4_DAX_MODULE_CFG_PARAM_BLOB 1
+
 enum dax_flag_opt_mode {
 	DAX_FLAG_READ = 0,
 	DAX_FLAG_SET,
@@ -848,11 +850,11 @@ static int sof_dax_set_configuration(struct processing_module *mod, uint32_t con
 	int32_t dax_param_id = 0;
 	int32_t val;
 
-	if (fragment_size == 0)
-		return 0;
-
 #if CONFIG_IPC_MAJOR_4
 	const struct sof_ipc4_control_msg_payload *ctl = NULL;
+
+	if (fragment_size == 0)
+		return 0;
 
 	switch (config_id) {
 	case 0: /* IPC4_VOLUME */
@@ -900,15 +902,27 @@ static int sof_dax_set_configuration(struct processing_module *mod, uint32_t con
 			return -EINVAL;
 		}
 		break;
-	default:
+	case IPC4_DAX_MODULE_CFG_PARAM_BLOB:
+		dax_param_id = DAX_PARAM_ID_TUNING_FILE;
 		break;
+	default:
+		comp_err(dev, "unsupported config id %u", config_id);
+		return -EINVAL;
 	}
 #else
 	struct sof_ipc_ctrl_data *ctl = (struct sof_ipc_ctrl_data *)fragment;
 
+	/*
+	 * IPC3 SET_VALUE (volume/switch/enum) always arrives with fragment_size 0,
+	 * only SET_DATA (binary) carries a payload size.
+	 */
 	switch (ctl->cmd) {
 	case SOF_CTRL_CMD_VOLUME:
-		val = ctl->chanv[0].value;
+		if (ctl->num_elems < 1)
+			return -EINVAL;
+
+		/* Host linear volume is Q8.16, DAX expects Q8.23 */
+		val = sat_int32(Q_SHIFT_LEFT((int64_t)ctl->chanv[0].value, 16, 23));
 		dax_param_id = DAX_PARAM_ID_ABSOLUTE_VOLUME;
 		break;
 	case SOF_CTRL_CMD_SWITCH:
@@ -948,12 +962,18 @@ static int sof_dax_set_configuration(struct processing_module *mod, uint32_t con
 			return -EINVAL;
 		}
 		break;
-	default:
+	case SOF_CTRL_CMD_BINARY:
+		if (fragment_size == 0)
+			return 0;
+		dax_param_id = DAX_PARAM_ID_TUNING_FILE;
 		break;
+	default:
+		comp_err(dev, "unsupported control cmd %d", ctl->cmd);
+		return -EINVAL;
 	}
 #endif
 
-	if (dax_param_id == 0) {
+	if (dax_param_id == DAX_PARAM_ID_TUNING_FILE) {
 		ret = comp_data_blob_set(dax_ctx->blob_handler, pos,
 					 data_offset_size, fragment, fragment_size);
 		if (ret == 0 && (pos == MODULE_CFG_FRAGMENT_LAST ||
