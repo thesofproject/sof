@@ -21,6 +21,16 @@ config COMP_MWW_DEBUG_TRACE
 	  Enable mww per-hop and per-inference debug prints in the hot path.
 	  Leave disabled for production and normal capture tuning.
 
+config COMP_MWW_HIFI_NNLIB
+	bool "Use HiFi4 nnlib optimized TFLM kernels"
+	default y
+	help
+	  Build the CONV_2D, DEPTHWISE_CONV_2D, FULLY_CONNECTED, QUANTIZE,
+	  DEQUANTIZE and other model operators from the TFLM Xtensa kernels
+	  backed by the Cadence HiFi4 nnlib. Only effective when building
+	  with the xt-clang toolchain; other toolchains use the portable
+	  reference kernels.
+
 config COMP_MWW_PROFILE
 	bool "Per-operator inference cycle profiling"
 	default n
