@@ -29,6 +29,7 @@
 #include <sof/ipc/topology.h>
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
+#include <rtos/cache.h>
 #include <rtos/clk.h>
 #include <rtos/init.h>
 #include <sof/lib/pm_runtime.h>
@@ -1719,6 +1720,11 @@ static void kpb_event_handler(void *arg, enum notify_id type, void *event_data)
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	struct kpb_event_data *evd = event_data;
 	struct kpb_client *cli = evd->client_data;
+
+	/* client data may have been written by another core */
+	if (cli)
+		dcache_invalidate_region((__sparse_force void __sparse_cache *)cli,
+					 sizeof(*cli));
 
 	comp_info(dev, "received event with ID: %d ",
 		  evd->event_id);

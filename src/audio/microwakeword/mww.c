@@ -19,6 +19,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <module/module/llext.h>
+#include <rtos/cache.h>
 #include <rtos/init.h>
 #include <rtos/panic.h>
 #include <rtos/string.h>
@@ -252,6 +253,10 @@ static int mww_notify_kpb(struct processing_module *mod)
 	cd->client_data.drain_req = cd->drain_req_ms;
 	cd->event_data.event_id = KPB_EVENT_BEGIN_DRAINING;
 	cd->event_data.client_data = &cd->client_data;
+
+	/* notifier only writes back event_data, not the nested client_data */
+	dcache_writeback_region((__sparse_force void __sparse_cache *)&cd->client_data,
+				sizeof(cd->client_data));
 
 	notifier_event(dev, NOTIFIER_ID_KPB_CLIENT_EVT,
 		       NOTIFIER_TARGET_CORE_ALL_MASK, &cd->event_data,
