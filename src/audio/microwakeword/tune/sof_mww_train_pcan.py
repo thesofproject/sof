@@ -931,12 +931,16 @@ def evaluate_streaming_confusion_matrix(
     file_map: dict[str, list[str]],
     keywords: list[str],
     threshold: float = 0.5,
-    consecutive_steps: int = 2,
+    avg_len: int = 4,
     slice_hops: int = 3,
     level_db: tuple[float, float] | None = None,
     seed: int = 1,
 ) -> dict:
-    """Run streaming inference on all WAV files using PCAN features and compute confusion matrix."""
+    """Run streaming inference on all WAV files and compute the confusion matrix.
+
+    A detection fires when the mean of the last avg_len probabilities reaches
+    threshold, as in the firmware MWW trigger.
+    """
     rng = np.random.default_rng(seed)
     interp = tf.lite.Interpreter(model_path=tflite_path)
     interp.allocate_tensors()
@@ -969,7 +973,7 @@ def evaluate_streaming_confusion_matrix(
 
             max_prob = 0.0
             n_hops = mel.shape[0]
-            consec = 0
+            hist = np.zeros(avg_len)
             fired = False
 
             for s in range(0, n_hops - slice_hops + 1, slice_hops):
@@ -989,12 +993,10 @@ def evaluate_streaming_confusion_matrix(
                 if prob > max_prob:
                     max_prob = prob
 
-                if prob >= threshold:
-                    consec += 1
-                    if consec >= consecutive_steps:
-                        fired = True
-                else:
-                    consec = 0
+                hist = np.roll(hist, 1)
+                hist[0] = prob
+                if hist.mean() >= threshold:
+                    fired = True
 
             peak_probs.append(max_prob)
             if fired:
@@ -1041,10 +1043,10 @@ def evaluate_streaming_confusion_matrix(
     return cm
 
 
-def print_confusion_matrix_report(cm: dict, threshold: float, consecutive_steps: int = 2) -> None:
+def print_confusion_matrix_report(cm: dict, threshold: float, avg_len: int = 4) -> None:
     """Print formatted evaluation report with confusion matrix."""
     print("\n" + "=" * 70)
-    print(f"microWakeWord PCAN Streaming Evaluation Report (Threshold: {threshold:.2f}, Consec: {consecutive_steps})")
+    print(f"microWakeWord PCAN Streaming Evaluation Report (avg of {avg_len} >= {threshold:.2f})")
     print("=" * 70)
     print(f"  {'Class':<18} {'Role':<10} {'Files':>7} {'Detected':>10} {'Rate':>8} {'Mean Peak':>10}")
     print("  " + "-" * 66)
@@ -1086,8 +1088,10 @@ def main() -> int:
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate (default 1e-3)")
     parser.add_argument("--val-frac", type=float, default=0.2, help="Validation fraction (default 0.2)")
     parser.add_argument("--class-weight-neg", type=float, default=2.0, help="Loss multiplier for negative samples (default 2.0)")
-    parser.add_argument("--threshold", type=float, default=0.85, help="Streaming detection threshold (default 0.85)")
-    parser.add_argument("--consecutive-steps", type=int, default=3, help="Consecutive positive inferences required (default 3)")
+    parser.add_argument("--threshold", type=float, default=0.5,
+                        help="Detection threshold for the averaged probability (default 0.5)")
+    parser.add_argument("--avg-len", type=int, default=4,
+                        help="Number of inferences averaged for detection (default 4)")
     parser.add_argument("--seed", type=int, default=0, help="Random seed (default 0)")
     parser.add_argument("--frontend", choices=("sof", "tf"), default="sof",
                         help="PCAN feature frontend: sof = SOF MFCC in sof-testbench4 (default), "
@@ -1203,11 +1207,11 @@ def run(args: argparse.Namespace, level_db: tuple[float, float]) -> int:
         file_map=file_map,
         keywords=args.keyword,
         threshold=args.threshold,
-        consecutive_steps=args.consecutive_steps,
+        avg_len=args.avg_len,
         slice_hops=SLICE_HOPS,
         level_db=level_db,
     )
-    print_confusion_matrix_report(cm, threshold=args.threshold, consecutive_steps=args.consecutive_steps)
+    print_confusion_matrix_report(cm, threshold=args.threshold, avg_len=args.avg_len)
 
     babble_wav = os.path.expanduser("~/.cache/demand_cafeteria/PCAFETER/ch01.wav")
     if os.path.exists(babble_wav):
@@ -1229,7 +1233,7 @@ def run(args: argparse.Namespace, level_db: tuple[float, float]) -> int:
             interp.invoke()
 
         b_max_prob = 0.0
-        b_consec = 0
+        b_hist = np.zeros(args.avg_len)
         b_fired = False
         for s in range(0, mel_b.shape[0] - SLICE_HOPS + 1, SLICE_HOPS):
             chk = mel_b[s : s + SLICE_HOPS][np.newaxis, ...]
@@ -1244,12 +1248,10 @@ def run(args: argparse.Namespace, level_db: tuple[float, float]) -> int:
                 p_val = float(y_raw.flatten()[0])
             if p_val > b_max_prob:
                 b_max_prob = p_val
-            if p_val >= args.threshold:
-                b_consec += 1
-                if b_consec >= args.consecutive_steps:
-                    b_fired = True
-            else:
-                b_consec = 0
+            b_hist = np.roll(b_hist, 1)
+            b_hist[0] = p_val
+            if b_hist.mean() >= args.threshold:
+                b_fired = True
         print(f">>> Result on continuous cafeteria babble: Peak Prob = {b_max_prob * 100.0:.1f}%, Triggered = {'YES (FAIL)' if b_fired else 'NO (PASS)'}")
 
     return 0
