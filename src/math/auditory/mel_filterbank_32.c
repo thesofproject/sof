@@ -102,8 +102,8 @@ void psy_apply_mel_filterbank_with_linear_32(struct psy_mel_filterbank *fb, stru
 
 			/* Scale to Google microfrontend range: 25826 / 32768 ~= 0.788 */
 			s_comp = (s_comp * 25826U) >> 15;
-			if (s_comp > 65535U)
-				s_comp = 65535U;
+			if (s_comp > UINT32_MAX)
+				s_comp = UINT32_MAX;
 
 			mel_linear[i] = (uint32_t)s_comp;
 		}
