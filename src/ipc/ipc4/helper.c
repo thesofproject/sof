@@ -201,6 +201,12 @@ __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *mo
 	if (!drv)
 		return NULL;
 
+	if (!drv->ops.create) {
+		tr_err(&ipc_tr, "comp 0x%x: module %u is not instantiable", comp_id,
+		       (uint32_t)IPC4_MOD_ID(comp_id));
+		return NULL;
+	}
+
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
 		const struct ipc_config_process spec = {
 			.data = data,

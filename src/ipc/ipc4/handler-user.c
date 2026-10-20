@@ -1582,7 +1582,7 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 							mi->primary.r.instance_id);
 			const struct comp_driver *drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp_id));
 
-			if (!drv) {
+			if (!drv || !drv->ops.create) {
 				ret = IPC4_MOD_NOT_INITIALIZED;
 				break;
 			}
