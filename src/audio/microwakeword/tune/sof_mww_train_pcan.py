@@ -363,6 +363,8 @@ def load_pcan_dataset(
 
         for f in wav_files * n_copies:
             pcm = random_level(load_wav_pcm16(f), rng, level_db)
+            # Random sub-hop delay: the runtime 10 ms hop grid has arbitrary phase
+            pcm = np.concatenate([np.zeros(int(rng.integers(0, HOP_SAMPLES)), np.int16), pcm])
             mel = extract_pcan_features(pcm)
             if mel.shape[0] < 5:
                 continue
@@ -373,8 +375,9 @@ def load_pcan_dataset(
                 speech_start, speech_end = find_speech_bounds(mel)
                 if T <= window_hops:
                     pad_len = window_hops - T
-                    # Positive windows: speech ends near the right of the window (wake word completed)
-                    offsets = [pad_len, max(0, pad_len - 3), max(0, pad_len - 6)]
+                    # Positive windows: speech ends near the right of the window (wake word completed).
+                    # One offset per phase of the 3-hop inference stride.
+                    offsets = [max(0, pad_len - k - 3 * int(rng.integers(0, 3))) for k in range(SLICE_HOPS)]
                     for off in offsets:
                         win = np.zeros((window_hops, HOP_BINS), dtype=np.float32)
                         win[off : off + T] = mel
@@ -394,8 +397,10 @@ def load_pcan_dataset(
                     all_X.append(win_part)
                     all_y.append(0)
                 else:
-                    # Positive windows: window ending right around speech_end (wake word completed!)
-                    for jitter in [0, -3, 3]:
+                    # Positive windows: window ending right around speech_end (wake word completed!),
+                    # one jitter per phase of the 3-hop inference stride
+                    for k in range(SLICE_HOPS):
+                        jitter = k - 1 + 3 * int(rng.integers(-1, 2))
                         end_idx = min(T, max(window_hops, speech_end + jitter))
                         start_idx = end_idx - window_hops
                         if start_idx >= 0:
@@ -964,6 +969,8 @@ def evaluate_streaming_confusion_matrix(
 
         for f in files:
             pcm = random_level(load_wav_pcm16(f), rng, level_db)
+            # Random phase vs. the 10 ms hop grid and the 30 ms inference stride
+            pcm = np.concatenate([np.zeros(int(rng.integers(0, HOP_SAMPLES * slice_hops)), np.int16), pcm])
             mel = extract_pcan_features(pcm)
             if mel.shape[0] < slice_hops:
                 continue
