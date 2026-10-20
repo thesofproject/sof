@@ -190,12 +190,12 @@ int dax_register_user(struct processing_module *mod)
 	}
 
 	user->id = adapter_data->comp_id;
-	if (dax_ctx->out_device == DAX_DEVICE_SPEAKER) {
+	if (adapter_data->cache_params.out_device == DAX_DEVICE_SPEAKER) {
 		/* If the current component's output device is a speaker, it is assigned
 		 * the highest priority.
 		 */
 		user->priority = DAX_USER_PRIORITY_P1;
-	} else if (dax_ctx->out_device == DAX_DEVICE_HEADPHONE) {
+	} else if (adapter_data->cache_params.out_device == DAX_DEVICE_HEADPHONE) {
 		user->priority = DAX_USER_PRIORITY_P0;
 	} else {
 		user->priority = DAX_USER_PRIORITY_DEFAULT;
