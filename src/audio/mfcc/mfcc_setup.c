@@ -480,7 +480,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		pcfg.smoothing_coef = (config->pcan_smoothing_coef > 0) ?
 			(uint16_t)config->pcan_smoothing_coef : 819;
 		pcfg.smoothing_bits = 10;
-		pcfg.input_correction_bits = 0;
+		pcfg.input_correction_bits = PCAN_INPUT_CORRECTION_BITS;
 		pcfg.enable_pcan = true;
 
 		pcan_noise = mod_zalloc(mod, config->num_mel_bins * sizeof(uint32_t));
@@ -499,7 +499,8 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		}
 
 		ret = pcan_populate_state(&pcfg, &state->pcan, pcan_noise, pcan_lut,
-					  config->num_mel_bins, 10, 0);
+					  config->num_mel_bins, 10,
+					  PCAN_INPUT_CORRECTION_BITS);
 		if (ret < 0) {
 			comp_err(dev, "Failed PCAN state init");
 			mod_free(mod, pcan_noise);
