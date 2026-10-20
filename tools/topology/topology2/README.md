@@ -397,10 +397,27 @@ Select the cmake file matching the target platform generation:
 
 | Platform | CMake Target File |
 |---|---|
+| IPC3 | `tplg-targets-ipc3.cmake` |
 | Tiger Lake / Alder Lake | `tplg-targets-cavs25.cmake` |
 | Meteor Lake | `tplg-targets-ace1.cmake` |
 | Lunar Lake | `tplg-targets-ace2.cmake` |
 | Panther Lake | `tplg-targets-ace3.cmake` |
 | HDA generic | `tplg-targets-hda-generic.cmake` |
+
+### IPC3 topology targets
+
+Topology2 source files can also target firmware that uses IPC3. Register IPC3
+targets in `production/tplg-targets-ipc3.cmake`; they are built with a separate
+IPC3 ABI manifest and installed under `target/sof-tplg` instead of the IPC4/ACE
+topology directory.
+
+Build an individual registered IPC3 target with:
+
+```bash
+cmake --build . --target topology2_prod_ipc3_OUTPUT_NAME
+```
+
+Replace `OUTPUT_NAME` with the target's output name from
+`tplg-targets-ipc3.cmake`.
 
 Development and testing topologies go in `development/tplg-targets.cmake`.
