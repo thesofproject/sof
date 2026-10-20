@@ -101,11 +101,11 @@ void __assert_func(const char *file, int line, const char *func,
 /* MFCC delivers one hop every 10 ms; MWW processes 3 hops per inference. */
 #define MWW_MFCC_HOP_MS 10
 
-/* Wake-word probability threshold above which KPB draining is triggered. */
-#define MWW_DETECT_THRESHOLD 0.85f
-
-/* Consecutive inferences above threshold required to confirm detection (~60 ms). */
-#define MWW_CONSECUTIVE_DETECTS_REQUIRED 2
+/* Detect when the average probability of the last MWW_DETECT_AVG_LEN inferences
+ * reaches the threshold; single inferences fluctuate strongly during a keyword.
+ */
+#define MWW_DETECT_THRESHOLD 0.50f
+#define MWW_DETECT_AVG_LEN 4
 
 /* Number of startup inferences to warm up the temporal ring buffers before enabling triggers (~1 sec). */
 #define MWW_WARMUP_INFERENCES 33
@@ -188,8 +188,9 @@ struct mww_comp_data {
 	int32_t dbg_peak_prob;
 #endif
 
-	/* Consecutive inferences with probability >= MWW_DETECT_THRESHOLD */
-	uint32_t consecutive_detects;
+	/* Probabilities of the last MWW_DETECT_AVG_LEN inferences, circular */
+	float prob_hist[MWW_DETECT_AVG_LEN];
+	uint32_t prob_hist_idx;
 
 	/* Live scoring tracking (twice a second = 50 hops @ 10ms) */
 	float window_peak_prob;
@@ -283,7 +284,7 @@ static void on_wov_ctrl(void *arg, enum notify_id id, void *data)
 	} else if (n->cmd == WOV_ARB_CMD_RESUME) {
 		comp_info(dev, "mww slot %u: resumed by arbiter", cd->wov_slot_id);
 		cd->paused = false;
-		cd->consecutive_detects = 0;
+		memset(cd->prob_hist, 0, sizeof(cd->prob_hist));
 		MWW_Reset(&cd->mwc);
 	}
 }
@@ -612,7 +613,7 @@ static int mww_prepare(struct processing_module *mod,
 
 	cd->feature_slices_filled = 0;
 	cd->vad_history = 0;
-	cd->consecutive_detects = 0;
+	memset(cd->prob_hist, 0, sizeof(cd->prob_hist));
 
 	return 0;
 }
@@ -883,26 +884,28 @@ static int mww_process(struct processing_module *mod,
 			if (cd->mwc.probability > cd->window_peak_prob)
 				cd->window_peak_prob = cd->mwc.probability;
 
-			if (cd->mwc.probability >= MWW_DETECT_THRESHOLD) {
-				cd->consecutive_detects++;
-				if (cd->total_inferences > MWW_WARMUP_INFERENCES &&
-				    cd->consecutive_detects >= MWW_CONSECUTIVE_DETECTS_REQUIRED) {
-					cd->detections++;
-					comp_info(dev, "MWW keyword detected: probability=%d pct (slot %u, consecutive=%u, total=%u)",
-						  (int)(cd->mwc.probability * 100.0f),
-						  cd->wov_slot_id,
-						  cd->consecutive_detects, cd->detections);
-					cd->kpb_trigger_events++;
-					struct wov_detect_notif payload = { .slot_id = cd->wov_slot_id };
-					/* activate arbiter before KPB drains, see mww_fake_wake_fire() */
-					notifier_event(dev, NOTIFIER_ID_WOV_DETECT,
-						       NOTIFIER_TARGET_CORE_ALL_MASK,
-						       &payload, sizeof(payload));
-					mww_notify_kpb(mod);
-					cd->consecutive_detects = 0;
-				}
-			} else {
-				cd->consecutive_detects = 0;
+			float prob_avg = 0.0f;
+
+			cd->prob_hist[cd->prob_hist_idx] = cd->mwc.probability;
+			cd->prob_hist_idx = (cd->prob_hist_idx + 1) % MWW_DETECT_AVG_LEN;
+			for (i = 0; i < MWW_DETECT_AVG_LEN; i++)
+				prob_avg += cd->prob_hist[i];
+			prob_avg /= MWW_DETECT_AVG_LEN;
+
+			if (cd->total_inferences > MWW_WARMUP_INFERENCES &&
+			    prob_avg >= MWW_DETECT_THRESHOLD) {
+				cd->detections++;
+				comp_info(dev, "MWW keyword detected: avg probability=%d pct (slot %u, total=%u)",
+					  (int)(prob_avg * 100.0f),
+					  cd->wov_slot_id, cd->detections);
+				cd->kpb_trigger_events++;
+				struct wov_detect_notif payload = { .slot_id = cd->wov_slot_id };
+				/* activate arbiter before KPB drains, see mww_fake_wake_fire() */
+				notifier_event(dev, NOTIFIER_ID_WOV_DETECT,
+					       NOTIFIER_TARGET_CORE_ALL_MASK,
+					       &payload, sizeof(payload));
+				mww_notify_kpb(mod);
+				memset(cd->prob_hist, 0, sizeof(cd->prob_hist));
 			}
 		}
 
@@ -938,7 +941,7 @@ static int mww_reset(struct processing_module *mod)
 	cd->wovdebug = 0;
 	cd->feature_slices_filled = 0;
 	cd->vad_history = 0;
-	cd->consecutive_detects = 0;
+	memset(cd->prob_hist, 0, sizeof(cd->prob_hist));
 	cd->total_inferences = 0;
 	cd->score_hop_counter = 0;
 	cd->window_peak_prob = 0.0f;

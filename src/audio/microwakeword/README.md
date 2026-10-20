@@ -161,7 +161,7 @@ Each instance can also be dynamically customized via SOF IPC4 `LARGE_CONFIG_SET`
 
 The MWW detector participates in SOF's synchronous intra-DSP publish/subscribe notifier bus:
 
-1. **`NOTIFIER_ID_WOV_DETECT`**: Fired by `mww` to `wov_arbiter` on keyword detection (`probability >= MWW_DETECT_THRESHOLD`). Passes payload `{ .slot_id = cd->wov_slot_id }`.
+1. **`NOTIFIER_ID_WOV_DETECT`**: Fired by `mww` to `wov_arbiter` on keyword detection (average probability of the last `MWW_DETECT_AVG_LEN` inferences `>= MWW_DETECT_THRESHOLD`). Passes payload `{ .slot_id = cd->wov_slot_id }`.
 2. **`NOTIFIER_ID_KPB_CLIENT_EVT`**: Fired by `mww` to `kpb` to request immediate draining of the 2.0 s pre-roll history buffer.
 3. **`NOTIFIER_ID_WOV_CTRL`**: Received by `mww` from `wov_arbiter`.
    - `WOV_ARB_CMD_PAUSE`: Pauses inference while another slot's keyword audio is streaming to the host.
