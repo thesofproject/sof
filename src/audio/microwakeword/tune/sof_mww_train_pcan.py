@@ -3,12 +3,12 @@
 """
 All-in-one Python reference training pipeline for microWakeWord (MWW) using PCAN.
 
-Uses TensorFlow's audio_microfrontend (Per-Channel Auto-Gain Normalization / PCAN)
-to extract 40-bin mel features directly from WAV datasets (e.g. ~/wov/wavs/{silence,unknown,<keyword>}),
-trains the streaming MixConv neural network, int8 quantizes to TFLite, and runs a streaming
-evaluation to print a full confusion matrix and detection performance report.
-
-Used to benchmark and compare PCAN frontend performance against SOF MFCC testbench features.
+Extracts 40-bin PCAN mel features from WAV datasets (e.g. ~/wov/wavs/{silence,unknown,<keyword>})
+with the SOF MFCC component run in sof-testbench4 (default, bit-exact with firmware) or with
+TensorFlow's audio_microfrontend (--frontend tf). Every clip is peak-normalized to a random
+level in [--level-min-dbfs, --level-max-dbfs] before feature extraction so the model also
+sees quiet far-field input. Trains the streaming MixConv neural network, int8 quantizes to
+TFLite, and runs a streaming evaluation to print a confusion matrix and detection report.
 
 Example:
     python3 sof_mww_train_pcan.py \
@@ -25,8 +25,11 @@ import datetime
 import glob
 import os
 import re
+import shutil
 import struct
+import subprocess
 import sys
+import tempfile
 import wave
 from pathlib import Path
 
@@ -51,6 +54,22 @@ except ImportError as exc:
 HOP_BINS = 40
 WINDOW_HOPS = 100  # 1.0 second at 10 ms hop stride
 SLICE_HOPS = 3     # 30 ms streaming chunk size (MWW_FEATURE_SLICE_COUNT)
+
+# SOF MFCC maps PCAN output 0..666 to int8 as ((v * 256 + 333) / 666) - 128
+PCAN_INT8_SCALE = 666.0 / 256.0
+HOP_SAMPLES = 160
+FRAME_HOPS = 3     # 30 ms analysis window = 3 hops
+SOF_HOP_BYTES = 64  # 24-byte struct mfcc_data_header + 40 x int8
+SOF_HOP_MAGIC = 0x6D666363
+
+_SOF_WORKSPACE = os.environ.get("SOF_WORKSPACE", os.path.expanduser("~/work/current/sof"))
+DEFAULT_TESTBENCH = os.path.join(
+    _SOF_WORKSPACE, "sof/tools/testbench/build_testbench/install/bin/sof-testbench4"
+)
+DEFAULT_TPLG = os.path.join(
+    _SOF_WORKSPACE,
+    "sof/tools/build_tools/topology/topology2/development/sof-hda-benchmark-mfccmel40_10ms_pcan32.tplg",
+)
 
 
 # -----------------------------------------------------------------------------
@@ -92,7 +111,65 @@ def load_wav_pcm16(path: str) -> np.ndarray:
     return pcm
 
 
-def extract_pcan_features(
+def random_level(pcm: np.ndarray, rng: np.random.Generator | None,
+                 level_db: tuple[float, float] | None) -> np.ndarray:
+    """Peak-normalize a clip to a random level drawn uniformly in dBFS."""
+    if rng is None or level_db is None:
+        return pcm
+    peak = float(np.max(np.abs(pcm.astype(np.int32)))) if pcm.size else 0.0
+    if peak < 1.0:
+        return pcm
+    target = 32767.0 * 10.0 ** (rng.uniform(level_db[0], level_db[1]) / 20.0)
+    return np.clip(np.round(pcm.astype(np.float32) * (target / peak)), -32768, 32767).astype(np.int16)
+
+
+class SofTestbenchFrontend:
+    """PCAN features computed by the SOF MFCC component in sof-testbench4.
+
+    The clip is repeated back to back for at least WARMUP_SAMPLES and only the
+    last copy's hops are kept, so the PCAN noise estimate is warmed up as in a
+    continuous capture stream.
+    """
+
+    WARMUP_SAMPLES = 32000  # cold-start PCAN state settles in about 1.5 s
+
+    def __init__(self, testbench: str, tplg: str):
+        for p in (testbench, tplg):
+            if not os.path.isfile(p):
+                raise FileNotFoundError(p)
+        self.testbench = testbench
+        self.tplg = tplg
+        self.tmpdir = tempfile.mkdtemp(prefix="sof_mww_fe_")
+        self.in_path = os.path.join(self.tmpdir, "in.raw")
+        self.out_path = os.path.join(self.tmpdir, "out.raw")
+
+    def close(self) -> None:
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def __call__(self, pcm_int16: np.ndarray) -> np.ndarray:
+        n = len(pcm_int16) - len(pcm_int16) % HOP_SAMPLES
+        n_hops = n // HOP_SAMPLES - (FRAME_HOPS - 1)
+        if n_hops <= 0:
+            return np.zeros((0, HOP_BINS), dtype=np.float32)
+
+        reps = 1 + -(-self.WARMUP_SAMPLES // n)
+        mono = np.tile(pcm_int16[:n], reps).astype(np.int32) << 16
+        np.repeat(mono, 2).astype("<i4").tofile(self.in_path)
+        cmd = [self.testbench, "-d", "0", "-r", "16000", "-c", "2", "-b", "S32_LE",
+               "-p", "3,4", "-t", self.tplg, "-i", self.in_path, "-o", self.out_path]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        if res.returncode != 0:
+            raise RuntimeError(f"sof-testbench4 failed:\n{res.stdout.decode(errors='replace')}")
+
+        data = np.fromfile(self.out_path, dtype=np.uint8)
+        data = data[: data.size - data.size % SOF_HOP_BYTES].reshape(-1, SOF_HOP_BYTES)
+        if data.shape[0] < n_hops or np.any(data[:, :4].copy().view("<u4") != SOF_HOP_MAGIC):
+            raise RuntimeError(f"unexpected sof-testbench4 output: {data.shape[0]} hops, need {n_hops}")
+        q = data[-n_hops:, 24:].view(np.int8).astype(np.float32)
+        return (q + 128.0) * PCAN_INT8_SCALE
+
+
+def extract_pcan_features_tf(
     pcm_int16: np.ndarray,
     sample_rate: int = 16000,
     window_size_ms: int = 30,
@@ -127,6 +204,10 @@ def extract_pcan_features(
         out_type=tf.float32,
     )
     return feats.numpy()
+
+
+# Selected in main() with --frontend
+extract_pcan_features = extract_pcan_features_tf
 
 
 # -----------------------------------------------------------------------------
@@ -240,11 +321,15 @@ def load_pcan_dataset(
     wav_root: str,
     labels: list[str],
     window_hops: int = WINDOW_HOPS,
-    gain_aug_db_min: float = -12.0,
-    gain_aug_db_max: float = 4.0,
+    level_db: tuple[float, float] | None = (-45.0, -6.0),
+    pos_level_copies: int = 2,
     seed: int = 0,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, list[str]]]:
     """Extract PCAN features for all WAVs and generate balanced training windows.
+
+    Each clip is peak-normalized to a random level in level_db (dBFS) before
+    feature extraction; keyword clips are used pos_level_copies times at
+    independent levels.
 
     Applies streaming wake-word alignment and hard negative mining:
       - Keyword positives: Aligned at keyword completion (end of speech near window end)
@@ -273,9 +358,11 @@ def load_pcan_dataset(
 
         is_keyword = (label not in ("ambient", "silence", "unknown", "noise", "background", "babble"))
         is_ambient = (label in ("ambient", "silence", "noise", "background", "babble"))
+        n_copies = max(1, pos_level_copies) if is_keyword else 1
+        print(f">>> Extracting features for {label}: {len(wav_files)} WAVs x {n_copies} level(s)")
 
-        for f in wav_files:
-            pcm = load_wav_pcm16(f)
+        for f in wav_files * n_copies:
+            pcm = random_level(load_wav_pcm16(f), rng, level_db)
             mel = extract_pcan_features(pcm)
             if mel.shape[0] < 5:
                 continue
@@ -427,7 +514,7 @@ def load_pcan_dataset(
                             scale = (s_rms * (10.0 ** (-snr / 20.0))) / n_rms
                             cat_pcm = np.clip(cat_pcm.astype(np.float32) + scale * noise_sub, -32768, 32767).astype(np.int16)
 
-                cat_mel = extract_pcan_features(cat_pcm)
+                cat_mel = extract_pcan_features(random_level(cat_pcm, rng, level_db))
                 if cat_mel.shape[0] >= window_hops:
                     for s in range(0, cat_mel.shape[0] - window_hops + 1, 15):
                         all_X.append(cat_mel[s : s + window_hops].copy())
@@ -441,14 +528,7 @@ def load_pcan_dataset(
     if not all_X:
         return np.zeros((0, window_hops, HOP_BINS, 1), dtype=np.float32), np.zeros((0,), dtype=np.int32), file_map
 
-    # Apply gain augmentation across all windows
-    X_arr = np.stack(all_X, axis=0)
-    if gain_aug_db_min is not None and gain_aug_db_max is not None:
-        gains_db = rng.uniform(gain_aug_db_min, gain_aug_db_max, size=(X_arr.shape[0], 1, 1))
-        gains_lin = gains_db * 0.1
-        X_arr = np.clip(X_arr + gains_lin, 0.0, 666.0)
-
-    X = X_arr[..., np.newaxis]
+    X = np.stack(all_X, axis=0)[..., np.newaxis]
     y = np.array(all_y, dtype=np.int32)
     return X, y, file_map
 
@@ -712,6 +792,11 @@ def convert_to_tflite_int8(
 
     def representative_dataset():
         rng = np.random.default_rng(0)
+        # Pin input range to [0, 255 * scale] so input quantization equals the
+        # firmware int8 PCAN mapping: scale 666/256, zero point -128.
+        pin = np.zeros((1, SLICE_HOPS, HOP_BINS), dtype=np.float32)
+        pin[0, 0, 0] = 255.0 * PCAN_INT8_SCALE
+        yield [pin]
         samples_yielded = 0
         while samples_yielded < n_rep:
             idx = rng.integers(0, rep_X.shape[0])
@@ -848,8 +933,11 @@ def evaluate_streaming_confusion_matrix(
     threshold: float = 0.5,
     consecutive_steps: int = 2,
     slice_hops: int = 3,
+    level_db: tuple[float, float] | None = None,
+    seed: int = 1,
 ) -> dict:
     """Run streaming inference on all WAV files using PCAN features and compute confusion matrix."""
+    rng = np.random.default_rng(seed)
     interp = tf.lite.Interpreter(model_path=tflite_path)
     interp.allocate_tensors()
 
@@ -871,7 +959,7 @@ def evaluate_streaming_confusion_matrix(
         peak_probs = []
 
         for f in files:
-            pcm = load_wav_pcm16(f)
+            pcm = random_level(load_wav_pcm16(f), rng, level_db)
             mel = extract_pcan_features(pcm)
             if mel.shape[0] < slice_hops:
                 continue
@@ -1001,8 +1089,42 @@ def main() -> int:
     parser.add_argument("--threshold", type=float, default=0.85, help="Streaming detection threshold (default 0.85)")
     parser.add_argument("--consecutive-steps", type=int, default=3, help="Consecutive positive inferences required (default 3)")
     parser.add_argument("--seed", type=int, default=0, help="Random seed (default 0)")
+    parser.add_argument("--frontend", choices=("sof", "tf"), default="sof",
+                        help="PCAN feature frontend: sof = SOF MFCC in sof-testbench4 (default), "
+                             "tf = TensorFlow audio_microfrontend")
+    parser.add_argument("--testbench", default=DEFAULT_TESTBENCH, help="sof-testbench4 binary")
+    parser.add_argument("--tplg", default=DEFAULT_TPLG, help="Testbench MFCC PCAN topology")
+    parser.add_argument("--level-min-dbfs", type=float, default=-45.0,
+                        help="Min random clip peak level in dBFS (default -45)")
+    parser.add_argument("--level-max-dbfs", type=float, default=-6.0,
+                        help="Max random clip peak level in dBFS (default -6)")
+    parser.add_argument("--pos-level-copies", type=int, default=2,
+                        help="Number of random-level copies per keyword clip (default 2)")
 
     args = parser.parse_args()
+
+    global extract_pcan_features
+    sof_frontend = None
+    if args.frontend == "sof":
+        try:
+            sof_frontend = SofTestbenchFrontend(args.testbench, args.tplg)
+        except FileNotFoundError as exc:
+            print(f"Error: missing {exc}. Build the testbench (scripts/rebuild-testbench.sh) and the "
+                  "sof-hda-benchmark-mfccmel40_10ms_pcan32 topology, or use --frontend tf.",
+                  file=sys.stderr)
+            return 1
+        extract_pcan_features = sof_frontend
+    print(f">>> PCAN frontend: {args.frontend}")
+    level_db = (args.level_min_dbfs, args.level_max_dbfs)
+
+    try:
+        return run(args, level_db)
+    finally:
+        if sof_frontend is not None:
+            sof_frontend.close()
+
+
+def run(args: argparse.Namespace, level_db: tuple[float, float]) -> int:
     labels = []
     # Discover available standard negative categories present in wav_root
     for neg_dir in ("ambient", "silence", "unknown", "babble", "noise"):
@@ -1013,7 +1135,8 @@ def main() -> int:
     labels += args.keyword
 
     print(f">>> [PCAN Pipeline] Loading WAVs from {args.wav_root} for classes: {labels}")
-    X, y, file_map = load_pcan_dataset(args.wav_root, labels=labels, seed=args.seed)
+    X, y, file_map = load_pcan_dataset(args.wav_root, labels=labels, level_db=level_db,
+                                       pos_level_copies=args.pos_level_copies, seed=args.seed)
 
     if X.shape[0] == 0:
         print(f"Error: No audio samples found under {args.wav_root}.", file=sys.stderr)
@@ -1082,6 +1205,7 @@ def main() -> int:
         threshold=args.threshold,
         consecutive_steps=args.consecutive_steps,
         slice_hops=SLICE_HOPS,
+        level_db=level_db,
     )
     print_confusion_matrix_report(cm, threshold=args.threshold, consecutive_steps=args.consecutive_steps)
 
