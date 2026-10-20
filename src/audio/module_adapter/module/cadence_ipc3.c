@@ -28,7 +28,7 @@ int cadence_codec_resolve_api(struct processing_module *mod)
 	uint32_t codec_id = DEFAULT_CODEC_ID;
 
 	if (mod->stream_params->ext_data_length) {
-		ret = memcpy_s(&codec_params, mod->stream_params->ext_data_length,
+		ret = memcpy_s(&codec_params, sizeof(codec_params),
 			       (uint8_t *)mod->stream_params + sizeof(*mod->stream_params),
 			       mod->stream_params->ext_data_length);
 		if (ret < 0)
