@@ -1367,19 +1367,16 @@ __cold static const struct comp_driver *ipc4_get_drv(const void *uuid)
  * 1-based index into the runtime component driver list, counting only
  * instantiable module-adapter drivers so the fuzzer's module_id space matches
  * what a real signed manifest would expose.
- *
- * module_id 0 (BaseFW) is deliberately not mapped: BaseFW is never created as
- * a pipeline component - its messages are dispatched directly by base_fw.c -
- * so returning NULL for it here is correct.
  */
 static const struct comp_driver *ipc4_get_fuzzer_drv(uint32_t module_id)
 {
+	static const struct sof_uuid basefw_reg_uuid = SOF_REG_UUID(basefw);
 	struct comp_driver_list *dlist = comp_drivers_get();
 	struct list_item *iter;
 	uint32_t idx = 0;
 
 	if (!module_id)
-		return NULL;
+		return ipc4_search_for_drv(&basefw_reg_uuid);
 
 	list_for_item(iter, &dlist->list) {
 		struct comp_driver_info *inf =
