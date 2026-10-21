@@ -16,6 +16,7 @@
 #include <sof/llext_manager.h>
 #include <sof/objpool.h>
 #include <sof/schedule/dp_schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 
 #include <zephyr/app_memory/mem_domain.h>

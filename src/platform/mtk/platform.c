@@ -9,6 +9,7 @@
 #include <sof/ipc/driver.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/agent.h>
+#include <sof/lib/dma.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>

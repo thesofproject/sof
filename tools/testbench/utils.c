@@ -8,6 +8,7 @@
 #include <sof/ipc/topology.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/notification_pool.h>
+#include <sof/schedule/schedule.h>
 #include <sof/lib/notifier.h>
 
 #include <ctype.h>

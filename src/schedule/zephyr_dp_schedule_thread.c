@@ -17,6 +17,7 @@
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/trace/trace.h>
+#include <sof/schedule/schedule.h>
 
 #include <zephyr/kernel.h>
 

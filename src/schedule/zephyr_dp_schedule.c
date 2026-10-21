@@ -21,6 +21,7 @@
 #include <zephyr/sys/sem.h>
 #include <zephyr/sys/mutex.h>
 #include <sof/lib/memory.h>
+#include <sof/schedule/schedule.h>
 #include <ipc4/base_fw.h>
 
 #include "zephyr_dp_schedule.h"

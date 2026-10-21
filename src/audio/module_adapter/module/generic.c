@@ -20,6 +20,7 @@
 #include <sof/lib/fast-get.h>
 #include <sof/lib/vregion.h>
 #include <sof/schedule/dp_schedule.h>
+#include <sof/schedule/schedule.h>
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/header.h>
 #include <ipc4/module.h>

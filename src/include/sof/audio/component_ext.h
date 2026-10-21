@@ -20,6 +20,8 @@
 #include <ipc/topology.h>
 /* TODO: the cross-core helpers below send IDC messages, which is kernel only */
 #include <rtos/idc.h>
+#include <sof/lib/dai.h>
+#include <sof/schedule/schedule.h>
 
 /** \addtogroup component_infra_api
  *  @{

@@ -24,6 +24,7 @@
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/ut.h>
+#include <sof/schedule/schedule.h>
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/base_fw.h>
 #include <ipc4/header.h>
