@@ -29,6 +29,7 @@
 #include <sof/llext_manager.h>
 #include <sof/audio/component.h>
 #include <sof/schedule/dp_schedule.h>
+#include <sof/lib/mailbox.h>
 #include <rtos/userspace_helper.h>
 #include <utilities/array.h>
 #include <zephyr/sys/sem.h>

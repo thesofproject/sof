@@ -39,6 +39,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/lib/mailbox.h>
 #include "copier.h"
 #include "host_copier.h"
 #include "dai_copier.h"

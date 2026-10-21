@@ -13,6 +13,7 @@
 #include <rtos/alloc.h>
 #include <rtos/mutex.h>
 #include <sof/lib/dai.h>
+#include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/platform.h>

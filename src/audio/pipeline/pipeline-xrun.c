@@ -10,6 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
 #include <sof/list.h>
+#include <sof/lib/mailbox.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
 #include <rtos/timer.h>

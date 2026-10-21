@@ -11,6 +11,7 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/dai.h>
+#include <sof/lib/mailbox.h>
 #include <sof/debug/debug.h>
 #include <sof_versions.h>
 #include <kernel/abi.h>

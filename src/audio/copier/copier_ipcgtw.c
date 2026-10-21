@@ -10,6 +10,7 @@
 #include <sof/trace/trace.h>
 #include <sof/lib/memory.h>
 #include <sof/ut.h>
+#include <sof/lib/mailbox.h>
 #include <rtos/init.h>
 #include "copier.h"
 #include "ipcgtw_copier.h"
