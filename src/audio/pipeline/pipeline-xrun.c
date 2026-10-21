@@ -12,6 +12,7 @@
 #include <sof/list.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
+#include <rtos/timer.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>

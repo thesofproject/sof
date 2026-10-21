@@ -7,6 +7,7 @@
 #include <zephyr/logging/log_ctrl.h>
 
 #include <rtos/string.h>
+#include <rtos/timer.h>
 #include <sof/tlv.h>
 #include <sof/lib/dai.h>
 #include <ipc/dai.h>

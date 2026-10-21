@@ -15,27 +15,7 @@
 #define __SOF_LIB_PERF_CNT_H__
 
 #include <rtos/timer.h>
-
-struct perf_cnt_data {
-	/* current platform clock */
-	uint32_t plat_ts;
-	/* current cpu clock */
-	uint32_t cpu_ts;
-	/* one period module cycles */
-	uint32_t plat_delta_last;
-	/* period module peak cycles within period_cnt */
-	uint32_t plat_delta_peak;
-	/* one period module cycles from cpu clock */
-	uint32_t cpu_delta_last;
-	/* period module peak cycles within period_cnt from cpu clock */
-	uint32_t cpu_delta_peak;
-	/* total cycles within period_cnt */
-	uint32_t cpu_delta_sum;
-	/* accumulate period passed and calculate avg cycles */
-	uint32_t period_cnt;
-	/* indicate which period have peak mcps in current module */
-	uint32_t peak_mcps_period_cnt;
-};
+#include <sof/lib/perf_cnt_data.h>
 
 #if CONFIG_PERFORMANCE_COUNTERS
 

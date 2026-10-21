@@ -13,6 +13,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
+#include <sof/lib/perf_cnt.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <rtos/sof.h>

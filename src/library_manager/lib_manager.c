@@ -20,6 +20,7 @@
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <rtos/userspace_helper.h>
+#include <rtos/timer.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
 #include <sof/llext_manager.h>

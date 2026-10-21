@@ -19,7 +19,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <rtos/kernel.h>
-#include <sof/lib/perf_cnt.h>
+#include <sof/lib/perf_cnt_data.h>
 
 /** \addtogroup scheduling_api
  *  @{

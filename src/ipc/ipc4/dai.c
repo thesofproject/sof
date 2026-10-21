@@ -17,6 +17,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/platform.h>
 #include <rtos/sof.h>
+#include <rtos/timer.h>
 #include <ipc4/gateway.h>
 #include <ipc/header.h>
 #include <ipc4/alh.h>
