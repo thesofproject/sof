@@ -426,6 +426,12 @@ int z_impl_lib_manager_free_module(const uint32_t component_id)
 
 	const struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(module_id);
 
+	/* component_id can come from a user thread via the system call */
+	if (!ctx) {
+		tr_err(&lib_manager_tr, "no library for mod_id %#x", component_id);
+		return -EINVAL;
+	}
+
 	if (ctx->load_type == SOF_MAN_MOD_TYPE_LLEXT ||
 	    ctx->load_type == SOF_MAN_MOD_TYPE_LLEXT_AUX)
 		return llext_manager_free_module(component_id);
