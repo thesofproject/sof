@@ -43,30 +43,35 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Regex patterns for SOF mtrace log messages
+# Regex patterns for SOF mtrace log messages. The payload must follow its own
+# log header directly: memory dumps can splice a truncated record with the
+# tail of another one, which would otherwise pair the wrong timestamp.
+MWW_HDR = (r"\[\s*([0-9.]+)\]\s*<\w+>\s*\[core\s+\d+\]\s*mww\.\w+:\s*"
+           r"(?:comp:\d+\s+0x[0-9a-fA-F]+\s+)?")
+
 HOP_RE = re.compile(
-    r"\[\s*([0-9.]+)\]\s*.*\[MWW DBG hop\s+(\d+)\]\s+"
+    MWW_HDR + r"\[MWW DBG hop\s+(\d+)\]\s+"
     r"vad=(\d+)\s+E=(-?\d+)\s+Ne=(-?\d+)\s+"
     r"mel_min=(-?\d+)\s+mel_max=(-?\d+)\s+"
     r"f_min=(-?\d+)\s+f_max=(-?\d+)\s+agc_q23=(-?\d+)"
 )
 
 HOP_PCAN_RE = re.compile(
-    r"\[\s*([0-9.]+)\]\s*.*\[MWW DBG hop\s+(\d+)\]\s+"
+    MWW_HDR + r"\[MWW DBG hop\s+(\d+)\]\s+"
     r"vad=(\d+)\s+E=(-?\d+)\s+Ne=(-?\d+)\s+"
     r"f_min=(-?\d+)\s+f_max=(-?\d+)(?:\s+\((?:pcan\d*)\))?"
 )
 
 PROB_RE = re.compile(
-    r"\[\s*([0-9.]+)\]\s*.*?\bMWW\s+prob(?:ability)?=([0-9.]+)(?:%| pct)?"
+    MWW_HDR + r"MWW\s+prob(?:ability)?=([0-9.]+)(?:%| pct)?"
 )
 
 DETECT_RE = re.compile(
-    r"\[\s*([0-9.]+)\]\s*.*MWW keyword detected(?:\s*\([^)]*\))?:\s*(?:slot \d+,\s*)?prob(?:ability)?=([0-9.]+)(?:\s*(?:%|pct))?"
+    MWW_HDR + r"MWW keyword detected(?:\s*\([^)]*\))?:\s*(?:slot \d+,\s*)?(?:avg\s+)?prob(?:ability)?=([0-9.]+)(?:\s*(?:%|pct))?"
 )
 
 KPB_TRIGGER_RE = re.compile(
-    r"\[\s*([0-9.]+)\]\s*.*MWW keyword trigger -> notifying KPB to begin draining"
+    MWW_HDR + r"MWW keyword trigger -> notifying KPB to begin draining"
 )
 
 SUMMARY_RE = re.compile(
@@ -83,15 +88,24 @@ DROPPED_RE = re.compile(
     r"---\s*(\d+)\s+messages dropped\s*---"
 )
 
+COMP_RE = re.compile(r"\bcomp:\d+\s+(0x[0-9a-fA-F]+)")
 
-def parse_mtrace(file_path):
-    """Parse MWW diagnostic and detection events from mtrace text log."""
+
+def parse_mtrace(file_path, comp=None):
+    """Parse MWW diagnostic and detection events from mtrace text log.
+
+    Exact duplicate lines are skipped (memory or ring-buffer dumps repeat
+    them) and events are sorted by timestamp. When comp is given (e.g.
+    "0x20013"), only events of that detector component are kept.
+    """
     hops = []
     probs = []
     detects = []
     kpb_triggers = []
     summaries = []
     dropped_count = 0
+    seen = set()
+    comps = {}
 
     if file_path == "-":
         f = sys.stdin
@@ -107,6 +121,17 @@ def parse_mtrace(file_path):
             if m:
                 dropped_count += int(m.group(1))
                 continue
+
+            key = line.strip()
+            if key in seen:
+                continue
+            seen.add(key)
+
+            m = COMP_RE.search(line)
+            if m and "mww" in line:
+                comps[m.group(1)] = comps.get(m.group(1), 0) + 1
+                if comp is not None and m.group(1).lower() != comp.lower():
+                    continue
 
             m = HOP_RE.search(line)
             if m:
@@ -206,11 +231,16 @@ def parse_mtrace(file_path):
         else:
             summaries.append({"dropped_messages": dropped_count, "inferences": 0, "detections": 0, "arena_used": 0, "arena_cap": 0})
 
-    return hops, probs, detects, kpb_triggers, summaries
+    hops.sort(key=lambda h: h["t"])
+    probs.sort(key=lambda p: p["t"])
+    detects.sort(key=lambda d: d["t"])
+    kpb_triggers.sort()
+
+    return hops, probs, detects, kpb_triggers, summaries, comps
 
 
 def plot_mww_diagnostics(hops, probs, detects, kpb_triggers, summaries,
-                         output_path, title=None, threshold=85,
+                         output_path, title=None, threshold=50,
                          raw_units=False, show_vad=True, dpi=150,
                          pcan=None):
     """Plot MWW diagnostics across synchronized subplots."""
@@ -411,8 +441,9 @@ def main():
         help="Output PNG image path (default: <input_stem>_mww.png or mww_mtrace.png for stdin)"
     )
     parser.add_argument(
-        "-t", "--threshold", type=int, default=85,
-        help="Wake word detection probability threshold in percent (default: 85)"
+        "-t", "--threshold", type=int, default=50,
+        help="Detection threshold in percent; the firmware triggers when the mean of the "
+             "last 4 probabilities reaches it (default: 50)"
     )
     parser.add_argument(
         "--raw-units", action="store_true",
@@ -434,6 +465,11 @@ def main():
         "--pcan", action=argparse.BooleanOptionalAction, default=None,
         help="Enable/disable PCAN mode layout (3 panels, no software AGC / mel log-E envelope). Auto-detected if omitted."
     )
+    parser.add_argument(
+        "--comp", default=None,
+        help="Plot only this MWW component id, e.g. 0x20013. Default: the component with "
+             "a keyword detection, else the one with most log lines."
+    )
 
     args = parser.parse_args()
 
@@ -445,11 +481,26 @@ def main():
             base, _ = os.path.splitext(args.input)
             args.output = f"{base}_mww.png"
 
-    hops, probs, detects, kpb_triggers, summaries = parse_mtrace(args.input)
+    hops, probs, detects, kpb_triggers, summaries, comps = parse_mtrace(args.input, args.comp)
+    comp = args.comp
+    if comp is None and len(comps) > 1:
+        if args.input == "-":
+            print("Several MWW components on stdin; plotting all, use a file and --comp to select one.")
+        else:
+            # Several detector slots interleave in one log; plotting them as one
+            # series makes time, hop index and probability jump between slots.
+            det_comps = [c for c in comps if parse_mtrace(args.input, c)[2]]
+            comp = det_comps[0] if det_comps else max(comps, key=comps.get)
+            hops, probs, detects, kpb_triggers, summaries, _ = parse_mtrace(args.input, comp)
+    if comp is not None:
+        print("MWW components in log: " + ", ".join(f"{c} ({n} lines)" for c, n in sorted(comps.items()))
+              + f" -> plotting {comp} (select with --comp)")
 
     title = args.title
     if title is None and args.input != "-":
         title = f"MWW Diagnostics — {os.path.basename(args.input)}"
+        if comp is not None:
+            title += f" (comp {comp})"
 
     is_pcan = args.pcan if args.pcan is not None else any(h.get("pcan", False) for h in hops)
     mode_str = "PCAN 8-bit" if is_pcan else "Standard 32-bit"
