@@ -126,11 +126,6 @@ struct ipc {
 	struct io_perf_data_item *io_perf_out_msg_count;
 #endif
 
-#ifdef __ZEPHYR__
-	struct k_work_delayable z_delayed_work;
-	struct k_work_q ipc_send_wq;
-#endif
-
 	void *private;
 };
 
@@ -140,6 +135,18 @@ struct ipc {
 	((ipc)->private)
 
 extern struct task_ops ipc_task_ops;
+
+#ifdef __ZEPHYR__
+/**
+ * Return the IPC send work queue.
+ *
+ * The queue is kept outside struct ipc on purpose: with
+ * CONFIG_SOF_USERSPACE_LL, struct ipc is in a partition that user threads
+ * can write, and the queue embeds its supervisor-mode thread object.
+ * Kernel context only.
+ */
+struct k_work_q *ipc_send_wq_get(void);
+#endif
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 
