@@ -22,6 +22,7 @@
 #include <sof/lib_manager.h>
 #include <rtos/clk.h>
 #include <rtos/init.h>
+#include <rtos/timer.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
