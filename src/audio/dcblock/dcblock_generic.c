@@ -175,6 +175,65 @@ static int dcblock_s32_default(struct comp_data *cd,
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_FLOAT
+/**
+ * Generic float DC blocking filter:
+ * y[n] = x[n] - x[n-1] + R * y[n-1]
+ */
+static inline float dcblock_generic_float(struct dcblock_state *state,
+					  float R, float x)
+{
+	float out = (x - state->x_prev_f) + (R * state->y_prev_f);
+
+	state->y_prev_f = out;
+	state->x_prev_f = x;
+
+	return out;
+}
+
+/**
+ * dcblock_float_default() - Process FLOAT format.
+ * @cd: DC blocking filter component private data.
+ * @source: Source for PCM samples data.
+ * @sink: Sink for PCM samples data.
+ * @frames: Number of audio data frames to process.
+ *
+ * Return: Value zero for success, otherwise an error code.
+ */
+static int dcblock_float_default(struct comp_data *cd,
+				 struct cir_buf_source *source,
+				 struct cir_buf_sink *sink,
+				 size_t frames)
+{
+	const float *x = source->ptr;
+	float *y = sink->ptr;
+	size_t samples_without_wrap;
+	unsigned int nch = cd->channels;
+	size_t remaining_samples = frames * nch;
+	unsigned int ch = 0;
+	size_t i;
+
+	while (remaining_samples) {
+		samples_without_wrap = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		samples_without_wrap = MIN(samples_without_wrap,
+					   cir_buf_samples_without_wrap_s32(y, sink->buf_end));
+		samples_without_wrap = MIN(samples_without_wrap, remaining_samples);
+		for (i = 0; i < samples_without_wrap; i++) {
+			*y = dcblock_generic_float(&cd->state[ch], cd->R_coeffs_f[ch], *x);
+			x++;
+			y++;
+			if (++ch == nch)
+				ch = 0;
+		}
+		x = source_cir_buf_wrap(x, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
+		remaining_samples -= samples_without_wrap;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_FORMAT_FLOAT */
+
 const struct dcblock_func_map dcblock_fnmap[] = {
 /* { SOURCE_FORMAT , PROCESSING FUNCTION } */
 #if CONFIG_FORMAT_S16LE
@@ -186,6 +245,9 @@ const struct dcblock_func_map dcblock_fnmap[] = {
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, dcblock_s32_default },
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, dcblock_float_default },
+#endif /* CONFIG_FORMAT_FLOAT */
 };
 
 const size_t dcblock_fncount = ARRAY_SIZE(dcblock_fnmap);
