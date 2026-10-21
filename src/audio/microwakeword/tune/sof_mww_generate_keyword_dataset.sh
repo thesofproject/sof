@@ -27,6 +27,11 @@
 #   MAX_SAMPLES     Positive clips per speaking-rate loop (default 1000).
 #   MAX_SPEAKERS    Cap on speaker-embedding index (default 200).
 #   SLERP_WEIGHTS   Speaker blending weights passed to generator (default "0.0").
+#   NOISE_SCALES    Generator noise_scale values (default "0.45 0.55 0.667");
+#                   lower values give clearer, less slurred consonants.
+#   NOISE_SCALE_WS  Generator noise_scale_w values (default "0.6 0.8").
+#   TEXT_VARIANTS   1 = cycle the text through "kw", "kw." and "kw!" over the
+#                   speaking-rate loops for stress/intonation variety (default 1).
 #   GAIN_NORM          1 = peak-normalize each final WAV to GAIN_PEAK_DBFS (default 1).
 #                   0 = leave baseline (default 1).
 #   GAIN_PEAK_DBFS  Peak-normalization target in dBFS (default -10).
@@ -34,8 +39,8 @@
 #   GAIN_HEADROOM_DB Headroom below full scale (default 1).
 #   NOISE_AUG       1 = mix background noise onto positives, 0 = disable (default 1).
 #   NOISE_PROB      Probability of mixing noise into a clip (default 0.9).
-#   NOISE_SNR_MIN_DB Min SNR in dB (default 0).
-#   NOISE_SNR_MAX_DB Max SNR in dB (default 25).
+#   NOISE_SNR_MIN_DB Min SNR in dB (default 6).
+#   NOISE_SNR_MAX_DB Max SNR in dB (default 31).
 #   NOISE_DIR       Directory of *.wav background noise files (default:
 #                   $SC_CACHE/_background_noise_ or ~/.cache/speech_commands_v2/_background_noise_).
 #   NOISE_STATIONARY_BIAS Probability of picking from the stationary-noise subset
@@ -115,12 +120,15 @@ fi
 : "${MAX_SAMPLES:=1000}"
 : "${MAX_SPEAKERS:=200}"
 : "${SLERP_WEIGHTS:=0.0}"
+: "${NOISE_SCALES:=0.45 0.55 0.667}"
+: "${NOISE_SCALE_WS:=0.6 0.8}"
+: "${TEXT_VARIANTS:=1}"
 : "${GAIN_NORM:=1}"
 : "${GAIN_PEAK_DBFS:=-10}"
 : "${NOISE_AUG:=1}"
 : "${NOISE_PROB:=0.9}"
-: "${NOISE_SNR_MIN_DB:=0.0}"
-: "${NOISE_SNR_MAX_DB:=25.0}"
+: "${NOISE_SNR_MIN_DB:=6.0}"
+: "${NOISE_SNR_MAX_DB:=31.0}"
 : "${NOISE_DIR:=}"
 : "${NOISE_STATIONARY_BIAS:=0.7}"
 : "${SC_CACHE:=$HOME/.cache/speech_commands_v2}"
@@ -239,16 +247,29 @@ for i in "${!KEYWORDS[@]}"; do
 	echo ">>> [$((i + 1))/${#KEYWORDS[@]}] Generating '$KEYWORD' into $RAW_DIR"
 	echo "    model=$PIPER_MODEL"
 	echo "    max_samples=$MAX_SAMPLES per rate loop, max_speakers=$MAX_SPEAKERS"
+	echo "    noise_scales=[$NOISE_SCALES] noise_scale_ws=[$NOISE_SCALE_WS] text_variants=$TEXT_VARIANTS"
+
+	if [[ "$TEXT_VARIANTS" = "1" ]]; then
+		TEXTS=("$KEYWORD" "$KEYWORD." "$KEYWORD!")
+	else
+		TEXTS=("$KEYWORD")
+	fi
 
 	# Loop over speaking rates for prosody variety.
+	loop=0
 	for scale in 0.9 1.0 1.1; do
-		echo ">>> length_scale=$scale"
-		python3 -m piper_sample_generator "$KEYWORD" \
+		text="${TEXTS[$((loop % ${#TEXTS[@]}))]}"
+		loop=$((loop + 1))
+		echo ">>> length_scale=$scale text='$text'"
+		# shellcheck disable=SC2086
+		python3 -m piper_sample_generator "$text" \
 			--model "$PIPER_MODEL" \
 			--max-samples "$MAX_SAMPLES" \
 			--max-speakers "$MAX_SPEAKERS" \
 			--slerp-weights $SLERP_WEIGHTS \
 			--length-scales "$scale" \
+			--noise-scales $NOISE_SCALES \
+			--noise-scale-ws $NOISE_SCALE_WS \
 			--output-dir "$RAW_DIR"
 		tag="s$(echo "$scale" | tr -d .)"
 		for f in "$RAW_DIR"/*.wav; do
@@ -283,8 +304,8 @@ ir_dir = os.environ.get("IR_DIR", "").strip()
 
 noise_aug_enabled = os.environ.get("NOISE_AUG", "1") == "1"
 noise_prob = float(os.environ.get("NOISE_PROB", "0.9"))
-noise_snr_min = float(os.environ.get("NOISE_SNR_MIN_DB", "0.0"))
-noise_snr_max = float(os.environ.get("NOISE_SNR_MAX_DB", "25.0"))
+noise_snr_min = float(os.environ.get("NOISE_SNR_MIN_DB", "6.0"))
+noise_snr_max = float(os.environ.get("NOISE_SNR_MAX_DB", "31.0"))
 noise_dir = os.environ.get("NOISE_DIR", "").strip()
 noise_stationary_bias = float(os.environ.get("NOISE_STATIONARY_BIAS", "0.7"))
 
