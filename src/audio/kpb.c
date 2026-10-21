@@ -541,7 +541,8 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	kpb = rzalloc(SOF_MEM_FLAG_USER, sizeof(*kpb));
+	/* draining_task's delayed work and lock are kernel objects, must be coherent */
+	kpb = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*kpb));
 	if (!kpb) {
 		comp_free_device(dev);
 		return NULL;
