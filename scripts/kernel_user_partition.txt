@@ -37,6 +37,8 @@ src/audio/mic_privacy_manager/*
 src/audio/module_adapter/library/userspace_proxy.c
 
 # SOF headers that only kernel code may include.
+# Not listed on purpose: rtos/init.h, which only provides the
+# SOF_MODULE_INIT() registration hook used by every module.
 [kernel-headers]
 src/include/sof/drivers/*
 src/include/sof/platform.h
@@ -51,7 +53,6 @@ src/include/sof/lib/watchdog.h
 src/platform/*
 zephyr/include/rtos/clk.h
 zephyr/include/rtos/idc.h
-zephyr/include/rtos/init.h
 zephyr/include/rtos/interrupt.h
 zephyr/include/rtos/interrupt-legacy.h
 zephyr/include/rtos/timer.h
