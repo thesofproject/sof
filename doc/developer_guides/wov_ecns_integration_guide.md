@@ -88,7 +88,7 @@ flowchart TD
             M1["mixout.111.1"] --> FE0["Feature Extract<br>(MFCC)"] --> WOV0["WOV Engine 0<br>(e.g. Strawberry)"]
         end
         subgraph Slot1 ["Slot 1 (Pipeline 112)"]
-            M2["mixout.112.1"] --> FE1["Feature Extract<br>(MFCC)"] --> WOV1["WOV Engine 1<br>(e.g. Banana)"]
+            M2["mixout.112.1"] --> FE1["Feature Extract<br>(MFCC)"] --> WOV1["WOV Engine 1<br>(e.g. Hi Intel)"]
         end
         subgraph Slot2 ["Slot 2 (Pipeline 113)"]
             M3["mixout.113.1"] --> FE2["Feature Extract<br>(MFCC)"] --> WOV2["WOV Engine 2<br>(e.g. Orange)"]
@@ -305,7 +305,7 @@ The `wov_arbiter` component synchronizes multi-slot pipelines and multiplexes de
 sequenceDiagram
     autonumber
     participant WOV0 as WOV Slot 0 (Strawberry)
-    participant WOV1 as WOV Slot 1 (Banana)
+    participant WOV1 as WOV Slot 1 (Hi Intel)
     participant KPB as KPB (Pipeline 106)
     participant ARB as WOV Arbiter (Pipeline 104)
     participant HOST as Linux ALSA Driver (PCM 11)

@@ -11,7 +11,7 @@ outputting a single sigmoid wake-word probability per keyword model.
 
 In this architecture, **one unified codebase** supports **three concurrent keyword spotter instances**:
 - **Slot 0** (Pipeline 101): `"strawberry"`
-- **Slot 1** (Pipeline 102): `"banana"`
+- **Slot 1** (Pipeline 102): `"hi intel"`
 - **Slot 2** (Pipeline 103): `"orange"`
 
 ---
@@ -47,10 +47,10 @@ graph TD
         MO101 --> MFCC0 --> MWW0
     end
 
-    subgraph P102["Pipeline 102 — Slot 1: 'banana'  (Core 0, DP 10ms)"]
+    subgraph P102["Pipeline 102 — Slot 1: 'hi intel'  (Core 0, DP 10ms)"]
         MO102["mixout 102.1"]
         MFCC1["mfcc.102.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
-        MWW1["mww.102.1\n(microWakeWord)\nModel: 'banana'"]
+        MWW1["mww.102.1\n(microWakeWord)\nModel: 'hi intel'"]
         MO102 --> MFCC1 --> MWW1
     end
 
@@ -150,7 +150,7 @@ This guarantees deterministic execution, avoids heap fragmentation, and ensures 
 ### 3. Keyword Model Dispatch
 Default built-in models are bound automatically by slot/pipeline index:
 - **Slot 0** (`pipeline_id == 101`): `mww_model_data_strawberry`
-- **Slot 1** (`pipeline_id == 102`): `mww_model_data_banana`
+- **Slot 1** (`pipeline_id == 102`): `mww_model_data_hi_intel`
 - **Slot 2** (`pipeline_id == 103`): `mww_model_data_orange`
 
 Each instance can also be dynamically customized via SOF IPC4 `LARGE_CONFIG_SET` / bytes control or LLEXT model loading.
@@ -175,7 +175,7 @@ The MWW detector participates in SOF's synchronous intra-DSP publish/subscribe n
 The arbiter exposes a volatile read-only ALSA enum kcontrol:
 ```bash
 amixer -c 0 cget name='wov_active_slot'
-# Values: 0 = Listening, 1 = Slot 1 ("strawberry"), 2 = Slot 2 ("banana"), 3 = Slot 3 ("orange")
+# Values: 0 = Listening, 1 = Slot 1 ("strawberry"), 2 = Slot 2 ("hi intel"), 3 = Slot 3 ("orange")
 ```
 
 ### 2. Audio Capture Endpoints

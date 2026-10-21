@@ -514,10 +514,10 @@ graph TD
         MO101 --> MFCC0 --> MWW0
     end
 
-    subgraph P102["Pipeline 102 — Slot 1: 'banana'  (Core 0, DP 10ms)"]
+    subgraph P102["Pipeline 102 — Slot 1: 'hi intel'  (Core 0, DP 10ms)"]
         MO102["mixout 102.1"]
         MFCC1["mfcc.102.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
-        MWW1["mww.102.1\n(microWakeWord)\nModel: 'banana'"]
+        MWW1["mww.102.1\n(microWakeWord)\nModel: 'hi intel'"]
         MO102 --> MFCC1 --> MWW1
     end
 

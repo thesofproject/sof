@@ -16,7 +16,7 @@
 #include "mww_model.h"
 
 #include "mww_model_data_strawberry.h"
-#include "mww_model_data_banana.h"
+#include "mww_model_data_hi_intel.h"
 #include "mww_model_data_orange.h"
 
 static constexpr int kFeatureSize = MWW_FEATURE_SIZE;
@@ -163,8 +163,8 @@ const unsigned char *MWW_GetDefaultModel(uint8_t slot_id, size_t *size)
 		return mww_model_data_strawberry;
 	case 1:
 		if (size)
-			*size = mww_model_data_banana_size;
-		return mww_model_data_banana;
+			*size = mww_model_data_hi_intel_size;
+		return mww_model_data_hi_intel;
 	case 2:
 	default:
 		if (size)
