@@ -68,6 +68,9 @@ elseif(CONFIG_MATH_IIR)
 
   if(CONFIG_MATH_IIR_DF1)
     list(APPEND base_files iir_df1_generic.c iir_df1_hifi3.c iir_df1_hifi4.c iir_df1_hifi5.c iir_df1_arm.c iir_df1_riscv.c iir_df1.c)
+    if(CONFIG_FORMAT_FLOAT)
+      list(APPEND base_files iir_df1_float.c)
+    endif()
   endif()
 endif()
 
