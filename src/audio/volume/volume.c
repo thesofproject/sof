@@ -683,7 +683,7 @@ static vol_zc_func vol_get_zc_function(struct comp_dev *dev,
  */
 static void volume_set_alignment(struct sof_source *source)
 {
-	const int channels = source_get_channels(source);
+	const unsigned int channels = source_get_channels(source);
 
 	/* The source buffer in HiFi5 processing version needs 16 bytes alignment. The
 	 * macro SOF_FRAME_BYTE_ALIGN is set in common.h to the requirement align.
