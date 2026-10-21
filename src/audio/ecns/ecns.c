@@ -75,20 +75,20 @@ static inline int16_t ecns_mono_s16(const int16_t *frame, uint32_t start, uint32
 
 #if CONFIG_ECNS_KPB_HPF
 /**
- * \brief 100 Hz second-order high-pass filter with +20 dB gain at 16 kHz.
+ * \brief 100 Hz second-order high-pass filter with +30 dB gain at 16 kHz.
  *
  * Built-in coefficient set for the KPB detection path (Pin 0 mono mix).
- * Converted from tools/topology/topology2/include/components/eqiir/highpass_100hz_20db_16khz.conf
+ * Converted from tools/topology/topology2/include/components/eqiir/highpass_100hz_30db_16khz.conf
  * consisting of struct sof_eq_iir_header (6 words) followed by one
  * struct sof_eq_iir_biquad (7 words):
  *   header: num_sections=1, num_sections_in_series=1, reserved[4]={0,0,0,0}
- *   biquad: a2, a1, b2, b1, b0 in Q2.30, shift=-4, gain=0x4fd0 (20432 in Q2.14)
+ *   biquad: a2, a1, b2, b1, b0 in Q2.30, shift=-5, gain=0x7e33 (32307 in Q2.14)
  */
-static const uint32_t hp_100hz_20db_16k[13] = {
+static const uint32_t hp_100hz_30db_16k[13] = {
 	0x00000001, 0x00000001, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0xc37518f5, 0x7c72526b,
-	0x1f32926e, 0xc19adb24, 0x1f32926e, 0xfffffffc,
-	0x00004fd0
+	0x1f32926e, 0xc19adb24, 0x1f32926e, 0xfffffffb,
+	0x00007e33
 };
 #endif
 
@@ -98,7 +98,7 @@ static const uint32_t hp_100hz_20db_16k[13] = {
  *
  * Converted from highpass_40hz_20db_48khz.conf and highpass_40hz_20db_16khz.conf
  * in tools/topology/topology2/include/components/eqiir/ with the same layout
- * as hp_100hz_20db_16k.
+ * as hp_100hz_30db_16k.
  */
 static const uint32_t hp_40hz_20db_48k[13] = {
 	0x00000001, 0x00000001, 0x00000000, 0x00000000,
@@ -172,7 +172,7 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 	dev->state         = COMP_STATE_READY;
 
 #if CONFIG_ECNS_KPB_HPF
-	struct sof_eq_iir_header *hp_hdr = (struct sof_eq_iir_header *)hp_100hz_20db_16k;
+	struct sof_eq_iir_header *hp_hdr = (struct sof_eq_iir_header *)hp_100hz_30db_16k;
 	int hp_size = iir_delay_size_df1(hp_hdr);
 	int32_t *delay;
 
@@ -348,7 +348,7 @@ static int ecns_reset(struct comp_dev *dev)
 	cd->test_signal_val = 0;
 #if CONFIG_ECNS_KPB_HPF
 	if (cd->hp_delay) {
-		struct sof_eq_iir_header *hp_hdr = (struct sof_eq_iir_header *)hp_100hz_20db_16k;
+		struct sof_eq_iir_header *hp_hdr = (struct sof_eq_iir_header *)hp_100hz_30db_16k;
 		int hp_size = iir_delay_size_df1(hp_hdr);
 
 		if (hp_size > 0)
@@ -583,7 +583,7 @@ static void ecns_kpb_s16_to_s16(struct ecns_comp_data *cd,
  * \brief Process Pin 0: 16 kHz detection stream -> Mono clean to KPB
  *
  * Averages selected source channels into a mono stream, filters with the
- * built-in 100 Hz HPF (+20 dB gain, CONFIG_ECNS_KPB_HPF), and writes to the sink buffer (either
+ * built-in 100 Hz HPF (+30 dB gain, CONFIG_ECNS_KPB_HPF), and writes to the sink buffer (either
  * 16-bit or 32-bit container). Supports test signal generation when enabled.
  *
  * \param[in,out] cd   ECNS component data
