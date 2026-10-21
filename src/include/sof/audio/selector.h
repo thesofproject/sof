@@ -37,11 +37,13 @@ struct cir_buf_sink;
 #define SEL_SOURCE_1CH 1
 #define SEL_SOURCE_2CH 2
 #define SEL_SOURCE_4CH 4
+#define SEL_SOURCE_CHANNELS_MAX 8
 
 /** \brief Supported channel count on output. */
 #define SEL_SINK_1CH 1
 #define SEL_SINK_2CH 2
 #define SEL_SINK_4CH 4
+#define SEL_SINK_CHANNELS_MAX   8
 #else
 /** \brief Maximum supported channel count on input. */
 #define SEL_SOURCE_CHANNELS_MAX 8
