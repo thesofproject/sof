@@ -545,6 +545,7 @@ int z_impl_zephyr_ll_task_sem_free(struct task *task)
 
 #ifdef CONFIG_USERSPACE
 #include <zephyr/internal/syscall_handler.h>
+#include <sof/userspace/syscall_caller.h>
 /*
  * Read task->priv_data exactly once. The task lives in user memory and a
  * thread on another core can change the pointer after it has been checked.
@@ -567,6 +568,8 @@ static inline int z_vrfy_zephyr_ll_task_sem_alloc(struct task *task)
 {
 	struct zephyr_ll_pdata *pdata;
 
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	if (!task)
 		return -EINVAL;
 	pdata = zephyr_ll_task_pdata_vrfy(task);
@@ -580,6 +583,8 @@ static inline int z_vrfy_zephyr_ll_task_sem_alloc(struct task *task)
 static inline int z_vrfy_zephyr_ll_task_sem_free(struct task *task)
 {
 	struct zephyr_ll_pdata *pdata;
+
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
 
 	if (!task)
 		return -EINVAL;

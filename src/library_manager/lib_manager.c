@@ -790,11 +790,20 @@ err:
 
 #ifdef CONFIG_USERSPACE
 #include <zephyr/internal/syscall_handler.h>
+#include <sof/userspace/syscall_caller.h>
 
 static int z_vrfy_lib_manager_free_module(const uint32_t component_id)
 {
 #if CONFIG_SOF_USERSPACE_LL
+#ifdef CONFIG_SOF_USERSPACE_SYSCALL_CALLER_CHECK
+	/*
+	 * ipc_thread_user() reads a user-writable table, so it cannot
+	 * identify the caller. Use the kernel-only registry instead.
+	 */
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_IPC);
+#else
 	K_OOPS(k_current_get() != ipc_thread_user(cpu_get_id()));
+#endif
 	return z_impl_lib_manager_free_module(component_id);
 #else
 	ARG_UNUSED(component_id);

@@ -503,8 +503,11 @@ void z_impl_kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli)
 }
 
 #include <zephyr/internal/syscall_handler.h>
+#include <sof/userspace/syscall_caller.h>
 void z_vrfy_kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(dev, sizeof(*dev)));
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(cli, sizeof(*cli)));
 	z_impl_kpb_notifier_init(dev, cli);
