@@ -27,6 +27,17 @@ struct multiband_drc_state {
 	struct iir_state_df1 deemphasis[CONFIG_PLATFORM_MAX_CHANNELS];
 };
 
+#if CONFIG_FORMAT_FLOAT
+#include <sof/math/iir_df1_float.h>
+
+struct multiband_drc_state_float {
+	struct iir_state_df1_float emphasis[CONFIG_PLATFORM_MAX_CHANNELS];
+	struct crossover_state_float crossover[CONFIG_PLATFORM_MAX_CHANNELS];
+	struct drc_state drc[SOF_MULTIBAND_DRC_MAX_BANDS];
+	struct iir_state_df1_float deemphasis[CONFIG_PLATFORM_MAX_CHANNELS];
+};
+#endif
+
 typedef int (*multiband_drc_func)(const struct processing_module *mod,
 				  struct sof_source *source,
 				  struct sof_sink *sink,
@@ -35,6 +46,9 @@ typedef int (*multiband_drc_func)(const struct processing_module *mod,
 /* Multiband DRC component private data */
 struct multiband_drc_comp_data {
 	struct multiband_drc_state state;        /**< compressor state */
+#if CONFIG_FORMAT_FLOAT
+	struct multiband_drc_state_float state_f;  /**< float compressor state */
+#endif
 	struct comp_data_blob_handler *model_handler;
 	struct sof_multiband_drc_config *config; /**< pointer to setup blob */
 	bool config_ready;                       /**< set when fully received */
@@ -42,6 +56,9 @@ struct multiband_drc_comp_data {
 	bool process_enabled;                    /**< true if component is enabled */
 	multiband_drc_func multiband_drc_func;   /**< processing function */
 	crossover_split crossover_split;         /**< crossover n-way split func */
+#if CONFIG_FORMAT_FLOAT
+	crossover_split_float crossover_split_f; /**< crossover float split func */
+#endif
 };
 
 struct multiband_drc_proc_fnmap {
@@ -97,6 +114,18 @@ static inline void multiband_drc_iir_reset_state_ch(struct processing_module *mo
 	iir->coef = NULL;
 	iir->delay = NULL;
 }
+
+#if CONFIG_FORMAT_FLOAT
+static inline void multiband_drc_iir_reset_state_ch_float(struct processing_module *mod,
+							  struct iir_state_df1_float *iir)
+{
+	mod_free(mod, iir->coef);
+	mod_free(mod, iir->delay);
+
+	iir->coef = NULL;
+	iir->delay = NULL;
+}
+#endif
 
 void multiband_drc_process_enable(bool *process_enabled);
 int multiband_drc_set_ipc_config(struct processing_module *mod, uint32_t param_id,
