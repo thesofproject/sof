@@ -18,6 +18,7 @@
 #include <platform/fw_scratch_mem.h>
 #include <sof/lib/io.h>
 #include <platform/chip_offset_byte.h>
+#include <platform/chip_registers.h>
 
 SOF_DEFINE_REG_UUID(hsdai);
 /* unused with Zephyr, generates no output */

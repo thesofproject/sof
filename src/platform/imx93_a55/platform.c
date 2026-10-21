@@ -7,6 +7,7 @@
 #include <rtos/clk.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/dai.h>
+#include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
