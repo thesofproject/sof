@@ -122,10 +122,33 @@ syscall by subsystem:
 | DMA | `sof_dma_get`, `sof_dma_put`, `sof_dma_get_attribute`, `sof_dma_request_channel`, `sof_dma_release_channel`, `sof_dma_config`, `sof_dma_start`, `sof_dma_stop`, `sof_dma_get_status`, `sof_dma_reload`, `sof_dma_suspend`, `sof_dma_resume` | `sof/lib/sof_dma.h` | `zephyr/syscall/sof_dma.c` / `lib/dma.c` (get/put); remaining 10 are `static inline z_impl_*` in `sof/lib/sof_dma.h` |
 | DAI | `dai_get_device` | `sof/lib/dai-zephyr.h` | `zephyr/syscall/dai.c` / `lib/dai.c` |
 | CPU | `cpu_get_id` | `sof/lib/cpu.h` | `zephyr/syscall/cpu.c` / `zephyr/lib/cpu.c` |
-| Module management | `mod_balloc_align`, `mod_alloc_ext`, `mod_free`, `mod_free_all`, `mod_data_blob_handler_new`, `mod_fast_get` | `sof/audio/module_adapter/module/generic.h` | scattered: `audio/module_adapter/module/generic.c` |
+| Module management | `mod_balloc_align`, `mod_alloc_ext`, `mod_free`, `mod_free_all`, `mod_data_blob_handler_new`, `mod_data_blob_set`, `mod_fast_get` | `sof/audio/module_adapter/module/generic.h` | scattered: `audio/module_adapter/module/generic.c` |
 | Library manager | `lib_manager_free_module` | `sof/lib_manager.h` | scattered: `kernel/library_manager/lib_manager.c` |
 | Scheduling | `zephyr_ll_task_sem_alloc`, `zephyr_ll_task_sem_free`, `scheduler_dp_internal_free`, `scheduler_dp_ll_tick` | `sof/schedule/ll_schedule_domain.h`, `sof/schedule/dp_schedule.h` | scattered: `schedule/zephyr_ll.c`, `schedule/zephyr_dp_schedule*.c` |
 | Debug | `debug_stream_slot_send_record` | `user/debug_stream_slot.h` | scattered: `debug/debug_stream/debug_stream_slot.c` |
+| KPB | `kpb_notifier_init` | `sof/audio/kpb.h` | scattered: `audio/kpb.c` |
+
+### Allowed callers
+
+Zephyr lets any user thread invoke any syscall. With
+`CONFIG_SOF_USERSPACE_SYSCALL_CALLER_CHECK` (default `y` with `SOF_USERSPACE_LL`), each
+validator first calls `SOF_SYSCALL_CALLER_CHECK()` from
+[`sof/userspace/syscall_caller.h`](syscall_caller.h). That kills any calling thread that is
+not registered with an allowed role. The registry is kernel-only; never identify the caller
+from user-writable data such as `ipc_user->thread[]`.
+
+| Allowed callers | Syscalls |
+|-----------------|----------|
+| Any user thread, including DP module threads | `cpu_get_id`, all module management syscalls (`mod_*`), `ipc_msg_send`, `ipc_msg_list_remove`, `send_resource_notif` |
+| IPC user thread only | `ipc_compound_pre_start`, `ipc_compound_post_start`, `ipc_wait_for_compound_msg`, `lib_manager_free_module` |
+| LL user thread only | `scheduler_dp_ll_tick` |
+| LL or IPC user thread | all other SOF syscalls |
+
+DP modules only get the syscalls needed to implement the module interface. That includes
+sending notifications: modules queue messages from `mod_ipc_msg_init()` with
+`ipc_msg_send()` and free them with `mod_ipc_msg_free()`, and `dp_task_run()` reports
+processing errors with `send_resource_notif()`. DP modules have no access to the other IPC
+syscalls or to heap, vregion, DMA, DAI or scheduler syscalls.
 
 The `zephyr/syscall/*.c` files hold the validators in one place per subsystem; the rows marked
 **scattered** keep their `z_vrfy_` next to the kernel logic and are the migration targets.
@@ -200,7 +223,11 @@ Key options:
    `audio/`. Reusable pure code → a shared-library directory (keep it user-safe).
 2. **Cross the boundary only via a syscall.** Add a `__syscall` declaration, put the
    `z_vrfy_` validator in the boundary tier — preferably in `zephyr/syscall/<subsystem>.c`
-   alongside the existing ones — and validate every argument.
+   alongside the existing ones — and validate every argument. Start the validator with
+   `SOF_SYSCALL_CALLER_CHECK()` and add the syscall to the
+   [allowed callers](#allowed-callers) table. Read each field of a user structure once
+   (`k_usermode_from_copy()`), and never let the kernel follow, free through or link a
+   pointer that lives in user-writable memory.
 3. **Mark shared globals.** Any global a kernel-managed user thread (LL user thread, userspace
    IPC thread, proxy worker) reads/writes gets `APP_TASK_*`, `APP_SYSUSER_*`, or a `K_APP_*`
    partition marker — and the kernel re-validates it. DP modules in application mode use their
