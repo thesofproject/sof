@@ -26,14 +26,6 @@ struct zephyr_ll_mem_resources {
 
 static struct zephyr_ll_mem_resources ll_mem_resources;
 
-/**
- * Heap allocator for LL scheduler memory (user accessible pointer)
- *
- * Note: this is also user-writable, so kernel must not rely on this to
- * be correct and must always validate it separately.
- */
-APP_SYSUSER_DATA static struct k_heap *zephyr_ll_heap;
-
 static struct k_heap *ll_heap_alloc(void)
 {
 	const size_t alloc_size = CONFIG_SOF_ZEPHYR_SYS_USER_HEAP_SIZE;
@@ -98,9 +90,6 @@ void zephyr_ll_user_resources_init(void)
 
 	ll_heap_init();
 
-	/* store a user-accessible pointer */
-	zephyr_ll_heap = &ll_mem_resources.heap;
-
 	/* attach common partition to LL domain */
 	user_memory_attach_common_partition(zephyr_ll_mem_domain());
 
@@ -124,13 +113,20 @@ bool zephyr_ll_user_heap_verify(struct k_heap *heap)
 /**
  * Returns heap object to use in user-space LL code.
  *
- * Can be called from user-space.
+ * Can be called from both kernel and user-space. The heap object itself is
+ * kernel-only, but its address is a link-time constant, so returning it
+ * does not read any memory. User threads only pass it to the
+ * sof_heap_alloc()/sof_heap_free() system calls, whose validators check it
+ * with zephyr_ll_user_heap_verify().
+ *
+ * Do not cache the pointer in user-writable memory for kernel use: kernel
+ * code must call this function, so it never trusts a stored copy.
  *
  * @return heap pointer that can be passed to sof_heap_alloc()
  */
 struct k_heap *zephyr_ll_user_heap(void)
 {
-	return zephyr_ll_heap;
+	return &ll_mem_resources.heap;
 }
 
 /**
