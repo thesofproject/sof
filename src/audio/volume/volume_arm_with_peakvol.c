@@ -62,7 +62,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 	struct vol_data *cd = module_get_private_data(mod);
 	const int16_t *x = source->ptr;
 	int16_t *y = sink->ptr;
-	const int nch = cd->channels;
+	const unsigned int nch = cd->channels;
 	int remaining_samples = frames * nch;
 
 	while (remaining_samples) {
@@ -114,7 +114,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 			cd->peak_regs.peak_meter[0] = MAX(peak_l, cd->peak_regs.peak_meter[0]);
 			cd->peak_regs.peak_meter[1] = MAX(peak_r, cd->peak_regs.peak_meter[1]);
 		} else {
-			for (int j = 0; j < nch; j++) {
+			for (unsigned int j = 0; j < nch; j++) {
 				const int32_t vol = cd->volume[j];
 				int32_t peak = 0;
 				for (int i = j; i < n; i += nch) {
@@ -140,7 +140,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	struct vol_data *cd = module_get_private_data(mod);
 	const int16_t *x = source->ptr;
 	int16_t *y = sink->ptr;
-	const int nch = cd->channels;
+	const unsigned int nch = cd->channels;
 	int remaining_samples = frames * nch;
 
 	while (remaining_samples) {
@@ -185,7 +185,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 			cd->peak_regs.peak_meter[0] = MAX(peak_l, cd->peak_regs.peak_meter[0]);
 			cd->peak_regs.peak_meter[1] = MAX(peak_r, cd->peak_regs.peak_meter[1]);
 		} else {
-			for (int j = 0; j < nch; j++) {
+			for (unsigned int j = 0; j < nch; j++) {
 				int32_t peak = 0;
 				for (int i = j; i < n; i += nch) {
 					y[i] = x[i];
@@ -223,7 +223,7 @@ static void vol_s24_to_s24(struct processing_module *mod, struct cir_buf_source 
 	struct vol_data *cd = module_get_private_data(mod);
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
-	const int nch = cd->channels;
+	const unsigned int nch = cd->channels;
 	int remaining_samples = frames * nch;
 
 	while (remaining_samples) {
@@ -270,7 +270,7 @@ static void vol_s24_to_s24(struct processing_module *mod, struct cir_buf_source 
 			cd->peak_regs.peak_meter[0] = MAX(peak_l, cd->peak_regs.peak_meter[0]);
 			cd->peak_regs.peak_meter[1] = MAX(peak_r, cd->peak_regs.peak_meter[1]);
 		} else {
-			for (int j = 0; j < nch; j++) {
+			for (unsigned int j = 0; j < nch; j++) {
 				const int32_t vol = cd->volume[j];
 				int32_t peak = 0;
 				for (int i = j; i < n; i += nch) {
@@ -296,7 +296,7 @@ static void vol_passthrough_s24_to_s24(struct processing_module *mod,
 	struct vol_data *cd = module_get_private_data(mod);
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
-	const int nch = cd->channels;
+	const unsigned int nch = cd->channels;
 	int remaining_samples = frames * nch;
 
 	while (remaining_samples) {
@@ -341,7 +341,7 @@ static void vol_passthrough_s24_to_s24(struct processing_module *mod,
 			cd->peak_regs.peak_meter[0] = MAX(peak_l, cd->peak_regs.peak_meter[0]);
 			cd->peak_regs.peak_meter[1] = MAX(peak_r, cd->peak_regs.peak_meter[1]);
 		} else {
-			for (int j = 0; j < nch; j++) {
+			for (unsigned int j = 0; j < nch; j++) {
 				int32_t peak = 0;
 				for (int i = j; i < n; i += nch) {
 					y[i] = x[i];
@@ -379,7 +379,7 @@ static void vol_s32_to_s32(struct processing_module *mod, struct cir_buf_source 
 	struct vol_data *cd = module_get_private_data(mod);
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
-	const int nch = cd->channels;
+	const unsigned int nch = cd->channels;
 	int remaining_samples = frames * nch;
 
 	while (remaining_samples) {
@@ -426,7 +426,7 @@ static void vol_s32_to_s32(struct processing_module *mod, struct cir_buf_source 
 			cd->peak_regs.peak_meter[0] = MAX(peak_l, cd->peak_regs.peak_meter[0]);
 			cd->peak_regs.peak_meter[1] = MAX(peak_r, cd->peak_regs.peak_meter[1]);
 		} else {
-			for (int j = 0; j < nch; j++) {
+			for (unsigned int j = 0; j < nch; j++) {
 				const int32_t vol = cd->volume[j];
 				int32_t peak = 0;
 				for (int i = j; i < n; i += nch) {
@@ -452,7 +452,7 @@ static void vol_passthrough_s32_to_s32(struct processing_module *mod,
 	struct vol_data *cd = module_get_private_data(mod);
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
-	const int nch = cd->channels;
+	const unsigned int nch = cd->channels;
 	int remaining_samples = frames * nch;
 
 	while (remaining_samples) {
@@ -497,7 +497,7 @@ static void vol_passthrough_s32_to_s32(struct processing_module *mod,
 			cd->peak_regs.peak_meter[0] = MAX(peak_l, cd->peak_regs.peak_meter[0]);
 			cd->peak_regs.peak_meter[1] = MAX(peak_r, cd->peak_regs.peak_meter[1]);
 		} else {
-			for (int j = 0; j < nch; j++) {
+			for (unsigned int j = 0; j < nch; j++) {
 				int32_t peak = 0;
 				for (int i = j; i < n; i += nch) {
 					y[i] = x[i];
@@ -522,11 +522,11 @@ static void vol_float_to_float(struct processing_module *mod, struct cir_buf_sou
 	struct vol_data *cd = module_get_private_data(mod);
 	const float *x = source->ptr;
 	float *y = sink->ptr;
-	const int nch = cd->channels;
+	const unsigned int nch = cd->channels;
 	int remaining_samples = frames * nch;
 	float vol_f[PLATFORM_MAX_CHANNELS];
 
-	for (int j = 0; j < nch; j++) {
+	for (unsigned int j = 0; j < nch; j++) {
 #if COMP_VOLUME_Q8_16
 		vol_f[j] = (float)cd->volume[j] * (1.0f / 65536.0f);
 #elif COMP_VOLUME_Q1_31
@@ -582,7 +582,7 @@ static void vol_float_to_float(struct processing_module *mod, struct cir_buf_sou
 			cd->peak_regs.peak_meter[0] = MAX(ipeak_l, cd->peak_regs.peak_meter[0]);
 			cd->peak_regs.peak_meter[1] = MAX(ipeak_r, cd->peak_regs.peak_meter[1]);
 		} else {
-			for (int j = 0; j < nch; j++) {
+			for (unsigned int j = 0; j < nch; j++) {
 				const float vol = vol_f[j];
 				float peak = 0.0f;
 				for (int i = j; i < n; i += nch) {
@@ -609,7 +609,7 @@ static void vol_passthrough_float_to_float(struct processing_module *mod,
 	struct vol_data *cd = module_get_private_data(mod);
 	const float *x = source->ptr;
 	float *y = sink->ptr;
-	const int nch = cd->channels;
+	const unsigned int nch = cd->channels;
 	int remaining_samples = frames * nch;
 
 	while (remaining_samples) {
@@ -656,7 +656,7 @@ static void vol_passthrough_float_to_float(struct processing_module *mod,
 			cd->peak_regs.peak_meter[0] = MAX(ipeak_l, cd->peak_regs.peak_meter[0]);
 			cd->peak_regs.peak_meter[1] = MAX(ipeak_r, cd->peak_regs.peak_meter[1]);
 		} else {
-			for (int j = 0; j < nch; j++) {
+			for (unsigned int j = 0; j < nch; j++) {
 				float peak = 0.0f;
 				for (int i = j; i < n; i += nch) {
 					y[i] = x[i];
