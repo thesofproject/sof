@@ -13,6 +13,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/ipc/driver.h>
 #include <sof/lib/dai.h>
+#include <sof/lib/mailbox.h>
 #include <sof/lib/notifier.h>
 #include <sof/drivers/afe-dai.h>
 #include <sof/drivers/edma.h>

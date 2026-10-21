@@ -22,6 +22,7 @@
 #include <rtos/bit.h>
 #include <sof/common.h>
 #include <sof/trace/trace.h>
+#include <sof/lib/mailbox.h>
 #include <ipc/stream.h>
 #include <user/trace.h>
 #include <stddef.h>

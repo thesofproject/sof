@@ -12,6 +12,7 @@
 #include <ipc/control.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
+#include <sof/lib/mailbox.h>
 
 LOG_MODULE_REGISTER(data_blob, CONFIG_SOF_LOG_LEVEL);
 
