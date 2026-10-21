@@ -147,10 +147,11 @@ ordinary variables in non-userspace builds.
 marker at its declaration site.* Conversely, marked data is **user-writable**, so kernel code
 must never trust it — re-validate on every use. DP modules running under
 `SOF_USERSPACE_APPLICATION` access data through their per-module memory domain set up by the
-proxy or DP thread infrastructure, not through `APP_TASK_*` / `APP_SYSUSER_*` markers. See the warning in
-[`schedule/zephyr_ll_user.c`](../../../schedule/zephyr_ll_user.c) around `zephyr_ll_heap`, and
-`zephyr_ll_user_heap_verify()` which exists precisely because the user-visible heap pointer
-cannot be trusted.
+proxy or DP thread infrastructure, not through `APP_TASK_*` / `APP_SYSUSER_*` markers. See
+[`schedule/zephyr_ll_user.c`](../../../schedule/zephyr_ll_user.c): `zephyr_ll_user_heap()`
+returns the address of the kernel-only heap object rather than a pointer stored in
+user-writable memory, and `zephyr_ll_user_heap_verify()` checks the heap pointer that user
+threads pass to the heap system calls.
 
 ## Kconfig hierarchy
 
