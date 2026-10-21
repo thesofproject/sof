@@ -6,6 +6,7 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 
 #include <sof/audio/buffer.h>
+#include <sof/audio/audio_stream_hw.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
