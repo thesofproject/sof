@@ -14,6 +14,7 @@
 
 #ifdef CONFIG_USERSPACE
 #include <zephyr/internal/syscall_handler.h>
+#include <sof/userspace/syscall_caller.h>
 #include <zephyr/sys/math_extras.h>
 #endif
 
@@ -136,6 +137,8 @@ int z_impl_debug_stream_slot_send_record(struct debug_stream_record *rec)
 #ifdef CONFIG_USERSPACE
 static inline int z_vrfy_debug_stream_slot_send_record(struct debug_stream_record *rec)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	uint32_t size_words;
 	size_t bytes;
 

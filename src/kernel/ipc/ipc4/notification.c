@@ -94,6 +94,12 @@ static inline bool z_vrfy_send_resource_notif(uint32_t resource_id, uint32_t eve
 					      uint32_t resource_type, void *data,
 					      uint32_t data_size)
 {
+	/*
+	 * No caller check: DP threads report module processing errors with
+	 * this, see dp_task_run(). The kernel picks the message, the caller
+	 * only passes scalars and a bounded payload.
+	 */
+
 	/* Validate event_type is a known resource event */
 	K_OOPS(K_SYSCALL_VERIFY(event_type < SOF_IPC4_INVALID_RESOURCE_EVENT_TYPE));
 

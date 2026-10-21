@@ -249,8 +249,11 @@ void z_impl_scheduler_dp_ll_tick(void)
 
 #ifdef CONFIG_USERSPACE
 #include <zephyr/internal/syscall_handler.h>
+#include <sof/userspace/syscall_caller.h>
 void z_vrfy_scheduler_dp_ll_tick(void)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_LL);
+
 	z_impl_scheduler_dp_ll_tick();
 }
 #include <zephyr/syscalls/scheduler_dp_ll_tick_mrsh.c>
