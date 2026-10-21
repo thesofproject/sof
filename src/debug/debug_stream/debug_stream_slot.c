@@ -14,6 +14,7 @@
 
 #ifdef CONFIG_USERSPACE
 #include <zephyr/internal/syscall_handler.h>
+#include <zephyr/sys/math_extras.h>
 #endif
 
 LOG_MODULE_REGISTER(debug_stream_slot);
@@ -70,22 +71,26 @@ debug_stream_get_circular_buffer(struct debug_stream_section_descriptor *desc, u
 	return (struct debug_stream_circular_buf *) (((uint8_t *)hdr) + desc->offset);
 }
 
-int z_impl_debug_stream_slot_send_record(struct debug_stream_record *rec)
+/*
+ * @record_size is the record length in words. It is passed separately and
+ * rec->size_words must not be re-read here: the system call validator
+ * checked access to exactly @record_size words of user memory.
+ */
+static int debug_stream_slot_send_sized(struct debug_stream_record *rec, uint32_t record_size)
 {
 	struct debug_stream_section_descriptor desc = { 0 };
 	struct debug_stream_circular_buf *buf =
 		debug_stream_get_circular_buffer(&desc, arch_proc_id());
-	uint32_t record_size = rec->size_words;
 	uint32_t record_start, buf_remain;
 	k_spinlock_key_t key;
 
-	LOG_DBG("Sending record %u id %u len %u", rec->seqno, rec->id, rec->size_words);
+	LOG_DBG("Sending record len %u", record_size);
 
 	if (!buf)
 		return -ENODEV;
 
-	if (rec->size_words >= desc.buf_words) {
-		LOG_ERR("Record too big %u >= %u (desc %u %u %u)", rec->size_words,
+	if (record_size >= desc.buf_words) {
+		LOG_ERR("Record too big %u >= %u (desc %u %u %u)", record_size,
 			desc.buf_words, desc.core_id, desc.buf_words, desc.offset);
 		return -ENOMEM;
 	}
@@ -119,16 +124,28 @@ int z_impl_debug_stream_slot_send_record(struct debug_stream_record *rec)
 
 	k_spin_unlock(&cpu_mutex[arch_proc_id()].l, key);
 
-	LOG_DBG("Record %u id %u len %u sent", rec->seqno, rec->id, record_size);
+	LOG_DBG("Record len %u sent", record_size);
 	return 0;
+}
+
+int z_impl_debug_stream_slot_send_record(struct debug_stream_record *rec)
+{
+	return debug_stream_slot_send_sized(rec, rec->size_words);
 }
 
 #ifdef CONFIG_USERSPACE
 static inline int z_vrfy_debug_stream_slot_send_record(struct debug_stream_record *rec)
 {
-	K_OOPS(K_SYSCALL_MEMORY_READ(rec, sizeof(*rec)));
-	K_OOPS(K_SYSCALL_MEMORY_READ(rec, rec->size_words * sizeof(uint32_t)));
-	return z_impl_debug_stream_slot_send_record(rec);
+	uint32_t size_words;
+	size_t bytes;
+
+	/* the impl writes seqno and size_words back to the record */
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(rec, sizeof(*rec)));
+	K_OOPS(k_usermode_from_copy(&size_words, &rec->size_words, sizeof(size_words)));
+	K_OOPS(size_mul_overflow(size_words, sizeof(uint32_t), &bytes));
+	K_OOPS(K_SYSCALL_MEMORY_READ(rec, MAX(bytes, sizeof(*rec))));
+
+	return debug_stream_slot_send_sized(rec, size_words);
 }
 #include <zephyr/syscalls/debug_stream_slot_send_record_mrsh.c>
 #endif
