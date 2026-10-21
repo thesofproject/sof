@@ -9,32 +9,45 @@
 
 #ifdef CONFIG_SOF_USERSPACE_INTERFACE_DMA
 
-static inline bool sof_dma_has_access(struct sof_dma *dma)
+/*
+ * Note: struct sof_dma (the dma[] array) is writable by user threads. The
+ * validators below must not read any of its fields. They use the kernel-only
+ * struct sof_dma_kinfo state, and call the Zephyr DMA API directly on the
+ * device found there, instead of the z_impl_sof_dma_*() wrappers, which
+ * would read dma->z_dev again.
+ */
+
+/* @return true if the calling thread was granted access to the DMA device */
+static inline bool sof_dma_dev_has_access(const struct device *z_dev)
 {
-	/*
-	 * use the Zephyr dma.h device handle to check calling
-	 * thread has access to it
-	 */
-	return k_object_is_valid(dma->z_dev, K_OBJ_DRIVER_DMA);
+	return z_dev && k_object_is_valid(z_dev, K_OBJ_DRIVER_DMA);
 }
 
-static inline bool sof_dma_is_valid(struct sof_dma *dma)
+/* Check that @dma is a dma[] element the caller may use, return its kernel state */
+static const struct sof_dma_kinfo *sof_dma_vrfy(struct sof_dma *dma)
 {
-	const struct dma_info *info = dma_info_get();
-	uintptr_t offset = (uintptr_t)dma - (uintptr_t)info->dma_array;
-	struct sof_dma *array_end = info->dma_array + info->num_dmas;
+	const struct sof_dma_kinfo *kinfo = sof_dma_kinfo_get(dma);
 
-	if (!info->num_dmas)
-		return false;
+	K_OOPS(!kinfo);
+	K_OOPS(!sof_dma_dev_has_access(kinfo->z_dev));
 
-	/*
-	 * The 'dma' pointer is not trusted, so we must first ensure it
-	 * points to a valid "struct sof_dma *" kernel object.
-	 */
-	if (dma < info->dma_array || dma >= array_end || offset % sizeof(struct sof_dma))
-		return false;
+	return kinfo;
+}
 
-	return sof_dma_has_access(dma);
+/*
+ * Check @channel against the channel count in the driver's kernel-only
+ * context. Zephyr DMA drivers only assert on the channel number, and
+ * asserts are compiled out in production builds.
+ */
+static const struct device *sof_dma_chan_vrfy(struct sof_dma *dma, uint32_t channel)
+{
+	const struct device *z_dev = sof_dma_vrfy(dma)->z_dev;
+	const struct dma_context *ctx = z_dev->data;
+
+	K_OOPS(!ctx || ctx->magic != DMA_MAGIC);
+	K_OOPS(ctx->dma_channels < 0 || channel >= (uint32_t)ctx->dma_channels);
+
+	return z_dev;
 }
 
 static inline struct sof_dma *z_vrfy_sof_dma_get(uint32_t dir, uint32_t cap,
@@ -52,7 +65,9 @@ static inline struct sof_dma *z_vrfy_sof_dma_get(uint32_t dir, uint32_t cap,
 	 * permission.
 	 */
 	if (dma) {
-		if (sof_dma_has_access(dma))
+		const struct sof_dma_kinfo *kinfo = sof_dma_kinfo_get(dma);
+
+		if (kinfo && sof_dma_dev_has_access(kinfo->z_dev))
 			return dma;
 
 		/* no access, release reference on error */
@@ -65,7 +80,7 @@ static inline struct sof_dma *z_vrfy_sof_dma_get(uint32_t dir, uint32_t cap,
 
 static inline void z_vrfy_sof_dma_put(struct sof_dma *dma)
 {
-	K_OOPS(!sof_dma_is_valid(dma));
+	sof_dma_vrfy(dma);
 
 	z_impl_sof_dma_put(dma);
 }
@@ -73,27 +88,28 @@ static inline void z_vrfy_sof_dma_put(struct sof_dma *dma)
 
 static inline int z_vrfy_sof_dma_get_attribute(struct sof_dma *dma, uint32_t type, uint32_t *value)
 {
-	K_OOPS(!sof_dma_is_valid(dma));
+	const struct device *z_dev = sof_dma_vrfy(dma)->z_dev;
+
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(value, sizeof(*value)));
 
-	return z_impl_sof_dma_get_attribute(dma, type, value);
+	return dma_get_attribute(z_dev, type, value);
 }
 #include <zephyr/syscalls/sof_dma_get_attribute_mrsh.c>
 
 static inline int z_vrfy_sof_dma_request_channel(struct sof_dma *dma, uint32_t stream_tag)
 {
-	K_OOPS(!sof_dma_is_valid(dma));
+	const struct device *z_dev = sof_dma_vrfy(dma)->z_dev;
 
-	return z_impl_sof_dma_request_channel(dma, stream_tag);
+	return dma_request_channel(z_dev, &stream_tag);
 }
 #include <zephyr/syscalls/sof_dma_request_channel_mrsh.c>
 
 static inline void z_vrfy_sof_dma_release_channel(struct sof_dma *dma,
 				    uint32_t channel)
 {
-	K_OOPS(!sof_dma_is_valid(dma));
+	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
 
-	return z_impl_sof_dma_release_channel(dma, channel);
+	dma_release_channel(z_dev, channel);
 }
 #include <zephyr/syscalls/sof_dma_release_channel_mrsh.c>
 
@@ -204,6 +220,37 @@ err:
 	return NULL;
 }
 
+/*
+ * @return true if @kinfo's device supports transfer direction @dir, and the
+ * validators can check every address the device will use for it
+ */
+static bool sof_dma_dir_allowed(const struct sof_dma_kinfo *kinfo, uint32_t dir)
+{
+	switch (dir) {
+	case MEMORY_TO_MEMORY:
+		return kinfo->dir & SOF_DMA_DIR_MEM_TO_MEM;
+	case MEMORY_TO_HOST:
+		return kinfo->dir & SOF_DMA_DIR_LMEM_TO_HMEM;
+	case HOST_TO_MEMORY:
+		return kinfo->dir & SOF_DMA_DIR_HMEM_TO_LMEM;
+	case MEMORY_TO_PERIPHERAL:
+	case PERIPHERAL_TO_MEMORY:
+		/*
+		 * The peripheral side address (FIFO) is not validated. That is
+		 * safe for HDA link DMA, which has no such address, but not
+		 * for general purpose DMA, which would transfer to or from any
+		 * address given. Refuse those until FIFO addresses are checked
+		 * against a kernel-side list.
+		 */
+		if (!(kinfo->caps & SOF_DMA_CAP_HDA))
+			return false;
+		return kinfo->dir & (dir == MEMORY_TO_PERIPHERAL ?
+				     SOF_DMA_DIR_MEM_TO_DEV : SOF_DMA_DIR_DEV_TO_MEM);
+	default:
+		return false;
+	}
+}
+
 static inline int z_vrfy_sof_dma_config(struct sof_dma *dma, uint32_t channel,
 					struct dma_config *config)
 {
@@ -212,8 +259,17 @@ static inline int z_vrfy_sof_dma_config(struct sof_dma *dma, uint32_t channel,
 	struct dma_config user_cfg;
 	int ret;
 
-	K_OOPS(!sof_dma_is_valid(dma));
+	const struct sof_dma_kinfo *kinfo = sof_dma_vrfy(dma);
+	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
+
 	K_OOPS(k_usermode_from_copy(&user_cfg, config, sizeof(user_cfg)));
+
+	/*
+	 * Drivers such as Intel HDA ignore channel_direction and program the
+	 * buffer field that matches the device's own direction. Require the
+	 * two to match, so the validated address is the one the HW uses.
+	 */
+	K_OOPS(!sof_dma_dir_allowed(kinfo, user_cfg.channel_direction));
 
 	/* use only DMA config attributes that are safe to use from user-space */
 	kern_cfg.dma_slot = user_cfg.dma_slot;
@@ -230,9 +286,7 @@ static inline int z_vrfy_sof_dma_config(struct sof_dma *dma, uint32_t channel,
 	blk_cfgs = deep_copy_dma_blk_cfg_list(&kern_cfg);
 	K_OOPS(blk_cfgs == NULL);
 
-	/* TODO: add checks for peripheral/host FIFO access? */
-
-	ret = z_impl_sof_dma_config(dma, channel, &kern_cfg);
+	ret = dma_config(z_dev, channel, &kern_cfg);
 
 	rfree(blk_cfgs);
 
@@ -242,51 +296,52 @@ static inline int z_vrfy_sof_dma_config(struct sof_dma *dma, uint32_t channel,
 
 static inline int z_vrfy_sof_dma_start(struct sof_dma *dma, uint32_t channel)
 {
-	K_OOPS(!sof_dma_is_valid(dma));
+	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
 
-	return z_impl_sof_dma_start(dma, channel);
+	return dma_start(z_dev, channel);
 }
 #include <zephyr/syscalls/sof_dma_start_mrsh.c>
 
 static inline int z_vrfy_sof_dma_stop(struct sof_dma *dma, uint32_t channel)
 {
-	K_OOPS(!sof_dma_is_valid(dma));
+	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
 
-	return z_impl_sof_dma_stop(dma, channel);
+	return dma_stop(z_dev, channel);
 }
 #include <zephyr/syscalls/sof_dma_stop_mrsh.c>
 
 static inline int z_vrfy_sof_dma_get_status(struct sof_dma *dma, uint32_t channel,
 					     struct dma_status *stat)
 {
-	K_OOPS(!sof_dma_is_valid(dma));
+	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
+
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(stat, sizeof(*stat)));
 
-	return z_impl_sof_dma_get_status(dma, channel, stat);
+	return dma_get_status(z_dev, channel, stat);
 }
 #include <zephyr/syscalls/sof_dma_get_status_mrsh.c>
 
 static inline int z_vrfy_sof_dma_reload(struct sof_dma *dma, uint32_t channel, size_t size)
 {
-	K_OOPS(!sof_dma_is_valid(dma));
+	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
 
-	return z_impl_sof_dma_reload(dma, channel, size);
+	return dma_reload(z_dev, channel, 0, 0, size);
 }
 #include <zephyr/syscalls/sof_dma_reload_mrsh.c>
 
 static inline int z_vrfy_sof_dma_suspend(struct sof_dma *dma, uint32_t channel)
 {
-	K_OOPS(!sof_dma_is_valid(dma));
+	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
 
-	return z_impl_sof_dma_suspend(dma, channel);
+	return dma_suspend(z_dev, channel);
 }
 #include <zephyr/syscalls/sof_dma_suspend_mrsh.c>
 
 static inline int z_vrfy_sof_dma_resume(struct sof_dma *dma, uint32_t channel)
 {
-	K_OOPS(!sof_dma_is_valid(dma));
+	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
 
-	return z_impl_sof_dma_resume(dma, channel);
+	return dma_resume(z_dev, channel);
 }
 #include <zephyr/syscalls/sof_dma_resume_mrsh.c>
 
