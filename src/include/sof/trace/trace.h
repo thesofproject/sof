@@ -26,9 +26,6 @@
 #endif
 #include <zephyr/logging/log.h>
 
-#if !CONFIG_LIBRARY
-#include <platform/trace/trace.h>
-#endif
 #include <sof/common.h>
 
 #if CONFIG_ZEPHYR_LOG || CONFIG_LIBRARY || CONFIG_ARCH_POSIX_LIBFUZZER
