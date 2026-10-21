@@ -179,6 +179,89 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd, struct cir_buf_source *source, unsi
 	}
 }
 #endif
-
 #endif /* TDFB_GENERIC */
+
+#if CONFIG_FORMAT_FLOAT
+static inline void tdfb_core_float(struct tdfb_comp_data *cd, unsigned int in_nch,
+				   unsigned int out_nch)
+{
+	struct fir_state_float *filter;
+	float y0;
+	float y1;
+	unsigned int is2;
+	unsigned int is;
+	int om;
+	int i;
+	unsigned int k;
+	const int num_filters = cd->config->num_filters;
+
+	/* Clear output mix */
+	memset(cd->out_f, 0, 2 * out_nch * sizeof(float));
+
+	/* Run and mix all filters to their output channel */
+	for (i = 0; i < num_filters; i++) {
+		is = cd->input_channel_select[i];
+		is2 = is + in_nch;
+		om = cd->output_channel_mix[i];
+		filter = &cd->fir_f[i];
+
+		fir_float_2x(filter, cd->in_f[is], cd->in_f[is2], &y0, &y1);
+
+		for (k = 0; k < out_nch; k++) {
+			if (om & 1) {
+				cd->out_f[k] += y0;
+				cd->out_f[k + out_nch] += y1;
+			}
+			om = om >> 1;
+		}
+	}
+}
+
+void tdfb_fir_float(struct tdfb_comp_data *cd, struct cir_buf_source *source, unsigned int in_nch,
+		    struct cir_buf_sink *sink, unsigned int out_nch, size_t frames)
+{
+	const float *x = source->ptr;
+	float *y = sink->ptr;
+	unsigned int i;
+	size_t f, fmax, j;
+	size_t remaining_frames = frames;
+	unsigned int emp_ch = 0;
+
+	while (remaining_frames) {
+		fmax = circ_buf_frames_without_wrap(x, source->buf_end, sizeof(float), in_nch);
+		f = MIN(remaining_frames, fmax);
+		fmax = circ_buf_frames_without_wrap(y, sink->buf_end, sizeof(float), out_nch);
+		f = MIN(f, fmax);
+		for (j = 0; j < f; j += 2) {
+			/* Read two frames from all input channels */
+			for (i = 0; i < 2 * in_nch; i++) {
+				cd->in_f[i] = *x;
+				if (cd->direction_updates) {
+					float val = *x;
+					if (val > 1.0f)
+						val = 1.0f;
+					else if (val < -1.0f)
+						val = -1.0f;
+					float scaled = val * 2147483647.0f;
+					int32_t sample = scaled >= 2147483647.0f ? INT32_MAX : (int32_t)scaled;
+					tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, sample);
+				}
+				x++;
+			}
+
+			/* Process */
+			tdfb_core_float(cd, in_nch, out_nch);
+
+			/* Write two frames of output */
+			for (i = 0; i < 2 * out_nch; i++) {
+				*y = cd->out_f[i];
+				y++;
+			}
+		}
+		remaining_frames -= f;
+		x = source_cir_buf_wrap(x, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
+	}
+}
+#endif
 
