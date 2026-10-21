@@ -121,19 +121,6 @@ __cold static int vpages_alloc_and_map(unsigned int pages, void **ptr)
 	if (ret < 0) {
 		LOG_ERR("error: failed to map virtual region %p to physical region %p, error %d",
 			vaddr, vpage_ctx.virtual_region->addr, ret);
-
-		/*
-		 * The driver maps page by page and leaves already mapped pages (and
-		 * their physical pages) in place on failure, e.g. when physical L2 is
-		 * exhausted. Release them so they do not leak.
-		 */
-		for (unsigned int i = 0; i < pages; i++) {
-			void *va = (uint8_t *)vaddr + i * CONFIG_MM_DRV_PAGE_SIZE;
-
-			if (!sys_mm_drv_page_phys_get(va, NULL))
-				sys_mm_drv_unmap_page(va);
-		}
-
 		sys_mem_blocks_free_contiguous(&vpage_ctx.vpage_blocks, vaddr, pages);
 		return ret;
 	}
@@ -244,15 +231,12 @@ static int vpages_free_and_unmap(uintptr_t *ptr)
 		return ret;
 	}
 
-	/*
-	 * Keep the elements dense: move the last in-use element (num_elems_in_use - 1)
-	 * over the released one and clear the last slot.
-	 */
-	vpage_ctx.num_elems_in_use--;
+	/* move the last element over the released one, clear the last element */
 	if (vpage_ctx.num_elems_in_use != elem_idx)
 		vpage_ctx.velems[elem_idx] = vpage_ctx.velems[vpage_ctx.num_elems_in_use];
 	vpage_ctx.velems[vpage_ctx.num_elems_in_use].pages = 0;
 	vpage_ctx.velems[vpage_ctx.num_elems_in_use].vpage = 0;
+	vpage_ctx.num_elems_in_use--;
 
 	/* success update the free pages */
 	vpage_ctx.free_pages += pages;
@@ -312,18 +296,39 @@ __cold static int vpage_init(void)
 		end = l2_end - CONFIG_LIBRARY_REGION_SIZE;
 	} else {
 		/*
-		 * TODO: on demand mapping currently only supports
-		 * cached mappings, so we need to limit vpages to
-		 * physical L2 size for now until support is added to
-		 * Zephyr mm_drv_intel_adsp_mtl_tlb.c and friends
+		 * Small L2 (e.g. NVL-S): the virtual heap and library regions are only
+		 * virtual address space backed on demand, so they need not fit in L2
+		 * together with the vpages. Use the virtual space up to the library
+		 * region (or the end of virtual memory) and cap it below by the
+		 * physical L2 left after the image, as vpages can never use more.
+		 * Pages beyond physical L2 are accessed through the coherent alias
+		 * too, which needs the Zephyr TLB driver to map the uncached alias.
 		 */
-		LOG_WRN("no space left for vpages, start %#lx l2_end %#lx",
-			(unsigned long)start, (unsigned long)l2_end);
+		end = L2_VIRTUAL_SRAM_BASE + L2_VIRTUAL_SRAM_SIZE;
+		if (IS_ENABLED(CONFIG_LIBRARY_MANAGER) && CONFIG_LIBRARY_BASE_ADDRESS < end)
+			end = CONFIG_LIBRARY_BASE_ADDRESS;
+	}
+
+	/* the image or virtual heap may leave no room, don't let this underflow */
+	if (end < start + CONFIG_MM_DRV_PAGE_SIZE) {
+		LOG_WRN("no space left for vpages, start %#lx end %#lx",
+			(unsigned long)start, (unsigned long)end);
 		return -ENOMEM;
 	}
 
 	remaining_ram = end - start;
-	__ASSERT_NO_MSG(remaining_ram >= CONFIG_MM_DRV_PAGE_SIZE);
+	if (end > l2_end) {
+		uintptr_t image_end = adsp_mm_get_unused_l2_start_aligned();
+		size_t phys_left = image_end < l2_end ? l2_end - image_end : 0;
+
+		remaining_ram = MIN(remaining_ram, phys_left);
+	}
+
+	/* revalidate, the physical cap can leave less than a page */
+	if (remaining_ram < CONFIG_MM_DRV_PAGE_SIZE) {
+		LOG_WRN("no physical L2 left for vpages");
+		return -ENOMEM;
+	}
 
 	ret = adsp_add_virtual_memory_region(start, remaining_ram, VIRTUAL_REGION_VPAGES_ATTR);
 	if (ret)
