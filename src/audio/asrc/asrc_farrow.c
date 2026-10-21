@@ -7,7 +7,6 @@
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sof/audio/format.h>

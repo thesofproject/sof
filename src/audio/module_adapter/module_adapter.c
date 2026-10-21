@@ -30,7 +30,6 @@
 #include <ipc4/header.h>
 #include <ipc4/module.h>
 #endif
-#include <rtos/interrupt.h>
 #include <rtos/kernel.h>
 #include <limits.h>
 #include <stdint.h>
