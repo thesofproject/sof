@@ -24,6 +24,13 @@ int set_fir_func(struct processing_module *mod, enum sof_ipc_frame fmt)
 	struct comp_data *cd = module_get_private_data(mod);
 	unsigned int valid_bit_depth = mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth;
 
+#if CONFIG_FORMAT_FLOAT
+	if (fmt == SOF_IPC_FRAME_FLOAT) {
+		set_float_fir(cd);
+		return 0;
+	}
+#endif
+
 	comp_dbg(mod->dev, "valid_bit_depth %d", valid_bit_depth);
 	switch (valid_bit_depth) {
 #if CONFIG_FORMAT_S16LE
