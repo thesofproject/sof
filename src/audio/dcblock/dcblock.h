@@ -24,8 +24,16 @@ struct cir_buf_source;
 struct cir_buf_sink;
 
 struct dcblock_state {
-	int32_t x_prev; /**< state variable referring to x[n-1] */
-	int32_t y_prev; /**< state variable referring to y[n-1] */
+	union {
+		struct {
+			int32_t x_prev; /**< state variable referring to x[n-1] */
+			int32_t y_prev; /**< state variable referring to y[n-1] */
+		};
+		struct {
+			float x_prev_f; /**< float state variable x[n-1] */
+			float y_prev_f; /**< float state variable y[n-1] */
+		};
+	};
 };
 
 /**
@@ -47,6 +55,7 @@ struct comp_data {
 
 	/** coefficients for the processing function */
 	int32_t R_coeffs[CONFIG_PLATFORM_MAX_CHANNELS];
+	float R_coeffs_f[CONFIG_PLATFORM_MAX_CHANNELS];
 
 	struct comp_data_blob_handler *model_handler;
 	int32_t *config; /**< pointer to setup blob */
