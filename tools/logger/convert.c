@@ -209,10 +209,15 @@ static const char *asprintf_entry_text(uint32_t entry_address)
  * @param[in] e copy of the dictionary entry where unformatted,
     uint32_t params have been inserted.
    @param[in] use_colors whether to use ANSI terminal codes
+   @return 0 if pe->text can be passed to printf() with pe->params,
+	   -EINVAL if it has more conversion specifiers than params or
+	   one that printf() cannot be given a raw trace word for.
+	   Fewer specifiers than params only logs an error, printf()
+	   ignores the extra arguments.
 */
-static void process_params(struct proc_ldc_entry *pe,
-			   const struct ldc_entry *e,
-			   int use_colors)
+static int process_params(struct proc_ldc_entry *pe,
+			  const struct ldc_entry *e,
+			  int use_colors)
 {
 	char *p = e->text;
 	const char *t_end = p + strlen(e->text);
@@ -232,26 +237,30 @@ static void process_params(struct proc_ldc_entry *pe,
 	 */
 	while ((p = strchr(p, '%'))) {
 		uint32_t raw_param;
-
-		if (i >= e->header.params_num) {
-			/* Don't read e->params[] out of bounds. */
-			log_err("Too many %% conversion specifiers in '%s'\n",
-				e->text);
-			break;
-		}
-		raw_param = e->params[i];
+		size_t spec_len;
 
 		/* % can't be the last char */
 		if (p + 1 >= t_end) {
 			log_err("Invalid format string\n");
-			break;
+			return -EINVAL;
 		}
 
-		/* scan format string */
+		/* Skip "%%", it does not consume a parameter */
 		if (p[1] == '%') {
-			/* Skip "%%" */
 			p += 2;
-		} else if (p[1] == 's') {
+			continue;
+		}
+
+		if (i >= e->header.params_num) {
+			/* Don't read e->params[] or printf() arguments out of bounds. */
+			log_err("Too many %% conversion specifiers in '%s'\n",
+				e->text);
+			return -EINVAL;
+		}
+		raw_param = e->params[i];
+
+		/* scan format string */
+		if (p[1] == 's') {
 			/* %s format specifier */
 			/* check for string printing, because it leads to logger crash */
 			log_err("String printing is not supported\n");
@@ -293,6 +302,18 @@ static void process_params(struct proc_ldc_entry *pe,
 			p++;
 			t_end--;
 		} else {
+			/* Skip flags, field width, precision and length modifier.
+			 * A '*' width or precision takes an extra argument, %n
+			 * writes through its argument and a %s with modifiers
+			 * would dereference raw_param, so refuse all of them.
+			 */
+			spec_len = 1 + strspn(p + 1, "-+ #0123456789.hlLjzt");
+			if (p[spec_len] == '*' || p[spec_len] == 'n' || p[spec_len] == 's' ||
+			    p[spec_len] == '\0') {
+				log_err("Unsupported conversion specifier in '%s'\n", e->text);
+				return -EINVAL;
+			}
+
 			/* arguments different from %pU and %pQ should be passed without
 			 * modification
 			 */
@@ -303,6 +324,8 @@ static void process_params(struct proc_ldc_entry *pe,
 	}
 	if (i < e->header.params_num)
 		log_err("Too few %% conversion specifiers in '%s'\n", e->text);
+
+	return 0;
 }
 
 static void free_proc_ldc_entry(struct proc_ldc_entry *pe)
@@ -570,8 +593,11 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 			get_level_name(entry->header.level));
 	}
 
-	/* Minimal, printf-like formatting */
-	process_params(&proc_entry, entry, use_colors);
+	/* Minimal, printf-like formatting. The format text comes from the ldc
+	 * file, print it as a plain string if it does not match the params.
+	 */
+	if (process_params(&proc_entry, entry, use_colors) < 0)
+		proc_entry.header.params_num = 0;
 
 	switch (proc_entry.header.params_num) {
 	case 0:
