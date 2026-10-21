@@ -378,6 +378,147 @@ static int crossover_s32_default(struct comp_data *cd,
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_FLOAT
+static inline void crossover_generic_lr4_split_float(struct iir_state_df1_float *lp,
+						     struct iir_state_df1_float *hp,
+						     float x, float *y1, float *y2)
+{
+	*y1 = crossover_generic_process_lr4_float(x, lp);
+	*y2 = crossover_generic_process_lr4_float(x, hp);
+}
+
+static inline void crossover_generic_lr4_merge_float(struct iir_state_df1_float *lp,
+						     struct iir_state_df1_float *hp,
+						     float x, float *y)
+{
+	float z1 = crossover_generic_process_lr4_float(x, lp);
+	float z2 = crossover_generic_process_lr4_float(x, hp);
+
+	*y = z1 + z2;
+}
+
+static void crossover_generic_split_2way_float(float in,
+					       float out[],
+					       struct crossover_state_float *state)
+{
+	crossover_generic_lr4_split_float(&state->lowpass[0], &state->highpass[0],
+					  in, &out[0], &out[1]);
+}
+
+static void crossover_generic_split_3way_float(float in,
+					       float out[],
+					       struct crossover_state_float *state)
+{
+	float z1, z2;
+
+	crossover_generic_lr4_split_float(&state->lowpass[0], &state->highpass[0],
+					  in, &z1, &z2);
+	crossover_generic_lr4_merge_float(&state->lowpass[1], &state->highpass[1],
+					  z1, &out[0]);
+	crossover_generic_lr4_split_float(&state->lowpass[2], &state->highpass[2],
+					  z2, &out[1], &out[2]);
+}
+
+static void crossover_generic_split_4way_float(float in,
+					       float out[],
+					       struct crossover_state_float *state)
+{
+	float z1, z2;
+
+	crossover_generic_lr4_split_float(&state->lowpass[1], &state->highpass[1],
+					  in, &z1, &z2);
+	crossover_generic_lr4_split_float(&state->lowpass[0], &state->highpass[0],
+					  z1, &out[0], &out[1]);
+	crossover_generic_lr4_split_float(&state->lowpass[2], &state->highpass[2],
+					  z2, &out[2], &out[3]);
+}
+
+const crossover_split_float crossover_split_float_fnmap[] = {
+	crossover_generic_split_2way_float,
+	crossover_generic_split_3way_float,
+	crossover_generic_split_4way_float,
+};
+
+static int crossover_float_default(struct comp_data *cd,
+				   struct sof_source *source,
+				   struct sof_sink **sinks,
+				   unsigned int num_sinks,
+				   size_t frames)
+{
+	float *y[SOF_CROSSOVER_MAX_STREAMS];
+	float *y_start[SOF_CROSSOVER_MAX_STREAMS];
+	float *y_end[SOF_CROSSOVER_MAX_STREAMS];
+	int out_idx[SOF_CROSSOVER_MAX_STREAMS];
+	float out[SOF_CROSSOVER_MAX_STREAMS];
+	struct crossover_state_float *state;
+	float const *x, *x_start, *x_end;
+	size_t x_samples, y_samples;
+	unsigned int nch = source_get_channels(source);
+	size_t bytes = frames * source_get_frame_bytes(source);
+	unsigned int active_sinks = 0;
+	size_t remaining_samples;
+	size_t i, n;
+	unsigned int ch, j;
+	int ret;
+
+	ret = source_get_data_s32(source, bytes, (const int32_t **)&x,
+				  (const int32_t **)&x_start, &x_samples);
+	if (ret)
+		return ret;
+	x_end = x_start + x_samples;
+
+	/* Identify active sinks, keeping the band index for correct routing */
+	for (j = 0; j < num_sinks; j++) {
+		if (!sinks[j])
+			continue;
+		ret = sink_get_buffer_s32(sinks[j], bytes, (int32_t **)&y[active_sinks],
+					  (int32_t **)&y_start[active_sinks], &y_samples);
+		if (ret) {
+			while (active_sinks--) {
+				sink_commit_buffer(sinks[out_idx[active_sinks]], 0);
+			}
+			source_release_data(source, 0);
+			return ret;
+		}
+		y_end[active_sinks] = y_start[active_sinks] + y_samples;
+		out_idx[active_sinks] = j;
+		active_sinks++;
+	}
+
+	remaining_samples = frames * nch;
+	while (remaining_samples) {
+		n = MIN(remaining_samples, cir_buf_samples_without_wrap_s32((const int32_t *)x, (const int32_t *)x_end));
+		for (j = 0; j < active_sinks; j++)
+			n = MIN(n, cir_buf_samples_without_wrap_s32((const int32_t *)y[j], (const int32_t *)y_end[j]));
+
+		for (ch = 0; ch < nch; ch++) {
+			state = &cd->state_f[ch];
+			for (i = ch; i < n; i += nch) {
+				cd->crossover_split_f(x[i], out, state);
+				for (j = 0; j < active_sinks; j++)
+					y[j][i] = out[out_idx[j]];
+			}
+		}
+
+		remaining_samples -= n;
+		x = (const float *)cir_buf_wrap((const int32_t *)x + n, (const int32_t *)x_start, (const int32_t *)x_end);
+		for (j = 0; j < active_sinks; j++)
+			y[j] = (float *)cir_buf_wrap((int32_t *)y[j] + n, (int32_t *)y_start[j], (int32_t *)y_end[j]);
+	}
+
+	ret = source_release_data(source, bytes);
+	if (ret)
+		return ret;
+	for (j = 0; j < active_sinks; j++) {
+		ret = sink_commit_buffer(sinks[out_idx[j]], bytes);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_FORMAT_FLOAT */
+
 const struct crossover_proc_fnmap crossover_proc_fnmap[] = {
 /* { SOURCE_FORMAT , PROCESSING FUNCTION } */
 #if CONFIG_FORMAT_S16LE
@@ -391,6 +532,10 @@ const struct crossover_proc_fnmap crossover_proc_fnmap[] = {
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, crossover_s32_default },
 #endif /* CONFIG_FORMAT_S32LE */
+
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, crossover_float_default },
+#endif /* CONFIG_FORMAT_FLOAT */
 };
 
 const struct crossover_proc_fnmap crossover_proc_fnmap_pass[] = {
@@ -406,6 +551,10 @@ const struct crossover_proc_fnmap crossover_proc_fnmap_pass[] = {
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, crossover_default_pass },
 #endif /* CONFIG_FORMAT_S32LE */
+
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, crossover_default_pass },
+#endif /* CONFIG_FORMAT_FLOAT */
 };
 
 const size_t crossover_proc_fncount = ARRAY_SIZE(crossover_proc_fnmap);
