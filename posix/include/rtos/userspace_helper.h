@@ -17,10 +17,7 @@
 
 #include <rtos/alloc.h>
 
-#define APP_TASK_BSS
-#define APP_TASK_DATA
-#define APP_SYSUSER_BSS
-#define APP_SYSUSER_DATA
+#include <rtos/userspace_data.h>
 
 struct sys_heap;
 
