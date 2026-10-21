@@ -20,9 +20,8 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/debug/telemetry/telemetry.h>
-#include <rtos/idc.h>
 #include <rtos/mutex.h>
-#include <rtos/userspace_helper.h>
+#include <rtos/userspace_data.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/uuid.h>
 #include <sof/schedule/schedule.h>

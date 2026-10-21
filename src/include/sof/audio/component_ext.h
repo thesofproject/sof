@@ -18,6 +18,8 @@
 
 #include <sof/audio/component.h>
 #include <ipc/topology.h>
+/* TODO: the cross-core helpers below send IDC messages, which is kernel only */
+#include <rtos/idc.h>
 
 /** \addtogroup component_infra_api
  *  @{

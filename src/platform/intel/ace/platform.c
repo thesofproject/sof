@@ -8,6 +8,7 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <sof/debug/debug.h>
+#include <rtos/idc.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/msg.h>
