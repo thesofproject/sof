@@ -158,6 +158,23 @@ void drc_update_detector_average(struct drc_state *state,
 				AE_S32X2_IP(sample32, abs_input_array_p, sizeof(ae_int32x2));
 			}
 		}
+#if CONFIG_FORMAT_FLOAT
+	} else if (nbyte == 0) { /* float */
+		for (ch = 0; ch < nch; ch++) {
+			const float *sample_f = (const float *)state->pre_delay_buffers[ch] + div_start;
+			abs_input_array_p = abs_input_array;
+			for (i = 0; i < DRC_DIVISION_FRAMES; i++) {
+				float val = *sample_f < 0.0f ? -*sample_f : *sample_f;
+				if (val > 1.0f)
+					val = 1.0f;
+				float scaled = val * 2147483647.0f;
+				int32_t sample = scaled >= 2147483647.0f ? INT32_MAX : (int32_t)scaled;
+				*abs_input_array_p = MAX(*abs_input_array_p, sample);
+				abs_input_array_p++;
+				sample_f++;
+			}
+		}
+#endif
 	} else { /* 4 bytes per sample */
 		for (ch = 0; ch < nch; ch++) {
 			abs_input_array_p = abs_input_array;
@@ -387,6 +404,34 @@ void drc_compress_output(struct drc_state *state,
 				for (j = 0; j < 4; j++)
 					x[j] = drc_mult_lshift(x[j], r4, LSHIFT_QX30_QY30_QZ30);
 			}
+#if CONFIG_FORMAT_FLOAT
+		} else if (nbyte == 0) { /* float */
+			const float gain_scale = 1.0f / 16777216.0f;
+			while (1) {
+				for (j = 0; j < 4; j++) {
+					tmp = AE_ADD32(x[j], base);
+					post_warp_compressor_gain = drc_sin_fixed(tmp); /* Q1.31 */
+					tmp64 = AE_MULF32R_LL(master_linear_gain,
+							      post_warp_compressor_gain);
+					total_gain = AE_ROUND32F48SSYM(tmp64); /* Q8.24 */
+					float total_gain_f = (float)total_gain * gain_scale;
+
+					for (ch = 0; ch < nch; ch++) {
+						float *sample_f =
+							(float *)state->pre_delay_buffers[ch] +
+							inc;
+						*sample_f = *sample_f * total_gain_f;
+					}
+					inc++;
+				}
+
+				if (++i == count)
+					break;
+
+				for (j = 0; j < 4; j++)
+					x[j] = drc_mult_lshift(x[j], r4, LSHIFT_QX30_QY30_QZ30);
+			}
+#endif
 		} else { /* 4 bytes per sample */
 			while (1) {
 				for (j = 0; j < 4; j++) {
@@ -469,6 +514,35 @@ void drc_compress_output(struct drc_state *state,
 					x[j] = AE_MIN32(ONE_Q30, tmp);
 				}
 			}
+#if CONFIG_FORMAT_FLOAT
+		} else if (nbyte == 0) { /* float */
+			const float gain_scale = 1.0f / 16777216.0f;
+			while (1) {
+				for (j = 0; j < 4; j++) {
+					post_warp_compressor_gain = drc_sin_fixed(x[j]); /* Q1.31 */
+					tmp64 = AE_MULF32R_LL(master_linear_gain,
+							      post_warp_compressor_gain);
+					total_gain = AE_ROUND32F48SSYM(tmp64); /* Q8.24 */
+					float total_gain_f = (float)total_gain * gain_scale;
+
+					for (ch = 0; ch < nch; ch++) {
+						float *sample_f =
+							(float *)state->pre_delay_buffers[ch] +
+							inc;
+						*sample_f = *sample_f * total_gain_f;
+					}
+					inc++;
+				}
+
+				if (++i == count)
+					break;
+
+				for (j = 0; j < 4; j++) {
+					tmp = drc_mult_lshift(x[j], r4, LSHIFT_QX30_QY30_QZ30);
+					x[j] = AE_MIN32(ONE_Q30, tmp);
+				}
+			}
+#endif
 		} else { /* 4 bytes per sample */
 			while (1) {
 				for (j = 0; j < 4; j++) {
