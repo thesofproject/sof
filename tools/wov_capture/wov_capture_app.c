@@ -9,6 +9,7 @@
 // Features:
 //   - Zero-dependency compilation (standard GCC + linux/sound/asound.h)
 //   - Standard RIFF WAVE file output with correct headers
+//   - Waits for PCM readiness on keyword-gated capture devices
 //   - Multi-channel real-time energy & RMS statistics calculation
 //   - Multi-cycle capture loop for repeatability and driver stability testing
 //   - Graceful signal handling (SIGINT/SIGTERM cleanly finalizes WAV headers)
@@ -22,6 +23,7 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <math.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -454,6 +456,28 @@ static int run_capture_cycle(const struct app_config *cfg, int cycle_idx, char *
 	}
 
 	while (!g_stop && total_frames_captured < target_frames) {
+		struct pollfd pfd = { .fd = fd, .events = POLLIN };
+
+		ret = poll(&pfd, 1, 200);
+		if (ret < 0) {
+			if (errno == EINTR && g_stop) {
+				ret = 0;
+				break;
+			}
+			ret = -errno;
+			log_err("PCM poll failed: %s", strerror(-ret));
+			break;
+		}
+		if (ret == 0)
+			continue;
+		if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+			ret = -EIO;
+			log_err("PCM poll returned error events: %#x", pfd.revents);
+			break;
+		}
+		if (!(pfd.revents & POLLIN))
+			continue;
+
 		unsigned int frames_to_read = actual_period_frames;
 		if (target_frames != UINT64_MAX && (total_frames_captured + frames_to_read) > target_frames)
 			frames_to_read = target_frames - total_frames_captured;
@@ -471,11 +495,21 @@ static int run_capture_cycle(const struct app_config *cfg, int cycle_idx, char *
 				ioctl(fd, SNDRV_PCM_IOCTL_START);
 				continue;
 			}
-			log_err("READI_FRAMES error: %s (errno %d)", strerror(errno), errno);
+			if (errno == EINTR && g_stop) {
+				ret = 0;
+				break;
+			}
+			ret = -errno;
+			log_err("READI_FRAMES error: %s (errno %d)", strerror(-ret), -ret);
 			break;
 		}
 
 		snd_pcm_sframes_t frames_read = xferi.result;
+		if (frames_read < 0) {
+			ret = (int)frames_read;
+			log_err("PCM transfer failed: %s", strerror(-ret));
+			break;
+		}
 		if (frames_read > 0) {
 			size_t bytes = frames_read * frame_bytes;
 			fwrite(period_buf, 1, bytes, wav_fp);
@@ -502,7 +536,7 @@ static int run_capture_cycle(const struct app_config *cfg, int cycle_idx, char *
 	print_channel_stats(stats, cfg->channels, cfg->format);
 	free(stats);
 
-	return 0;
+	return ret < 0 ? ret : 0;
 }
 
 /* -------------------------------------------------------------------------
@@ -527,13 +561,14 @@ static void print_usage(const char *prog)
 		"  -v           Verbose output (print extra debug info)\n"
 		"  -h           Show this help message\n\n"
 		"Examples:\n"
+		"  %s -c 0 -d 12 -r 16000 -C 1 -f S16_LE -t 3.0 -o /data/local/tmp\n"
 		"  %s -c 0 -d 11 -r 16000 -C 2 -t 3.0 -o /tmp\n"
 		"  %s -c 0 -d 11 -n 5 -t 2.0 -w 1.0\n"
 		"  %s -F /tmp/test_dmic_16k.wav -t 5.0\n",
 		prog,
 		DEFAULT_CARD, DEFAULT_DEVICE, DEFAULT_RATE, DEFAULT_CHANNELS,
 		DEFAULT_DURATION_S, DEFAULT_CYCLES, DEFAULT_OUT_DIR,
-		prog, prog, prog);
+		prog, prog, prog, prog);
 }
 
 int main(int argc, char **argv)
