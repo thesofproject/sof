@@ -5,9 +5,12 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#include <errno.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/dlist.h>
 #include <zephyr/app_memory/mem_domain.h>
 #include <zephyr/logging/log.h>
 #include <sof/lib/vpage.h>
@@ -84,12 +87,15 @@ struct interim_heap {
  * TODO: Add support to flag which heaps should have their contexts saved and restored.
  */
 struct vregion {
+	sys_dnode_t node;		/* entry in vregion_list */
+
 	/* region context */
 	uint8_t *base;			/* base address of entire region */
 	size_t size;			/* size of whole region in bytes */
 	unsigned int pages;		/* size of whole region in pages */
-	struct k_mutex lock;		/* protect vregion heaps and use-count */
-	unsigned int use_count;
+	struct k_mutex lock;		/* protect vregion heaps, use-count and pins */
+	unsigned int use_count;		/* references held by kernel and user code */
+	unsigned int pins;		/* system calls in progress, see vregion_verify_pin() */
 	struct k_mem_domain *domain;
 
 	/* current allocation mode */
@@ -101,6 +107,15 @@ struct vregion {
 	/* lifetime heap */
 	struct vlinear_heap lifetime;	/* lifetime linear heap */
 };
+
+/*
+ * Kernel-only list of live vregions. System call validators look up the
+ * vregion pointers passed by user threads here, so that a forged pointer
+ * to some other kernel-only memory is never treated as a vregion.
+ * Lock order: vregion_list_lock, then vr->lock.
+ */
+static sys_dlist_t vregion_list = SYS_DLIST_STATIC_INIT(&vregion_list);
+static K_MUTEX_DEFINE(vregion_list_lock);
 
 /**
  * @brief Create a new virtual region instance.
@@ -172,6 +187,11 @@ __cold struct vregion *vregion_create(size_t memsize)
 	k_mutex_init(&vr->lock);
 	/* The creator is the first user */
 	vr->use_count = 1;
+	vr->pins = 0;
+
+	k_mutex_lock(&vregion_list_lock, K_FOREVER);
+	sys_dlist_append(&vregion_list, &vr->node);
+	k_mutex_unlock(&vregion_list_lock);
 
 	/* log the new vregion */
 	LOG_INF("new at base %p size %#zx pages %u metadata at %p",
@@ -273,6 +293,36 @@ static void vregion_unmap(struct vregion *vr)
 #endif
 }
 
+/* Free vr, once it has no references and no system call pins left */
+static void vregion_destroy(struct vregion *vr)
+{
+	/* log the vregion being destroyed */
+	LOG_DBG("destroy %p size %#zx pages %u", (void *)vr->base, vr->size, vr->pages);
+	LOG_DBG(" lifetime used %zu free count %d", vr->lifetime.used, vr->lifetime.free_count);
+	vpage_free(vr->base);
+
+	vregion_unmap(vr);
+	rfree(vr);
+}
+
+/*
+ * Drop one reference. Caller holds vregion_list_lock and vr->lock, taken in
+ * that order, so that vregion_verify_pin() can not find the instance after
+ * its last reference has been dropped.
+ *
+ * @return remaining references, or -EINVAL if there was none to drop
+ */
+static int vregion_put_locked(struct vregion *vr)
+{
+	if (!vr->use_count)
+		return -EINVAL;
+
+	if (!--vr->use_count)
+		sys_dlist_remove(&vr->node);
+
+	return vr->use_count;
+}
+
 /**
  * @brief Decrement virtual region's user count or destroy it.
  *
@@ -281,29 +331,29 @@ static void vregion_unmap(struct vregion *vr)
  */
 struct vregion *z_impl_vregion_put(struct vregion *vr)
 {
-	unsigned int use_count;
+	bool destroy;
+	int ret;
 
 	if (!vr)
 		return NULL;
 
+	k_mutex_lock(&vregion_list_lock, K_FOREVER);
 	k_mutex_lock(&vr->lock, K_FOREVER);
-	use_count = --vr->use_count;
+	ret = vregion_put_locked(vr);
+	/* a system call in progress destroys it in vregion_unpin() instead */
+	destroy = !ret && !vr->pins;
 	k_mutex_unlock(&vr->lock);
+	k_mutex_unlock(&vregion_list_lock);
 
-	if (use_count)
-		return vr;
+	if (ret < 0) {
+		LOG_ERR("put %p without a reference", (void *)vr);
+		return NULL;
+	}
 
-	/* Last user: nobody else can access the instance. */
+	if (destroy)
+		vregion_destroy(vr);
 
-	/* log the vregion being destroyed */
-	LOG_DBG("destroy %p size %#zx pages %u", (void *)vr->base, vr->size, vr->pages);
-	LOG_DBG(" lifetime used %zu free count %d", vr->lifetime.used, vr->lifetime.free_count);
-	vpage_free(vr->base);
-
-	vregion_unmap(vr);
-	rfree(vr);
-
-	return NULL;
+	return ret ? vr : NULL;
 }
 
 /**
@@ -590,28 +640,87 @@ void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start)
 #if CONFIG_SOF_VREGIONS && CONFIG_USERSPACE
 #include <zephyr/internal/syscall_handler.h>
 
-bool vregion_verify(struct vregion *vr)
+bool vregion_verify_pin(struct vregion *vr)
 {
+	struct vregion *it;
+	bool found = false;
+
 	if (!vr)
 		return false;
 
+	k_mutex_lock(&vregion_list_lock, K_FOREVER);
+	SYS_DLIST_FOR_EACH_CONTAINER(&vregion_list, it, node) {
+		if (it == vr) {
+			found = true;
+			break;
+		}
+	}
+
+	if (found) {
+		/*
+		 * The list lock keeps vregion_put() from freeing vr meanwhile.
+		 * Count the pin separately from references: a pin must not be
+		 * consumed by a vregion_put() call of another user thread.
+		 */
+		k_mutex_lock(&vr->lock, K_FOREVER);
+		vr->pins++;
+		k_mutex_unlock(&vr->lock);
+	}
+	k_mutex_unlock(&vregion_list_lock);
+
+	/* not a live vregion: a forged pointer */
+	K_OOPS(!found);
+
 	/*
-	 * vregion instances must not be accessible to the userspace.
-	 *
-	 * Don't use K_SYSCALL_MEMORY_READ() here: it logs an "access denied"
-	 * error whenever the region is inaccessible, which is exactly the
-	 * expected (good) case for a kernel-only vregion. Omit false
-	 * error messages by using arch_buffer_validate() directly.
+	 * The caller must have the region memory mapped. vr->base and
+	 * vr->size are kernel-only and constant over the vregion lifetime.
 	 */
-	K_OOPS(arch_buffer_validate((void *)vr, sizeof(*vr), 0) == 0);
-
-	size_t vr_size = 0;
-	uintptr_t vr_start;
-
-	vregion_mem_info(vr, &vr_size, &vr_start);
-	if (vr_size)
-		K_OOPS(K_SYSCALL_MEMORY_WRITE((void *)vr_start, vr_size));
+	if (K_SYSCALL_MEMORY_WRITE(vr->base, vr->size)) {
+		vregion_unpin(vr);
+		K_OOPS(true);
+	}
 
 	return true;
+}
+
+void vregion_unpin(struct vregion *vr)
+{
+	bool destroy;
+
+	k_mutex_lock(&vr->lock, K_FOREVER);
+	destroy = !--vr->pins && !vr->use_count;
+	k_mutex_unlock(&vr->lock);
+
+	/* the last reference was dropped while pinned, and it is off the list */
+	if (destroy)
+		vregion_destroy(vr);
+}
+
+bool vregion_pinned_get(struct vregion *vr)
+{
+	bool ok;
+
+	k_mutex_lock(&vr->lock, K_FOREVER);
+	/* do not revive a vregion whose last reference is already gone */
+	ok = vr->use_count && vr->use_count < UINT_MAX;
+	if (ok)
+		vr->use_count++;
+	k_mutex_unlock(&vr->lock);
+
+	return ok;
+}
+
+int vregion_pinned_put(struct vregion *vr)
+{
+	int ret;
+
+	k_mutex_lock(&vregion_list_lock, K_FOREVER);
+	k_mutex_lock(&vr->lock, K_FOREVER);
+	ret = vregion_put_locked(vr);
+	k_mutex_unlock(&vr->lock);
+	k_mutex_unlock(&vregion_list_lock);
+
+	/* destroying is left to vregion_unpin(), the caller still holds a pin */
+	return ret;
 }
 #endif
