@@ -65,6 +65,13 @@ struct wov_arb_data {
 	uint32_t drain_frames_total;
 };
 
+/*
+ * Only one WOV graph (DMIC or headset) may be active at a time: detectors
+ * share NOTIFIER_ID_WOV_DETECT and DSP memory only fits one detector set.
+ * IPC handling is serialized, so no lock is needed.
+ */
+static unsigned int wov_arb_instances;
+
 #if CONFIG_IPC_MAJOR_4
 static void notify_control_change(const struct comp_dev *dev, uint16_t control_id, uint32_t val)
 {
@@ -191,6 +198,11 @@ static struct comp_dev *wov_arb_new(const struct comp_driver *drv,
 
 	comp_cl_info(drv, "wov_arb_new");
 
+	if (wov_arb_instances) {
+		comp_cl_err(drv, "wov_arb_new: another WOV PCM is already active");
+		return NULL;
+	}
+
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
@@ -241,6 +253,8 @@ static struct comp_dev *wov_arb_new(const struct comp_driver *drv,
 	comp_info(dev, "wov_arb_new: num_slots=%u, ppl=%u, period=%u, frames=%u",
 		  cd->num_slots, config->pipeline_id, dev->period, dev->frames);
 
+	wov_arb_instances++;
+
 	return dev;
 }
 
@@ -262,6 +276,9 @@ static void wov_arb_free(struct comp_dev *dev)
 
 	rfree(cd);
 	comp_free_device(dev);
+
+	if (wov_arb_instances)
+		wov_arb_instances--;
 }
 
 static int wov_arb_params(struct comp_dev *dev,
