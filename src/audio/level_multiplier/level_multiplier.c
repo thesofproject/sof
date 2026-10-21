@@ -41,6 +41,9 @@ __cold static int level_multiplier_init(struct processing_module *mod)
 
 	md->private = cd;
 	cd->gain = LEVEL_MULTIPLIER_GAIN_ONE;
+#if CONFIG_FORMAT_FLOAT
+	cd->gain_f = 1.0f;
+#endif
 	return 0;
 }
 
@@ -146,6 +149,9 @@ static int level_multiplier_reset(struct processing_module *mod)
 
 	memset(cd, 0, sizeof(*cd));
 	cd->gain = LEVEL_MULTIPLIER_GAIN_ONE;
+#if CONFIG_FORMAT_FLOAT
+	cd->gain_f = 1.0f;
+#endif
 	return 0;
 }
 

@@ -252,6 +252,81 @@ static int level_multiplier_s32(const struct processing_module *mod,
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_FLOAT
+/**
+ * level_multiplier_float() - Process FLOAT format.
+ * @mod: Pointer to module data.
+ * @source: Source for PCM samples data.
+ * @sink: Sink for PCM samples data.
+ * @frames: Number of audio data frames to process.
+ *
+ * Return: Value zero for success, otherwise an error code.
+ */
+static int level_multiplier_float(const struct processing_module *mod,
+				  struct sof_source *source,
+				  struct sof_sink *sink,
+				  uint32_t frames)
+{
+	struct level_multiplier_comp_data *cd = module_get_private_data(mod);
+	const float gain = (float)cd->gain * (1.0f / (float)LEVEL_MULTIPLIER_GAIN_ONE);
+	int32_t const *x, *x_start;
+	int32_t *y, *y_start;
+	size_t x_size, y_size;
+	int source_samples_without_wrap;
+	int samples_without_wrap;
+	int remaining_samples = frames * cd->channels;
+	int bytes = frames * cd->frame_bytes;
+	int ret;
+	int i;
+
+	ret = source_get_data_s32(source, bytes, &x, &x_start, &x_size);
+	if (ret)
+		return ret;
+
+	ret = sink_get_buffer_s32(sink, bytes, &y, &y_start, &y_size);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
+	}
+
+	float const *xf = (float const *)x;
+	float const *xf_start = (float const *)x_start;
+	float const *xf_end = xf_start + x_size;
+	float *yf = (float *)y;
+	float *yf_start = (float *)y_start;
+	float *yf_end = yf_start + y_size;
+
+	while (remaining_samples) {
+		source_samples_without_wrap = xf_end - xf;
+		samples_without_wrap = yf_end - yf;
+		samples_without_wrap = MIN(samples_without_wrap, source_samples_without_wrap);
+		samples_without_wrap = MIN(samples_without_wrap, remaining_samples);
+
+		int samples4 = samples_without_wrap & ~3;
+		for (i = 0; i < samples4; i += 4) {
+			yf[0] = xf[0] * gain;
+			yf[1] = xf[1] * gain;
+			yf[2] = xf[2] * gain;
+			yf[3] = xf[3] * gain;
+			xf += 4;
+			yf += 4;
+		}
+		for (; i < samples_without_wrap; i++) {
+			*yf++ = *xf++ * gain;
+		}
+
+		xf = (xf >= xf_end) ? xf - x_size : xf;
+		yf = (yf >= yf_end) ? yf - y_size : yf;
+
+		remaining_samples -= samples_without_wrap;
+	}
+
+	source_release_data(source, bytes);
+	sink_commit_buffer(sink, bytes);
+	return 0;
+}
+#endif /* CONFIG_FORMAT_FLOAT */
+
 /* This struct array defines the used processing functions for
  * the PCM formats
  */
@@ -264,6 +339,9 @@ const struct level_multiplier_proc_fnmap level_multiplier_proc_fnmap[] = {
 #endif
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, level_multiplier_s32 },
+#endif
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, level_multiplier_float },
 #endif
 };
 
