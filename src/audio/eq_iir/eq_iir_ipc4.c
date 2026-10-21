@@ -82,13 +82,24 @@ int eq_iir_new_blob(struct processing_module *mod, enum sof_ipc_frame source_for
 	struct comp_data *cd = module_get_private_data(mod);
 	int ret;
 
-	ret = eq_iir_setup(mod, channels);
+#if CONFIG_FORMAT_FLOAT
+	if (source_format == SOF_IPC_FRAME_FLOAT)
+		ret = eq_iir_setup_float(mod, channels);
+	else
+#endif
+		ret = eq_iir_setup(mod, channels);
+
 	if (ret < 0) {
 		comp_err(mod->dev, "failed IIR setup");
 		return ret;
 	} else if (cd->iir_delay_size) {
 		comp_dbg(mod->dev, "active");
-		cd->eq_iir_func = eq_iir_find_func(mod);
+#if CONFIG_FORMAT_FLOAT
+		if (source_format == SOF_IPC_FRAME_FLOAT)
+			cd->eq_iir_func = eq_iir_float_default;
+		else
+#endif
+			cd->eq_iir_func = eq_iir_find_func(mod);
 	} else {
 		comp_dbg(mod->dev, "pass-through");
 		cd->eq_iir_func = eq_iir_pass;

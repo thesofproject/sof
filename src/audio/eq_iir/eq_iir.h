@@ -31,9 +31,18 @@ struct eq_iir_func_map {
 	eq_iir_func func;			/**< processing function */
 };
 
+#include <sof/math/iir_df1_float.h>
+
 /* IIR component private data */
 struct comp_data {
 	struct iir_state_df1 iir[PLATFORM_MAX_CHANNELS]; /**< filters state */
+#if CONFIG_FORMAT_FLOAT
+	struct iir_state_df1_float iir_float[PLATFORM_MAX_CHANNELS]; /**< float filters state */
+	float *iir_coef_float;			/**< pointer to float coef memory */
+	float *iir_delay_float;			/**< pointer to float delay memory */
+	size_t iir_coef_float_size;		/**< allocated float coef size */
+	size_t iir_delay_float_size;		/**< allocated float delay size */
+#endif
 	struct comp_data_blob_handler *model_handler;
 	struct sof_eq_iir_config *config;
 	int32_t *iir_delay;			/**< pointer to allocated RAM */
@@ -56,6 +65,12 @@ void eq_iir_s24_default(struct processing_module *mod, const struct cir_buf_sour
 
 void eq_iir_s32_default(struct processing_module *mod, const struct cir_buf_source *source,
 			struct cir_buf_sink *sink, size_t frames);
+
+#if CONFIG_FORMAT_FLOAT
+void eq_iir_float_default(struct processing_module *mod, const struct cir_buf_source *source,
+			  struct cir_buf_sink *sink, size_t frames);
+int eq_iir_setup_float(struct processing_module *mod, unsigned int nch);
+#endif
 
 int eq_iir_new_blob(struct processing_module *mod, enum sof_ipc_frame source_format,
 		    enum sof_ipc_frame sink_format, unsigned int channels);
