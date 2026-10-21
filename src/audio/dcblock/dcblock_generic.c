@@ -54,10 +54,10 @@ static int dcblock_s16_default(struct comp_data *cd,
 	const int16_t *x = source->ptr;
 	int16_t *y = sink->ptr;
 	size_t samples_without_wrap;
-	int nch = cd->channels;
+	unsigned int nch = cd->channels;
 	size_t remaining_samples = frames * nch;
 	int32_t tmp;
-	int ch = 0;
+	unsigned int ch = 0;
 	size_t i;
 
 	while (remaining_samples) {
@@ -101,10 +101,10 @@ static int dcblock_s24_default(struct comp_data *cd,
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
 	size_t samples_without_wrap;
-	int nch = cd->channels;
+	unsigned int nch = cd->channels;
 	size_t remaining_samples = frames * nch;
 	int32_t tmp;
-	int ch = 0;
+	unsigned int ch = 0;
 	size_t i;
 
 	while (remaining_samples) {
@@ -148,9 +148,9 @@ static int dcblock_s32_default(struct comp_data *cd,
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
 	size_t samples_without_wrap;
-	int nch = cd->channels;
+	unsigned int nch = cd->channels;
 	size_t remaining_samples = frames * nch;
-	int ch = 0;
+	unsigned int ch = 0;
 	size_t i;
 
 	while (remaining_samples) {

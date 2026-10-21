@@ -55,10 +55,10 @@ static int dcblock_s16_default(struct comp_data *cd,
 	ae_int16x4 in_sample, out_sample;
 	int x_size = x_end - x_start;
 	int y_size = y_end - y_start;
-	int nch = cd->channels;
+	unsigned int nch = cd->channels;
 	size_t remaining = frames * nch;
 	const int inc = nch * sizeof(ae_int16);
-	int ch, i, n;
+	unsigned int ch;
 	size_t i, n;
 
 	/* Set source as circular buffer 0 for the strided per-channel reads */
@@ -120,10 +120,10 @@ static int dcblock_s24_default(struct comp_data *cd,
 	ae_int32x2 in_sample, out_sample;
 	int x_size = x_end - x_start;
 	int y_size = y_end - y_start;
-	int nch = cd->channels;
+	unsigned int nch = cd->channels;
 	size_t remaining = frames * nch;
 	const int inc = nch * sizeof(ae_int32);
-	int ch, i, n;
+	unsigned int ch;
 	size_t i, n;
 
 	dcblock_set_circular(x_start, x_end);
@@ -181,10 +181,10 @@ static int dcblock_s32_default(struct comp_data *cd,
 	ae_int32x2 in_sample;
 	int x_size = x_end - x_start;
 	int y_size = y_end - y_start;
-	int nch = cd->channels;
+	unsigned int nch = cd->channels;
 	size_t remaining = frames * nch;
 	const int inc = nch * sizeof(ae_int32);
-	int ch, i, n;
+	unsigned int ch;
 	size_t i, n;
 
 	dcblock_set_circular(x_start, x_end);
