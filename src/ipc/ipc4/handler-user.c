@@ -1184,6 +1184,12 @@ __cold static int ipc4_process_large_config_get(struct ipc4_message_request *ipc
 	if (ret)
 		return ret;
 
+	/* A module must not report more reply data than the DSP mailbox can hold. */
+	if (data_offset > MAILBOX_DSPBOX_SIZE) {
+		ipc_cmd_err(&ipc_tr, "reply size %u exceeds mailbox bound", data_offset);
+		return IPC4_INVALID_CONFIG_DATA_STRUCT;
+	}
+
 	/* Output via parameters instead of msg_reply */
 	*reply_ext = reply.extension.dat;
 	*reply_tx_size = data_offset;
@@ -1291,6 +1297,12 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 	/* no need to allocate memory for reply msg */
 	if (ret)
 		return ret;
+
+	/* A module must not report more reply data than the DSP mailbox can hold. */
+	if (data_offset > MAILBOX_DSPBOX_SIZE) {
+		ipc_cmd_err(&ipc_tr, "reply size %u exceeds mailbox bound", data_offset);
+		return IPC4_INVALID_CONFIG_DATA_STRUCT;
+	}
 
 	msg_reply->extension = reply.extension.dat;
 	msg_reply->tx_size = data_offset;
