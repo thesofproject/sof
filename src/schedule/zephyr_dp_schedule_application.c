@@ -147,6 +147,96 @@ struct scheduler_dp_task_memory {
 	struct ipc4_flat flat;
 };
 
+/*
+ * Kernel-only record of the kernel objects owned by a DP task.
+ *
+ * struct scheduler_dp_task_memory lives in the module's heap, which is mapped
+ * into the DP thread's memory domain, and is also writable by the LL and IPC
+ * user threads. Freeing must therefore never use the pointers stored there:
+ * scheduler_dp_internal_free() takes them from this record instead. The task
+ * pointer is only used as a lookup key.
+ */
+struct scheduler_dp_task_kobj {
+	struct list_item list;
+	struct task *task;
+	struct processing_module *mod;
+	struct k_event *event;
+	struct k_thread *thread;
+	struct k_mem_domain *mdom;
+	struct k_mem_partition mpart[SOF_DP_PART_TYPE_COUNT];
+	uint32_t comp_id;
+	uint32_t gen;			/* unique per record, see dp_task_kobj_take() */
+};
+
+static struct list_item dp_task_kobj_list = LIST_INIT(dp_task_kobj_list);
+static struct k_spinlock dp_task_kobj_lock;
+/* generation of the last added record, under dp_task_kobj_lock */
+static uint32_t dp_task_kobj_gen;
+
+static void dp_task_kobj_add(struct scheduler_dp_task_kobj *kobj)
+{
+	k_spinlock_key_t key = k_spin_lock(&dp_task_kobj_lock);
+
+	kobj->gen = ++dp_task_kobj_gen;
+	list_item_append(&kobj->list, &dp_task_kobj_list);
+	k_spin_unlock(&dp_task_kobj_lock, key);
+}
+
+/* Find the record for @task, caller holds dp_task_kobj_lock */
+static struct scheduler_dp_task_kobj *dp_task_kobj_find(const struct task *task)
+{
+	struct scheduler_dp_task_kobj *kobj;
+	struct list_item *item;
+
+	list_for_item(item, &dp_task_kobj_list) {
+		kobj = container_of(item, struct scheduler_dp_task_kobj, list);
+		if (kobj->task == task)
+			return kobj;
+	}
+
+	return NULL;
+}
+
+/* Copy the record for @task to @copy without unlinking it */
+static bool dp_task_kobj_peek(const struct task *task, struct scheduler_dp_task_kobj *copy)
+{
+	k_spinlock_key_t key = k_spin_lock(&dp_task_kobj_lock);
+	struct scheduler_dp_task_kobj *kobj = dp_task_kobj_find(task);
+
+	if (kobj)
+		*copy = *kobj;
+
+	k_spin_unlock(&dp_task_kobj_lock, key);
+
+	return kobj != NULL;
+}
+
+/*
+ * Find the record for @task and unlink it, so it can only be freed once.
+ * If @expected is given, only take the record it was copied from, so a
+ * record replaced since @expected was peeked is left alone.
+ */
+static struct scheduler_dp_task_kobj *
+dp_task_kobj_take(const struct task *task, const struct scheduler_dp_task_kobj *expected)
+{
+	k_spinlock_key_t key = k_spin_lock(&dp_task_kobj_lock);
+	struct scheduler_dp_task_kobj *kobj = dp_task_kobj_find(task);
+
+	/*
+	 * Compare the generation, not the object addresses: the task could
+	 * have been freed and recreated at the same addresses meanwhile.
+	 */
+	if (kobj && expected && kobj->gen != expected->gen)
+		kobj = NULL;
+
+	if (kobj)
+		list_item_del(&kobj->list);
+
+	k_spin_unlock(&dp_task_kobj_lock, key);
+
+	return kobj;
+}
+
 /* Unpack IPC data and execute a callback */
 static void ipc_thread_unflatten_run(struct processing_module *pmod, struct ipc4_flat *flat)
 {
@@ -441,17 +531,15 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
  * Safe to call with partial successful initialisation,
  * k_mem_domain_remove_partition() then just returns -ENOENT
  */
-static void scheduler_dp_domain_free(struct task_dp_pdata *pdata)
+static void scheduler_dp_domain_free(struct processing_module *pmod, struct k_mem_domain *mdom,
+				     struct k_mem_partition *mpart, uint32_t comp_id)
 {
-	struct processing_module *pmod = pdata->mod;
-	struct k_mem_domain *mdom = pmod->mdom;
+	llext_manager_rm_domain(comp_id, mdom);
 
-	llext_manager_rm_domain(pmod->dev->ipc_config.id, mdom);
-
-	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_HEAP);
-	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_HEAP_CACHE);
-	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_CFG);
-	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_CFG_CACHE);
+	k_mem_domain_remove_partition(mdom, mpart + SOF_DP_PART_HEAP);
+	k_mem_domain_remove_partition(mdom, mpart + SOF_DP_PART_HEAP_CACHE);
+	k_mem_domain_remove_partition(mdom, mpart + SOF_DP_PART_CFG);
+	k_mem_domain_remove_partition(mdom, mpart + SOF_DP_PART_CFG_CACHE);
 
 	if (mdom->num_partitions) {
 		/* Violation: all partitions should be freed by now */
@@ -475,15 +563,35 @@ static void scheduler_dp_domain_free(struct task_dp_pdata *pdata)
 	objpool_free(&dp_mdom_head, mdom);
 }
 
+/*
+ * Free the kernel objects of @task, using only the kernel-only record.
+ *
+ * @return false if @task has no record (unknown task or already freed)
+ */
+static bool scheduler_dp_internal_free_kobj(struct task *task,
+					    const struct scheduler_dp_task_kobj *expected)
+{
+	struct scheduler_dp_task_kobj *kobj = dp_task_kobj_take(task, expected);
+
+	if (!kobj)
+		return false;
+
+	/* normally already terminated by scheduler_dp_task_free(), no-op then */
+	k_thread_abort(kobj->thread);
+	k_object_free(kobj->event);
+	k_object_free(kobj->thread);
+	scheduler_dp_domain_free(kobj->mod, kobj->mdom, kobj->mpart, kobj->comp_id);
+
+	mod_free(kobj->mod, container_of(task, struct scheduler_dp_task_memory, task));
+	rfree(kobj);
+
+	return true;
+}
+
 void z_impl_scheduler_dp_internal_free(struct task *task)
 {
-	struct task_dp_pdata *pdata = task->priv_data;
-
-	k_object_free(pdata->event);
-	k_object_free(pdata->thread);
-	scheduler_dp_domain_free(pdata);
-
-	mod_free(pdata->mod, container_of(task, struct scheduler_dp_task_memory, task));
+	if (!scheduler_dp_internal_free_kobj(task, NULL))
+		tr_err(&dp_tr, "unknown DP task %p", task);
 }
 
 #ifdef CONFIG_THREAD_NAME
@@ -507,6 +615,9 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 {
 	k_thread_stack_t *p_stack;
 	struct scheduler_dp_task_memory *task_memory;
+	uint8_t *ipc_config_data = NULL;
+	k_tid_t thread_id;
+	uint32_t comp_id;
 
 	int ret;
 
@@ -552,36 +663,56 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 		goto e_stack;
 	}
 
+	/*
+	 * task_memory, including pdata, is in the module heap, which user
+	 * threads can write while this function runs. Keep everything the
+	 * kernel uses here or at teardown in kobj and locals, and only mirror
+	 * it into pdata for the DP thread.
+	 */
 	struct task_dp_pdata *pdata = &task_memory->pdata;
+	struct scheduler_dp_task_kobj *kobj = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+						      sizeof(*kobj));
+
+	if (!kobj) {
+		tr_err(&dp_tr, "task record alloc failed");
+		ret = -ENOMEM;
+		goto e_stack;
+	}
+
+	kobj->task = ptask;
+	kobj->mod = mod;
+	comp_id = mod->dev->ipc_config.id;
+	kobj->comp_id = comp_id;
 
 	if (mod->dev->drv->adapter_ops->get_configuration) {
-		pdata->ipc_config_data = mod_alloc_ext(mod, SOF_MEM_FLAG_USER, SOF_IPC_MSG_MAX_SIZE,
-						       0);
-		if (!pdata->ipc_config_data) {
+		ipc_config_data = mod_alloc_ext(mod, SOF_MEM_FLAG_USER, SOF_IPC_MSG_MAX_SIZE, 0);
+		if (!ipc_config_data) {
 			tr_err(&dp_tr, "Failed to allocate memory for get-config");
 			ret = -ENOMEM;
-			goto e_stack;
+			goto e_kobj;
 		}
-	} else {
-		pdata->ipc_config_data = NULL;
 	}
+	pdata->ipc_config_data = ipc_config_data;
 
 	pdata->flat = &task_memory->flat;
 
-	pdata->event = k_object_alloc(K_OBJ_EVENT);
-	if (!pdata->event) {
+	kobj->event = k_object_alloc(K_OBJ_EVENT);
+	if (!kobj->event) {
 		tr_err(&dp_tr, "Event object allocation failed");
 		ret = -ENOMEM;
 		goto e_config;
 	}
 
-	pdata->thread = k_object_alloc(K_OBJ_THREAD);
-	if (!pdata->thread) {
+	pdata->event = kobj->event;
+
+	kobj->thread = k_object_alloc(K_OBJ_THREAD);
+	if (!kobj->thread) {
 		tr_err(&dp_tr, "Thread object allocation failed");
 		ret = -ENOMEM;
 		goto e_event;
 	}
-	memset(&pdata->thread->arch, 0, sizeof(pdata->thread->arch));
+	memset(&kobj->thread->arch, 0, sizeof(kobj->thread->arch));
+	pdata->thread = kobj->thread;
 
 	/* success, fill the structures */
 	pdata->p_stack = p_stack;
@@ -594,10 +725,11 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	list_init(&ptask->list);
 
 	/* create a zephyr thread for the task */
-	pdata->thread_id = k_thread_create(pdata->thread, p_stack,
-					   stack_size, dp_thread_fn, ptask, NULL, NULL,
-					   CONFIG_DP_THREAD_PRIORITY, ptask->flags, K_FOREVER);
-	scheduler_dp_thread_name_set(pdata->thread_id, mod);
+	thread_id = k_thread_create(kobj->thread, p_stack,
+				    stack_size, dp_thread_fn, ptask, NULL, NULL,
+				    CONFIG_DP_THREAD_PRIORITY, ptask->flags, K_FOREVER);
+	pdata->thread_id = thread_id;
+	scheduler_dp_thread_name_set(thread_id, mod);
 
 	unsigned int pidx;
 	size_t size;
@@ -606,19 +738,19 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 #ifdef CONFIG_SCHED_CPU_MASK
 	/* pin the thread to specific core */
-	ret = k_thread_cpu_pin(pdata->thread_id, core);
+	ret = k_thread_cpu_pin(thread_id, core);
 	if (ret < 0) {
 		tr_err(&dp_tr, "zephyr task pin to core failed");
 		goto e_thread;
 	}
 #endif
 
-	k_thread_access_grant(pdata->thread_id, pdata->event, &dp_sync[core]);
-	scheduler_dp_grant(pdata->thread_id, core);
+	k_thread_access_grant(thread_id, kobj->event, &dp_sync[core]);
+	scheduler_dp_grant(thread_id, core);
 #if CONFIG_SOF_USERSPACE_LL
 	struct k_thread *thread_ipc = ipc_thread_user(core);
 
-	k_thread_access_grant(thread_ipc, pdata->event, pdata->thread_id, p_stack, &dp_sync[core]);
+	k_thread_access_grant(thread_ipc, kobj->event, thread_id, p_stack, &dp_sync[core]);
 	scheduler_dp_grant(thread_ipc, core);
 	scheduler_dp_grant(zephyr_ll_domain_thread(), core);
 #endif
@@ -635,6 +767,7 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	on_pool = true;
 
 	mod->mdom = mdom;
+	kobj->mdom = mdom;
 
 	if (!mdom->arch.ptables) {
 		ret = k_mem_domain_init(mdom, 0, NULL);
@@ -644,35 +777,37 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 	/* Module heap partition */
 	mod_heap_info(mod, &size, &start);
-	pdata->mpart[SOF_DP_PART_HEAP] = (struct k_mem_partition){
+	kobj->mpart[SOF_DP_PART_HEAP] = (struct k_mem_partition){
 		.start = (uintptr_t)sys_cache_uncached_ptr_get((void *)start),
 		.size = size,
 		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
-	pdata->mpart[SOF_DP_PART_HEAP_CACHE] = (struct k_mem_partition){
+	kobj->mpart[SOF_DP_PART_HEAP_CACHE] = (struct k_mem_partition){
 		.start = start,
 		.size = size,
 		.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB,
 	};
 	/* Host mailbox partition for additional IPC parameters: read-only */
-	pdata->mpart[SOF_DP_PART_CFG] = (struct k_mem_partition){
+	kobj->mpart[SOF_DP_PART_CFG] = (struct k_mem_partition){
 		.start = (uintptr_t)sys_cache_uncached_ptr_get((void *)MAILBOX_HOSTBOX_BASE),
 		.size = MAILBOX_HOSTBOX_SIZE,
 		.attr = K_MEM_PARTITION_P_RO_U_RO,
 	};
-	pdata->mpart[SOF_DP_PART_CFG_CACHE] = (struct k_mem_partition){
+	kobj->mpart[SOF_DP_PART_CFG_CACHE] = (struct k_mem_partition){
 		.start = (uintptr_t)MAILBOX_HOSTBOX_BASE,
 		.size = MAILBOX_HOSTBOX_SIZE,
 		.attr = K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB,
 	};
 
 	for (pidx = 0; pidx < SOF_DP_PART_TYPE_COUNT; pidx++) {
-		ret = k_mem_domain_add_partition(mdom, pdata->mpart + pidx);
+		ret = k_mem_domain_add_partition(mdom, kobj->mpart + pidx);
 		if (ret < 0)
 			goto e_dom;
 	}
 
-	ret = llext_manager_add_domain(mod->dev->ipc_config.id, mdom);
+	memcpy(pdata->mpart, kobj->mpart, sizeof(pdata->mpart));
+
+	ret = llext_manager_add_domain(comp_id, mdom);
 	if (ret < 0) {
 		tr_err(&dp_tr, "failed to add LLEXT to domain %d", ret);
 		goto e_dom;
@@ -682,15 +817,18 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	 * Keep this call last, able to fail, otherwise domain will be removed
 	 * before its thread
 	 */
-	ret = k_mem_domain_add_thread(mdom, pdata->thread_id);
+	ret = k_mem_domain_add_thread(mdom, thread_id);
 	if (ret < 0) {
 		tr_err(&dp_tr, "failed to add thread to domain %d", ret);
 		goto e_dom;
 	}
 
+	/* publish the record before the thread can run */
+	dp_task_kobj_add(kobj);
+
 	/* start the thread, it should immediately stop at the semaphore */
-	k_event_init(pdata->event);
-	k_thread_start(pdata->thread_id);
+	k_event_init(kobj->event);
+	k_thread_start(thread_id);
 
 	/* ptask points into task_memory, so only publish it once it cannot be freed */
 	*task = ptask;
@@ -698,17 +836,19 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	return 0;
 
 e_dom:
-	scheduler_dp_domain_free(pdata);
+	scheduler_dp_domain_free(mod, mdom, kobj->mpart, comp_id);
 	on_pool = false;
 e_thread:
 	if (on_pool)
 		objpool_free(&dp_mdom_head, mdom);
-	k_thread_abort(pdata->thread_id);
-	k_object_free(pdata->thread);
+	k_thread_abort(thread_id);
+	k_object_free(kobj->thread);
 e_event:
-	k_object_free(pdata->event);
+	k_object_free(kobj->event);
 e_config:
-	mod_free(mod, pdata->ipc_config_data);
+	mod_free(mod, ipc_config_data);
+e_kobj:
+	rfree(kobj);
 e_stack:
 	user_stack_free(p_stack);
 e_tmem:
@@ -721,6 +861,11 @@ e_tmem:
 #ifdef CONFIG_USERSPACE
 #include <zephyr/internal/syscall_handler.h>
 
+/*
+ * mod_free() follows the module's resource and allocator pointers in
+ * supervisor mode. They are user-writable, so at least check that they
+ * point to memory the caller can access.
+ */
 static void scheduler_dp_mod_vrfy(struct processing_module *mod)
 {
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
@@ -749,15 +894,30 @@ static void scheduler_dp_mod_vrfy(struct processing_module *mod)
 
 void z_vrfy_scheduler_dp_internal_free(struct task *task)
 {
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(task, sizeof(*task)));
+	struct scheduler_dp_task_kobj kobj;
 
-	struct task_dp_pdata *pdata = task->priv_data;
+	/*
+	 * Do not read task->priv_data: the kernel objects come from the
+	 * kernel-only record, and an unknown task pointer is rejected.
+	 */
+	K_OOPS(!dp_task_kobj_peek(task, &kobj));
 
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(pdata, sizeof(*pdata)));
-	K_OOPS(K_SYSCALL_OBJ(pdata->event, K_OBJ_EVENT));
-	K_OOPS(K_SYSCALL_OBJ_INIT(pdata->thread, K_OBJ_THREAD));
-	scheduler_dp_mod_vrfy(pdata->mod);
-	return z_impl_scheduler_dp_internal_free(task);
+	/*
+	 * A DP thread holds its own thread and event objects, so it would pass
+	 * the checks below for its own task. Freeing would then abort the
+	 * caller after the record is unlinked, leaking everything it holds.
+	 */
+	K_OOPS(kobj.thread == k_current_get());
+
+	/*
+	 * The caller must have been granted the task's objects. Check before
+	 * unlinking the record, so an unauthorized call leaves it intact.
+	 */
+	K_OOPS(K_SYSCALL_OBJ(kobj.event, K_OBJ_EVENT));
+	K_OOPS(K_SYSCALL_OBJ_INIT(kobj.thread, K_OBJ_THREAD));
+	scheduler_dp_mod_vrfy(kobj.mod);
+
+	K_OOPS(!scheduler_dp_internal_free_kobj(task, &kobj));
 }
 #include <zephyr/syscalls/scheduler_dp_internal_free_mrsh.c>
 #endif /* CONFIG_USERSPACE */
