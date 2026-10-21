@@ -28,6 +28,7 @@
 #include <kernel/abi.h>
 #include <rtos/clk.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/dma.h>
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
 #include "sof/audio/mic_privacy_manager.h"
 #endif

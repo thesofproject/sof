@@ -23,6 +23,7 @@
 #include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
+#include <sof/lib/dai.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>

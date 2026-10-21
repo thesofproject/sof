@@ -7,6 +7,7 @@
  * Author: Jun Lai <jun.lai@dolby.com>
  */
 
+#include <rtos/atomic.h>
 #include <rtos/spinlock.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <dax_inf.h>

@@ -21,9 +21,9 @@
 #include <sof/schedule/schedule.h>
 #include <rtos/task.h>
 #include <rtos/string_macro.h>
+#include <ipc4/gateway.h>
 #if CONFIG_IPC_MAJOR_4
 #include <sof/audio/module_adapter/module/generic.h>
-#include <ipc4/gateway.h>
 #include <ipc4/module.h>
 #include <sof/audio/component.h>
 #include <sof/audio/component_ext.h>

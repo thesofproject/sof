@@ -8,6 +8,7 @@
 #include <rtos/task.h>
 #include <stdint.h>
 #include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/schedule.h>
 #include <rtos/wait.h>
 #include <stdlib.h>
 

@@ -22,9 +22,7 @@
 #include <sof/debug/telemetry/telemetry.h>
 #include <rtos/mutex.h>
 #include <rtos/userspace_data.h>
-#include <sof/lib/dai.h>
 #include <sof/lib/uuid.h>
-#include <sof/schedule/schedule.h>
 #include <ipc/control.h>
 #include <sof/ipc/topology.h>
 #include <kernel/abi.h>
@@ -36,6 +34,8 @@ struct sof_ipc_stream_posn;
 struct dai_hw_params;
 struct timestamp_data;
 struct dai_ts_data;
+struct dai_data;
+struct task;
 
 /** \addtogroup component_infra_api
  *  @{

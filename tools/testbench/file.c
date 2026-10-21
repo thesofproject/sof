@@ -10,6 +10,7 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/stream.h>
+#include <sof/lib/dai.h>
 #include <sof/ipc/driver.h>
 #include <ipc/stream.h>
 #include <rtos/init.h>
