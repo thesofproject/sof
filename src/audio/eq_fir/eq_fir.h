@@ -23,6 +23,7 @@
 #if SOF_USE_MIN_HIFI(3, FILTER)
 #include <sof/math/fir_hifi3.h>
 #endif
+#include <sof/math/fir_float.h>
 #include <user/fir.h>
 #include <stdint.h>
 
@@ -32,12 +33,17 @@
  * FIR implementations receive already acquired circular source and sink views.
  */
 struct comp_data {
-	struct fir_state_32x16 fir[CONFIG_PLATFORM_MAX_CHANNELS]; /**< filters state */
+	union {
+		struct fir_state_32x16 fir[CONFIG_PLATFORM_MAX_CHANNELS]; /**< filters state */
+		struct fir_state_float fir_f[CONFIG_PLATFORM_MAX_CHANNELS];
+	};
 	struct comp_data_blob_handler *model_handler;
 	struct sof_eq_fir_config *config;
-	int32_t *fir_delay;			/**< pointer to allocated RAM */
+	void *fir_delay;			/**< pointer to allocated RAM */
+	float *fir_coef_f;			/**< pointer to float converted coefficients */
 	size_t config_size;			/**< configuration size */
 	size_t fir_delay_size;			/**< allocated size */
+	size_t fir_coef_f_size;			/**< allocated float coef size */
 	void (*eq_fir_func)(struct fir_state_32x16 fir[],
 			    const struct cir_buf_source *source,
 			    struct cir_buf_sink *sink,
@@ -68,6 +74,19 @@ void eq_fir_s32(struct fir_state_32x16 *fir, const struct cir_buf_source *source
 void eq_fir_2x_s32(struct fir_state_32x16 *fir, const struct cir_buf_source *source,
 		   struct cir_buf_sink *sink, size_t frames, unsigned int channels);
 #endif /* CONFIG_FORMAT_S32LE */
+
+#if CONFIG_FORMAT_FLOAT
+void eq_fir_float(struct fir_state_32x16 *fir, const struct cir_buf_source *source,
+		  struct cir_buf_sink *sink, size_t frames, unsigned int channels);
+
+void eq_fir_2x_float(struct fir_state_32x16 *fir, const struct cir_buf_source *source,
+		     struct cir_buf_sink *sink, size_t frames, unsigned int channels);
+
+static inline void set_float_fir(struct comp_data *cd)
+{
+	cd->eq_fir_func = eq_fir_2x_float;
+}
+#endif /* CONFIG_FORMAT_FLOAT */
 
 int set_fir_func(struct processing_module *mod, enum sof_ipc_frame fmt);
 
