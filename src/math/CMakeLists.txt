@@ -67,7 +67,7 @@ elseif(CONFIG_MATH_IIR)
   endif()
 
   if(CONFIG_MATH_IIR_DF1)
-    list(APPEND base_files iir_df1_generic.c iir_df1_hifi3.c iir_df1_hifi4.c iir_df1_hifi5.c iir_df1_arm.c iir_df1_riscv.c iir_df1.c)
+    list(APPEND base_files iir_df1_generic.c iir_df1_hifi3.c iir_df1_hifi4.c iir_df1_hifi5.c iir_df1_arm.c iir_df1_riscv.c iir_df1_float.c iir_df1.c)
   endif()
 endif()
 
