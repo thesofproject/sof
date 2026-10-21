@@ -35,16 +35,16 @@ static inline int32_t dcblock_arm_process(struct dcblock_state *state, int64_t R
 static int dcblock_s16_arm(struct comp_data *cd,
 			   struct cir_buf_source *source,
 			   struct cir_buf_sink *sink,
-			   uint32_t frames)
+			   size_t frames)
 {
 	const int16_t *x = source->ptr;
 	int16_t *y = sink->ptr;
-	int samples_without_wrap;
+	size_t samples_without_wrap;
 	int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	size_t remaining_samples = frames * nch;
 	int32_t tmp;
 	int ch = 0;
-	int i;
+	size_t i;
 
 	while (remaining_samples) {
 		samples_without_wrap = cir_buf_samples_without_wrap_s16(x, source->buf_end);
@@ -72,16 +72,16 @@ static int dcblock_s16_arm(struct comp_data *cd,
 static int dcblock_s24_arm(struct comp_data *cd,
 			   struct cir_buf_source *source,
 			   struct cir_buf_sink *sink,
-			   uint32_t frames)
+			   size_t frames)
 {
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
-	int samples_without_wrap;
+	size_t samples_without_wrap;
 	int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	size_t remaining_samples = frames * nch;
 	int32_t tmp;
 	int ch = 0;
-	int i;
+	size_t i;
 
 	while (remaining_samples) {
 		samples_without_wrap = cir_buf_samples_without_wrap_s32(x, source->buf_end);
@@ -109,15 +109,15 @@ static int dcblock_s24_arm(struct comp_data *cd,
 static int dcblock_s32_arm(struct comp_data *cd,
 			   struct cir_buf_source *source,
 			   struct cir_buf_sink *sink,
-			   uint32_t frames)
+			   size_t frames)
 {
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
-	int samples_without_wrap;
+	size_t samples_without_wrap;
 	int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	size_t remaining_samples = frames * nch;
 	int ch = 0;
-	int i;
+	size_t i;
 
 	while (remaining_samples) {
 		samples_without_wrap = cir_buf_samples_without_wrap_s32(x, source->buf_end);

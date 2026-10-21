@@ -49,7 +49,7 @@ static int32_t dcblock_generic(struct dcblock_state *state,
 static int dcblock_s16_default(struct comp_data *cd,
 			       struct cir_buf_source *source,
 			       struct cir_buf_sink *sink,
-			       uint32_t frames)
+			       size_t frames)
 {
 	const int16_t *x = source->ptr;
 	int16_t *y = sink->ptr;
@@ -96,7 +96,7 @@ static int dcblock_s16_default(struct comp_data *cd,
 static int dcblock_s24_default(struct comp_data *cd,
 			       struct cir_buf_source *source,
 			       struct cir_buf_sink *sink,
-			       uint32_t frames)
+			       size_t frames)
 {
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
@@ -143,7 +143,7 @@ static int dcblock_s24_default(struct comp_data *cd,
 static int dcblock_s32_default(struct comp_data *cd,
 			       struct cir_buf_source *source,
 			       struct cir_buf_sink *sink,
-			       uint32_t frames)
+			       size_t frames)
 {
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
