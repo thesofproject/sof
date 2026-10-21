@@ -41,7 +41,7 @@ static inline void dcblock_set_circular(const void *src_begin, const void *src_e
 static int dcblock_s16_default(struct comp_data *cd,
 			       struct cir_buf_source *source,
 			       struct cir_buf_sink *sink,
-			       uint32_t frames)
+			       size_t frames)
 {
 	const ae_int16 *src = source->ptr;
 	ae_int16 *dst = (ae_int16 *)sink->ptr;
@@ -56,9 +56,10 @@ static int dcblock_s16_default(struct comp_data *cd,
 	int x_size = x_end - x_start;
 	int y_size = y_end - y_start;
 	int nch = cd->channels;
-	int remaining = frames * nch;
+	size_t remaining = frames * nch;
 	const int inc = nch * sizeof(ae_int16);
 	int ch, i, n;
+	size_t i, n;
 
 	/* Set source as circular buffer 0 for the strided per-channel reads */
 	dcblock_set_circular(x_start, x_end);
@@ -105,7 +106,7 @@ static int dcblock_s16_default(struct comp_data *cd,
 static int dcblock_s24_default(struct comp_data *cd,
 			       struct cir_buf_source *source,
 			       struct cir_buf_sink *sink,
-			       uint32_t frames)
+			       size_t frames)
 {
 	const ae_int32 *src = source->ptr;
 	ae_int32 *dst = (ae_int32 *)sink->ptr;
@@ -120,9 +121,10 @@ static int dcblock_s24_default(struct comp_data *cd,
 	int x_size = x_end - x_start;
 	int y_size = y_end - y_start;
 	int nch = cd->channels;
-	int remaining = frames * nch;
+	size_t remaining = frames * nch;
 	const int inc = nch * sizeof(ae_int32);
 	int ch, i, n;
+	size_t i, n;
 
 	dcblock_set_circular(x_start, x_end);
 
@@ -165,7 +167,7 @@ static int dcblock_s24_default(struct comp_data *cd,
 static int dcblock_s32_default(struct comp_data *cd,
 			       struct cir_buf_source *source,
 			       struct cir_buf_sink *sink,
-			       uint32_t frames)
+			       size_t frames)
 {
 	const ae_int32 *src = source->ptr;
 	ae_int32 *dst = (ae_int32 *)sink->ptr;
@@ -180,9 +182,10 @@ static int dcblock_s32_default(struct comp_data *cd,
 	int x_size = x_end - x_start;
 	int y_size = y_end - y_start;
 	int nch = cd->channels;
-	int remaining = frames * nch;
+	size_t remaining = frames * nch;
 	const int inc = nch * sizeof(ae_int32);
 	int ch, i, n;
+	size_t i, n;
 
 	dcblock_set_circular(x_start, x_end);
 

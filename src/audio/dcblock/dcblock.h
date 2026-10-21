@@ -38,7 +38,7 @@ struct comp_data;
 typedef int (*dcblock_func)(struct comp_data *cd,
 			    struct cir_buf_source *source,
 			    struct cir_buf_sink *sink,
-			    uint32_t frames);
+			    size_t frames);
 
 /* DC Blocking Filter component private data */
 struct comp_data {
@@ -76,7 +76,7 @@ extern const size_t dcblock_fncount;
  */
 static inline dcblock_func dcblock_find_func(enum sof_ipc_frame src_fmt)
 {
-	int i;
+	size_t i;
 
 	/* Find suitable processing function from map */
 	for (i = 0; i < dcblock_fncount; i++) {
