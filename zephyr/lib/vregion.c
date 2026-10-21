@@ -194,25 +194,36 @@ struct vregion *z_impl_vregion_get(struct vregion *vr)
 
 struct vregion *z_impl_vregion_create_map(uintptr_t *vreg_start, size_t *vreg_size)
 {
-	if (!vreg_start || !vreg_size || !*vreg_size)
+	if (!vreg_start || !vreg_size)
 		return NULL;
 
-	struct vregion *vr = vregion_create(*vreg_size);
+	/*
+	 * Called as a system call, both pointers refer to user memory that
+	 * another thread can modify at any time. Read the size once and only
+	 * write the results back at the end, never read them back.
+	 */
+	size_t size = *vreg_size;
+
+	if (!size)
+		return NULL;
+
+	struct vregion *vr = vregion_create(size);
+	uintptr_t start;
 
 	if (!vr)
 		return NULL;
 
-#if CONFIG_USERSPACE && CONFIG_SOF_USERSPACE_LL
-	vregion_mem_info(vr, vreg_size, vreg_start);
+	vregion_mem_info(vr, &size, &start);
 
+#if CONFIG_USERSPACE && CONFIG_SOF_USERSPACE_LL
 	/*
 	 * In the userspace LL case allocations are also performed by the
 	 * userspace IPC thread, which is also the one, executing this syscall
 	 */
 	struct k_mem_domain *domain = zephyr_ll_mem_domain();
 	struct k_mem_partition part = {
-		.start = *vreg_start,
-		.size = *vreg_size,
+		.start = start,
+		.size = size,
 		.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB,
 	};
 	int ret = k_mem_domain_add_partition(domain, &part);
@@ -222,6 +233,9 @@ struct vregion *z_impl_vregion_create_map(uintptr_t *vreg_start, size_t *vreg_si
 		return NULL;
 	}
 
+	/* from here on vregion_unmap() must remove what was added */
+	vr->domain = domain;
+
 	part.start = (uintptr_t)sys_cache_uncached_ptr_get((void *)part.start);
 	part.attr = K_MEM_PARTITION_P_RW_U_RW;
 
@@ -230,9 +244,10 @@ struct vregion *z_impl_vregion_create_map(uintptr_t *vreg_start, size_t *vreg_si
 		vregion_put(vr);
 		return NULL;
 	}
-
-	vr->domain = domain;
 #endif
+
+	*vreg_start = start;
+	*vreg_size = size;
 
 	return vr;
 }
