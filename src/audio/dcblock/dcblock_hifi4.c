@@ -56,9 +56,9 @@ static int dcblock_s16_default(struct comp_data *cd,
 	ae_int16 *out;
 	ae_int32x2 R, state_x, state_y, sample;
 	ae_int16x4 in_sample, out_sample;
-	int nch = cd->channels;
+	unsigned int nch = cd->channels;
 	const int inc = nch * sizeof(ae_int16);
-	int ch, i;
+	unsigned int ch;
 	size_t i;
 
 	dcblock_set_circular(x_start, x_end, y_start, y_end);
@@ -103,9 +103,9 @@ static int dcblock_s24_default(struct comp_data *cd,
 	ae_int32 *out;
 	ae_int32x2 R, state_x, state_y;
 	ae_int32x2 in_sample, out_sample;
-	int nch = cd->channels;
+	unsigned int nch = cd->channels;
 	const int inc = nch * sizeof(ae_int32);
-	int ch, i;
+	unsigned int ch;
 	size_t i;
 
 	dcblock_set_circular(x_start, x_end, y_start, y_end);
@@ -150,9 +150,9 @@ static int dcblock_s32_default(struct comp_data *cd,
 	ae_int32 *out;
 	ae_int32x2 R, state_x, state_y;
 	ae_int32x2 in_sample;
-	int nch = cd->channels;
+	unsigned int nch = cd->channels;
 	const int inc = nch * sizeof(ae_int32);
-	int ch, i;
+	unsigned int ch;
 	size_t i;
 
 	dcblock_set_circular(x_start, x_end, y_start, y_end);

@@ -54,7 +54,7 @@ struct comp_data {
 
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
-	int channels; /**< number of channels */
+	unsigned int channels; /**< number of channels */
 	dcblock_func dcblock_func; /**< processing function */
 };
 
