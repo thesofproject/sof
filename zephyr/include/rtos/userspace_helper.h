@@ -14,27 +14,14 @@
 
 #include <zephyr/kernel.h>
 
-#ifndef CONFIG_USERSPACE
-#define APP_TASK_BSS
-#define APP_TASK_DATA
-#define APP_SYSUSER_BSS
-#define APP_SYSUSER_DATA
-#else
+#include <rtos/userspace_data.h>
+
+#ifdef CONFIG_USERSPACE
 #include <zephyr/cache.h>
 #include <zephyr/app_memory/app_memdomain.h>
 
 #define USER_MOD_HEAP_SIZE	ALIGN_UP(CONFIG_SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE, \
 					 CONFIG_MM_DRV_PAGE_SIZE)
-#define APP_TASK_BSS	K_APP_BMEM(common_partition)
-#define APP_TASK_DATA	K_APP_DMEM(common_partition)
-
-#ifdef CONFIG_SOF_USERSPACE_LL
-#define APP_SYSUSER_BSS	K_APP_BMEM(sysuser_partition)
-#define APP_SYSUSER_DATA	K_APP_DMEM(sysuser_partition)
-#else
-#define APP_SYSUSER_BSS
-#define APP_SYSUSER_DATA
-#endif
 
 struct processing_module;
 struct userspace_context;
