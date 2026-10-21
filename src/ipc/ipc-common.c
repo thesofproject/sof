@@ -233,6 +233,19 @@ out:
 
 #ifdef __ZEPHYR__
 static K_THREAD_STACK_DEFINE(ipc_send_wq_stack, CONFIG_STACK_SIZE_IPC_TX);
+
+/*
+ * Kernel-only: these must not live in struct ipc, which user threads can
+ * write with CONFIG_SOF_USERSPACE_LL. The work queue embeds the k_thread of
+ * a supervisor thread and the work item holds the handler it calls.
+ */
+static struct k_work_q ipc_send_wq;
+static struct k_work_delayable ipc_send_work;
+
+struct k_work_q *ipc_send_wq_get(void)
+{
+	return &ipc_send_wq;
+}
 #endif
 
 static void schedule_ipc_worker(void)
@@ -242,9 +255,7 @@ static void schedule_ipc_worker(void)
 	 * task_main_primary_core()
 	 */
 #ifdef __ZEPHYR__
-	struct ipc *ipc = ipc_get();
-
-	k_work_schedule_for_queue(&ipc->ipc_send_wq, &ipc->z_delayed_work, K_USEC(IPC_PERIOD_USEC));
+	k_work_schedule_for_queue(&ipc_send_wq, &ipc_send_work, K_USEC(IPC_PERIOD_USEC));
 #endif
 }
 
@@ -796,11 +807,11 @@ __cold int ipc_init(struct sof *sof)
 #ifdef __ZEPHYR__
 	k_tid_t thread;
 
-	k_work_queue_init(&ipc->ipc_send_wq);
-	k_work_queue_start(&ipc->ipc_send_wq, ipc_send_wq_stack,
+	k_work_queue_init(&ipc_send_wq);
+	k_work_queue_start(&ipc_send_wq, ipc_send_wq_stack,
 			   K_THREAD_STACK_SIZEOF(ipc_send_wq_stack), 1, NULL);
 
-	thread = k_work_queue_thread_get(&ipc->ipc_send_wq);
+	thread = k_work_queue_thread_get(&ipc_send_wq);
 
 	k_thread_suspend(thread);
 
@@ -811,7 +822,7 @@ __cold int ipc_init(struct sof *sof)
 
 	k_thread_resume(thread);
 
-	k_work_init_delayable(&ipc->z_delayed_work, ipc_work_handler);
+	k_work_init_delayable(&ipc_send_work, ipc_work_handler);
 #endif /* __ZEPHYR__ */
 
 	ipc_user_init();

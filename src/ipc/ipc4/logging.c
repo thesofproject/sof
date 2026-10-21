@@ -86,7 +86,7 @@ static void mtrace_log_hook_unlocked(size_t written, size_t space_left)
 		mtrace_notify_last_sent = k_uptime_get();
 		mtrace_bytes_pending = 0;
 	} else if (mtrace_bytes_pending) {
-		k_work_schedule_for_queue(&ipc_get()->ipc_send_wq, &log_work,
+		k_work_schedule_for_queue(ipc_send_wq_get(), &log_work,
 					  K_MSEC(mtrace_aging_timer - delta));
 	}
 }
