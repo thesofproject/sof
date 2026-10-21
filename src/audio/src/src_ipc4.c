@@ -154,6 +154,14 @@ int src_prepare_general(struct processing_module *mod,
 	/* set align requirements */
 	src_set_alignment(source);
 
+#if CONFIG_FORMAT_FLOAT
+	if (source_get_frm_fmt(source) == SOF_IPC_FRAME_FLOAT) {
+		cd->data_shift = 0;
+		cd->polyphase_func = src_polyphase_stage_cir_float;
+		goto out;
+	}
+#endif
+
 	switch (cd->ipc_config.base.audio_fmt.valid_bit_depth) {
 #if CONFIG_FORMAT_S16LE
 	case IPC4_DEPTH_16BIT:
