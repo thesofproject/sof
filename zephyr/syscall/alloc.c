@@ -6,10 +6,13 @@
 #include <sof/schedule/ll_schedule_domain.h>
 #include <zephyr/kernel.h>
 #include <zephyr/internal/syscall_handler.h>
+#include <sof/userspace/syscall_caller.h>
 
 static inline void *z_vrfy_sof_heap_alloc(struct k_heap *heap, uint32_t flags,
 					  size_t bytes, size_t alignment)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	/* only allow flags that are safe for user-space heap isolation */
 	static const uint32_t allowed_flags =
 		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA |
@@ -26,6 +29,8 @@ static inline void *z_vrfy_sof_heap_alloc(struct k_heap *heap, uint32_t flags,
 
 static inline void z_vrfy_sof_heap_free(struct k_heap *heap, void *addr)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	/* user-space use of sof_heap_alloc() limited to this single heap */
 	K_OOPS(!zephyr_ll_user_heap_verify(heap));
 
