@@ -114,6 +114,19 @@ static int vpages_alloc_and_map(unsigned int pages, void **ptr)
 	if (ret < 0) {
 		LOG_ERR("error: failed to map virtual region %p to physical region %p, error %d",
 			vaddr, vpage_ctx.virtual_region->addr, ret);
+
+		/*
+		 * The driver maps page by page and leaves already mapped pages (and
+		 * their physical pages) in place on failure, e.g. when physical L2 is
+		 * exhausted. Release them so they do not leak.
+		 */
+		for (unsigned int i = 0; i < pages; i++) {
+			void *va = (uint8_t *)vaddr + i * CONFIG_MM_DRV_PAGE_SIZE;
+
+			if (!sys_mm_drv_page_phys_get(va, NULL))
+				sys_mm_drv_unmap_page(va);
+		}
+
 		sys_mem_blocks_free_contiguous(&vpage_ctx.vpage_blocks, vaddr, pages);
 		return ret;
 	}
