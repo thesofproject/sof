@@ -111,6 +111,42 @@ static inline int z_impl_sof_dma_resume(struct sof_dma *dma, uint32_t channel)
 
 #ifdef CONFIG_SOF_USERSPACE_INTERFACE_DMA
 
+struct k_heap;
+struct dma_chan_data;
+
+/**
+ * Kernel-only state of one struct sof_dma entry.
+ *
+ * This is the authoritative state for the kernel. The dma[] array is shared
+ * with user threads (APP_SYSUSER_DATA), so none of its fields can be trusted
+ * in supervisor mode: there, the DMA system call validators and the get/put
+ * reference counting use this structure. The dma[] fields stay as the
+ * user-visible view. The kernel may still read them for non-security
+ * purposes, such as picking a controller in sof_dma_get() or logging, but
+ * every decision that matters is taken from here. The constant fields are
+ * copied from dma[] in dmac_init(), before user threads run.
+ */
+struct sof_dma_kinfo {
+	const struct device *z_dev;	/**< Zephyr DMA device */
+	uint32_t dir;			/**< SOF_DMA_DIR_* supported directions */
+	uint32_t caps;			/**< SOF_DMA_CAP_* capabilities */
+	uint32_t channels;		/**< size of the channel array */
+	struct k_spinlock lock;		/**< protects sref, heap and chan */
+	int sref;			/**< reference count, under lock */
+	struct k_heap *heap;		/**< heap the channel array came from */
+	struct dma_chan_data *chan;	/**< channel array to free on last put */
+};
+
+/**
+ * Return the kernel-only state of @dma.
+ *
+ * @dma is compared against the dma[] array bounds only, it is not
+ * dereferenced, so an untrusted pointer may be passed.
+ *
+ * @return kernel-only state, or NULL if @dma is not an element of dma[]
+ */
+struct sof_dma_kinfo *sof_dma_kinfo_get(const struct sof_dma *dma);
+
 /* include definitions from generated file */
 #include <zephyr/syscalls/sof_dma.h>
 
