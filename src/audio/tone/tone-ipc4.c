@@ -43,7 +43,9 @@ LOG_MODULE_DECLARE(tone, CONFIG_SOF_LOG_LEVEL);
 static int tone_init(struct processing_module *mod)
 {
 	struct module_data *mod_data = &mod->priv;
+#if CONFIG_IPC_MAJOR_4
 	struct module_config *mod_config = &mod->priv.cfg;
+#endif
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd;
 	int i;
@@ -54,13 +56,14 @@ static int tone_init(struct processing_module *mod)
 
 	mod_data->private = cd;
 
-	/* Tnoe only supports 32-bit format */
+	/* Tone only supports 32-bit format */
 	cd->tone_func = tone_s32_default;
 
 	/*
 	 * set direction for the comp. In the case of the tone generator being used for
 	 * echo reference, the number of input pins will be non-zero
 	 */
+#if CONFIG_IPC_MAJOR_4
 	if (mod_config->nb_input_pins > 0) {
 		dev->direction = SOF_IPC_STREAM_CAPTURE;
 		cd->mode = TONE_MODE_SILENCE;
@@ -69,6 +72,10 @@ static int tone_init(struct processing_module *mod)
 		dev->direction = SOF_IPC_STREAM_PLAYBACK;
 		cd->mode = TONE_MODE_TONEGEN;
 	}
+#else
+	dev->direction = SOF_IPC_STREAM_PLAYBACK;
+	cd->mode = TONE_MODE_TONEGEN;
+#endif
 
 	dev->direction_set = true;
 
@@ -95,7 +102,7 @@ static int tone_params(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb;
-	enum sof_ipc_frame frame_fmt, valid_fmt;
+	enum sof_ipc_frame frame_fmt;
 
 	sinkb = comp_dev_get_first_data_consumer(dev);
 	if (!sinkb) {
@@ -103,17 +110,29 @@ static int tone_params(struct processing_module *mod)
 		return -ENOTCONN;
 	}
 
+#if CONFIG_IPC_MAJOR_4
+	enum sof_ipc_frame valid_fmt;
+
 	audio_stream_fmt_conversion(mod->priv.cfg.base_cfg.audio_fmt.depth,
 				    mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth,
 				    &frame_fmt, &valid_fmt,
 				    mod->priv.cfg.base_cfg.audio_fmt.s_type);
 	cd->rate = mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency;
+#else
+	frame_fmt = audio_stream_get_frm_fmt(&sinkb->stream);
+	cd->rate = audio_stream_get_rate(&sinkb->stream);
+#endif
 
-	/* Tone supports only S32_LE PCM format atm */
-	if (frame_fmt != SOF_IPC_FRAME_S32_LE) {
+	/* Tone supports S32_LE and FLOAT format */
+	if (frame_fmt != SOF_IPC_FRAME_S32_LE && frame_fmt != SOF_IPC_FRAME_FLOAT) {
 		comp_err(dev, "unsupported frame_fmt = %u", frame_fmt);
 		return -EINVAL;
 	}
+
+	if (frame_fmt == SOF_IPC_FRAME_FLOAT)
+		cd->tone_func = tone_float_default;
+	else
+		cd->tone_func = tone_s32_default;
 
 	return 0;
 }
@@ -144,7 +163,14 @@ static int tone_prepare(struct processing_module *mod, struct sof_source **sourc
 	if (ret < 0)
 		return ret;
 
+#if CONFIG_IPC_MAJOR_4
 	cd->channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
+#else
+	if (num_of_sinks > 0 && sinks[0])
+		cd->channels = sink_get_channels(sinks[0]);
+	else
+		cd->channels = 2;
+#endif
 
 	for (i = 0; i < cd->channels; i++) {
 		f = tonegen_get_f(&cd->sg[i]);
