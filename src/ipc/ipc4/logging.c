@@ -61,7 +61,8 @@ static uint32_t mtrace_aging_timer = IPC4_MTRACE_NOTIFY_AGING_TIMER_MS;
 
 #define MTRACE_IPC_CORE	PLATFORM_PRIMARY_CORE_ID
 
-static K_MUTEX_DEFINE(log_mutex);
+/* the hook runs under the mtrace backend spinlock */
+static struct k_spinlock log_lock;
 static struct k_work_delayable log_work;
 
 static void mtrace_log_hook_unlocked(size_t written, size_t space_left)
@@ -93,22 +94,28 @@ static void mtrace_log_hook_unlocked(size_t written, size_t space_left)
 
 static void mtrace_log_hook(size_t written, size_t space_left)
 {
-	k_mutex_lock(&log_mutex, K_FOREVER);
+	k_spinlock_key_t key;
+
+	/* fatal exception log flush: IPC and work queue won't run anyway, their locks may be held */
+	if (k_is_in_isr())
+		return;
+
+	key = k_spin_lock(&log_lock);
 
 	mtrace_log_hook_unlocked(written, space_left);
 
-	k_mutex_unlock(&log_mutex);
+	k_spin_unlock(&log_lock, key);
 }
 
 static void log_work_handler(struct k_work *work)
 {
-	k_mutex_lock(&log_mutex, K_FOREVER);
+	k_spinlock_key_t key = k_spin_lock(&log_lock);
 
 	if (k_uptime_get() - mtrace_notify_last_sent >= mtrace_aging_timer &&
 	    mtrace_bytes_pending)
 		mtrace_log_hook_unlocked(0, 0);
 
-	k_mutex_unlock(&log_mutex);
+	k_spin_unlock(&log_lock, key);
 }
 
 static struct k_work_sync ipc4_log_work_sync;
