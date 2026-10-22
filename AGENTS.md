@@ -11,6 +11,7 @@ This document outlines the rules AI agents must follow when checking out branche
   * `schedule: zephyr_domain: add user-space LL thread`
 * **Commit Body:** Should describe the changes in detail in the commit message body.
 * **Sign-off:** All commits must be signed off by the developer (`Signed-off-by: Name <email>`) using the identity from the local git config.
+* AI agents MUST NOT add Signed-off-by tags.
 
 ### Documentation Requirements
 * **Doxygen Comments:** Any new C code or features must include Doxygen comments.
