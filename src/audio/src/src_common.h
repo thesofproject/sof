@@ -23,8 +23,8 @@ struct src_stage {
 	int num_of_subfilters;
 	int subfilter_length;
 	int filter_length;
-	int blk_in;
-	int blk_out;
+	size_t blk_in;
+	size_t blk_out;
 	int halfband;
 	int shift;
 	const void *coefs; /* Can be int16_t or int32_t depending on config */
@@ -38,8 +38,8 @@ struct src_param {
 	int sbuf_length;
 	int src_multich;
 	int total;
-	int blk_in;
-	int blk_out;
+	size_t blk_in;
+	size_t blk_out;
 	int stage1_times;
 	int stage2_times;
 	int idx_in;

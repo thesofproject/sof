@@ -369,7 +369,7 @@ static int src_1s(struct comp_data *cd, struct sof_source *source,
 int src_copy_sxx(struct comp_data *cd, struct sof_source *source,
 		 struct sof_sink *sink)
 {
-	int frames = cd->param.blk_in;
+	size_t frames = cd->param.blk_in;
 
 	switch (source_get_frm_fmt(source)) {
 	case SOF_IPC_FRAME_S16_LE:
