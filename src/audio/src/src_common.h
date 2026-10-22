@@ -160,9 +160,9 @@ struct comp_data {
 	int32_t const *sbuf_r_ptr;
 	int sbuf_avail;
 	int data_shift;
-	int source_frames;
-	int sink_frames;
-	int sample_container_bytes;
+	size_t source_frames;
+	size_t sink_frames;
+	size_t sample_container_bytes;
 	int channels_count;
 	int (*src_func)(struct comp_data *cd, struct sof_source *source,
 			struct sof_sink *sink);
