@@ -153,7 +153,7 @@ struct sof_ipc_ctrl_value_chan;
  * circular buffer views and only performs the gain scaling.
  */
 typedef void (*vol_scale_func)(struct processing_module *mod, struct cir_buf_source *source,
-			struct cir_buf_sink *sink, uint32_t frames, uint32_t attenuation);
+			struct cir_buf_sink *sink, size_t frames, uint32_t attenuation);
 
 /**
  * \brief volume interface for function getting nearest zero crossing frame
