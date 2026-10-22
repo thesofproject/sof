@@ -37,6 +37,16 @@ TODO: Add additional notes about how to deploy this on a live system
 
 See [Contributing to the Project](https://thesofproject.github.io/latest/contribute/index.html)
 
+### AI-assisted contributions
+
+When using AI agents or coding assistants to contribute code, the human submitter is responsible for:
+* Reviewing all AI-generated code
+* Ensuring compliance with licensing requirements
+* Adding their own Signed-off-by tag to certify the DCO
+* Taking full responsibility for the contribution
+
+See [AGENTS.md](AGENTS.md) for rules that govern AI agent behaviour in this repository.
+
 ## License
 
 This project is licensed under the BSD Clause 3 - see the [LICENCE](LICENCE) file for details
