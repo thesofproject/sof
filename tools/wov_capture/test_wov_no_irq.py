@@ -42,22 +42,39 @@ def get_dsp_power_state():
     return "UNKNOWN"
 
 
-def monitor_active_slot(stop_evt, observed_slots, card=0):
-    """Poll wov_active_slot every 50ms while capture is active."""
+def find_active_slot_control(card=0):
+    """Find active phrase detect enum control by name."""
+    try:
+        cmd = ["amixer", "-c", str(card), "controls"]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for name in ["DMIC Phrase Detect ID", "Jack In Phrase Detect ID", "wov_active_slot"]:
+            if f"name='{name}'" in res.stdout:
+                return name
+    except Exception:
+        pass
+    return "DMIC Phrase Detect ID"
+
+
+def monitor_active_slot(stop_evt, observed_slots, card=0, phrase_ctl=None):
+    """Poll phrase detect control every 50ms while capture is active."""
+    if phrase_ctl is None:
+        phrase_ctl = find_active_slot_control(card)
     while not stop_evt.is_set():
-        v = get_kcontrol("wov_active_slot", card=card)
+        v = get_kcontrol(phrase_ctl, card=card)
         if v is not None and (not observed_slots or observed_slots[-1] != v):
             observed_slots.append(v)
         time.sleep(0.05)
 
 
-def test_s0_slot(slot, ctl, mode="alsa_no_irq", card=0, device=12):
+def test_s0_slot(slot, ctl, mode="alsa_no_irq", card=0, device=12, phrase_ctl=None):
+    if phrase_ctl is None:
+        phrase_ctl = find_active_slot_control(card)
     print(f"\n==================================================")
-    print(f"[S0 Test] Slot {slot} ({ctl}) - Mode: {mode}")
+    print(f"[S0 Test] Slot {slot} ({ctl}) - Mode: {mode} ({phrase_ctl})")
     print(f"==================================================")
 
-    init_slot = get_kcontrol("wov_active_slot", card=card)
-    print(f"  1. Initial wov_active_slot : {init_slot} (Expected: 0)")
+    init_slot = get_kcontrol(phrase_ctl, card=card)
+    print(f"  1. Initial {phrase_ctl} : {init_slot} (Expected: 0)")
 
     if mode == "alsa_no_irq":
         app = "/usr/local/bin/wov_blocking_read"
@@ -72,7 +89,7 @@ def test_s0_slot(slot, ctl, mode="alsa_no_irq", card=0, device=12):
 
     observed_slots = []
     stop_evt = threading.Event()
-    mon_thread = threading.Thread(target=monitor_active_slot, args=(stop_evt, observed_slots, card))
+    mon_thread = threading.Thread(target=monitor_active_slot, args=(stop_evt, observed_slots, card, phrase_ctl))
     mon_thread.start()
 
     p = subprocess.Popen([app, dev_str, ctl], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -93,7 +110,7 @@ def test_s0_slot(slot, ctl, mode="alsa_no_irq", card=0, device=12):
 
     post_slot = None
     for _ in range(15):
-        post_slot = get_kcontrol("wov_active_slot", card=card)
+        post_slot = get_kcontrol(phrase_ctl, card=card)
         if post_slot == "0":
             break
         time.sleep(0.1)
@@ -108,16 +125,18 @@ def test_s0_slot(slot, ctl, mode="alsa_no_irq", card=0, device=12):
     return passed
 
 
-def test_d0i3_slot(slot, ctl, card=0, device=12):
+def test_d0i3_slot(slot, ctl, card=0, device=12, phrase_ctl=None):
+    if phrase_ctl is None:
+        phrase_ctl = find_active_slot_control(card)
     print(f"\n==================================================")
-    print(f"[D0i3 Test] Slot {slot} ({ctl}) - Idle D0i3 -> Wake -> Capture")
+    print(f"[D0i3 Test] Slot {slot} ({ctl}) - Idle D0i3 -> Wake -> Capture ({phrase_ctl})")
     print(f"==================================================")
 
     out_wav = f"/tmp/wov_d0i3_slot{slot}.wav"
     subprocess.run(["rm", "-f", out_wav])
 
-    init_slot = get_kcontrol("wov_active_slot", card=card)
-    print(f"  1. Initial wov_active_slot : {init_slot} (Expected: 0)")
+    init_slot = get_kcontrol(phrase_ctl, card=card)
+    print(f"  1. Initial {phrase_ctl} : {init_slot} (Expected: 0)")
 
     app = "/usr/local/bin/wov_blocking_read"
     dev_str = f"hw:{card},{device}"
@@ -127,7 +146,7 @@ def test_d0i3_slot(slot, ctl, card=0, device=12):
 
     observed_slots = []
     stop_evt = threading.Event()
-    mon_thread = threading.Thread(target=monitor_active_slot, args=(stop_evt, observed_slots, card))
+    mon_thread = threading.Thread(target=monitor_active_slot, args=(stop_evt, observed_slots, card, phrase_ctl))
     mon_thread.start()
 
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -155,7 +174,7 @@ def test_d0i3_slot(slot, ctl, card=0, device=12):
     file_sz = os.path.getsize(out_wav) if os.path.exists(out_wav) else 0
     post_slot = None
     for _ in range(15):
-        post_slot = get_kcontrol("wov_active_slot", card=card)
+        post_slot = get_kcontrol(phrase_ctl, card=card)
         if post_slot == "0":
             break
         time.sleep(0.1)
@@ -190,23 +209,25 @@ def main():
         (3, "wovdebug_113"),
     ]
 
+    phrase_ctl = find_active_slot_control()
+
     results = {}
 
     # Test 1: S0 with ALSA no_irq (snd_pcm_hw_params_set_period_wakeup 0)
     for slot, ctl in slots:
         test_name = f"S0_Slot_{slot}_no_irq"
-        results[test_name] = test_s0_slot(slot, ctl, mode="alsa_no_irq")
+        results[test_name] = test_s0_slot(slot, ctl, mode="alsa_no_irq", phrase_ctl=phrase_ctl)
         time.sleep(1.0)
 
     # Test 2: S0 with tinyalsa MMAP + NOIRQ
     test_name = "S0_Slot_1_tinyalsa_mmap_noirq"
-    results[test_name] = test_s0_slot(1, "wovdebug_111", mode="tinyalsa_mmap_noirq")
+    results[test_name] = test_s0_slot(1, "wovdebug_111", mode="tinyalsa_mmap_noirq", phrase_ctl=phrase_ctl)
     time.sleep(1.0)
 
     # Test 3: D0i3 with arecord -M (mmap mode)
     for slot, ctl in slots:
         test_name = f"D0i3_Slot_{slot}_mmap"
-        results[test_name] = test_d0i3_slot(slot, ctl)
+        results[test_name] = test_d0i3_slot(slot, ctl, phrase_ctl=phrase_ctl)
         time.sleep(1.0)
 
     print("\n****************************************************************")

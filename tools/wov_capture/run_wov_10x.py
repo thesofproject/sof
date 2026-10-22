@@ -42,6 +42,18 @@ def find_wov_slots(card=0):
         (3, "wovdebug_113"),
     ]
 
+def find_active_slot_control(card=0):
+    """Find active phrase detect enum control by name."""
+    try:
+        cmd = ["amixer", "-c", str(card), "controls"]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for name in ["DMIC Phrase Detect ID", "Jack In Phrase Detect ID", "wov_active_slot"]:
+            if f"name='{name}'" in res.stdout:
+                return name
+    except Exception:
+        pass
+    return "DMIC Phrase Detect ID"
+
 def get_kcontrol(name, card=0):
     cmd = ["amixer", "-c", str(card), "cget", f"name={name}"]
     res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -57,12 +69,14 @@ def set_kcontrol(name, val, card=0):
     res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return res.returncode == 0
 
-def reset_all_controls(card=0, slots=None):
+def reset_all_controls(card=0, slots=None, phrase_ctl=None):
     if slots is None:
         slots = find_wov_slots(card)
-    val = get_kcontrol("wov_active_slot", card=card)
+    if phrase_ctl is None:
+        phrase_ctl = find_active_slot_control(card)
+    val = get_kcontrol(phrase_ctl, card=card)
     if val is not None and val != "0":
-        set_kcontrol("wov_active_slot", 0, card=card)
+        set_kcontrol(phrase_ctl, 0, card=card)
     for _, ctl in slots:
         val = get_kcontrol(ctl, card=card)
         if val is not None and val not in ("0", "off"):
@@ -115,10 +129,12 @@ def check_wav_continuity(wav_path):
     except Exception as e:
         return False, str(e)
 
-def run_s0_iteration(iteration, slot, ctl, card=0, device=None):
+def run_s0_iteration(iteration, slot, ctl, card=0, device=None, phrase_ctl=None):
     if device is None:
         device = find_wov_pcm(card)
-    reset_all_controls(card)
+    if phrase_ctl is None:
+        phrase_ctl = find_active_slot_control(card)
+    reset_all_controls(card, phrase_ctl=phrase_ctl)
     out_wav = f"/tmp/wov_s0_run{iteration}_slot{slot}.wav"
     subprocess.run(["rm", "-f", out_wav])
     app = "/usr/local/bin/wov_blocking_read"
@@ -143,7 +159,7 @@ def run_s0_iteration(iteration, slot, ctl, card=0, device=None):
     # Wait up to 1.5s for async control updates to settle
     post_slot = None
     for _ in range(15):
-        post_slot = get_kcontrol("wov_active_slot", card=card)
+        post_slot = get_kcontrol(phrase_ctl, card=card)
         if post_slot == "0":
             break
         time.sleep(0.1)
@@ -177,10 +193,12 @@ def run_s0_iteration(iteration, slot, ctl, card=0, device=None):
         "passed": passed,
     }
 
-def run_d0i3_iteration(iteration, slot, ctl, card=0, device=None):
+def run_d0i3_iteration(iteration, slot, ctl, card=0, device=None, phrase_ctl=None):
     if device is None:
         device = find_wov_pcm(card)
-    reset_all_controls(card)
+    if phrase_ctl is None:
+        phrase_ctl = find_active_slot_control(card)
+    reset_all_controls(card, phrase_ctl=phrase_ctl)
     out_wav = f"/tmp/wov_d0i3_run{iteration}_slot{slot}.wav"
     subprocess.run(["rm", "-f", out_wav])
     app = "/usr/local/bin/wov_blocking_read"
@@ -207,7 +225,7 @@ def run_d0i3_iteration(iteration, slot, ctl, card=0, device=None):
     # Wait up to 1.5s for async control updates to settle
     post_slot = None
     for _ in range(15):
-        post_slot = get_kcontrol("wov_active_slot", card=card)
+        post_slot = get_kcontrol(phrase_ctl, card=card)
         if post_slot == "0":
             break
         time.sleep(0.1)
@@ -253,22 +271,25 @@ def main():
     card = 0
     slots = find_wov_slots(card)
     device = find_wov_pcm(card)
-    print(f"Target: hw:{card},{device}, Controls: {[ctl for _, ctl in slots]}")
+    phrase_ctl = find_active_slot_control(card)
+    print(f"Target: hw:{card},{device}, Controls: {[ctl for _, ctl in slots]}, Phrase Control: {phrase_ctl}")
     
     # Ensure dynamic debug is enabled for DSP power state messages
     subprocess.run('echo "file hda-dsp.c +p" > /sys/kernel/debug/dynamic_debug/control 2>/dev/null', shell=True)
     
     # Initial cleanup and enable test signal
-    reset_all_controls(card=card, slots=slots)
-    set_kcontrol("ecns_kpb_test_signal", "on", card=card)
-    print("Enabled ecns_kpb_test_signal: on")
+    reset_all_controls(card=card, slots=slots, phrase_ctl=phrase_ctl)
+    for sig_ctl in ["DMIC ecns_kpb_test_signal", "ecns_kpb_test_signal"]:
+        if set_kcontrol(sig_ctl, "on", card=card):
+            print(f"Enabled {sig_ctl}: on")
+            break
     time.sleep(1.0)
     
     s0_results = []
     print("\n--- PHASE 1: Running 10x S0 WoV Capture Tests ---")
     for i in range(1, 11):
         slot, ctl = slots[(i - 1) % len(slots)]
-        res = run_s0_iteration(i, slot, ctl, card=card, device=device)
+        res = run_s0_iteration(i, slot, ctl, card=card, device=device, phrase_ctl=phrase_ctl)
         s0_results.append(res)
         status_str = "PASS" if res["passed"] else "FAIL"
         print(f"  [S0 Run {i:02d}/10] Slot {slot} ({ctl}): {status_str} in {res['elapsed']:.2f}s, trig_slot={res['trig_slot']}, size={res['size']}B, continuity=[{res['continuity']}], slot_reset={res['post_slot']}, ctl_reset={res['post_ctl']}")
@@ -284,7 +305,7 @@ def main():
     print("\n--- PHASE 2: Running 10x D0i3 WoV Idle Delay & Wake Tests ---")
     for i in range(1, 11):
         slot, ctl = slots[(i - 1) % len(slots)]
-        res = run_d0i3_iteration(i, slot, ctl, card=card, device=device)
+        res = run_d0i3_iteration(i, slot, ctl, card=card, device=device, phrase_ctl=phrase_ctl)
         d0i3_results.append(res)
         status_str = "PASS" if res["passed"] else "FAIL"
         print(f"  [D0i3 Run {i:02d}/10] Slot {slot} ({ctl}): {status_str} in {res['elapsed']:.2f}s, trig_slot={res['trig_slot']}, d0i3={res['d0i3_state']}, size={res['size']}B, continuity=[{res['continuity']}], slot_reset={res['post_slot']}, ctl_reset={res['post_ctl']}")
