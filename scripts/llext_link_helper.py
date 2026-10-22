@@ -8,6 +8,7 @@
 # line parameters to this script and call the linker directly.
 
 import os
+import sys
 import argparse
 import subprocess
 from elftools.elf.elffile import ELFFile
@@ -47,6 +48,62 @@ def max_alignment(addr, align1, align2):
 
 	upper = addr + align1 - 1
 	return upper - (upper % align1)
+
+# The Zephyr LLEXT loader merges the sections of an extension into regions by
+# type: code, read-only data and writable data, and pads the start of each
+# region down to the largest alignment of its sections. For relocatable
+# objects it only moves the file offset of the region that way, not its
+# address, so if the first section of a region isn't at a file offset with
+# that alignment, addresses within that region are translated to wrong file
+# offsets. Among other things the names of symbols, exported by the module,
+# can't be found then. Return the sections, which have to be aligned in the
+# file to avoid that, and their required alignment.
+def region_alignment_fixes(path, detached):
+	regions = {}
+
+	with open(path, 'rb') as f:
+		elf = ELFFile(f)
+
+		for section in elf.iter_sections():
+			s_flags = section.header['sh_flags']
+
+			if (not s_flags & SH_FLAGS.SHF_ALLOC or s_flags & SH_FLAGS.SHF_TLS or
+			    not section.header['sh_size'] or section.name in detached):
+				continue
+
+			if section.name == '.exported_sym':
+				region = 'export'
+			elif section.header['sh_type'] != 'SHT_PROGBITS':
+				continue
+			elif s_flags & SH_FLAGS.SHF_EXECINSTR:
+				region = 'text'
+			elif s_flags & SH_FLAGS.SHF_WRITE:
+				region = 'data'
+			else:
+				region = 'rodata'
+
+			regions.setdefault(region, []).append((section.header['sh_offset'],
+							       section.name,
+							       section.header['sh_addralign'],
+							       section.header['sh_addr']))
+
+	fixes = []
+
+	for sections in regions.values():
+		offset, name, align, addr = min(sections)
+		region_align = max(s[2] for s in sections)
+
+		if offset % region_align == 0:
+			continue
+
+		if addr % region_align:
+			print(f'llext_link_helper.py: WARNING: cannot align {name} to {region_align}',
+			      file=sys.stderr)
+			continue
+
+		fixes.append((name, region_align))
+
+	return fixes
 
 def main():
 	global args
@@ -220,6 +277,12 @@ def main():
 		copy_command.extend(['--set-section-alignment', f'{first_dram_text}=4096'])
 	if first_dram_rodata:
 		copy_command.extend(['--set-section-alignment', f'{first_dram_rodata}=4096'])
+
+	if '-r' in args.params:
+		detached = [section.name for section in executable + readonly_dram]
+
+		for s_name, s_align in region_alignment_fixes(f'{args.file}.tmp', detached):
+			copy_command.extend(['--set-section-alignment', f'{s_name}={s_align}'])
 
 	copy_command.extend([f'{args.file}.tmp', f'{args.output}'])
 	subprocess.run(copy_command)
