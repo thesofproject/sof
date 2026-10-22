@@ -408,7 +408,6 @@ BT_CP_HOST_PIPELINE_ID=201,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-ssp2-bt
 # DMIC multi-slot WoV feature topologies (always uses PDM DMICs for input)
 "dmic-wov-feature\;sof-dmic-4ch-wov-multi\;PLATFORM=none,NUM_DMICS=4,DMIC0_ID=5,DMIC1_ID=6,DMIC1_ENABLE=false,DMIC1_RATE=16000,DMIC_WOV_DAI_CHANNELS=4,INCLUDE_WOV=multi"
 "dmic-wov-feature\;sof-ptl-dmic-4ch-wov-multi\;PLATFORM=ptl,NUM_DMICS=4,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-dmic-4ch-wov-multi.bin,DMIC_WOV_DAI_CHANNELS=4,INCLUDE_WOV=multi"
-"dmic-wov-feature\;sof-wcl-dmic-4ch-wov-multi\;PLATFORM=wcl,NUM_DMICS=4,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-wcl-dmic-4ch-wov-multi.bin,DMIC_WOV_DAI_CHANNELS=4,INCLUDE_WOV=multi"
 
 # Functional SoundWire topologies with integrated multi-slot WoV feature
 "cavs-sdw\;sof-ptl-rt721-4ch-wov-multi\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
@@ -423,12 +422,6 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt722-4ch-wov-multi.bin,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
 DMIC_WOV_DAI_CHANNELS=4,INCLUDE_WOV=multi"
-
-"cavs-sdw\;sof-wcl-rt721-4ch-wov-multi\;PLATFORM=wcl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
-PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,\
-SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
-SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
-DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,DMIC_WOV_DAI_CHANNELS=4,INCLUDE_WOV=multi"
 
 "cavs-sdw\;sof-wcl-rt722-4ch-wov-multi\;PLATFORM=wcl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,\
@@ -456,14 +449,6 @@ SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
 INCLUDE_WOV=multi"
 
-"cavs-sdw\;sof-wcl-rt721-2ch-wov-multi\;PLATFORM=wcl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=2,\
-PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC_WOV_DAI_CHANNELS=2,\
-DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,\
-PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-wcl-rt721-2ch-wov-multi.bin,\
-SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
-SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
-DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,INCLUDE_WOV=multi"
-
 "cavs-sdw\;sof-wcl-rt722-2ch-wov-multi\;PLATFORM=wcl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=2,\
 PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC_WOV_DAI_CHANNELS=2,\
 DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,\
@@ -472,4 +457,19 @@ SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
 INCLUDE_WOV=multi,INCLUDE_SDW_JACK_WOV=true"
 
+)
+
+list(APPEND SYMLINKS
+# WCL DMIC function topologies are identical to the PTL ones
+"sof-wcl-dmic-2ch-id2\;sof-ptl-dmic-2ch-id2"
+"sof-wcl-dmic-2ch-id3\;sof-ptl-dmic-2ch-id3"
+"sof-wcl-dmic-2ch-id4\;sof-ptl-dmic-2ch-id4"
+"sof-wcl-dmic-2ch-id5\;sof-ptl-dmic-2ch-id5"
+"sof-wcl-dmic-4ch-id2\;sof-ptl-dmic-4ch-id2"
+"sof-wcl-dmic-4ch-id3\;sof-ptl-dmic-4ch-id3"
+"sof-wcl-dmic-4ch-id4\;sof-ptl-dmic-4ch-id4"
+"sof-wcl-dmic-4ch-id5\;sof-ptl-dmic-4ch-id5"
+"sof-wcl-dmic-4ch-wov-multi\;sof-ptl-dmic-4ch-wov-multi"
+"sof-wcl-rt721-4ch-wov-multi\;sof-ptl-rt721-4ch-wov-multi"
+"sof-wcl-rt721-2ch-wov-multi\;sof-ptl-rt721-2ch-wov-multi"
 )
