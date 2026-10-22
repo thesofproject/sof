@@ -588,7 +588,7 @@ Follow this step-by-step checklist to integrate your own algorithms:
 3. Connect widgets in the platform manifest files:
    - Panther Lake: `tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf`
    - Tiger Lake: `tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf`
-   - Wildcat Lake: `tools/topology/topology2/dmic-wov-multi-wcl-4ch-manifest.conf`
+   - Wildcat Lake: symlink to the Panther Lake topology, no separate manifest
 
 ### Step 4: Compile Topology & Firmware
 1. Build topologies with `alsatplg -p`:

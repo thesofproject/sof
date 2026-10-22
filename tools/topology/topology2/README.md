@@ -579,9 +579,12 @@ graph TD
 |---|---|---|---|
 | **Panther Lake (PTL)** | [`dmic-wov-multi-ptl-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf) | `sof-ptl-dmic-wov-multi-4ch.tplg` | 5 |
 | **Tiger Lake (TGL)** | [`dmic-wov-multi-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf) | `sof-tgl-dmic-wov-multi-4ch.tplg` | 1 |
-| **Wildcat Lake (WCL)** | [`dmic-wov-multi-wcl-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-wcl-4ch-manifest.conf) | `sof-wcl-dmic-wov-multi-4ch.tplg` | 5 |
+| **Wildcat Lake (WCL)** | symlink to the PTL topology | `sof-wcl-dmic-wov-multi-4ch.tplg` | 5 |
 
-Compile all three targets:
+Compile the PTL and TGL targets; WCL is ACE3 like PTL and the compiled
+topology is byte-for-byte identical, so it is only a symlink to the PTL
+binary (the CMake build does the same via the `SYMLINKS` list in
+`production/tplg-targets-ace3.cmake`):
 
 ```bash
 # 1. Panther Lake (PTL)
@@ -591,19 +594,15 @@ alsatplg -I $PWD/tools/topology/topology2 -p \
     -c tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf \
     -o build/sof-ptl-dmic-wov-multi-4ch.tplg
 
-# 2. Tiger Lake (TGL)
+# 2. Wildcat Lake (WCL): symlink to the PTL topology
+ln -sf sof-ptl-dmic-wov-multi-4ch.tplg build/sof-wcl-dmic-wov-multi-4ch.tplg
+
+# 3. Tiger Lake (TGL)
 ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
 ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/x86_64-linux-gnu/alsa-topology \
 alsatplg -I $PWD/tools/topology/topology2 -p \
     -c tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf \
     -o build/sof-tgl-dmic-wov-multi-4ch.tplg
-
-# 3. Wildcat Lake (WCL)
-ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
-ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/x86_64-linux-gnu/alsa-topology \
-alsatplg -I $PWD/tools/topology/topology2 -p \
-    -c tools/topology/topology2/dmic-wov-multi-wcl-4ch-manifest.conf \
-    -o build/sof-wcl-dmic-wov-multi-4ch.tplg
 ```
 
 ### Full Production Platform Topology: Wildcat Lake SoundWire RT721 + Multi-Slot WoV (`sof-wcl-rt721-4ch-wov-multi.tplg`)
@@ -971,10 +970,9 @@ make -C build-tools \
     topology2_prod_sof-ptl-rt722-4ch-wov-multi \
     topology2_prod_sof-wcl-rt722-4ch-wov-multi
 
-# Build HDA Generic Multi-WoV (PTL and WCL)
+# Build HDA Generic Multi-WoV (ACE3: PTL and WCL)
 make -C build-tools \
-    topology2_prod_sof-ptl-hda-generic-4ch-wov-multi \
-    topology2_prod_sof-wcl-hda-generic-4ch-wov-multi
+    topology2_prod_sof-hda-generic-ace3-4ch-wov-multi
 
 # Build Standalone 4-Channel DMIC Multi-WoV (PTL, WCL, and generic)
 make -C build-tools \
@@ -995,7 +993,7 @@ cat tools/topology/topology2/abi.conf tools/topology/topology2/cavs-sdw.conf > /
 # 2. Compile via alsatplg v2 preprocessor with NHLT plugin
 ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
 alsatplg -p -I $PWD/tools/topology/topology2 \
-  -D 'PLATFORM=wcl,\
+  -D 'PLATFORM=ptl,\
 SDW_DMIC=1,\
 NUM_SDW_AMP_LINKS=1,\
 NUM_DMICS=4,\
@@ -1021,7 +1019,7 @@ INCLUDE_WOV=multi' \
 ```
 
 > [!NOTE]
-> For Panther Lake (`sof-ptl-rt721-4ch-wov-multi.tplg`), replace `PLATFORM=wcl` with `PLATFORM=ptl` in the `-D` definitions above.
+> WCL is ACE3 like PTL and uses `PLATFORM=ptl`; the `sof-wcl-*` topologies only differ from the PTL ones by name (or are symlinks to them).
 
 ---
 
