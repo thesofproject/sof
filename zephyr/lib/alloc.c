@@ -20,8 +20,11 @@
 
 #define SHARED_BUFFER_HEAP_MEM_SIZE	0
 
-#if CONFIG_L3_HEAP && CONFIG_MMU
+#if CONFIG_L3_HEAP
+#include <rimage/sof/user/manifest.h>
+#if CONFIG_MMU
 #include <kernel_arch_interface.h>
+#endif
 #endif
 
 #if CONFIG_VIRTUAL_HEAP
@@ -198,36 +201,40 @@ static struct k_heap l3_heap;
 static struct k_heap l3_heap_copy __imrdata;
 
 /**
- * Returns the start of L3 memory heap.
+ * Calculates the start of L3 memory heap.
  * @return Pointer to the L3 memory location which can be used for L3 heap.
+ *
+ * The firmware image stays in IMR after boot and is copied to SRAM again
+ * from there when the DSP is resumed from IMR. The heap must not overlap
+ * with the image, so start the heap after the end of the image, which is
+ * calculated from the preload page count in the firmware manifest.
  */
-static inline uintptr_t get_l3_heap_start(void)
+static uintptr_t calc_l3_heap_start(void)
 {
-	/*
-	 * TODO: parse the actual offset using:
-	 * - HfIMRIA1 register
-	 * - rom_ext_load_offset
-	 * - main_fw_load_offset
-	 * - main fw size in manifest
-	 */
-	return (uintptr_t)(ROUND_UP(IMR_L3_HEAP_BASE, L3_MEM_PAGE_SIZE));
+	const struct sof_man_fw_desc *desc =
+		(const struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
+	uintptr_t image_end;
+
+	sys_cache_data_invd_range((void *)&desc->header, sizeof(desc->header));
+	image_end = IMR_BOOT_LDR_MANIFEST_BASE +
+		desc->header.preload_page_count * HOST_PAGE_SIZE;
+
+	return ROUND_UP(image_end, L3_MEM_PAGE_SIZE);
 }
 
 /**
- * Returns the size of L3 memory heap.
+ * Calculates the size of L3 memory heap.
+ * @param start Start of L3 heap, see calc_l3_heap_start().
  * @return Size of the L3 memory region which can be used for L3 heap.
  */
-static inline size_t get_l3_heap_size(void)
+static size_t calc_l3_heap_size(uintptr_t start)
 {
-	 /*
-	  * Calculate the IMR heap size using:
-	  * - total IMR size
-	  * - IMR base address
-	  * - actual IMR heap start
-	  */
-	size_t offset = IMR_L3_HEAP_BASE - L3_MEM_BASE_ADDR;
+	uintptr_t imr_end = L3_MEM_BASE_ADDR + ace_imr_get_mem_size();
 
-	return ROUND_DOWN(ace_imr_get_mem_size() - offset, L3_MEM_PAGE_SIZE);
+	if (start >= imr_end)
+		return 0;
+
+	return ROUND_DOWN(imr_end - start, L3_MEM_PAGE_SIZE);
 }
 
 void l3_heap_save(void)
@@ -236,8 +243,8 @@ void l3_heap_save(void)
 	LOG_DBG("L3 heap copy: %p", (void *)l3_heap_copy.heap.heap);
 	dcache_writeback_region((__sparse_force void __sparse_cache *)&l3_heap_copy,
 				sizeof(l3_heap_copy));
-	dcache_writeback_region((__sparse_force void __sparse_cache *)get_l3_heap_start(),
-				get_l3_heap_size());
+	dcache_writeback_region((__sparse_force void __sparse_cache *)l3_heap.heap.init_mem,
+				l3_heap.heap.init_bytes);
 }
 
 static void *l3_heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes)
@@ -251,6 +258,10 @@ static void *l3_heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t by
 		tr_err(&zephyr_tr, "L3_HEAP available only for primary core!");
 		return NULL;
 	}
+
+	/* not initialized, e.g. if no IMR space left after the image */
+	if (!h->heap.heap)
+		return NULL;
 
 	key = k_spin_lock(&h->lock);
 	ret = sys_heap_aligned_alloc(&h->heap, min_align, bytes);
@@ -839,6 +850,33 @@ void sof_heap_free(struct k_heap *heap, void *addr)
 #endif /* CONFIG_SOF_USERSPACE_INTERFACE_ALLOC */
 #endif /* CONFIG_SOF_NATIVE_SIM_HOST_HEAP */
 
+#if CONFIG_L3_HEAP
+static void l3_heap_init(void)
+{
+	uintptr_t start = calc_l3_heap_start();
+	size_t l3_heap_size = calc_l3_heap_size(start);
+	void *l3_heap_start = UINT_TO_POINTER(start);
+
+	/* no IMR space left after the image, L3 allocations will fail */
+	if (!l3_heap_size)
+		return;
+
+#if CONFIG_MMU
+	void *cached_ptr = sys_cache_cached_ptr_get(l3_heap_start);
+	uintptr_t va = POINTER_TO_UINT(cached_ptr);
+
+	arch_mem_map(l3_heap_start, va, l3_heap_size, K_MEM_PERM_RW | K_MEM_CACHE_WB);
+#endif
+	if (l3_heap_copy.heap.heap) {
+		l3_heap = l3_heap_copy;
+	} else {
+		l3_heap.heap.init_mem = l3_heap_start;
+		l3_heap.heap.init_bytes = l3_heap_size;
+		sys_heap_init(&l3_heap.heap, l3_heap_start, l3_heap_size);
+	}
+}
+#endif
+
 static int heap_init(void)
 {
 	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE - SHARED_BUFFER_HEAP_MEM_SIZE);
@@ -850,23 +888,8 @@ static int heap_init(void)
 #endif
 
 #if CONFIG_L3_HEAP
-	if (ace_imr_used()) {
-		void *l3_heap_start = UINT_TO_POINTER(get_l3_heap_start());
-		size_t l3_heap_size = get_l3_heap_size();
-#if CONFIG_MMU
-		void *cached_ptr = sys_cache_cached_ptr_get(l3_heap_start);
-		uintptr_t va = POINTER_TO_UINT(cached_ptr);
-
-		arch_mem_map(l3_heap_start, va, l3_heap_size, K_MEM_PERM_RW | K_MEM_CACHE_WB);
-#endif
-		if (l3_heap_copy.heap.heap) {
-			l3_heap = l3_heap_copy;
-		} else {
-			l3_heap.heap.init_mem = l3_heap_start;
-			l3_heap.heap.init_bytes = l3_heap_size;
-			sys_heap_init(&l3_heap.heap, l3_heap_start, l3_heap_size);
-		}
-	}
+	if (ace_imr_used())
+		l3_heap_init();
 #endif
 
 	return 0;
