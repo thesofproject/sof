@@ -1142,7 +1142,7 @@ cat /proc/asound/card0/pcm11c/info
 
 # 2. Run capture test with arecord or wov_capture_app
 arecord -D hw:0,11 -f S16_LE -r 16000 -c 2 -d 3 /tmp/wov_test.wav
-wov_capture_app -c 0 -d 11 -r 16000 -C 2 -t 3.0 -o /tmp
+wov_capture_app -D 0 -d 11 -r 16000 -c 2 -t 3.0 -o /tmp
 ```
 
 ---
@@ -1448,10 +1448,10 @@ make install DUT=root@spider
 Usage: wov_capture_app [options]
 
 Options:
-  -c CARD      Sound card number (default: 0)
+  -D CARD      Sound card number (default: 0)
   -d DEV       PCM device number (default: 11)
   -r RATE      Sample rate in Hz (default: 16000)
-  -C CHANS     Number of channels (default: 2)
+  -c CHANS     Number of channels (default: 2)
   -f FORMAT    Sample format: S16_LE (default) or S32_LE
   -t DURATION  Capture duration in seconds (default: 3.0, 0 = unlimited)
   -n CYCLES    Number of capture cycles (default: 1, 0 = unlimited)
@@ -1466,10 +1466,10 @@ Options:
 
 ```bash
 # Capture 3 seconds of 16 kHz stereo audio to /tmp
-wov_capture_app -c 0 -d 11 -r 16000 -C 2 -t 3.0 -o /tmp
+wov_capture_app -D 0 -d 11 -r 16000 -c 2 -t 3.0 -o /tmp
 
 # Multi-cycle repeat test (5 consecutive cycles with 1s delay)
-wov_capture_app -c 0 -d 11 -n 5 -t 2.0 -w 1.0
+wov_capture_app -D 0 -d 11 -n 5 -t 2.0 -w 1.0
 ```
 
 #### Log Format
