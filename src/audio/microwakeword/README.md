@@ -171,10 +171,13 @@ The MWW detector participates in SOF's synchronous intra-DSP publish/subscribe n
 
 ## ALSA Kcontrols & Userspace Verification
 
-### 1. Active Slot Status (`wov_active_slot`)
+### 1. Active Slot Status (`DMIC Phrase Detect ID` / `Jack In Phrase Detect ID`)
 The arbiter exposes a volatile read-only ALSA enum kcontrol:
 ```bash
-amixer -c 0 cget name='wov_active_slot'
+# For DMIC WoV:
+amixer -c 0 cget name='DMIC Phrase Detect ID'
+# For SDW Headset WoV:
+amixer -c 0 cget name='Jack In Phrase Detect ID'
 # Values: 0 = Listening, 1 = Slot 1 ("strawberry"), 2 = Slot 2 ("hi intel"), 3 = Slot 3 ("orange")
 ```
 

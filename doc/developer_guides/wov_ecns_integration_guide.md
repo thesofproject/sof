@@ -318,7 +318,7 @@ sequenceDiagram
     rect rgb(40, 20, 60)
         Note over ARB: Arbiter latches Slot 0 as active winner
         ARB->>WOV1: notifier_event(NOTIFIER_ID_WOV_CTRL, PAUSE slot=0)
-        ARB->>HOST: SOF_IPC4_MODULE_NOTIFICATION (wov_active_slot = 'Slot 1')
+        ARB->>HOST: SOF_IPC4_MODULE_NOTIFICATION (DMIC Phrase Detect ID = 'Slot 1')
     end
     
     Note over WOV1: Slot 1 pauses inference (saves DSP MIPS)
@@ -328,7 +328,7 @@ sequenceDiagram
 ```
 
 ### Arbiter Control State Enum
-The arbiter exposes the `wov_active_slot` ALSA mixer enum control:
+The arbiter exposes the `DMIC Phrase Detect ID` (and `Jack In Phrase Detect ID` for headset WoV) ALSA mixer enum control:
 - `Item #0 'Listening'`: All slots actively scanning input.
 - `Item #1 'Slot 1'`: Slot 0 detected keyword; sibling slots paused.
 - `Item #2 'Slot 2'`: Slot 1 detected keyword; sibling slots paused.
