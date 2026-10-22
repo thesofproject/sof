@@ -38,17 +38,38 @@ static int get_active_slot(int card)
 	if (snd_ctl_open(&ctl_handle, ctl_name, 0) < 0)
 		return -1;
 
+	static const char * const ctl_names[] = {
+		"DMIC Phrase Detect ID",
+		"Jack In Phrase Detect ID",
+		"wov_active_slot",
+	};
+
 	snd_ctl_elem_id_t *id;
 	snd_ctl_elem_id_alloca(&id);
-	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
-	snd_ctl_elem_id_set_name(id, "wov_active_slot");
-
 	snd_ctl_elem_value_t *val;
 	snd_ctl_elem_value_alloca(&val);
-	snd_ctl_elem_value_set_id(val, id);
+
+	const char *target_name = NULL;
+	for (size_t i = 0; i < sizeof(ctl_names) / sizeof(ctl_names[0]); i++) {
+		snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
+		snd_ctl_elem_id_set_name(id, ctl_names[i]);
+		snd_ctl_elem_value_set_id(val, id);
+		if (snd_ctl_elem_read(ctl_handle, val) >= 0) {
+			target_name = ctl_names[i];
+			break;
+		}
+	}
+
+	if (!target_name) {
+		snd_ctl_close(ctl_handle);
+		return -1;
+	}
 
 	int slot = -1;
 	for (int retry = 0; retry < 30; retry++) {
+		snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
+		snd_ctl_elem_id_set_name(id, target_name);
+		snd_ctl_elem_value_set_id(val, id);
 		if (snd_ctl_elem_read(ctl_handle, val) >= 0) {
 			slot = snd_ctl_elem_value_get_enumerated(val, 0);
 			if (slot > 0)
