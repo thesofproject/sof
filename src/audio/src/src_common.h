@@ -48,7 +48,7 @@ struct src_param {
 	int num_out_fs;
 	int max_fir_delay_size_xnch;
 	int max_out_delay_size_xnch;
-	int nch;
+	unsigned int nch;
 	const struct src_stage *stage1;
 	const struct src_stage *stage2;
 	const int *in_fs;
@@ -73,7 +73,7 @@ struct polyphase_src {
 };
 
 struct src_stage_prm {
-	int nch;
+	unsigned int nch;
 	int times;
 	void const *x_rptr;
 	void const *x_end_addr;
@@ -163,7 +163,7 @@ struct comp_data {
 	size_t source_frames;
 	size_t sink_frames;
 	size_t sample_container_bytes;
-	int channels_count;
+	unsigned int channels_count;
 	int (*src_func)(struct comp_data *cd, struct sof_source *source,
 			struct sof_sink *sink);
 	void (*polyphase_func)(struct src_stage_prm *s);
