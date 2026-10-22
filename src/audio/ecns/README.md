@@ -12,6 +12,8 @@ The module performs echo cancellation, noise suppression, and channel routing, d
 
 Both capture endpoints support low-power D0i3 listening and wake (`capture_compatible_d0i3: true`).
 
+The `ECNS capture boost` switch control selects between the boosted high-pass responses (+30 dB 100 Hz on Pin 0 with `CONFIG_ECNS_KPB_HPF`, +20 dB 40 Hz on Pin 1) and the same filters with 0 dB gain. The firmware keeps duplicate coefficient sets and only moves the IIR coefficient pointers, so the filter state is kept. The firmware starts boosted, but the kernel sends the switch value (default off, 0 dB) when the widget is set up. The `ecns_kpb_test_signal` switch replaces Pin 0 output with a test ramp (`CONFIG_ECNS_TEST_SIGNAL`).
+
 ---
 
 ## Topology Architecture

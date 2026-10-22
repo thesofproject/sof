@@ -90,6 +90,14 @@ static const uint32_t hp_100hz_30db_16k[13] = {
 	0x1f32926e, 0xc19adb24, 0x1f32926e, 0xfffffffb,
 	0x00007e33
 };
+
+/** \brief As hp_100hz_30db_16k with 0 dB gain, from highpass_100hz_0db_16khz.conf. */
+static const uint32_t hp_100hz_0db_16k[13] = {
+	0x00000001, 0x00000001, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0xc37518f5, 0x7c72526b,
+	0x1f32926e, 0xc19adb24, 0x1f32926e, 0x00000000,
+	0x00007fb4
+};
 #endif
 
 #if CONFIG_ECNS_HOST_HPF
@@ -114,8 +122,31 @@ static const uint32_t hp_40hz_20db_16k[13] = {
 	0x00004fd0
 };
 
+/**
+ * \brief 40 Hz high-pass filters with 0 dB gain for Pin 1.
+ *
+ * From highpass_40hz_0db_48khz.conf and highpass_40hz_0db_16khz.conf.
+ */
+static const uint32_t hp_40hz_0db_48k[13] = {
+	0x00000001, 0x00000001, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0xc078df4c, 0x7f86ae23,
+	0x1ff51b12, 0xc015c9db, 0x1ff51b12, 0x00000000,
+	0x00007fb2
+};
+
+static const uint32_t hp_40hz_0db_16k[13] = {
+	0x00000001, 0x00000001, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0xc167f2ba, 0x7e940dc3,
+	0x1fb8bfff, 0xc08e8003, 0x1fb8bfff, 0x00000000,
+	0x00007fb2
+};
+
 #define ECNS_HOST_MAX_CHANNELS	4
 #endif
+
+/* Switch control indexes, mixer."1" and mixer."2" in ecns.conf */
+#define ECNS_CTRL_INDEX_CAPTURE_BOOST	0
+#define ECNS_CTRL_INDEX_TEST_SIGNAL	1
 
 struct ecns_comp_data {
 	struct ipc4_base_module_cfg base_cfg;
@@ -123,6 +154,8 @@ struct ecns_comp_data {
 	uint32_t channels;
 	uint32_t sample_width;
 	uint32_t test_signal_enabled;
+	bool capture_boost;
+	bool capture_boost_req;
 	uint16_t test_signal_val;
 	struct iir_state_df1 hp_iir;
 	int32_t *hp_delay;
@@ -130,8 +163,41 @@ struct ecns_comp_data {
 	struct iir_state_df1 host_iir[ECNS_HOST_MAX_CHANNELS];
 	int32_t *host_delay;
 	int host_delay_size;
+	uint32_t host_rate;
 #endif
 };
+
+#if CONFIG_ECNS_KPB_HPF
+static struct sof_eq_iir_header *ecns_kpb_iir_coef(struct ecns_comp_data *cd)
+{
+	return (struct sof_eq_iir_header *)
+		(cd->capture_boost ? hp_100hz_30db_16k : hp_100hz_0db_16k);
+}
+#endif
+
+#if CONFIG_ECNS_HOST_HPF
+static struct sof_eq_iir_header *ecns_host_iir_coef(struct ecns_comp_data *cd)
+{
+	if (cd->host_rate == 16000)
+		return (struct sof_eq_iir_header *)
+			(cd->capture_boost ? hp_40hz_20db_16k : hp_40hz_0db_16k);
+
+	return (struct sof_eq_iir_header *)
+		(cd->capture_boost ? hp_40hz_20db_48k : hp_40hz_0db_48k);
+}
+#endif
+
+/* Only the coefficient pointers move, the filter delay lines are kept. */
+static void ecns_update_iir_coef(struct ecns_comp_data *cd)
+{
+#if CONFIG_ECNS_KPB_HPF
+	iir_init_coef_df1(&cd->hp_iir, ecns_kpb_iir_coef(cd));
+#endif
+#if CONFIG_ECNS_HOST_HPF
+	for (int c = 0; c < ECNS_HOST_MAX_CHANNELS; c++)
+		iir_init_coef_df1(&cd->host_iir[c], ecns_host_iir_coef(cd));
+#endif
+}
 
 static struct comp_dev *ecns_new(const struct comp_driver *drv,
 				 const struct comp_ipc_config *config,
@@ -171,8 +237,12 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 	dev->direction_set = true;
 	dev->state         = COMP_STATE_READY;
 
+	/* Boosted until the "ECNS capture boost" control says otherwise */
+	cd->capture_boost = true;
+	cd->capture_boost_req = true;
+
 #if CONFIG_ECNS_KPB_HPF
-	struct sof_eq_iir_header *hp_hdr = (struct sof_eq_iir_header *)hp_100hz_30db_16k;
+	struct sof_eq_iir_header *hp_hdr = ecns_kpb_iir_coef(cd);
 	int hp_size = iir_delay_size_df1(hp_hdr);
 	int32_t *delay;
 
@@ -249,10 +319,11 @@ static int ecns_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 #if CONFIG_ECNS_HOST_HPF
 static void ecns_host_iir_init(struct ecns_comp_data *cd, uint32_t rate)
 {
-	struct sof_eq_iir_header *hdr = (struct sof_eq_iir_header *)
-		(rate == 16000 ? hp_40hz_20db_16k : hp_40hz_20db_48k);
+	struct sof_eq_iir_header *hdr;
 	int32_t *delay = cd->host_delay;
 
+	cd->host_rate = rate;
+	hdr = ecns_host_iir_coef(cd);
 	memset_s(cd->host_delay, cd->host_delay_size, 0, cd->host_delay_size);
 	for (int c = 0; c < ECNS_HOST_MAX_CHANNELS; c++) {
 		iir_init_coef_df1(&cd->host_iir[c], hdr);
@@ -335,6 +406,8 @@ static int ecns_prepare(struct comp_dev *dev)
 			ipc4_update_buffer_format(sink, &pin1_fmt);
 	}
 
+	cd->capture_boost = cd->capture_boost_req;
+	ecns_update_iir_coef(cd);
 	ecns_host_iir_init(cd, pin1_fmt.sampling_frequency);
 
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
@@ -348,7 +421,7 @@ static int ecns_reset(struct comp_dev *dev)
 	cd->test_signal_val = 0;
 #if CONFIG_ECNS_KPB_HPF
 	if (cd->hp_delay) {
-		struct sof_eq_iir_header *hp_hdr = (struct sof_eq_iir_header *)hp_100hz_30db_16k;
+		struct sof_eq_iir_header *hp_hdr = ecns_kpb_iir_coef(cd);
 		int hp_size = iir_delay_size_df1(hp_hdr);
 
 		if (hp_size > 0)
@@ -958,6 +1031,14 @@ static int ecns_copy(struct comp_dev *dev)
 	if (list_is_empty(&dev->bsource_list))
 		return 0;
 
+	/* Apply a capture boost change from the control in the processing context */
+	if (cd->capture_boost != cd->capture_boost_req) {
+		cd->capture_boost = cd->capture_boost_req;
+		ecns_update_iir_coef(cd);
+		comp_info(dev, "capture boost %s",
+			  cd->capture_boost ? "enabled" : "disabled");
+	}
+
 	/* Identify input pins (producers to ECNS) */
 	comp_dev_for_each_producer(dev, source) {
 		uint32_t pin = IPC4_SINK_QUEUE_ID(buf_get_id(source));
@@ -1022,18 +1103,27 @@ static int ecns_set_large_config(struct comp_dev *dev,
 		if (cp->num_elems < 1)
 			return -EINVAL;
 
+		switch (cp->id) {
+		case ECNS_CTRL_INDEX_TEST_SIGNAL:
 #if CONFIG_ECNS_TEST_SIGNAL
-		cd->test_signal_enabled = cp->chanv[0].value ? 1 : 0;
-		if (cd->test_signal_enabled)
-			cd->test_signal_val = 0;
+			cd->test_signal_enabled = cp->chanv[0].value ? 1 : 0;
+			if (cd->test_signal_enabled)
+				cd->test_signal_val = 0;
 
-		comp_info(dev, "ecns: test signal %s (kpb mono output)",
-			  cd->test_signal_enabled ? "enabled" : "disabled");
+			comp_info(dev, "test signal %s (kpb mono output)",
+				  cd->test_signal_enabled ? "enabled" : "disabled");
 #else
-		if (cp->chanv[0].value)
-			comp_warn(dev, "ecns: test signal not supported (CONFIG_ECNS_TEST_SIGNAL=n)");
+			if (cp->chanv[0].value)
+				comp_warn(dev, "test signal not supported (CONFIG_ECNS_TEST_SIGNAL=n)");
 #endif
-		return 0;
+			return 0;
+		case ECNS_CTRL_INDEX_CAPTURE_BOOST:
+			cd->capture_boost_req = !!cp->chanv[0].value;
+			return 0;
+		default:
+			comp_err(dev, "illegal switch control id %u", cp->id);
+			return -EINVAL;
+		}
 	}
 	default:
 		return -EINVAL;
@@ -1068,7 +1158,8 @@ static int ecns_get_large_config(struct comp_dev *dev,
 		cp->id = ctl_id;
 		cp->num_elems = 1;
 		cp->chanv[0].channel = 0;
-		cp->chanv[0].value = cd->test_signal_enabled;
+		cp->chanv[0].value = ctl_id == ECNS_CTRL_INDEX_CAPTURE_BOOST ?
+				     cd->capture_boost_req : cd->test_signal_enabled;
 		return 0;
 	}
 	default:
