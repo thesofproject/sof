@@ -114,7 +114,7 @@ graph TD
 |---|---|---|---|
 | **Panther Lake (PTL / ACE 3.0)** | [`dmic-wov-multi-ptl-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf) | `sof-ptl-dmic-wov-multi-4ch.tplg` | 5 |
 | **Tiger Lake (TGL / CAVS 2.5)** | [`dmic-wov-multi-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf) | `sof-tgl-dmic-wov-multi-4ch.tplg` | 1 |
-| **Wildcat Lake (WCL / ACE 3.0)** | [`dmic-wov-multi-wcl-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-wcl-4ch-manifest.conf) | `sof-wcl-dmic-wov-multi-4ch.tplg` | 5 |
+| **Wildcat Lake (WCL / ACE 3.0)** | symlink to the PTL topology | `sof-wcl-dmic-wov-multi-4ch.tplg` | 5 |
 
 ---
 
