@@ -169,16 +169,41 @@ error:
 	return err;
 }
 
+static struct comp_dev *pipeline_get_endpoint_comp(struct ipc_comp_dev *ppl_icd)
+{
+	if (!ppl_icd || !ppl_icd->pipeline)
+		return NULL;
+
+	struct pipeline *p = ppl_icd->pipeline;
+
+	if (p->source_comp && p->source_comp->direction == SOF_IPC_STREAM_PLAYBACK)
+		return p->source_comp;
+
+	if (p->sink_comp)
+		return p->sink_comp;
+
+	return p->source_comp;
+}
+
+static bool pipeline_is_endpoint(struct pipeline *p)
+{
+	return (p->source_comp && (dev_comp_type(p->source_comp) == SOF_COMP_HOST ||
+				   dev_comp_type(p->source_comp) == SOF_COMP_DAI)) ||
+	       (p->sink_comp && (dev_comp_type(p->sink_comp) == SOF_COMP_HOST ||
+				 dev_comp_type(p->sink_comp) == SOF_COMP_DAI));
+}
+
 static struct ipc_comp_dev *pipeline_get_host_dev(struct ipc_comp_dev *ppl_icd)
 {
 	struct ipc_comp_dev *host_dev;
 	struct ipc *ipc = ipc_get();
 	int host_id;
 
-	if (!ppl_icd->pipeline->source_comp || !ppl_icd->pipeline->sink_comp) {
-		ipc_cmd_err(&ipc_tr, "pipeline %d: source/sink comp freed", ppl_icd->id);
+	if (!ppl_icd || !ppl_icd->pipeline)
 		return NULL;
-	}
+
+	if (!ppl_icd->pipeline->source_comp || !ppl_icd->pipeline->sink_comp)
+		return NULL;
 
 	/* If the source component's direction is not set but the sink's direction is,
 	 * this block will copy the direction from the sink to the source component and
@@ -208,8 +233,8 @@ static struct ipc_comp_dev *pipeline_get_host_dev(struct ipc_comp_dev *ppl_icd)
 		host_id = ppl_icd->pipeline->sink_comp->ipc_config.id;
 
 	host_dev = ipc_get_comp_by_id(ipc, host_id);
-	if (!host_dev)
-		ipc_cmd_err(&ipc_tr, "comp host with ID %d not found", host_id);
+	if (!host_dev || dev_comp_type(host_dev->cd) != SOF_COMP_HOST)
+		return NULL;
 
 	return host_dev;
 }
@@ -270,29 +295,47 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 			if (ret < 0)
 				return IPC4_INVALID_REQUEST;
 			host = pipeline_get_host_dev(ppl_icd);
-			if (!host) {
-				tr_err(&ipc_tr, "pipeline %d: host dev not found in INIT", ppl_icd->id);
-				return IPC4_INVALID_RESOURCE_ID;
+			if (host) {
+				ret = ipc4_pcm_params(host);
+				if (ret < 0)
+					tr_err(&ipc_tr, "pipeline %d: ipc4_pcm_params failed %d", ppl_icd->id, ret);
+			} else {
+				struct comp_dev *cd = pipeline_get_endpoint_comp(ppl_icd);
+
+				if (cd && cd->pipeline) {
+					ret = pipeline_prepare(cd->pipeline, cd);
+					if (ret < 0)
+						tr_err(&ipc_tr, "pipeline %d: prepare failed %d", ppl_icd->id, ret);
+					else
+						ret = 0;
+				}
 			}
-			ret = ipc4_pcm_params(host);
-			if (ret < 0)
-				tr_err(&ipc_tr, "pipeline %d: ipc4_pcm_params failed %d", ppl_icd->id, ret);
 			break;
 		case COMP_STATE_ACTIVE:
 		case COMP_STATE_PAUSED:
+		case COMP_STATE_PREPARE:
+		case COMP_STATE_PRE_ACTIVE:
+		case COMP_STATE_SUSPEND:
 			/* No action needed */
 			break;
 		case COMP_STATE_READY:
 			host = pipeline_get_host_dev(ppl_icd);
-			if (!host) {
-				tr_err(&ipc_tr, "pipeline %d: host dev not found in READY", ppl_icd->id);
-				return IPC4_INVALID_RESOURCE_ID;
-			}
+			if (host) {
+				tr_info(&ipc_tr, "pipeline %d: set params host comp 0x%x", ppl_icd->id, host->id);
+				ret = ipc4_pcm_params(host);
+				if (ret < 0) {
+					tr_err(&ipc_tr, "pipeline %d: ipc4_pcm_params failed %d", ppl_icd->id, ret);
+				}
+			} else {
+				struct comp_dev *cd = pipeline_get_endpoint_comp(ppl_icd);
 
-			tr_info(&ipc_tr, "pipeline %d: set params host comp 0x%x", ppl_icd->id, host->id);
-			ret = ipc4_pcm_params(host);
-			if (ret < 0) {
-				tr_err(&ipc_tr, "pipeline %d: ipc4_pcm_params failed %d", ppl_icd->id, ret);
+				if (cd && cd->pipeline) {
+					ret = pipeline_prepare(cd->pipeline, cd);
+					if (ret < 0)
+						tr_err(&ipc_tr, "pipeline %d: prepare failed %d", ppl_icd->id, ret);
+					else
+						ret = 0;
+				}
 			}
 			break;
 		default:
@@ -311,6 +354,9 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 		case COMP_STATE_READY:
 		case COMP_STATE_ACTIVE:
 		case COMP_STATE_PAUSED:
+		case COMP_STATE_PREPARE:
+		case COMP_STATE_PRE_ACTIVE:
+		case COMP_STATE_SUSPEND:
 			/* No action needed */
 			break;
 		default:
@@ -355,12 +401,13 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 
 	ppl_icd->pipeline->expect_eos = false;
 
-	return ret;
+	return 0;
 }
 
 int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *delayed)
 {
 	struct ipc_comp_dev *host;
+	struct comp_dev *trigger_cd = NULL;
 	int status;
 	int ret;
 
@@ -371,20 +418,24 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 	if (status == COMP_STATE_INIT)
 		return 0;
 
-	host = pipeline_get_host_dev(ppl_icd);
-	if (!host)
+	trigger_cd = pipeline_get_endpoint_comp(ppl_icd);
+	if (!trigger_cd)
 		return IPC4_INVALID_RESOURCE_ID;
+
+	host = pipeline_get_host_dev(ppl_icd);
 
 	switch (cmd) {
 	case SOF_IPC4_PIPELINE_STATE_RUNNING:
 		/* init params when pipeline is complete or reset */
 		switch (status) {
 		case COMP_STATE_ACTIVE:
+		case COMP_STATE_PRE_ACTIVE:
 			/* nothing to do if the pipeline is already running */
 			return 0;
 		case COMP_STATE_INIT:
 		case COMP_STATE_READY:
 		case COMP_STATE_PREPARE:
+		case COMP_STATE_SUSPEND:
 			cmd = COMP_TRIGGER_PRE_START;
 			break;
 		case COMP_STATE_PAUSED:
@@ -401,6 +452,9 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 		switch (status) {
 		case COMP_STATE_ACTIVE:
 		case COMP_STATE_PAUSED:
+		case COMP_STATE_PREPARE:
+		case COMP_STATE_PRE_ACTIVE:
+		case COMP_STATE_SUSPEND:
 			cmd = COMP_TRIGGER_STOP;
 			break;
 		default:
@@ -412,6 +466,7 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 		case COMP_STATE_INIT:
 		case COMP_STATE_READY:
 		case COMP_STATE_PAUSED:
+		case COMP_STATE_SUSPEND:
 			return 0;
 		default:
 			cmd = COMP_TRIGGER_PAUSE;
@@ -437,8 +492,51 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 	 */
 	dbg_path_hot_confirm();
 
-	/* trigger the component */
-	ret = pipeline_trigger(host->cd->pipeline, host->cd, cmd);
+	bool is_endpoint = pipeline_is_endpoint(trigger_cd->pipeline);
+
+	if (!is_endpoint) {
+		/*
+		 * Hostless internal pipelines (e.g. background keyword detection or internal
+		 * processing chains feeding arbiters or modules without a host or DAI copier)
+		 * have no host DMA or DAI hardware to delay IPC replies.
+		 * Execute the trigger and reset synchronously inline.
+		 */
+		ret = pipeline_trigger_run(trigger_cd->pipeline, trigger_cd, cmd);
+		if (ret < 0) {
+			ipc_cmd_err(&ipc_tr, "pipeline %d: trigger cmd %d failed with: %d",
+				    ppl_icd->id, cmd, ret);
+			return IPC4_PIPELINE_STATE_NOT_SET;
+		}
+
+		switch (cmd) {
+		case COMP_TRIGGER_PRE_START:
+		case COMP_TRIGGER_START:
+		case COMP_TRIGGER_PRE_RELEASE:
+		case COMP_TRIGGER_RELEASE:
+			trigger_cd->pipeline->status = COMP_STATE_ACTIVE;
+			pipeline_schedule_copy(trigger_cd->pipeline, 0);
+			break;
+		case COMP_TRIGGER_PAUSE:
+			pipeline_schedule_cancel(trigger_cd->pipeline);
+			trigger_cd->pipeline->status = COMP_STATE_PAUSED;
+			break;
+		case COMP_TRIGGER_STOP:
+			pipeline_schedule_cancel(trigger_cd->pipeline);
+			trigger_cd->pipeline->status = COMP_STATE_READY;
+			ret = pipeline_reset(trigger_cd->pipeline, trigger_cd);
+			if (ret < 0 && ret != PPL_STATUS_PATH_STOP)
+				return IPC4_INVALID_REQUEST;
+			break;
+		default:
+			break;
+		}
+
+		*delayed = false;
+		return 0;
+	}
+
+	/* trigger the endpoint component (host or DAI) */
+	ret = pipeline_trigger(trigger_cd->pipeline, trigger_cd, cmd);
 	if (ret < 0) {
 		ipc_cmd_err(&ipc_tr, "pipeline %d: trigger cmd %d failed with: %d",
 			    ppl_icd->id, cmd, ret);
@@ -455,9 +553,15 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 		 * Otherwise, the pipeline will be reset after the STOP trigger
 		 * has finished executing in the pipeline task.
 		 */
-		ret = pipeline_reset(host->cd->pipeline, host->cd);
-		if (ret < 0)
+		struct comp_dev *reset_cd = host ? host->cd : trigger_cd;
+
+		ret = pipeline_reset(reset_cd->pipeline, reset_cd);
+		if (ret < 0 && ret != PPL_STATUS_PATH_STOP)
 			ret = IPC4_INVALID_REQUEST;
+		else
+			ret = 0;
+	} else {
+		ret = 0;
 	}
 
 	return ret;

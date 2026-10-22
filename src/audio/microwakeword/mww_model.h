@@ -67,6 +67,18 @@ extern "C"
 
 	const unsigned char *MWW_GetDefaultModel(uint8_t slot_id, size_t *size);
 
+	/**
+	 * \brief Get per-operator profile of the steady-state inferences.
+	 * \param[in] mwc Classifier context.
+	 * \param[in] idx Operator index in invoke order.
+	 * \param[out] tag Operator name.
+	 * \param[out] avg_cycles Average CCOUNT cycles per inference.
+	 * \return Number of profiled inferences, 0 if idx is out of range or
+	 *	   profiling is not built in.
+	 */
+	uint32_t MWW_ProfileGet(struct mww_classify *mwc, int idx, const char **tag,
+				uint32_t *avg_cycles);
+
 #ifdef __cplusplus
 }
 #endif

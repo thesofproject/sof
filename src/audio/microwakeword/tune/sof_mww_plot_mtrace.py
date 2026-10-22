@@ -7,19 +7,29 @@
 Visualize microWakeWord (MWW) streaming diagnostics from SOF mtrace logs.
 
 Parses log lines produced by CONFIG_COMP_MWW_DEBUG_TRACE:
-  [MWW DBG hop <n>] vad=<0|1> E=<energy> Ne=<noise_energy>
-                    mel_min=<min> mel_max=<max>
-                    f_min=<min> f_max=<max> agc_q23=<gain>
+  Standard mode:
+    [MWW DBG hop <n>] vad=<0|1> E=<energy> Ne=<noise_energy>
+                      mel_min=<min> mel_max=<max>
+                      f_min=<min> f_max=<max> agc_q23=<gain>
+  PCAN mode:
+    [MWW DBG hop <n>] vad=<0|1> E=<energy> Ne=<noise_energy>
+                      f_min=<min> f_max=<max> (pcan)
 and model inference / detection lines:
+  MWW prob=<pct>%
   MWW probability=<pct>
   MWW keyword detected: probability=<pct>
 
 Generates a multi-panel PNG displaying:
-  1. Detection probability (%) and keyword detection trigger events
-  2. Frame log-energy (E), Noise floor estimate (Ne), and SNR (E - Ne)
-  3. Mel filterbank log-energy envelope [mel_min, mel_max]
-  4. Quantized neural-network input features [f_min, f_max] (int8)
-  5. Soft automatic gain control (AGC) gain tracking
+  In standard mode (5 panels):
+    1. Detection probability (%) and keyword detection trigger events
+    2. Frame log-energy (E), Noise floor estimate (Ne), and SNR (E - Ne)
+    3. Mel filterbank log-energy envelope [mel_min, mel_max]
+    4. Quantized neural-network input features [f_min, f_max] (int8)
+    5. Soft automatic gain control (AGC) gain tracking
+  In PCAN mode (3 panels):
+    1. Detection probability (%) and keyword detection trigger events
+    2. Frame log-energy (E), Noise floor estimate (Ne), and SNR (E - Ne)
+    3. PCAN normalized neural-network input features [f_min, f_max] (int8)
   Along with VAD speech active region highlighting and hop counters.
 """
 
@@ -41,12 +51,18 @@ HOP_RE = re.compile(
     r"f_min=(-?\d+)\s+f_max=(-?\d+)\s+agc_q23=(-?\d+)"
 )
 
+HOP_PCAN_RE = re.compile(
+    r"\[\s*([0-9.]+)\]\s*.*\[MWW DBG hop\s+(\d+)\]\s+"
+    r"vad=(\d+)\s+E=(-?\d+)\s+Ne=(-?\d+)\s+"
+    r"f_min=(-?\d+)\s+f_max=(-?\d+)(?:\s+\((?:pcan\d*)\))?"
+)
+
 PROB_RE = re.compile(
-    r"\[\s*([0-9.]+)\]\s*.*MWW probability=(\d+)"
+    r"\[\s*([0-9.]+)\]\s*.*?\bMWW\s+prob(?:ability)?=([0-9.]+)(?:%| pct)?"
 )
 
 DETECT_RE = re.compile(
-    r"\[\s*([0-9.]+)\]\s*.*MWW keyword detected:\s*probability=(\d+)"
+    r"\[\s*([0-9.]+)\]\s*.*MWW keyword detected(?:\s*\([^)]*\))?:\s*(?:slot \d+,\s*)?prob(?:ability)?=([0-9.]+)(?:\s*(?:%|pct))?"
 )
 
 KPB_TRIGGER_RE = re.compile(
@@ -54,9 +70,17 @@ KPB_TRIGGER_RE = re.compile(
 )
 
 SUMMARY_RE = re.compile(
-    r"\[MWW STREAM SHUTDOWN SUMMARY\]\s+Total Inferences=(\d+)\s*\|\s*"
+    r"\[MWW STREAM SHUTDOWN SUMMARY(?:\s+Slot\s+(\d+))?\]\s+(?:Slot\s+\d+\s*\|\s*)?Total Inferences=(\d+)\s*\|\s*"
     r"VAD Gated=(\d+)\s*\|\s*Detections=(\d+)\s*\|\s*KPB Triggers=(\d+)\s*\|\s*"
-    r"Arena Used=(\d+)/(\d+)\s*B"
+    r"Arena Used=(\d+)/(\d+)\s*B(?:\s+\(slot\s+(\d+)\))?"
+)
+
+STATS_RE = re.compile(
+    r"\[MWW STATS Slot\s+(\d+)\]\s+total_hops=(\d+)\s+active_hops=(\d+)\s+max_f_max=(-?\d+)\s+max_E=(-?\d+)\s+peak_prob=(\d+)%"
+)
+
+DROPPED_RE = re.compile(
+    r"---\s*(\d+)\s+messages dropped\s*---"
 )
 
 
@@ -67,6 +91,7 @@ def parse_mtrace(file_path):
     detects = []
     kpb_triggers = []
     summaries = []
+    dropped_count = 0
 
     if file_path == "-":
         f = sys.stdin
@@ -78,6 +103,11 @@ def parse_mtrace(file_path):
 
     try:
         for line in f:
+            m = DROPPED_RE.search(line)
+            if m:
+                dropped_count += int(m.group(1))
+                continue
+
             m = HOP_RE.search(line)
             if m:
                 t, hop, vad, e, ne, m_min, m_max, f_min, f_max, agc = m.groups()
@@ -92,14 +122,22 @@ def parse_mtrace(file_path):
                     "f_min": int(f_min),
                     "f_max": int(f_max),
                     "agc_raw": int(agc),
+                    "pcan": False,
                 })
                 continue
 
-            m = PROB_RE.search(line)
+            m = HOP_PCAN_RE.search(line)
             if m:
-                probs.append({
-                    "t": float(m.group(1)),
-                    "prob": int(m.group(2))
+                t, hop, vad, e, ne, f_min, f_max = m.groups()
+                hops.append({
+                    "t": float(t),
+                    "hop": int(hop),
+                    "vad": int(vad),
+                    "e_raw": int(e),
+                    "ne_raw": int(ne),
+                    "f_min": int(f_min),
+                    "f_max": int(f_max),
+                    "pcan": True,
                 })
                 continue
 
@@ -107,7 +145,15 @@ def parse_mtrace(file_path):
             if m:
                 detects.append({
                     "t": float(m.group(1)),
-                    "prob": int(m.group(2))
+                    "prob": float(m.group(2))
+                })
+                continue
+
+            m = PROB_RE.search(line)
+            if m:
+                probs.append({
+                    "t": float(m.group(1)),
+                    "prob": float(m.group(2))
                 })
                 continue
 
@@ -118,29 +164,61 @@ def parse_mtrace(file_path):
 
             m = SUMMARY_RE.search(line)
             if m:
-                inf, vad_gated, det, kpb_trig, arena_used, arena_cap = m.groups()
-                summaries.append({
-                    "inferences": int(inf),
-                    "vad_gated": int(vad_gated),
-                    "detections": int(det),
-                    "kpb_triggers": int(kpb_trig),
-                    "arena_used": int(arena_used),
-                    "arena_cap": int(arena_cap),
-                })
+                s_pre, inf, vad_gated, det, kpb_trig, arena_used, arena_cap, s_post = m.groups()
+                slot_val = int(s_post if s_post is not None else (s_pre if s_pre is not None else 0))
+                key = (slot_val, int(inf), int(det))
+                if not any((s.get("slot"), s["inferences"], s["detections"]) == key for s in summaries):
+                    summaries.append({
+                        "slot": slot_val,
+                        "inferences": int(inf),
+                        "vad_gated": int(vad_gated),
+                        "detections": int(det),
+                        "kpb_triggers": int(kpb_trig),
+                        "arena_used": int(arena_used),
+                        "arena_cap": int(arena_cap),
+                    })
+                continue
+
+            m = STATS_RE.search(line)
+            if m:
+                slot_id, thops, act_hops, max_f, max_e, pk_p = m.groups()
+                slot_int = int(slot_id)
+                # Attach to existing summary for this slot
+                for s in summaries:
+                    if s.get("slot") == slot_int:
+                        s["stats"] = {
+                            "total_hops": int(thops),
+                            "active_hops": int(act_hops),
+                            "max_f_max": int(max_f),
+                            "max_E": int(max_e),
+                            "peak_prob": int(pk_p),
+                        }
+                        break
+                continue
     finally:
         if file_path != "-":
             f.close()
+
+    # If dropped messages occurred, attach count to summaries metadata
+    if dropped_count > 0:
+        if summaries:
+            summaries[0]["dropped_messages"] = dropped_count
+        else:
+            summaries.append({"dropped_messages": dropped_count, "inferences": 0, "detections": 0, "arena_used": 0, "arena_cap": 0})
 
     return hops, probs, detects, kpb_triggers, summaries
 
 
 def plot_mww_diagnostics(hops, probs, detects, kpb_triggers, summaries,
-                         output_path, title=None, threshold=65,
-                         raw_units=False, show_vad=True, dpi=150):
-    """Plot MWW diagnostics across 5 synchronized subplots."""
+                         output_path, title=None, threshold=85,
+                         raw_units=False, show_vad=True, dpi=150,
+                         pcan=None):
+    """Plot MWW diagnostics across synchronized subplots."""
     if not hops:
         print("Error: No 'MWW DBG hop' records found in input.", file=sys.stderr)
         sys.exit(1)
+
+    is_pcan = pcan if pcan is not None else any(h.get("pcan", False) for h in hops)
 
     t0 = hops[0]["t"]
     t_hops = np.array([h["t"] - t0 for h in hops])
@@ -154,17 +232,24 @@ def plot_mww_diagnostics(hops, probs, detects, kpb_triggers, summaries,
 
     e = np.array([h["e_raw"] * q23_scale for h in hops])
     ne = np.array([h["ne_raw"] * q23_scale for h in hops])
-    mel_min = np.array([h["mel_min_raw"] * q23_scale for h in hops])
-    mel_max = np.array([h["mel_max_raw"] * q23_scale for h in hops])
-    agc = np.array([h["agc_raw"] * q23_scale for h in hops])
 
     t_probs = np.array([p["t"] - t0 for p in probs]) if probs else np.array([])
     prob_vals = np.array([p["prob"] for p in probs]) if probs else np.array([])
 
-    fig, axes = plt.subplots(
-        5, 1, figsize=(14, 12), sharex=True,
-        gridspec_kw={"height_ratios": [1.5, 1.2, 1.2, 1.2, 1.0]}
-    )
+    if is_pcan:
+        fig, axes = plt.subplots(
+            3, 1, figsize=(14, 8), sharex=True,
+            gridspec_kw={"height_ratios": [1.5, 1.2, 1.2]}
+        )
+    else:
+        mel_min = np.array([h.get("mel_min_raw", 0) * q23_scale for h in hops])
+        mel_max = np.array([h.get("mel_max_raw", 0) * q23_scale for h in hops])
+        agc = np.array([h.get("agc_raw", 0) * q23_scale for h in hops])
+
+        fig, axes = plt.subplots(
+            5, 1, figsize=(14, 12), sharex=True,
+            gridspec_kw={"height_ratios": [1.5, 1.2, 1.2, 1.2, 1.0]}
+        )
     plt.subplots_adjust(hspace=0.18)
 
     # 1. Highlight VAD active regions across all subplots
@@ -200,8 +285,9 @@ def plot_mww_diagnostics(hops, probs, detects, kpb_triggers, summaries,
         detect_labeled = True
         ax1.plot(dt, dp, marker="*", markersize=18, color="#ffd700",
                  markeredgecolor="#b71c1c", markeredgewidth=1.5, zorder=5, label=lbl)
+        dp_str = f"{int(dp)}%" if dp == int(dp) else f"{dp:.1f}%"
         ax1.annotate(
-            f"Detected: {dp}%", xy=(dt, dp),
+            f"Detected: {dp_str}", xy=(dt, dp),
             xytext=(dt - 0.45, dp - 22 if dp > 50 else dp + 15),
             arrowprops=dict(arrowstyle="->", color="#b71c1c", lw=1.8),
             fontweight="bold", color="#b71c1c", fontsize=9,
@@ -222,20 +308,23 @@ def plot_mww_diagnostics(hops, probs, detects, kpb_triggers, summaries,
 
     # Plot title
     if title is None:
-        title = "microWakeWord (MWW) Streaming Diagnostics"
+        title = "microWakeWord (MWW) Streaming Diagnostics" + (" (PCAN Mode)" if is_pcan else "")
     stats_str = f"Hops: {len(hops)} | Inferences: {len(probs)} | Detections: {len(detects)}"
     ax1.set_title(f"{title}\n({stats_str})", fontsize=12, fontweight="bold", pad=28)
 
-    # Secondary x-axis for Hop counter on top
-    ax_top = ax1.twiny()
-    ax_top.set_xlim(t_hops[0], t_hops[-1])
-    step = max(1, len(hop_idx) // 10)
-    tick_indices = list(range(0, len(hop_idx), step))
-    if tick_indices[-1] != len(hop_idx) - 1:
-        tick_indices.append(len(hop_idx) - 1)
-    ax_top.set_xticks([t_hops[i] for i in tick_indices])
-    ax_top.set_xticklabels([str(hop_idx[i]) for i in tick_indices])
-    ax_top.set_xlabel("Hop Index", fontweight="bold", fontsize=10, labelpad=8)
+    # Secondary x-axis for Hop counter on top (only if hops cover the time span)
+    t_end = max(t_hops[-1] if len(t_hops) > 0 else 0.0,
+                t_probs[-1] if len(t_probs) > 0 else 0.0)
+    if len(t_hops) > 1 and (t_hops[-1] - t_hops[0]) >= 0.75 * t_end:
+        ax_top = ax1.twiny()
+        ax_top.set_xlim(ax1.get_xlim())
+        step = max(1, len(hop_idx) // 10)
+        tick_indices = list(range(0, len(hop_idx), step))
+        if tick_indices[-1] != len(hop_idx) - 1:
+            tick_indices.append(len(hop_idx) - 1)
+        ax_top.set_xticks([t_hops[i] for i in tick_indices])
+        ax_top.set_xticklabels([str(hop_idx[i]) for i in tick_indices])
+        ax_top.set_xlabel("Hop Index", fontweight="bold", fontsize=10, labelpad=8)
 
     # -------------------------------------------------------------
     # Subplot 2: Energy & Noise Estimate
@@ -248,41 +337,59 @@ def plot_mww_diagnostics(hops, probs, detects, kpb_triggers, summaries,
     ax2.grid(True, linestyle=":", alpha=0.6)
     ax2.legend(loc="upper left", framealpha=0.9)
 
-    # -------------------------------------------------------------
-    # Subplot 3: Mel Filterbank Envelope
-    # -------------------------------------------------------------
-    ax3 = axes[2]
-    ax3.fill_between(t_hops, mel_min, mel_max, color="#90caf9", alpha=0.45,
-                     label=f"Mel Range [min, max] ({unit_label})")
-    ax3.plot(t_hops, mel_max, color="#0d47a1", lw=1.2, label=f"mel_max ({unit_label})")
-    ax3.plot(t_hops, mel_min, color="#00838f", lw=1.2, label=f"mel_min ({unit_label})")
-    ax3.set_ylabel(f"Mel Log-E ({unit_label})", fontweight="bold", fontsize=10)
-    ax3.grid(True, linestyle=":", alpha=0.6)
-    ax3.legend(loc="upper left", framealpha=0.9)
+    if is_pcan:
+        # -------------------------------------------------------------
+        # Subplot 3 (PCAN mode): Normalized Input Features (int8)
+        # -------------------------------------------------------------
+        ax3 = axes[2]
+        ax3.fill_between(t_hops, f_min, f_max, color="#ce93d8", alpha=0.35,
+                         label="Feature Range [min, max]")
+        ax3.plot(t_hops, f_max, color="#6a1b9a", lw=1.2, label="f_max (int8)")
+        ax3.plot(t_hops, f_min, color="#ab47bc", lw=1.2, label="f_min (int8)")
+        ax3.axhline(0, color="#424242", lw=0.8, linestyle=":")
+        ax3.axhline(127, color="#d32f2f", lw=0.9, linestyle="--", alpha=0.6, label="int8 bounds [-128, 127]")
+        ax3.axhline(-128, color="#d32f2f", lw=0.9, linestyle="--", alpha=0.6)
+        ax3.set_ylim(-138, 138)
+        ax3.set_ylabel("PCAN Feature (int8)", fontweight="bold", fontsize=10)
+        ax3.set_xlabel("Time (seconds relative to first hop)", fontweight="bold", fontsize=10)
+        ax3.grid(True, linestyle=":", alpha=0.6)
+        ax3.legend(loc="upper left", framealpha=0.9)
+    else:
+        # -------------------------------------------------------------
+        # Subplot 3: Mel Filterbank Envelope
+        # -------------------------------------------------------------
+        ax3 = axes[2]
+        ax3.fill_between(t_hops, mel_min, mel_max, color="#90caf9", alpha=0.45,
+                         label=f"Mel Range [min, max] ({unit_label})")
+        ax3.plot(t_hops, mel_max, color="#0d47a1", lw=1.2, label=f"mel_max ({unit_label})")
+        ax3.plot(t_hops, mel_min, color="#00838f", lw=1.2, label=f"mel_min ({unit_label})")
+        ax3.set_ylabel(f"Mel Log-E ({unit_label})", fontweight="bold", fontsize=10)
+        ax3.grid(True, linestyle=":", alpha=0.6)
+        ax3.legend(loc="upper left", framealpha=0.9)
 
-    # -------------------------------------------------------------
-    # Subplot 4: Quantized Model Input Features (int8)
-    # -------------------------------------------------------------
-    ax4 = axes[3]
-    ax4.plot(t_hops, f_max, color="#6a1b9a", lw=1.2, label="f_max (int8)")
-    ax4.plot(t_hops, f_min, color="#ab47bc", lw=1.2, label="f_min (int8)")
-    ax4.axhline(0, color="#424242", lw=0.8, linestyle=":")
-    ax4.axhline(127, color="#d32f2f", lw=0.9, linestyle="--", alpha=0.6, label="int8 bounds [-128, 127]")
-    ax4.axhline(-128, color="#d32f2f", lw=0.9, linestyle="--", alpha=0.6)
-    ax4.set_ylim(-138, 138)
-    ax4.set_ylabel("Feature (int8)", fontweight="bold", fontsize=10)
-    ax4.grid(True, linestyle=":", alpha=0.6)
-    ax4.legend(loc="upper left", framealpha=0.9)
+        # -------------------------------------------------------------
+        # Subplot 4: Quantized Model Input Features (int8)
+        # -------------------------------------------------------------
+        ax4 = axes[3]
+        ax4.plot(t_hops, f_max, color="#6a1b9a", lw=1.2, label="f_max (int8)")
+        ax4.plot(t_hops, f_min, color="#ab47bc", lw=1.2, label="f_min (int8)")
+        ax4.axhline(0, color="#424242", lw=0.8, linestyle=":")
+        ax4.axhline(127, color="#d32f2f", lw=0.9, linestyle="--", alpha=0.6, label="int8 bounds [-128, 127]")
+        ax4.axhline(-128, color="#d32f2f", lw=0.9, linestyle="--", alpha=0.6)
+        ax4.set_ylim(-138, 138)
+        ax4.set_ylabel("Feature (int8)", fontweight="bold", fontsize=10)
+        ax4.grid(True, linestyle=":", alpha=0.6)
+        ax4.legend(loc="upper left", framealpha=0.9)
 
-    # -------------------------------------------------------------
-    # Subplot 5: Automatic Gain Control (AGC) Gain
-    # -------------------------------------------------------------
-    ax5 = axes[4]
-    ax5.plot(t_hops, agc, color="#b26a00", lw=1.6, label=f"AGC Gain ({unit_label})")
-    ax5.set_ylabel(f"AGC ({unit_label})", fontweight="bold", fontsize=10)
-    ax5.set_xlabel("Time (seconds relative to first hop)", fontweight="bold", fontsize=10)
-    ax5.grid(True, linestyle=":", alpha=0.6)
-    ax5.legend(loc="upper left", framealpha=0.9)
+        # -------------------------------------------------------------
+        # Subplot 5: Automatic Gain Control (AGC) Gain
+        # -------------------------------------------------------------
+        ax5 = axes[4]
+        ax5.plot(t_hops, agc, color="#b26a00", lw=1.6, label=f"AGC Gain ({unit_label})")
+        ax5.set_ylabel(f"AGC ({unit_label})", fontweight="bold", fontsize=10)
+        ax5.set_xlabel("Time (seconds relative to first hop)", fontweight="bold", fontsize=10)
+        ax5.grid(True, linestyle=":", alpha=0.6)
+        ax5.legend(loc="upper left", framealpha=0.9)
 
     plt.tight_layout()
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
@@ -304,8 +411,8 @@ def main():
         help="Output PNG image path (default: <input_stem>_mww.png or mww_mtrace.png for stdin)"
     )
     parser.add_argument(
-        "-t", "--threshold", type=int, default=65,
-        help="Wake word detection probability threshold in percent (default: 65)"
+        "-t", "--threshold", type=int, default=85,
+        help="Wake word detection probability threshold in percent (default: 85)"
     )
     parser.add_argument(
         "--raw-units", action="store_true",
@@ -322,6 +429,10 @@ def main():
     parser.add_argument(
         "--title", default=None,
         help="Custom title for the figure"
+    )
+    parser.add_argument(
+        "--pcan", action=argparse.BooleanOptionalAction, default=None,
+        help="Enable/disable PCAN mode layout (3 panels, no software AGC / mel log-E envelope). Auto-detected if omitted."
     )
 
     args = parser.parse_args()
@@ -340,11 +451,27 @@ def main():
     if title is None and args.input != "-":
         title = f"MWW Diagnostics — {os.path.basename(args.input)}"
 
-    print(f"Parsed {len(hops)} hops, {len(probs)} inferences, {len(detects)} detections from {args.input}")
+    is_pcan = args.pcan if args.pcan is not None else any(h.get("pcan", False) for h in hops)
+    mode_str = "PCAN 8-bit" if is_pcan else "Standard 32-bit"
+    print(f"Parsed {len(hops)} hops ({mode_str}), {len(probs)} inferences, {len(detects)} detections from {args.input}")
     for d in detects:
-        print(f"  [Detection Event] timestamp={d['t']}s, probability={d['prob']}%")
+        dp = d["prob"]
+        dp_str = f"{int(dp)}%" if dp == int(dp) else f"{dp:.1f}%"
+        print(f"  [Detection Event] timestamp={d['t']}s, probability={dp_str}")
+    dropped = summaries[0].get("dropped_messages", 0) if summaries else 0
+    if dropped > 0:
+        print(f"  [Transport Warning] {dropped} mtrace log messages were dropped by kernel/FW ring buffer overflow.")
+
     for s in summaries:
-        print(f"  [Shutdown Summary] inferences={s['inferences']}, detections={s['detections']}, arena={s['arena_used']}/{s['arena_cap']} B")
+        if s.get("inferences", 0) == 0 and s.get("arena_cap", 0) == 0:
+            continue
+        slot_str = f"Slot {s['slot']} " if "slot" in s else ""
+        print(f"  [Shutdown Summary] {slot_str}inferences={s['inferences']}, detections={s['detections']}, arena={s['arena_used']}/{s['arena_cap']} B")
+        if "stats" in s:
+            st = s["stats"]
+            print(f"  [Feature Stats] {slot_str}total_hops={st['total_hops']}, active_hops={st['active_hops']}, max_f_max={st['max_f_max']}, max_E={st['max_E']}, peak_prob={st['peak_prob']}%")
+        if s["inferences"] > len(probs) and dropped > 0:
+            print(f"    Notice: FW executed {s['inferences']} inferences (0 VAD-gated); {s['inferences'] - len(probs)} were lost in dropped log messages.")
 
     plot_mww_diagnostics(
         hops=hops,
@@ -357,7 +484,8 @@ def main():
         threshold=args.threshold,
         raw_units=args.raw_units,
         show_vad=not args.no_vad,
-        dpi=args.dpi
+        dpi=args.dpi,
+        pcan=args.pcan
     )
 
 
