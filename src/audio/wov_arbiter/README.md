@@ -438,17 +438,18 @@ based on its pipeline ID:
 
 No user-space initialization kcontrols are required.
 
-#### `wov_arbiter` — active slot status via `wov_active_slot` enum kcontrol
+#### `wov_arbiter` — active slot status via `Phrase Detect ID` enum kcontrol
 
-The `wov_arbiter` instance exposes a volatile read-only ALSA enum kcontrol named `wov_active_slot`
-that reports the current arbitration and keyword detection state:
+The `wov_arbiter` instances expose a volatile read-only ALSA enum kcontrol named `DMIC Phrase Detect ID`
+(for DMIC WoV graphs) or `Jack In Phrase Detect ID` (for SoundWire headset WoV graphs; legacy topologies
+use `wov_active_slot`) that reports the current arbitration and keyword detection state:
 
 | Enum Index | Item Name | Meaning |
 |---|---|---|
 | `0` | `Listening` | No keyword detected / idle / listening |
-| `1` | `Slot 1` | Slot 0 (Pipeline 101 / `wov.101.1`) triggered and active |
-| `2` | `Slot 2` | Slot 1 (Pipeline 102 / `wov.102.1`) triggered and active |
-| `3` | `Slot 3` | Slot 2 (Pipeline 103 / `wov.103.1`) triggered and active |
+| `1` | `Slot 1` | Slot 0 (Pipeline 101/111/201) triggered and active |
+| `2` | `Slot 2` | Slot 1 (Pipeline 102/112/202) triggered and active |
+| `3` | `Slot 3` | Slot 2 (Pipeline 103/113/203) triggered and active |
 
 When a keyword detector fires, the arbiter updates `cd->active_slot` and automatically sends an
 ALSA control change notification (`SOF_IPC4_MODULE_NOTIFICATION` with `SOF_IPC4_ENUM_CONTROL_PARAM_ID`)
@@ -458,7 +459,11 @@ the arbiter transitions back to `Listening` (`0`) and sends a notification.
 Query the control from userspace:
 
 ```bash
-amixer -c 0 cget name='wov_active_slot'
+# For DMIC WoV:
+amixer -c 0 cget name='DMIC Phrase Detect ID'
+
+# For SDW Headset WoV:
+amixer -c 0 cget name='Jack In Phrase Detect ID'
 ```
 
 #### `detect_test` — per-slot mute via `wov_mute_1NN` switch kcontrol
