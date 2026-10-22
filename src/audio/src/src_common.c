@@ -45,7 +45,7 @@
 LOG_MODULE_REGISTER(src, CONFIG_SOF_LOG_LEVEL);
 
 /* Calculates buffers to allocate for a SRC mode */
-static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nch)
+static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, unsigned int nch)
 {
 	const struct src_stage *stage1;
 	const struct src_stage *stage2;
@@ -240,7 +240,7 @@ static int src_2s(struct comp_data *cd,
 	void *sbuf_end_addr = &cd->delay_lines[cd->param.sbuf_length];
 	size_t sbuf_size = cd->param.sbuf_length * sizeof(int32_t);
 	/* chan sink == chan src therefore we only need to use one*/
-	int nch = source_get_channels(source);
+	unsigned int nch = source_get_channels(source);
 	int sbuf_free = cd->param.sbuf_length - cd->sbuf_avail;
 	size_t avail_b = source_get_data_available(source);
 	size_t free_b = sink_get_free_size(sink);
