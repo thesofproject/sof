@@ -44,10 +44,10 @@ typedef int (*dcblock_func)(struct comp_data *cd,
 /* DC Blocking Filter component private data */
 struct comp_data {
 	/**< filters state */
-	struct dcblock_state state[PLATFORM_MAX_CHANNELS];
+	struct dcblock_state state[CONFIG_PLATFORM_MAX_CHANNELS];
 
 	/** coefficients for the processing function */
-	int32_t R_coeffs[PLATFORM_MAX_CHANNELS];
+	int32_t R_coeffs[CONFIG_PLATFORM_MAX_CHANNELS];
 
 	struct comp_data_blob_handler *model_handler;
 	int32_t *config; /**< pointer to setup blob */

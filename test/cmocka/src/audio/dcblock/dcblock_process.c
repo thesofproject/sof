@@ -48,7 +48,7 @@ struct ref_state {
 	double y_prev;
 };
 
-static struct ref_state ref_states[PLATFORM_MAX_CHANNELS];
+static struct ref_state ref_states[CONFIG_PLATFORM_MAX_CHANNELS];
 
 static double dcblock_ref(int ch, double x)
 {
@@ -117,11 +117,11 @@ static struct sof_ipc_comp_process *create_dcblock_comp_ipc(struct test_data *td
 /* Send a configuration blob holding the per-channel R coefficients. */
 static int dcblock_send_config(struct processing_module *mod)
 {
-	const size_t coeff_size = PLATFORM_MAX_CHANNELS * sizeof(int32_t);
+	const size_t coeff_size = CONFIG_PLATFORM_MAX_CHANNELS * sizeof(int32_t);
 	size_t cdata_size = sizeof(struct sof_ipc_ctrl_data) +
 			    sizeof(struct sof_abi_hdr) + coeff_size;
 	struct sof_ipc_ctrl_data *cdata;
-	int32_t coeffs[PLATFORM_MAX_CHANNELS];
+	int32_t coeffs[CONFIG_PLATFORM_MAX_CHANNELS];
 	int ret;
 	int i;
 
@@ -129,7 +129,7 @@ static int dcblock_send_config(struct processing_module *mod)
 	if (!cdata)
 		return -ENOMEM;
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		coeffs[i] = R_COEF;
 
 	cdata->cmd = SOF_CTRL_CMD_BINARY;
@@ -257,7 +257,7 @@ static int setup(void **state)
 
 	buffer_fill_data.idx = 0;
 	buffer_verify_data.idx = 0;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++) {
 		ref_states[i].x_prev = 0.0;
 		ref_states[i].y_prev = 0.0;
 	}

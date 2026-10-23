@@ -18,7 +18,7 @@
 #define SOF_TDFB_FIR_MAX_COUNT 16	/* A blob can define max 16 FIR EQs */
 #define SOF_TDFB_MAX_STREAMS 8		/* Support 1..8 sinks */
 #define SOF_TDFB_MAX_ANGLES 360		/* Up to 1 degree precision for 360 degrees coverage */
-#define SOF_TDFB_MAX_MICROPHONES PLATFORM_MAX_CHANNELS	/* Bounded by direction state arrays */
+#define SOF_TDFB_MAX_MICROPHONES CONFIG_PLATFORM_MAX_CHANNELS	/* Bounded by direction state arrays */
 
 /* The driver assigns running numbers for control index. If there's single control of
  * type switch, enum, binary they all have index 0.

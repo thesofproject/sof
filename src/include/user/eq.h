@@ -25,7 +25,7 @@
  *	   configuration.
  *     uint16_t channels_in_config
  *         This describes the number of channels in this EQ config data. It
- *         can be different from PLATFORM_MAX_CHANNELS.
+ *         can be different from CONFIG_PLATFORM_MAX_CHANNELS.
  *     uint16_t number_of_responses
  *         0=no responses, 1=one response defined, 2=two responses defined, etc.
  *     int16_t data[]
@@ -71,7 +71,7 @@ struct sof_eq_fir_config {
 /* eq_iir_configuration
  *     uint32_t channels_in_config
  *         This describes the number of channels in this EQ config data. It
- *         can be different from PLATFORM_MAX_CHANNELS.
+ *         can be different from CONFIG_PLATFORM_MAX_CHANNELS.
  *     uint32_t number_of_responses_defined
  *         0=no responses, 1=one response defined, 2=two responses defined, etc.
  *     int32_t data[]

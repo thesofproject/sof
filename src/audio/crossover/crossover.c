@@ -52,7 +52,7 @@ static void crossover_reset_state(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	int i;
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		crossover_reset_state_ch(mod, &cd->state[i]);
 }
 
@@ -247,7 +247,7 @@ static int crossover_init_coef(struct processing_module *mod, unsigned int nch)
 	}
 
 	/* Sanity checks */
-	if (nch > PLATFORM_MAX_CHANNELS) {
+	if (nch > CONFIG_PLATFORM_MAX_CHANNELS) {
 		comp_err(mod->dev, "invalid channels count (%u)", nch);
 		return -EINVAL;
 	}

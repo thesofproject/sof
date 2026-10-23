@@ -40,7 +40,6 @@ struct timer;
  * MAX_CHANNELS only affects 'components' so it is, for example,
  * still possible to have multiple SAI peripherals output 8 channels each.
  */
-#define PLATFORM_MAX_CHANNELS   8
 #define PLATFORM_MAX_STREAMS	8
 
 /* local buffer size of DMA tracing */

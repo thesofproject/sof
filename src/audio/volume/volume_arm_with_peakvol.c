@@ -524,7 +524,7 @@ static void vol_float_to_float(struct processing_module *mod, struct cir_buf_sou
 	float *y = sink->ptr;
 	const int nch = cd->channels;
 	int remaining_samples = frames * nch;
-	float vol_f[PLATFORM_MAX_CHANNELS];
+	float vol_f[CONFIG_PLATFORM_MAX_CHANNELS];
 
 	for (int j = 0; j < nch; j++) {
 #if COMP_VOLUME_Q8_16

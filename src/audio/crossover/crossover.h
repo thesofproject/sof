@@ -63,7 +63,7 @@ typedef int (*crossover_process_func)(struct comp_data *cd,
 /* Crossover component private data */
 struct comp_data {
 	/**< filter state */
-	struct crossover_state state[PLATFORM_MAX_CHANNELS];
+	struct crossover_state state[CONFIG_PLATFORM_MAX_CHANNELS];
 #if CONFIG_IPC_MAJOR_4
 	uint32_t output_pin_index[SOF_CROSSOVER_MAX_STREAMS];
 	uint32_t num_output_pins;

@@ -16,7 +16,6 @@
 #define PLATFORM_PAGE_TABLE_SIZE 256
 
 /* TODO: these values are taken from i.MX8 platform */
-#define PLATFORM_MAX_CHANNELS 4
 #define PLATFORM_MAX_STREAMS 5
 
 /* SOF uses A side of the WAKEUPMIX MU.

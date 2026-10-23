@@ -75,10 +75,10 @@ struct stft_process_fft {
 };
 
 struct stft_process_state {
-	struct stft_process_buffer ibuf[PLATFORM_MAX_CHANNELS]; /**< Buffer for input data */
-	struct stft_process_buffer obuf[PLATFORM_MAX_CHANNELS]; /**< Buffer for output data */
+	struct stft_process_buffer ibuf[CONFIG_PLATFORM_MAX_CHANNELS]; /**< Buffer for input data */
+	struct stft_process_buffer obuf[CONFIG_PLATFORM_MAX_CHANNELS]; /**< Buffer for output data */
 	struct stft_process_fft fft; /**< FFT related */
-	int32_t *prev_data[PLATFORM_MAX_CHANNELS]; /**< prev_data_size */
+	int32_t *prev_data[CONFIG_PLATFORM_MAX_CHANNELS]; /**< prev_data_size */
 	int32_t gain_comp; /**< Gain to compensate window gain */
 	int32_t *buffers;
 	int32_t *window; /**< fft_size */
