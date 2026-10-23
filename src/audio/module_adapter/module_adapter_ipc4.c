@@ -17,7 +17,6 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/lib/mailbox.h>
-#include <sof/platform.h>
 #include <sof/ut.h>
 #include <sof/schedule/dp_schedule.h>
 #include <module/module/interface.h>

@@ -12,7 +12,6 @@
 #ifndef __SOF_AUDIO_DSM_H__
 #define __SOF_AUDIO_DSM_H__
 
-#include <sof/platform.h>
 #include <sof/audio/component.h>
 
 /* Smart Amplifier component is a two-layer structured design, i.e. generic

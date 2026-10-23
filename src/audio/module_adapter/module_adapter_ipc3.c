@@ -16,7 +16,6 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
-#include <sof/platform.h>
 #include <sof/ut.h>
 #include <rtos/interrupt.h>
 #include <limits.h>
