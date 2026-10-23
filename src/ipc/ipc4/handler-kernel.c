@@ -332,16 +332,9 @@ __cold static int ipc4_module_process_d0ix(struct ipc4_message_request *ipc4)
 __cold static void ipc_sec_core_sync_boot(uint32_t core_id)
 {
 #ifdef CONFIG_SOF_USERSPACE_LL
-	struct ipc *ipc = ipc_get();
-	struct ipc_user *ipc_user = ipc->ipc_user_pdata;
-
 	assert(core_id != PLATFORM_PRIMARY_CORE_ID);
 
-	if (ipc_user->init_needed[core_id]) {
-		/* wait for IPC thread (ipc_user_thread_fn()) */
-		k_sem_take(ipc_user->sem, K_FOREVER);
-		ipc_user->init_needed[core_id] = false;
-	}
+	ipc_user_wait_core_init(core_id);
 #endif
 }
 
