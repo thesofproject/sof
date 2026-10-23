@@ -15,7 +15,7 @@
 #define __ZEPHYR_RTOS_SOF_H__
 
 #include <sof/common.h>
-#include <sof/lib/memory.h>
+#include <rtos/cache.h> /* PLATFORM_DCACHE_ALIGN */
 #include <rtos/spinlock.h>
 
 #ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
