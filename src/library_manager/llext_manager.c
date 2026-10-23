@@ -98,7 +98,7 @@ static void llext_manager_detached_update_flags(void __sparse_cache *vma,
  * memory range, then remap the same area according to the 'flags' parameter.
  */
 static int llext_manager_load_data_from_storage(const struct sys_mm_drv_region *virtual_region,
-						const struct llext_loader *ldr,
+						struct llext_loader *ldr,
 						const struct llext *ext,
 						enum llext_mem region,
 						void __sparse_cache *vma,
@@ -136,16 +136,18 @@ static int llext_manager_load_data_from_storage(const struct sys_mm_drv_region *
 		if (s_region != region)
 			continue;
 
-		/* skip detached sections (will be outside requested VMA area) */
+		/*
+		 * skip detached sections (will be outside requested VMA area),
+		 * they stay in the ELF buffer
+		 */
 		if ((uintptr_t)shdr->sh_addr < (uintptr_t)vma ||
 		    (uintptr_t)shdr->sh_addr >= (uintptr_t)vma + size) {
-			llext_manager_detached_update_flags((__sparse_cache void *)
-							    ((uint8_t *)region_addr + s_offset),
-							    shdr->sh_size, flags);
+			void __sparse_cache *sect_addr = (__sparse_force void __sparse_cache *)
+				llext_peek(ldr, shdr->sh_offset);
+
+			llext_manager_detached_update_flags(sect_addr, shdr->sh_size, flags);
 			if (flags & SYS_MM_MEM_PERM_EXEC)
-				icache_invalidate_region((__sparse_cache void *)
-							 ((uint8_t *)region_addr + s_offset),
-							 shdr->sh_size);
+				icache_invalidate_region(sect_addr, shdr->sh_size);
 			continue;
 		}
 
@@ -200,7 +202,7 @@ static int llext_manager_rm_partition(struct k_mem_domain *domain,
 }
 #endif /* CONFIG_USERSPACE */
 
-static void llext_manager_unmap_detached_sections(const struct llext_loader *ldr,
+static void llext_manager_unmap_detached_sections(struct llext_loader *ldr,
 						  const struct llext *ext,
 						  enum llext_mem region,
 						  void __sparse_cache *vma,
@@ -208,16 +210,12 @@ static void llext_manager_unmap_detached_sections(const struct llext_loader *ldr
 {
 #ifdef CONFIG_MMU
 	unsigned int i;
-	const void *region_addr;
-
-	llext_get_region_info(ldr, ext, region, NULL, &region_addr, NULL);
 
 	for (i = 0; i < llext_section_count(ext); i++) {
 		const elf_shdr_t *shdr;
 		enum llext_mem s_region = LLEXT_MEM_COUNT;
-		size_t s_offset = 0;
 
-		llext_get_section_info(ldr, ext, i, &shdr, &s_region, &s_offset);
+		llext_get_section_info(ldr, ext, i, &shdr, &s_region, NULL);
 
 		/* skip sections not in the requested region */
 		if (s_region != region)
@@ -226,8 +224,8 @@ static void llext_manager_unmap_detached_sections(const struct llext_loader *ldr
 		/* unmap detached sections (will be outside requested VMA area) */
 		if ((uintptr_t)shdr->sh_addr < (uintptr_t)vma ||
 		    (uintptr_t)shdr->sh_addr >= (uintptr_t)vma + size)
-			llext_manager_detached_update_flags((__sparse_force void *)
-							    ((uint8_t *)region_addr + s_offset),
+			llext_manager_detached_update_flags((__sparse_force void __sparse_cache *)
+							    llext_peek(ldr, shdr->sh_offset),
 							    shdr->sh_size, 0);
 	}
 #endif /* CONFIG_MMU */
@@ -292,7 +290,7 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 	mctx->writable_merged.addr = (uintptr_t)va_base_data;
 	mctx->writable_merged.size = data_size;
 
-	const struct llext_loader *ldr = &mctx->ebl->loader;
+	struct llext_loader *ldr = &mctx->ebl->loader;
 	const struct llext *ext = mctx->llext;
 
 	/* find dedicated virtual memory zone */
@@ -361,7 +359,7 @@ e_text:
 
 static int llext_manager_unload_module(struct lib_manager_module *mctx)
 {
-	const struct llext_loader *ldr = &mctx->ebl->loader;
+	struct llext_loader *ldr = &mctx->ebl->loader;
 	const struct llext *ext = mctx->llext;
 
 	/* Executable code (.text) */
@@ -851,7 +849,7 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 static int llext_manager_add_mod_domain(struct lib_manager_module *mctx, struct k_mem_domain *domain)
 {
 	const struct llext *ext = mctx->llext;
-	const struct llext_loader *ldr = &mctx->ebl->loader;
+	struct llext_loader *ldr = &mctx->ebl->loader;
 
 	/* Executable code (.text) */
 	uintptr_t va_base_text = mctx->segment[LIB_MANAGER_TEXT].addr;
@@ -899,65 +897,33 @@ static int llext_manager_add_mod_domain(struct lib_manager_module *mctx, struct 
 	}
 
 	elf_shdr_t shdr_cold, shdr_coldrodata;
-	bool rodata = false, text = false;
 	const void *rodata_addr = NULL, *text_addr = NULL;
-	size_t text_offset = 0, rodata_offset = 0;
 
 	shdr_cold.sh_size = 0;
 	shdr_coldrodata.sh_size = 0;
 
+	/* .cold and .coldrodata are detached sections, they stay in the ELF buffer */
 	ret = llext_get_section_header(ldr, ext, ".cold", &shdr_cold);
 	if (ret < 0)
 		tr_warn(&lib_manager_tr, "couldn't get .cold header");
-	else
-		llext_get_region_info(ldr, ext, LLEXT_MEM_TEXT, NULL, &text_addr, NULL);
+	else if (shdr_cold.sh_size)
+		text_addr = llext_peek(ldr, shdr_cold.sh_offset);
 
 	ret = llext_get_section_header(ldr, ext, ".coldrodata", &shdr_coldrodata);
 	if (ret < 0)
 		tr_warn(&lib_manager_tr, "couldn't get .coldrodata header");
-	else
-		llext_get_region_info(ldr, ext, LLEXT_MEM_RODATA, NULL, &rodata_addr, NULL);
+	else if (shdr_coldrodata.sh_size)
+		rodata_addr = llext_peek(ldr, shdr_coldrodata.sh_offset);
 
-	for (unsigned int i = 0; i < llext_section_count(ext) && (!rodata || !text); i++) {
-		const elf_shdr_t *shdr;
-		enum llext_mem s_region = LLEXT_MEM_COUNT;
-		size_t s_offset = 0;
-
-		ret = llext_get_section_info(ldr, ext, i, &shdr, &s_region, &s_offset);
-		if (ret < 0)
-			continue;
-
-		switch (s_region) {
-		case LLEXT_MEM_TEXT:
-			if (shdr_cold.sh_size &&
-			    shdr->sh_name == shdr_cold.sh_name &&
-			    shdr->sh_offset == shdr_cold.sh_offset && !text) {
-				text = true;
-				text_offset = s_offset;
-			}
-			break;
-		case LLEXT_MEM_RODATA:
-			if (shdr_coldrodata.sh_size &&
-			    shdr->sh_name == shdr_coldrodata.sh_name &&
-			    shdr->sh_offset == shdr_coldrodata.sh_offset && !rodata) {
-				rodata = true;
-				rodata_offset = s_offset;
-			}
-			break;
-		default:
-			break;
-		}
-	}
-
-	if (text) {
+	if (text_addr) {
 		tr_dbg(&lib_manager_tr, ".cold %#x @ %#lx",
-		       shdr_cold.sh_size, (uintptr_t)text_addr + text_offset);
-		ret = llext_manager_add_partition(domain, (uintptr_t)text_addr + text_offset,
+		       shdr_cold.sh_size, (uintptr_t)text_addr);
+		ret = llext_manager_add_partition(domain, (uintptr_t)text_addr,
 						  shdr_cold.sh_size,
 						  K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
 		if (ret < 0)
 			goto e_data;
-		mctx->segment[LIB_MANAGER_COLD].addr = (uintptr_t)text_addr + text_offset;
+		mctx->segment[LIB_MANAGER_COLD].addr = (uintptr_t)text_addr;
 		mctx->segment[LIB_MANAGER_COLD].size = shdr_cold.sh_size;
 	} else {
 		/*
@@ -971,15 +937,15 @@ static int llext_manager_add_mod_domain(struct lib_manager_module *mctx, struct 
 		mctx->segment[LIB_MANAGER_COLD].size = 0;
 	}
 
-	if (rodata) {
+	if (rodata_addr) {
 		tr_dbg(&lib_manager_tr, ".coldrodata %#x @ %#lx",
-		       shdr_coldrodata.sh_size, (uintptr_t)rodata_addr + rodata_offset);
-		ret = llext_manager_add_partition(domain, (uintptr_t)rodata_addr + rodata_offset,
+		       shdr_coldrodata.sh_size, (uintptr_t)rodata_addr);
+		ret = llext_manager_add_partition(domain, (uintptr_t)rodata_addr,
 						  shdr_coldrodata.sh_size,
 						  K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB);
 		if (ret < 0)
 			goto e_cold;
-		mctx->segment[LIB_MANAGER_COLDRODATA].addr = (uintptr_t)rodata_addr + rodata_offset;
+		mctx->segment[LIB_MANAGER_COLDRODATA].addr = (uintptr_t)rodata_addr;
 		mctx->segment[LIB_MANAGER_COLDRODATA].size = shdr_coldrodata.sh_size;
 	} else {
 		/* No .coldrodata section, see the comment above */
@@ -990,7 +956,7 @@ static int llext_manager_add_mod_domain(struct lib_manager_module *mctx, struct 
 	return 0;
 
 e_cold:
-	llext_manager_rm_partition(domain, (uintptr_t)text_addr + text_offset, shdr_cold.sh_size,
+	llext_manager_rm_partition(domain, (uintptr_t)text_addr, shdr_cold.sh_size,
 				   K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
 	mctx->segment[LIB_MANAGER_COLD].addr = 0;
 	mctx->segment[LIB_MANAGER_COLD].size = 0;
