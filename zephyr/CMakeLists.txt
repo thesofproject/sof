@@ -614,6 +614,7 @@ zephyr_library_sources_ifdef(CONFIG_SHELL
 
 zephyr_syscall_header(include/sof/lib/cpu.h)
 zephyr_library_sources_ifdef(CONFIG_USERSPACE syscall/cpu.c)
+zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_SYSCALL_CALLER_CHECK syscall/caller.c)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/audio/module_adapter/module/generic.h)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/audio/kpb.h)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/fast-get.h)

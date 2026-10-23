@@ -56,6 +56,18 @@ config SOF_USERSPACE_LL
 	  audio application threads.
           If unsure, select "N".
 
+config SOF_USERSPACE_SYSCALL_CALLER_CHECK
+	bool "Restrict SOF system calls to the threads that need them"
+	depends on SOF_USERSPACE_LL
+	default y
+	help
+	  Zephyr allows any user thread to invoke any system call. With
+	  this option, the validators of SOF system calls that are only
+	  needed by the LL scheduler and IPC user threads kill any other
+	  calling user thread, such as a DP module thread. System calls
+	  needed to implement the module interface stay available to all
+	  user threads. Disable only to debug a suspected false positive.
+
 config SOF_ZEPHYR_HEAP_CACHED
 	bool "Cached Zephyr heap for SOF memory non-shared zones"
 	default y if CAVS || ACE
