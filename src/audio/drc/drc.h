@@ -53,7 +53,7 @@ struct drc_state {
 	int32_t compressor_gain;  /* Q2.30 */
 
 	/* Lookahead section. */
-	int8_t *pre_delay_buffers[PLATFORM_MAX_CHANNELS];
+	int8_t *pre_delay_buffers[CONFIG_PLATFORM_MAX_CHANNELS];
 	int32_t last_pre_delay_frames; /* integer */
 	int32_t pre_delay_read_index;  /* integer */
 	int32_t pre_delay_write_index; /* integer */

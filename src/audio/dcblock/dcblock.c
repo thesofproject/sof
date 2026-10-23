@@ -51,7 +51,7 @@ static void dcblock_set_passthrough(struct processing_module *mod)
 	comp_info(mod->dev, "entry");
 	int i;
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		cd->R_coeffs[i] = ONE_Q2_30;
 }
 

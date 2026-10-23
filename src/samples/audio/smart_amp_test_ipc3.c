@@ -520,10 +520,10 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	sad->in_channels = audio_stream_get_channels(&sad->source_buf->stream);
 
 	/* out_channels bounds the processing loop that indexes the
-	 * PLATFORM_MAX_CHANNELS-sized channel map, so reject a larger count
+	 * CONFIG_PLATFORM_MAX_CHANNELS-sized channel map, so reject a larger count
 	 */
-	if (sad->out_channels > PLATFORM_MAX_CHANNELS ||
-	    sad->in_channels > PLATFORM_MAX_CHANNELS) {
+	if (sad->out_channels > CONFIG_PLATFORM_MAX_CHANNELS ||
+	    sad->in_channels > CONFIG_PLATFORM_MAX_CHANNELS) {
 		comp_err(dev, "invalid channel count, in %u out %u",
 			 sad->in_channels, sad->out_channels);
 		return -EINVAL;

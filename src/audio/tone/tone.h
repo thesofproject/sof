@@ -86,7 +86,7 @@ struct tone_state {
 struct comp_data {
 	uint32_t channels;
 	uint32_t rate;
-	struct tone_state sg[PLATFORM_MAX_CHANNELS];
+	struct tone_state sg[CONFIG_PLATFORM_MAX_CHANNELS];
 	int (*tone_func)(struct processing_module *mod, struct sof_sink *sink,
 			 struct sof_source *source);
 	int mode;

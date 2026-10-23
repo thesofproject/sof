@@ -63,7 +63,7 @@ static int mux_set_values(struct processing_module *mod)
 	}
 
 	for (i = 0; i < cfg->num_streams; i++) {
-		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
+		for (j = 0 ; j < CONFIG_PLATFORM_MAX_CHANNELS; j++) {
 			if (popcount(cfg->streams[i].mask[j]) > 1) {
 				comp_err(dev, "mux component is not able to mix channels");
 				return -EINVAL;
@@ -80,7 +80,7 @@ static int mux_set_values(struct processing_module *mod)
 
 	for (i = 0; i < cfg->num_streams; i++) {
 		cd->config.streams[i].pipeline_id = cfg->streams[i].pipeline_id;
-		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++)
+		for (j = 0; j < CONFIG_PLATFORM_MAX_CHANNELS; j++)
 			cd->config.streams[i].mask[j] = cfg->streams[i].mask[j];
 	}
 

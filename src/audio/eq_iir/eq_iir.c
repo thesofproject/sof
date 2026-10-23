@@ -134,7 +134,7 @@ static int eq_iir_walk_config(struct comp_dev *dev,
 	int i;
 	uint32_t j;
 
-	if (config->channels_in_config > PLATFORM_MAX_CHANNELS ||
+	if (config->channels_in_config > CONFIG_PLATFORM_MAX_CHANNELS ||
 	    !config->channels_in_config) {
 		comp_err(dev, "invalid channels_in_config %u", config->channels_in_config);
 		return -EINVAL;
@@ -223,7 +223,7 @@ static int eq_iir_init_coef(struct processing_module *mod, unsigned int nch,
 	comp_info(mod->dev, "%u responses, %u channels, stream %u channels",
 		  config->number_of_responses, config->channels_in_config, nch);
 
-	if (nch > PLATFORM_MAX_CHANNELS) {
+	if (nch > CONFIG_PLATFORM_MAX_CHANNELS) {
 		comp_err(mod->dev, "invalid stream channels %u", nch);
 		return -EINVAL;
 	}
@@ -305,7 +305,7 @@ void eq_iir_free_delaylines(struct processing_module *mod)
 	mod_free(mod, cd->iir_delay);
 	cd->iir_delay = NULL;
 	cd->iir_delay_size = 0;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		iir[i].delay = NULL;
 }
 
@@ -405,7 +405,7 @@ static int eq_iir_init(struct processing_module *mod)
 	 */
 	comp_data_blob_set_validator(cd->model_handler, eq_iir_validate_config);
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df1(&cd->iir[i]);
 
 	return 0;
@@ -624,7 +624,7 @@ static int eq_iir_reset(struct processing_module *mod)
 	cd->eq_iir_func = NULL;
 	cd->channels = 0;
 	cd->frame_bytes = 0;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df1(&cd->iir[i]);
 
 	return 0;

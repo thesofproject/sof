@@ -17,9 +17,9 @@ struct sof_smart_amp_config {
 	/* Number of smart amp feedback channel */
 	uint32_t feedback_channels;
 	/* channel map for audio source */
-	int8_t source_ch_map[PLATFORM_MAX_CHANNELS];
+	int8_t source_ch_map[CONFIG_PLATFORM_MAX_CHANNELS];
 	/* channel map for audio feedback */
-	int8_t feedback_ch_map[PLATFORM_MAX_CHANNELS];
+	int8_t feedback_ch_map[CONFIG_PLATFORM_MAX_CHANNELS];
 };
 
 #endif /* __USER_SMART_AMP_H__ */

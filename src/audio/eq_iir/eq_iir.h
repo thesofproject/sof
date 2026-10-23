@@ -33,7 +33,7 @@ struct eq_iir_func_map {
 
 /* IIR component private data */
 struct comp_data {
-	struct iir_state_df1 iir[PLATFORM_MAX_CHANNELS]; /**< filters state */
+	struct iir_state_df1 iir[CONFIG_PLATFORM_MAX_CHANNELS]; /**< filters state */
 	struct comp_data_blob_handler *model_handler;
 	struct sof_eq_iir_config *config;
 	int32_t *iir_delay;			/**< pointer to allocated RAM */

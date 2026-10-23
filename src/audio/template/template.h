@@ -35,7 +35,7 @@ typedef int (*template_func)(const struct processing_module *mod,
  */
 struct template_comp_data {
 	template_func template_func;
-	int channel_map[PLATFORM_MAX_CHANNELS];
+	int channel_map[CONFIG_PLATFORM_MAX_CHANNELS];
 	int source_format;
 	int frame_bytes;
 	int channels;

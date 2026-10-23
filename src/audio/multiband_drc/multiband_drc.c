@@ -44,11 +44,11 @@ static void multiband_drc_reset_state(struct processing_module *mod,
 	int i;
 
 	/* Reset emphasis eq-iir state */
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		multiband_drc_iir_reset_state_ch(mod, &state->emphasis[i]);
 
 	/* Reset crossover state */
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		crossover_reset_state_ch(mod, &state->crossover[i]);
 
 	/* Reset drc kernel state */
@@ -56,7 +56,7 @@ static void multiband_drc_reset_state(struct processing_module *mod,
 		drc_reset_state(mod, &state->drc[i]);
 
 	/* Reset deemphasis eq-iir state */
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		multiband_drc_iir_reset_state_ch(mod, &state->deemphasis[i]);
 }
 
@@ -113,7 +113,7 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 	num_bands = config->num_bands;
 
 	/* Sanity checks */
-	if (nch > PLATFORM_MAX_CHANNELS) {
+	if (nch > CONFIG_PLATFORM_MAX_CHANNELS) {
 		comp_err(dev,
 			 "invalid channels count(%i)", nch);
 		return -EINVAL;
