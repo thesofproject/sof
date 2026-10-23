@@ -19,8 +19,6 @@
  * platforms) and (potentially) not true. Can be adjusted later on if
  * need be.
  */
-#define PLATFORM_MAX_CHANNELS 4
-/* TODO: same as PLATFORM_MAX_CHANNELS */
 #define PLATFORM_MAX_STREAMS 5
 
 /* WAKEUP domain MU7 side B */

@@ -637,14 +637,14 @@ void tb_free_topology(struct testbench_prm *tp)
 
 int tb_set_enum_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *control_params)
 {
-	int control_values[PLATFORM_MAX_CHANNELS];
+	int control_values[CONFIG_PLATFORM_MAX_CHANNELS];
 	char *token, *rest;
 	int ret = 0;
 	int n = 0;
 
 	rest = control_params;
 	while ((token = strtok_r(rest, ",", &rest))) {
-		if (n == PLATFORM_MAX_CHANNELS) {
+		if (n == CONFIG_PLATFORM_MAX_CHANNELS) {
 			fprintf(stderr,
 				"error: number of control values exceeds max channels count.\n");
 			return -EINVAL;
@@ -666,14 +666,14 @@ int tb_set_enum_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *cont
 
 int tb_set_mixer_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *control_params)
 {
-	int control_values[PLATFORM_MAX_CHANNELS];
+	int control_values[CONFIG_PLATFORM_MAX_CHANNELS];
 	char *token, *rest;
 	int n = 0;
 	int ret;
 
 	rest = control_params;
 	while ((token = strtok_r(rest, ",", &rest))) {
-		if (n == PLATFORM_MAX_CHANNELS) {
+		if (n == CONFIG_PLATFORM_MAX_CHANNELS) {
 			fprintf(stderr,
 				"error: number of control values exceeds max channels count.\n");
 			return -EINVAL;

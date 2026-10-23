@@ -28,20 +28,20 @@ struct test_data {
 	struct comp_buffer *source;
 	void *outputs[MUX_MAX_STREAMS];
 	uint32_t format;
-	uint8_t mask[MUX_MAX_STREAMS][PLATFORM_MAX_CHANNELS];
+	uint8_t mask[MUX_MAX_STREAMS][CONFIG_PLATFORM_MAX_CHANNELS];
 };
 
-static int16_t input_16b[PLATFORM_MAX_CHANNELS] = {
+static int16_t input_16b[CONFIG_PLATFORM_MAX_CHANNELS] = {
 	0x101, 0x102, 0x104, 0x108,
 	0x111, 0x112, 0x114, 0x118,
 };
 
-static int32_t input_24b[PLATFORM_MAX_CHANNELS] = {
+static int32_t input_24b[CONFIG_PLATFORM_MAX_CHANNELS] = {
 	0x1a1001, 0x2a2002, 0x4a4004, 0x8a8008,
 	0x1b1011, 0x2b2012, 0x4b4014, 0x8b8018,
 };
 
-static int32_t input_32b[PLATFORM_MAX_CHANNELS] = {
+static int32_t input_32b[CONFIG_PLATFORM_MAX_CHANNELS] = {
 	0xd1a1001, 0xd2a2002, 0xd4a4004, 0xd8a8008,
 	0xe1b1011, 0xe2b2012, 0xe4b4014, 0xe8b8018,
 };
@@ -52,7 +52,7 @@ static uint16_t valid_formats[] = {
 	SOF_IPC_FRAME_S32_LE,
 };
 
-static uint8_t masks[][MUX_MAX_STREAMS][PLATFORM_MAX_CHANNELS] = {
+static uint8_t masks[][MUX_MAX_STREAMS][CONFIG_PLATFORM_MAX_CHANNELS] = {
 	{ { 0x01, }, },
 	{ { 0x01, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80}, },
 	{ { },
@@ -111,7 +111,7 @@ static struct sof_ipc_comp_process *create_demux_comp_ipc(struct test_data *td)
 	mux->num_streams = MUX_MAX_STREAMS;
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
 		mux->streams[i].pipeline_id = i;
-		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j)
+		for (j = 0; j < CONFIG_PLATFORM_MAX_CHANNELS; ++j)
 			mux->streams[i].mask[j] = td->mask[i][j];
 	}
 
@@ -121,10 +121,10 @@ static struct sof_ipc_comp_process *create_demux_comp_ipc(struct test_data *td)
 static void prepare_sinks(struct test_data *td, size_t sample_size)
 {
 	int i;
-	uint16_t buffer_size = sample_size * PLATFORM_MAX_CHANNELS;
+	uint16_t buffer_size = sample_size * CONFIG_PLATFORM_MAX_CHANNELS;
 
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
-		td->sinks[i] = create_test_sink(td->dev, i, td->format, PLATFORM_MAX_CHANNELS,
+		td->sinks[i] = create_test_sink(td->dev, i, td->format, CONFIG_PLATFORM_MAX_CHANNELS,
 						buffer_size);
 
 		td->outputs[i] = td->sinks[i]->stream.addr;
@@ -134,10 +134,10 @@ static void prepare_sinks(struct test_data *td, size_t sample_size)
 
 static void prepare_source(struct test_data *td, size_t sample_size)
 {
-	uint16_t buffer_size = sample_size * PLATFORM_MAX_CHANNELS;
+	uint16_t buffer_size = sample_size * CONFIG_PLATFORM_MAX_CHANNELS;
 
 	td->source = create_test_source(td->dev, MUX_MAX_STREAMS + 1, td->format,
-					PLATFORM_MAX_CHANNELS, buffer_size);
+					CONFIG_PLATFORM_MAX_CHANNELS, buffer_size);
 
 	if (td->format == SOF_IPC_FRAME_S16_LE)
 		memcpy_s(td->source->stream.addr, buffer_size, input_16b, buffer_size);
@@ -206,16 +206,16 @@ static int teardown_test_case(void **state)
 static void test_demux_copy_proc_16(void **state)
 {
 	struct test_data *td = *((struct test_data **)state);
-	int16_t expected_results[MUX_MAX_STREAMS][PLATFORM_MAX_CHANNELS];
+	int16_t expected_results[MUX_MAX_STREAMS][CONFIG_PLATFORM_MAX_CHANNELS];
 	int i, j, k;
 
 	assert_int_equal(comp_copy(td->dev), 0);
 
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
-		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j) {
+		for (j = 0; j < CONFIG_PLATFORM_MAX_CHANNELS; ++j) {
 			int64_t sample = 0;
 
-			for (k = 0; k < PLATFORM_MAX_CHANNELS; ++k)
+			for (k = 0; k < CONFIG_PLATFORM_MAX_CHANNELS; ++k)
 				if (td->mask[i][j] & BIT(k))
 					sample = input_16b[k];
 
@@ -231,16 +231,16 @@ static void test_demux_copy_proc_16(void **state)
 static void test_demux_copy_proc_24(void **state)
 {
 	struct test_data *td = *((struct test_data **)state);
-	int32_t expected_results[MUX_MAX_STREAMS][PLATFORM_MAX_CHANNELS];
+	int32_t expected_results[MUX_MAX_STREAMS][CONFIG_PLATFORM_MAX_CHANNELS];
 	int i, j, k;
 
 	assert_int_equal(comp_copy(td->dev), 0);
 
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
-		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j) {
+		for (j = 0; j < CONFIG_PLATFORM_MAX_CHANNELS; ++j) {
 			int32_t sample = 0;
 
-			for (k = 0; k < PLATFORM_MAX_CHANNELS; ++k)
+			for (k = 0; k < CONFIG_PLATFORM_MAX_CHANNELS; ++k)
 				if (td->mask[i][j] & BIT(k))
 					sample = input_24b[k];
 
@@ -256,16 +256,16 @@ static void test_demux_copy_proc_24(void **state)
 static void test_demux_copy_proc_32(void **state)
 {
 	struct test_data *td = *((struct test_data **)state);
-	int32_t expected_results[MUX_MAX_STREAMS][PLATFORM_MAX_CHANNELS];
+	int32_t expected_results[MUX_MAX_STREAMS][CONFIG_PLATFORM_MAX_CHANNELS];
 	int i, j, k;
 
 	assert_int_equal(comp_copy(td->dev), 0);
 
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
-		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j) {
+		for (j = 0; j < CONFIG_PLATFORM_MAX_CHANNELS; ++j) {
 			int32_t sample = 0;
 
-			for (k = 0; k < PLATFORM_MAX_CHANNELS; ++k)
+			for (k = 0; k < CONFIG_PLATFORM_MAX_CHANNELS; ++k)
 				if (td->mask[i][j] & BIT(k))
 					sample = input_32b[k];
 

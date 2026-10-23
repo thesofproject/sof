@@ -239,6 +239,17 @@ config MP_MAX_NUM_CPUS
 
 endif # !ZEPHYR_SOF_MODULE
 
+config PLATFORM_MAX_CHANNELS
+	int
+	default 4 if ZEPHYR_SOF_MODULE && (IMX8 || IMX8X || IMX8ULP || IMX8M_CM7 || IMX93_A55 || IMX95 || MTK)
+	default 8
+	help
+	  Maximum number of channels in an audio stream that the processing
+	  components support. Many components size their per-channel state
+	  with it. Host builds (testbench, unit tests) use 8. Not user
+	  configurable: some component state is sized for at most eight
+	  channels.
+
 config MAX_CORE_COUNT
 	int
 	default MP_MAX_NUM_CPUS

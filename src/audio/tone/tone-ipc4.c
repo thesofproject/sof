@@ -73,7 +73,7 @@ static int tone_init(struct processing_module *mod)
 	dev->direction_set = true;
 
 	/* Reset tone generator and set channels volumes to default */
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		tonegen_reset(&cd->sg[i]);
 
 	return 0;
@@ -162,7 +162,7 @@ static int tone_reset(struct processing_module *mod)
 	int i;
 
 	/* Initialize with the defaults */
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		tonegen_reset(&cd->sg[i]);
 
 	return 0;

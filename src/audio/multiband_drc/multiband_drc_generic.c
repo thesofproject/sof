@@ -48,7 +48,7 @@ static void multiband_drc_process_emp_crossover(struct multiband_drc_state *stat
 		buf_sink_band = buf_sink;
 		for (band = 0; band < nband; band++) {
 			*buf_sink_band = crossover_out[band];
-			buf_sink_band += PLATFORM_MAX_CHANNELS;
+			buf_sink_band += CONFIG_PLATFORM_MAX_CHANNELS;
 		}
 
 		buf_src++;
@@ -175,7 +175,7 @@ static void multiband_drc_process_deemp(struct multiband_drc_state *state,
 		mix_out = 0;
 		for (band = 0; band < nband; band++) {
 			mix_out = sat_int32((int64_t)mix_out + *buf_src_band);
-			buf_src_band += PLATFORM_MAX_CHANNELS;
+			buf_src_band += CONFIG_PLATFORM_MAX_CHANNELS;
 		}
 
 		if (enable_deemp)
@@ -211,10 +211,10 @@ static int multiband_drc_s16_default(const struct processing_module *mod,
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct multiband_drc_state *state = &cd->state;
-	int32_t buf_src[PLATFORM_MAX_CHANNELS];
-	int32_t buf_sink[PLATFORM_MAX_CHANNELS];
-	int32_t buf_drc_src[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
-	int32_t buf_drc_sink[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
+	int32_t buf_src[CONFIG_PLATFORM_MAX_CHANNELS];
+	int32_t buf_sink[CONFIG_PLATFORM_MAX_CHANNELS];
+	int32_t buf_drc_src[CONFIG_PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
+	int32_t buf_drc_sink[CONFIG_PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
 	int32_t *band_buf_drc_src;
 	int32_t *band_buf_drc_sink;
 	const int16_t *x, *buf_x_start;
@@ -264,8 +264,8 @@ static int multiband_drc_s16_default(const struct processing_module *mod,
 							      &cd->config->drc_coef[band],
 							      band_buf_drc_src, band_buf_drc_sink,
 							      nch);
-				band_buf_drc_src += PLATFORM_MAX_CHANNELS;
-				band_buf_drc_sink += PLATFORM_MAX_CHANNELS;
+				band_buf_drc_src += CONFIG_PLATFORM_MAX_CHANNELS;
+				band_buf_drc_sink += CONFIG_PLATFORM_MAX_CHANNELS;
 			}
 
 			multiband_drc_process_deemp(state, buf_drc_sink, buf_sink,
@@ -296,10 +296,10 @@ static int multiband_drc_s24_default(const struct processing_module *mod,
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct multiband_drc_state *state = &cd->state;
-	int32_t buf_src[PLATFORM_MAX_CHANNELS];
-	int32_t buf_sink[PLATFORM_MAX_CHANNELS];
-	int32_t buf_drc_src[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
-	int32_t buf_drc_sink[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
+	int32_t buf_src[CONFIG_PLATFORM_MAX_CHANNELS];
+	int32_t buf_sink[CONFIG_PLATFORM_MAX_CHANNELS];
+	int32_t buf_drc_src[CONFIG_PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
+	int32_t buf_drc_sink[CONFIG_PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
 	int32_t *band_buf_drc_src;
 	int32_t *band_buf_drc_sink;
 	const int32_t *x, *buf_x_start;
@@ -349,8 +349,8 @@ static int multiband_drc_s24_default(const struct processing_module *mod,
 							      &cd->config->drc_coef[band],
 							      band_buf_drc_src, band_buf_drc_sink,
 							      nch);
-				band_buf_drc_src += PLATFORM_MAX_CHANNELS;
-				band_buf_drc_sink += PLATFORM_MAX_CHANNELS;
+				band_buf_drc_src += CONFIG_PLATFORM_MAX_CHANNELS;
+				band_buf_drc_sink += CONFIG_PLATFORM_MAX_CHANNELS;
 			}
 
 			multiband_drc_process_deemp(state, buf_drc_sink, buf_sink,
@@ -381,10 +381,10 @@ static int multiband_drc_s32_default(const struct processing_module *mod,
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct multiband_drc_state *state = &cd->state;
-	int32_t buf_src[PLATFORM_MAX_CHANNELS];
-	int32_t buf_sink[PLATFORM_MAX_CHANNELS];
-	int32_t buf_drc_src[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
-	int32_t buf_drc_sink[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
+	int32_t buf_src[CONFIG_PLATFORM_MAX_CHANNELS];
+	int32_t buf_sink[CONFIG_PLATFORM_MAX_CHANNELS];
+	int32_t buf_drc_src[CONFIG_PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
+	int32_t buf_drc_sink[CONFIG_PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
 	int32_t *band_buf_drc_src;
 	int32_t *band_buf_drc_sink;
 	const int32_t *x, *buf_x_start;
@@ -434,8 +434,8 @@ static int multiband_drc_s32_default(const struct processing_module *mod,
 							      &cd->config->drc_coef[band],
 							      band_buf_drc_src, band_buf_drc_sink,
 							      nch);
-				band_buf_drc_src += PLATFORM_MAX_CHANNELS;
-				band_buf_drc_sink += PLATFORM_MAX_CHANNELS;
+				band_buf_drc_src += CONFIG_PLATFORM_MAX_CHANNELS;
+				band_buf_drc_sink += CONFIG_PLATFORM_MAX_CHANNELS;
 			}
 
 			multiband_drc_process_deemp(state, buf_drc_sink, buf_sink,

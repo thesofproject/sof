@@ -48,7 +48,7 @@ void drc_reset_state(struct processing_module *mod, struct drc_state *state)
 	int i;
 
 	mod_free(mod, state->pre_delay_buffers[0]);
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; ++i) {
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; ++i) {
 		state->pre_delay_buffers[i] = NULL;
 	}
 

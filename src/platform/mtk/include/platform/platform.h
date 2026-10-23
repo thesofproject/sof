@@ -7,7 +7,6 @@
 
 #include <platform/lib/clk.h>
 
-#define PLATFORM_MAX_CHANNELS 4
 #define PLATFORM_MAX_STREAMS 5
 
 #define HOST_PAGE_SIZE 4096

@@ -55,7 +55,7 @@ static struct sof_ipc_comp_process *create_mux_comp_ipc(struct test_data *td)
 	mux->num_streams = MUX_MAX_STREAMS;
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
 		mux->streams[i].pipeline_id = i;
-		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j)
+		for (j = 0; j < CONFIG_PLATFORM_MAX_CHANNELS; ++j)
 			mux->streams[i].mask[j] = 0;
 	}
 

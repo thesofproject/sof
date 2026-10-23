@@ -15,7 +15,7 @@
 static void mix_n_s16(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 		      int num_sources, size_t samples)
 {
-	const int16_t *src[PLATFORM_MAX_CHANNELS];
+	const int16_t *src[CONFIG_PLATFORM_MAX_CHANNELS];
 	int16_t *dest = sink->ptr;
 	int32_t val;
 	size_t nmax, ns, n, i;
@@ -58,7 +58,7 @@ static void mix_n_s16(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 static void mix_n_s24(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 		      int num_sources, size_t samples)
 {
-	const int32_t *src[PLATFORM_MAX_CHANNELS];
+	const int32_t *src[CONFIG_PLATFORM_MAX_CHANNELS];
 	int32_t *dest = sink->ptr;
 	int32_t val;
 	int32_t x;
@@ -103,7 +103,7 @@ static void mix_n_s24(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 static void mix_n_s32(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 		      int num_sources, size_t samples)
 {
-	const int32_t *src[PLATFORM_MAX_CHANNELS];
+	const int32_t *src[CONFIG_PLATFORM_MAX_CHANNELS];
 	int32_t *dest = sink->ptr;
 	int64_t val;
 	size_t nmax, ns, n, i;

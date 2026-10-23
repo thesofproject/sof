@@ -32,7 +32,7 @@
  * FIR implementations receive already acquired circular source and sink views.
  */
 struct comp_data {
-	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS]; /**< filters state */
+	struct fir_state_32x16 fir[CONFIG_PLATFORM_MAX_CHANNELS]; /**< filters state */
 	struct comp_data_blob_handler *model_handler;
 	struct sof_eq_fir_config *config;
 	int32_t *fir_delay;			/**< pointer to allocated RAM */

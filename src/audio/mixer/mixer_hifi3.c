@@ -17,7 +17,7 @@
 static void mix_n_s16(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 		      int num_sources, size_t samples)
 {
-	const ae_int16x4 *in[PLATFORM_MAX_CHANNELS];
+	const ae_int16x4 *in[CONFIG_PLATFORM_MAX_CHANNELS];
 	ae_int16x4 *out = (ae_int16x4 *)sink->ptr;
 	ae_int16x4 sample = AE_ZERO16();
 	ae_int16x4 res = AE_ZERO16();
@@ -75,7 +75,7 @@ static void mix_n_s16(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 static void mix_n_s24(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 		      int num_sources, size_t samples)
 {
-	const ae_int32x2 *in[PLATFORM_MAX_CHANNELS];
+	const ae_int32x2 *in[CONFIG_PLATFORM_MAX_CHANNELS];
 	ae_int32x2 *out = (ae_int32x2 *)sink->ptr;
 	ae_int32x2 val;
 	ae_int32x2 sample = AE_ZERO32();
@@ -122,7 +122,7 @@ static void mix_n_s24(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 static void mix_n_s32(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 		      int num_sources, size_t samples)
 {
-	const ae_q32s *in[PLATFORM_MAX_CHANNELS];
+	const ae_q32s *in[CONFIG_PLATFORM_MAX_CHANNELS];
 	ae_int32 *out = (ae_int32 *)sink->ptr;
 	ae_int64 sample;
 	ae_int64 val;

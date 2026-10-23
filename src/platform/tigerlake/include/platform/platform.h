@@ -28,7 +28,6 @@ struct timer;
 #define HOST_PAGE_SIZE		4096
 
 /* Platform stream capabilities */
-#define PLATFORM_MAX_CHANNELS	8
 #define PLATFORM_MAX_STREAMS	16
 
 /* local buffer size of DMA tracing */

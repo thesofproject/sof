@@ -22,10 +22,10 @@
  * Stores the state of the sub-components in Multiband DRC
  */
 struct multiband_drc_state {
-	struct iir_state_df1 emphasis[PLATFORM_MAX_CHANNELS];
-	struct crossover_state crossover[PLATFORM_MAX_CHANNELS];
+	struct iir_state_df1 emphasis[CONFIG_PLATFORM_MAX_CHANNELS];
+	struct crossover_state crossover[CONFIG_PLATFORM_MAX_CHANNELS];
 	struct drc_state drc[SOF_MULTIBAND_DRC_MAX_BANDS];
-	struct iir_state_df1 deemphasis[PLATFORM_MAX_CHANNELS];
+	struct iir_state_df1 deemphasis[CONFIG_PLATFORM_MAX_CHANNELS];
 };
 
 typedef int (*multiband_drc_func)(const struct processing_module *mod,
