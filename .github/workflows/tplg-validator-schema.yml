@@ -1,0 +1,36 @@
+---
+name: Topology validator kernel schema
+
+# Checks that tools/topology/validator/schema/kernel_tokens.py still
+# matches the SOF driver token tables in the kernel. When this fails,
+# rerun schema/gen_kernel_tokens.py against a kernel tree and review the
+# validator rules against the kernel changes.
+
+# yamllint disable-line rule:truthy
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  kernel-schema:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          filter: 'tree:0'
+          path: sof
+
+      - name: Fetch SOF driver sources
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse \
+            --branch topic/sof-dev https://github.com/thesofproject/linux.git linux
+          git -C linux sparse-checkout set --no-cone \
+            /include/uapi/sound/ /sound/soc/sof/ /sound/soc/soc-topology.c
+
+      - name: Check kernel token schema
+        run: python3 sof/tools/topology/validator/schema/gen_kernel_tokens.py
+               --kernel linux --check
