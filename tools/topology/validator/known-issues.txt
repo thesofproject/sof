@@ -1,0 +1,28 @@
+# Known validation errors, reported as warnings so that they do not fail
+# the build. Format: <topology name glob> <rule id> [# reason]
+#
+# Do not add new entries to silence new errors; fix the topology instead.
+# Remove entries when the topology is fixed.
+
+# cavs-benchmark-sdw.conf has no BENCH_CONFIG cases for these modules, so
+# no host pipelines are built and the PCMs cannot bind to a host copier
+sof-mtl-sdw-benchmark-dolby-dax*	P001
+sof-mtl-sdw-benchmark-mfcc*		P001
+
+# routes to widgets that are not instantiated with these build options
+sof-sdca-amp-compr	G001	# mixin.92.1 -> mixout.21.1
+sof-sdca-amp-ref	G001	# module-copier.21.22, alh-copier.Loopback_Virtual.25 -> siggen.120.1
+sof-sdca-amp-ref-dai	G001	# module-copier.21.22 -> siggen.120.1
+sof-sdca-jack-compr	G001	# mixin.90.1 -> mixout.1.1
+sof-sdca-jack-ref-dai	G001	# module-copier.1.12 -> siggen.12.1
+
+# UAOL DAI type is not known to the upstream kernel find_dai() table
+sof-hda-generic-uaol	W004
+sof-uaol-id*		W004
+
+# SAI DAI copier lacks UUID and DAI type and is not in a pipeline; SAI is
+# not handled by sof_ipc4_dai_config(); gain.1.1 declares 3 input formats
+# but defines 2
+sof-imx8mp-wm8960	G005
+sof-imx8mp-wm8960	W004
+sof-imx8mp-wm8960	T006
