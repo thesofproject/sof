@@ -15,6 +15,21 @@
 
 #include "dax.h"
 
+/*
+ * DAX explicitly does not support user mode: it must always run in a
+ * kernel-mode DP thread for following reasons:
+ *   - shared state is serialised with k_spin_lock(), which requires privileged
+ *     interrupt masking and is therefore not usable from a user thread,
+ *   - the cross-instance DAX instance manager is a kernel-only static living in
+ *     base firmware. it is not mapped into a DP module memory domain,
+ *   - not every helper it calls from module context (for instance comp_data_blob_set)
+ *     is exported as a syscall.
+ *   - a explicit persist/scratch/IO heap buffer size is required for user mode (default is 20KB)
+ */
+#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+#error "Dolby DAX is not user-mode safe"
+#endif
+
 LOG_MODULE_REGISTER(dolby_dax_audio_processing, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(dolby_dax_audio_processing);
 
