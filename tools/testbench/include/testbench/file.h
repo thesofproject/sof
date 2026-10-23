@@ -11,6 +11,7 @@
 #ifndef _TESTBENCH_FILE_H
 #define _TESTBENCH_FILE_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #define FILE_MAX_COPIES_TIMEOUT 16
@@ -41,10 +42,10 @@ struct file_state {
 	uint64_t cycles_count;
 	FILE *rfh, *wfh; /* read/write file handle */
 	char *fn;
-	int copy_count;
-	int channels;
+	size_t copy_count;
+	unsigned int channels;
 	int rate;
-	int n;
+	size_t n;
 	enum file_mode mode;
 	enum file_format f_format;
 	bool reached_eof;
@@ -53,19 +54,20 @@ struct file_state {
 };
 
 struct file_comp_data;
+struct cir_buf_source;
+struct cir_buf_sink;
 
 /* file comp data */
 struct file_comp_data {
 	struct file_state fs;
 	enum sof_ipc_frame frame_fmt;
-	int sample_container_bytes;
-	int (*file_func)(struct file_comp_data *cd, struct audio_stream *sink,
-			 struct audio_stream *source, uint32_t frames);
+	int (*file_func)(struct file_comp_data *cd, struct cir_buf_sink *sink,
+			 struct cir_buf_source *source, size_t *samples);
 
 	/* maximum limits */
-	int max_samples;
-	int max_copies;
-	int max_frames;
+	size_t max_samples;
+	size_t max_copies;
+	size_t max_frames;
 	int copies_timeout_count;
 };
 
