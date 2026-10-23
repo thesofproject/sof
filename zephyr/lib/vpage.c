@@ -82,6 +82,10 @@ static int vpages_alloc_and_map(unsigned int pages, void **ptr)
 	if (!ptr)
 		return -EINVAL;
 
+	/* the virtual region is missing if init found no space for it */
+	if (!vpage_ctx.virtual_region)
+		return -ENODEV;
+
 	if (!pages) {
 		*ptr = NULL;
 		return 0;
@@ -174,6 +178,9 @@ static int vpages_free_and_unmap(uintptr_t *ptr)
 	unsigned int alloc_idx, elem_idx;
 	unsigned int pages = 0;
 	int ret;
+
+	if (!vpage_ctx.virtual_region)
+		return -ENODEV;
 
 	/* check for valid ptr which must be page aligned */
 	CHECKIF(!IS_ALIGNED(ptr, CONFIG_MM_DRV_PAGE_SIZE)) {
@@ -269,18 +276,35 @@ static int vpage_init(void)
 	int ret;
 
 	/* create the virtual memory region and add it to the system */
-	size_t remaining_ram = L2_SRAM_BASE + L2_SRAM_SIZE -
-		(adsp_mm_get_unused_l2_start_aligned() +
-		 CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE +
-		 CONFIG_LIBRARY_REGION_SIZE);
-
-	ret = adsp_add_virtual_memory_region(adsp_mm_get_unused_l2_start_aligned() +
-					     CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE,
-					     remaining_ram, VIRTUAL_REGION_VPAGES_ATTR);
-	if (ret)
-		return ret;
+	uintptr_t l2_end = L2_SRAM_BASE + L2_SRAM_SIZE;
+	uintptr_t start = adsp_mm_get_unused_l2_start_aligned() +
+		CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE;
+	uintptr_t end;
+	size_t remaining_ram;
 
 	k_mutex_init(&vpage_ctx.lock);
+
+	if (start + CONFIG_LIBRARY_REGION_SIZE + CONFIG_MM_DRV_PAGE_SIZE <= l2_end) {
+		/* virtual heap and library regions fit in L2, vpages get the rest */
+		end = l2_end - CONFIG_LIBRARY_REGION_SIZE;
+	} else {
+		/*
+		 * TODO: on demand mapping currently only supports
+		 * cached mappings, so we need to limit vpages to
+		 * physical L2 size for now until support is added to
+		 * Zephyr mm_drv_intel_adsp_mtl_tlb.c and friends
+		 */
+		LOG_WRN("no space left for vpages, start %#lx l2_end %#lx",
+			(unsigned long)start, (unsigned long)l2_end);
+		return -ENOMEM;
+	}
+
+	remaining_ram = end - start;
+	__ASSERT_NO_MSG(remaining_ram >= CONFIG_MM_DRV_PAGE_SIZE);
+
+	ret = adsp_add_virtual_memory_region(start, remaining_ram, VIRTUAL_REGION_VPAGES_ATTR);
+	if (ret)
+		return ret;
 
 	/* now find the virtual region in all memory regions */
 	virtual_memory_regions = sys_mm_drv_query_memory_regions();
