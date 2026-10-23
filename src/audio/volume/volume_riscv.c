@@ -55,25 +55,26 @@ static inline int16_t vol_mult_s16(int16_t x, int32_t vol)
 }
 
 static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source *source,
-			   struct cir_buf_sink *sink, uint32_t frames, uint32_t attenuation)
+			   struct cir_buf_sink *sink, size_t frames, uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	const int16_t *x = source->ptr;
 	int16_t *y = sink->ptr;
-	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	const unsigned int nch = cd->channels;
+	size_t remaining_samples = frames * nch;
 
 	if (nch == 2) {
 		const int32_t vol_l = cd->volume[0];
 		const int32_t vol_r = cd->volume[1];
 
 		while (remaining_samples) {
-			const int nmax_src = cir_buf_samples_without_wrap_s16(x, source->buf_end);
-			const int nmax_snk = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
-			int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+			const size_t nmax_src = cir_buf_samples_without_wrap_s16(x,
+										 source->buf_end);
+			const size_t nmax_snk = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
+			size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
-			int i = 0;
-			for (; i <= n - 4; i += 4) {
+			size_t i = 0;
+			for (; i + 4 <= n; i += 4) {
 				y[i + 0] = vol_mult_s16(x[i + 0], vol_l);
 				y[i + 1] = vol_mult_s16(x[i + 1], vol_r);
 				y[i + 2] = vol_mult_s16(x[i + 2], vol_l);
@@ -92,12 +93,13 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 		const int32_t vol = cd->volume[0];
 
 		while (remaining_samples) {
-			const int nmax_src = cir_buf_samples_without_wrap_s16(x, source->buf_end);
-			const int nmax_snk = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
-			int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+			const size_t nmax_src = cir_buf_samples_without_wrap_s16(x,
+										 source->buf_end);
+			const size_t nmax_snk = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
+			size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
-			int i = 0;
-			for (; i <= n - 4; i += 4) {
+			size_t i = 0;
+			for (; i + 4 <= n; i += 4) {
 				y[i + 0] = vol_mult_s16(x[i + 0], vol);
 				y[i + 1] = vol_mult_s16(x[i + 1], vol);
 				y[i + 2] = vol_mult_s16(x[i + 2], vol);
@@ -113,13 +115,14 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 		}
 	} else {
 		while (remaining_samples) {
-			const int nmax_src = cir_buf_samples_without_wrap_s16(x, source->buf_end);
-			const int nmax_snk = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
-			int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+			const size_t nmax_src = cir_buf_samples_without_wrap_s16(x,
+										 source->buf_end);
+			const size_t nmax_snk = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
+			size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
-			for (int j = 0; j < nch; j++) {
+			for (unsigned int j = 0; j < nch; j++) {
 				const int32_t vol = cd->volume[j];
-				for (int i = j; i < n; i += nch) {
+				for (size_t i = j; i < n; i += nch) {
 					y[i] = vol_mult_s16(x[i], vol);
 				}
 			}
@@ -133,19 +136,19 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 
 static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 				       struct cir_buf_source *source,
-				       struct cir_buf_sink *sink, uint32_t frames,
+				       struct cir_buf_sink *sink, size_t frames,
 				       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	const int16_t *x = source->ptr;
 	int16_t *y = sink->ptr;
-	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	const unsigned int nch = cd->channels;
+	size_t remaining_samples = frames * nch;
 
 	while (remaining_samples) {
-		const int nmax_src = cir_buf_samples_without_wrap_s16(x, source->buf_end);
-		const int nmax_snk = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
-		int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+		const size_t nmax_src = cir_buf_samples_without_wrap_s16(x, source->buf_end);
+		const size_t nmax_snk = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
+		size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
 		memcpy_s(y, n * sizeof(int16_t), x, n * sizeof(int16_t));
 		remaining_samples -= n;
@@ -170,25 +173,26 @@ static inline int32_t vol_mult_s24(int32_t x, int32_t vol)
 }
 
 static void vol_s24_to_s24(struct processing_module *mod, struct cir_buf_source *source,
-			   struct cir_buf_sink *sink, uint32_t frames, uint32_t attenuation)
+			   struct cir_buf_sink *sink, size_t frames, uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
-	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	const unsigned int nch = cd->channels;
+	size_t remaining_samples = frames * nch;
 
 	if (nch == 2) {
 		const int32_t vol_l = cd->volume[0];
 		const int32_t vol_r = cd->volume[1];
 
 		while (remaining_samples) {
-			const int nmax_src = cir_buf_samples_without_wrap_s32(x, source->buf_end);
-			const int nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
-			int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+			const size_t nmax_src = cir_buf_samples_without_wrap_s32(x,
+										 source->buf_end);
+			const size_t nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+			size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
-			int i = 0;
-			for (; i <= n - 4; i += 4) {
+			size_t i = 0;
+			for (; i + 4 <= n; i += 4) {
 				y[i + 0] = vol_mult_s24(x[i + 0], vol_l);
 				y[i + 1] = vol_mult_s24(x[i + 1], vol_r);
 				y[i + 2] = vol_mult_s24(x[i + 2], vol_l);
@@ -205,13 +209,14 @@ static void vol_s24_to_s24(struct processing_module *mod, struct cir_buf_source 
 		}
 	} else {
 		while (remaining_samples) {
-			const int nmax_src = cir_buf_samples_without_wrap_s32(x, source->buf_end);
-			const int nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
-			int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+			const size_t nmax_src = cir_buf_samples_without_wrap_s32(x,
+										 source->buf_end);
+			const size_t nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+			size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
-			for (int j = 0; j < nch; j++) {
+			for (unsigned int j = 0; j < nch; j++) {
 				const int32_t vol = cd->volume[j];
-				for (int i = j; i < n; i += nch) {
+				for (size_t i = j; i < n; i += nch) {
 					y[i] = vol_mult_s24(x[i], vol);
 				}
 			}
@@ -225,19 +230,19 @@ static void vol_s24_to_s24(struct processing_module *mod, struct cir_buf_source 
 
 static void vol_passthrough_s24_to_s24(struct processing_module *mod,
 				       struct cir_buf_source *source,
-				       struct cir_buf_sink *sink, uint32_t frames,
+				       struct cir_buf_sink *sink, size_t frames,
 				       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
-	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	const unsigned int nch = cd->channels;
+	size_t remaining_samples = frames * nch;
 
 	while (remaining_samples) {
-		const int nmax_src = cir_buf_samples_without_wrap_s32(x, source->buf_end);
-		const int nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
-		int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+		const size_t nmax_src = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		const size_t nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+		size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
 		memcpy_s(y, n * sizeof(int32_t), x, n * sizeof(int32_t));
 		remaining_samples -= n;
@@ -261,25 +266,26 @@ static inline int32_t vol_mult_s32(int32_t x, int32_t vol)
 }
 
 static void vol_s32_to_s32(struct processing_module *mod, struct cir_buf_source *source,
-			   struct cir_buf_sink *sink, uint32_t frames, uint32_t attenuation)
+			   struct cir_buf_sink *sink, size_t frames, uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
-	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	const unsigned int nch = cd->channels;
+	size_t remaining_samples = frames * nch;
 
 	if (nch == 2) {
 		const int32_t vol_l = cd->volume[0];
 		const int32_t vol_r = cd->volume[1];
 
 		while (remaining_samples) {
-			const int nmax_src = cir_buf_samples_without_wrap_s32(x, source->buf_end);
-			const int nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
-			int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+			const size_t nmax_src = cir_buf_samples_without_wrap_s32(x,
+										 source->buf_end);
+			const size_t nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+			size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
-			int i = 0;
-			for (; i <= n - 4; i += 4) {
+			size_t i = 0;
+			for (; i + 4 <= n; i += 4) {
 				y[i + 0] = vol_mult_s32(x[i + 0], vol_l);
 				y[i + 1] = vol_mult_s32(x[i + 1], vol_r);
 				y[i + 2] = vol_mult_s32(x[i + 2], vol_l);
@@ -296,13 +302,14 @@ static void vol_s32_to_s32(struct processing_module *mod, struct cir_buf_source 
 		}
 	} else {
 		while (remaining_samples) {
-			const int nmax_src = cir_buf_samples_without_wrap_s32(x, source->buf_end);
-			const int nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
-			int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+			const size_t nmax_src = cir_buf_samples_without_wrap_s32(x,
+										 source->buf_end);
+			const size_t nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+			size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
-			for (int j = 0; j < nch; j++) {
+			for (unsigned int j = 0; j < nch; j++) {
 				const int32_t vol = cd->volume[j];
-				for (int i = j; i < n; i += nch) {
+				for (size_t i = j; i < n; i += nch) {
 					y[i] = vol_mult_s32(x[i], vol);
 				}
 			}
@@ -316,19 +323,19 @@ static void vol_s32_to_s32(struct processing_module *mod, struct cir_buf_source 
 
 static void vol_passthrough_s32_to_s32(struct processing_module *mod,
 				       struct cir_buf_source *source,
-				       struct cir_buf_sink *sink, uint32_t frames,
+				       struct cir_buf_sink *sink, size_t frames,
 				       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	const int32_t *x = source->ptr;
 	int32_t *y = sink->ptr;
-	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	const unsigned int nch = cd->channels;
+	size_t remaining_samples = frames * nch;
 
 	while (remaining_samples) {
-		const int nmax_src = cir_buf_samples_without_wrap_s32(x, source->buf_end);
-		const int nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
-		int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+		const size_t nmax_src = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		const size_t nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+		size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
 		memcpy_s(y, n * sizeof(int32_t), x, n * sizeof(int32_t));
 		remaining_samples -= n;
@@ -340,16 +347,16 @@ static void vol_passthrough_s32_to_s32(struct processing_module *mod,
 
 #if CONFIG_FORMAT_FLOAT
 static void vol_float_to_float(struct processing_module *mod, struct cir_buf_source *source,
-			       struct cir_buf_sink *sink, uint32_t frames, uint32_t attenuation)
+			       struct cir_buf_sink *sink, size_t frames, uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	const float *x = source->ptr;
 	float *y = sink->ptr;
-	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	const unsigned int nch = cd->channels;
+	size_t remaining_samples = frames * nch;
 	float vol_f[PLATFORM_MAX_CHANNELS];
 
-	for (int j = 0; j < nch; j++) {
+	for (unsigned int j = 0; j < nch; j++) {
 #if COMP_VOLUME_Q8_16
 		vol_f[j] = (float)cd->volume[j] * (1.0f / 65536.0f);
 #elif COMP_VOLUME_Q1_31
@@ -364,12 +371,13 @@ static void vol_float_to_float(struct processing_module *mod, struct cir_buf_sou
 		const float vol_r = vol_f[1];
 
 		while (remaining_samples) {
-			const int nmax_src = cir_buf_samples_without_wrap_s32(x, source->buf_end);
-			const int nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
-			int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+			const size_t nmax_src = cir_buf_samples_without_wrap_s32(x,
+										 source->buf_end);
+			const size_t nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+			size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
-			int i = 0;
-			for (; i <= n - 4; i += 4) {
+			size_t i = 0;
+			for (; i + 4 <= n; i += 4) {
 				y[i + 0] = x[i + 0] * vol_l;
 				y[i + 1] = x[i + 1] * vol_r;
 				y[i + 2] = x[i + 2] * vol_l;
@@ -388,12 +396,13 @@ static void vol_float_to_float(struct processing_module *mod, struct cir_buf_sou
 		const float vol = vol_f[0];
 
 		while (remaining_samples) {
-			const int nmax_src = cir_buf_samples_without_wrap_s32(x, source->buf_end);
-			const int nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
-			int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+			const size_t nmax_src = cir_buf_samples_without_wrap_s32(x,
+										 source->buf_end);
+			const size_t nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+			size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
-			int i = 0;
-			for (; i <= n - 4; i += 4) {
+			size_t i = 0;
+			for (; i + 4 <= n; i += 4) {
 				y[i + 0] = x[i + 0] * vol;
 				y[i + 1] = x[i + 1] * vol;
 				y[i + 2] = x[i + 2] * vol;
@@ -409,13 +418,14 @@ static void vol_float_to_float(struct processing_module *mod, struct cir_buf_sou
 		}
 	} else {
 		while (remaining_samples) {
-			const int nmax_src = cir_buf_samples_without_wrap_s32(x, source->buf_end);
-			const int nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
-			int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+			const size_t nmax_src = cir_buf_samples_without_wrap_s32(x,
+										 source->buf_end);
+			const size_t nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+			size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
-			for (int j = 0; j < nch; j++) {
+			for (unsigned int j = 0; j < nch; j++) {
 				const float vol = vol_f[j];
-				for (int i = j; i < n; i += nch) {
+				for (size_t i = j; i < n; i += nch) {
 					y[i] = x[i] * vol;
 				}
 			}
@@ -429,19 +439,19 @@ static void vol_float_to_float(struct processing_module *mod, struct cir_buf_sou
 
 static void vol_passthrough_float_to_float(struct processing_module *mod,
 					   struct cir_buf_source *source,
-					   struct cir_buf_sink *sink, uint32_t frames,
+					   struct cir_buf_sink *sink, size_t frames,
 					   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	const float *x = source->ptr;
 	float *y = sink->ptr;
-	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	const unsigned int nch = cd->channels;
+	size_t remaining_samples = frames * nch;
 
 	while (remaining_samples) {
-		const int nmax_src = cir_buf_samples_without_wrap_s32(x, source->buf_end);
-		const int nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
-		int n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
+		const size_t nmax_src = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		const size_t nmax_snk = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+		size_t n = MIN(remaining_samples, MIN(nmax_src, nmax_snk));
 
 		memcpy_s(y, n * sizeof(float), x, n * sizeof(float));
 		remaining_samples -= n;

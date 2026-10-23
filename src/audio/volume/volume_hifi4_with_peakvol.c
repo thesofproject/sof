@@ -50,7 +50,7 @@ static inline void vol_store_gain(struct vol_data *cd, const unsigned int channe
  * \param[in] attenuation factor for peakmeter adjustment
  */
 static void vol_s24_to_s24_s32(struct processing_module *mod, struct cir_buf_source *source,
-			       struct cir_buf_sink *sink, uint32_t frames,
+			       struct cir_buf_sink *sink, size_t frames,
 			       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
@@ -141,7 +141,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
  */
 static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 					   struct cir_buf_source *source,
-					   struct cir_buf_sink *sink, uint32_t frames,
+					   struct cir_buf_sink *sink, size_t frames,
 					   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
@@ -202,7 +202,7 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
  * \param[in] attenuation factor for peakmeter adjustment
  */
 static void vol_s32_to_s24_s32(struct processing_module *mod, struct cir_buf_source *source,
-			       struct cir_buf_sink *sink, uint32_t frames,
+			       struct cir_buf_sink *sink, size_t frames,
 			       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
@@ -297,7 +297,7 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
  */
 static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 					   struct cir_buf_source *source,
-					   struct cir_buf_sink *sink, uint32_t frames,
+					   struct cir_buf_sink *sink, size_t frames,
 					   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
@@ -355,7 +355,7 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
  * \param[in] attenuation factor for peakmeter adjustment (unused for 16bit)
  */
 static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source *source,
-			   struct cir_buf_sink *sink, uint32_t frames,
+			   struct cir_buf_sink *sink, size_t frames,
 			   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
@@ -503,7 +503,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
  */
 static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 				       struct cir_buf_source *source,
-				       struct cir_buf_sink *sink, uint32_t frames,
+				       struct cir_buf_sink *sink, size_t frames,
 				       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
