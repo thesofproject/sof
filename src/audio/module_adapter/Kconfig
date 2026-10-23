@@ -188,6 +188,9 @@ endif # Cadence
 		  API definition together with pre-compiled library is shared by Dolby.
 		  If library is not provided, COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK must be true,
 		  then the input will be copied to the output.
+		  The DAX module is not user-mode safe and requires a kernel-mode DP
+		  thread: building it with SOF_USERSPACE_APPLICATION
+		  is rejected with a compile-time error.
 
 	config COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK
 		bool "Dolby DAX audio processing component mock"
