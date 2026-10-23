@@ -193,6 +193,47 @@ static size_t vol_zc_get_s32(struct cir_buf_source *source, const unsigned int c
 
 #endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_FLOAT
+static size_t vol_zc_get_float(struct cir_buf_source *source, const unsigned int channels,
+			       size_t frames, int64_t *prev_sum)
+{
+	size_t curr_frames = frames;
+	const float *x = source->ptr;
+	size_t bytes;
+	size_t nmax;
+	size_t i, n;
+	unsigned int j;
+	size_t remaining_samples = frames * channels;
+
+	/* Go to last channel */
+	x = source_cir_buf_wrap(x + remaining_samples - 1,
+				source->buf_start, source->buf_end);
+	while (remaining_samples) {
+		bytes = cir_buf_bytes_without_wrap_rewind(x, source->buf_start);
+		nmax = (bytes / sizeof(float)) + 1;
+		n = MIN(nmax, remaining_samples);
+		for (i = 0; i < n; i += channels) {
+			float sum = 0.0f;
+			for (j = 0; j < channels; j++) {
+				sum += *x;
+				x--;
+			}
+
+			int64_t sign = (sum < 0.0f) ? -1 : 1;
+			if (*prev_sum && (sign ^ *prev_sum) < 0)
+				return curr_frames;
+
+			*prev_sum = sign;
+			curr_frames--;
+		}
+		remaining_samples -= n;
+		x = source_cir_buf_rewind_wrap(x, source->buf_start, source->buf_end);
+	}
+
+	return frames;
+}
+#endif /* CONFIG_FORMAT_FLOAT */
+
 /**
  * \brief Map of formats with dedicated zc functions.
  *
@@ -208,6 +249,9 @@ __cold_rodata static const struct comp_zc_func_map zc_func_map[] = {
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, vol_zc_get_s32 },
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, vol_zc_get_float },
+#endif /* CONFIG_FORMAT_FLOAT */
 };
 
 #if CONFIG_COMP_VOLUME_LINEAR_RAMP
@@ -902,6 +946,7 @@ static struct comp_dev *vol_static_create(const struct comp_driver *drv,
 					  const struct sof_static_comp *cdesc,
 					  uint32_t period_us)
 {
+#if CONFIG_IPC_MAJOR_4
 	struct static_ipc4_vol_init_cfg vol_cfg;
 
 	memset(&vol_cfg, 0, sizeof(vol_cfg));
@@ -916,6 +961,20 @@ static struct comp_dev *vol_static_create(const struct comp_driver *drv,
 		.data = (const uint8_t *)&vol_cfg,
 	};
 	return drv->ops.create(drv, cfg, &spec);
+#else
+	static const struct ipc_config_volume vol_cfg = {
+		.channels = 2,
+		.min_value = 0,
+		.max_value = 0x7fffffff,
+		.ramp = 0,
+		.initial_ramp = 0,
+	};
+	struct ipc_config_process spec = {
+		.size = sizeof(vol_cfg),
+		.data = (const uint8_t *)&vol_cfg,
+	};
+	return drv->ops.create(drv, cfg, &spec);
+#endif
 }
 
 static int vol_static_apply_volume(struct comp_dev *dev, uint32_t channels, int32_t val)

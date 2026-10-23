@@ -285,7 +285,7 @@ static void mux_s16le(struct comp_dev *dev, struct sof_sink *sink,
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE || CONFIG_FORMAT_FLOAT
 
 static size_t mux_calc_frames_without_wrap_s32(struct cir_buf_sink *sink,
 					       struct cir_buf_source *source_bufs,
@@ -539,6 +539,9 @@ const struct comp_func_map mux_func_map[] = {
 #endif
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, &mux_s32le, &demux_s32le },
+#endif
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, &mux_s32le, &demux_s32le },
 #endif
 };
 
