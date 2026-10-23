@@ -345,6 +345,14 @@ int ffmpeg_dec_convert_frame(const AVFrame *frame, uint8_t *out, size_t out_size
 
 	if (channels <= 0 || frame->nb_samples <= 0)
 		return -EINVAL;
+
+	/*
+	 * The frame's channel count comes from the bitstream, @channels from the
+	 * sink. Every path below indexes the frame planes with @channels, so a
+	 * stream with fewer channels than the sink would be read past its end.
+	 */
+	if (frame->ch_layout.nb_channels != channels)
+		return -EINVAL;
 	if (need > out_size)
 		return -ENOSPC;
 
