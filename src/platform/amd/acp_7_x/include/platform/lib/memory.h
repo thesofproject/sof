@@ -13,9 +13,6 @@
 
 #include <rtos/cache.h>
 
-/* data cache line alignment */
-#define PLATFORM_DCACHE_ALIGN	128
-
 #define PU_REGISTER_BASE        (0x9FD00000 - 0x01240000)
 
 /* physical DSP addresses */

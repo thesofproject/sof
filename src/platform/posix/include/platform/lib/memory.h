@@ -8,7 +8,6 @@
 #include <stdint.h>
 #include <ipc/header.h>
 
-#define PLATFORM_DCACHE_ALIGN 64
 #define uncache_to_cache(addr) (addr)
 #define cache_to_uncache(addr) (addr)
 
