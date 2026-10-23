@@ -22,7 +22,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/iir_df1.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>

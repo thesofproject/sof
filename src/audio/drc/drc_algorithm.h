@@ -8,7 +8,6 @@
 #define __SOF_AUDIO_DRC_DRC_ALGORITHM_H__
 
 #include <stdint.h>
-#include <sof/platform.h>
 
 #include "drc_user.h"
 #include "drc.h"

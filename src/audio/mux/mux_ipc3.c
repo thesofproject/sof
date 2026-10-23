@@ -15,7 +15,6 @@
 #include <rtos/string_macro.h>
 #include <sof/lib/uuid.h>
 #include <sof/common.h>
-#include <sof/platform.h>
 #include <ipc/topology.h>
 #include <errno.h>
 

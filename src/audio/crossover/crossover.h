@@ -10,7 +10,6 @@
 #include <sof/audio/module_adapter/module/module_interface.h>
 #include <sof/math/iir_df1.h>
 #include <module/crossover/crossover_common.h>
-#include <sof/platform.h>
 #include <stdint.h>
 
 #include "crossover_user.h"

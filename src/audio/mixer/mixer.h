@@ -11,7 +11,6 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
-#include <sof/platform.h>
 #include <stddef.h>
 #include <stdint.h>
 
