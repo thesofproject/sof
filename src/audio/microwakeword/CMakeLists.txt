@@ -204,6 +204,7 @@ target_compile_options(mww_tflm_lib PRIVATE
 	-fno-tree-slp-vectorize
 	-ffunction-sections
 	-fdata-sections
+	-imacros ${AUTOCONF_H}
 )
 
 # tflite-micro trees differ here: upstream (the commit pinned by

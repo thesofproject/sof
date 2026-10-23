@@ -148,10 +148,12 @@ alignas(16) static uint8_t g_arenas[kMaxSlots][98304];
 This guarantees deterministic execution, avoids heap fragmentation, and ensures the DSP never encounters runtime out-of-memory errors during multiple wake-word operations.
 
 ### 3. Keyword Model Dispatch
-Default built-in models are bound automatically by slot/pipeline index:
+Default built-in models are bound automatically by slot/pipeline index when using `CONFIG_COMP_MWW_MODEL_PIPELINE_ID` (default):
 - **Slot 0** (`pipeline_id == 101`): `mww_model_data_strawberry`
 - **Slot 1** (`pipeline_id == 102`): `mww_model_data_hi_intel`
 - **Slot 2** (`pipeline_id == 103`): `mww_model_data_orange`
+
+Alternatively, a single built-in model can be forced via Kconfig (`CONFIG_COMP_MWW_MODEL_HI_INTEL`, `CONFIG_COMP_MWW_MODEL_HEY_JARVIS`, `CONFIG_COMP_MWW_MODEL_STRAWBERRY`, `CONFIG_COMP_MWW_MODEL_ORANGE`, or `CONFIG_COMP_MWW_MODEL_BANANA`), omitting all other models from the build to reduce firmware image size.
 
 Each instance can also be dynamically customized via SOF IPC4 `LARGE_CONFIG_SET` / bytes control or LLEXT model loading.
 
