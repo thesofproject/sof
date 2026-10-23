@@ -246,7 +246,21 @@ static inline int comp_prepare_remote(struct comp_dev *dev)
 	struct idc_msg msg = { IDC_MSG_PREPARE,
 		IDC_MSG_PREPARE_EXT(dev->ipc_config.id), dev->ipc_config.core, };
 
-	return idc_send_msg(&msg, IDC_BLOCKING);
+	/*
+	 * Non-blocking: a remote component's prepare may be expensive (e.g. a DP
+	 * decoder's one-time codec open building large trig tables -- measured
+	 * ~580 ms for mp3 on a secondary core). Waiting for it here stalls the
+	 * initiator core's IPC/EDF thread for that whole time, and with the
+	 * default CONFIG_IDC_TIMEOUT_US the k_p4wq_wait() would instead time out
+	 * mid-prepare (-EAGAIN) and race the pipeline teardown into a crash.
+	 *
+	 * Ordering is preserved without the wait: each core drains its IDC work
+	 * through a single in-order p4wq worker, so this prepare completes before
+	 * the subsequent cross-core trigger (START) that is queued behind it. For
+	 * a compress stream the START IPC also arrives only after the app's first
+	 * write, giving the remote prepare time to finish off the critical path.
+	 */
+	return idc_send_msg(&msg, IDC_NON_BLOCKING);
 }
 
 /**
@@ -279,6 +293,29 @@ struct get_attribute_remote_payload {
 	void *value;   /**< Pointer to attribute value storage */
 };
 
+/*
+ * Copy to/from a coherent (uncached) buffer using aligned 32-bit word accesses.
+ *
+ * A whole-struct memcpy() straight into (or out of) the uncached alias faults
+ * on Xtensa with EXCCAUSE 9: the compiler lowers the struct copy to wide/HiFi
+ * accesses (e.g. AE_L32X2 / 64-bit loads) that the uncached window does not
+ * support. The IDC status word (a single aligned uint32_t) already round-trips
+ * through this same coherent region without faulting, so restricting the copy
+ * to volatile 32-bit word transactions is safe. @bytes must be a multiple of 4
+ * and both pointers 32-bit aligned (guaranteed here: ipc4_base_module_cfg is
+ * aligned(4) and rzalloc() returns >=4-byte-aligned memory).
+ */
+static inline void ipc4_coherent_copy32(void *dst, const void *src, size_t bytes)
+{
+	volatile uint32_t *d = dst;
+	const volatile uint32_t *s = src;
+	size_t words = bytes / sizeof(uint32_t);
+	size_t i;
+
+	for (i = 0; i < words; i++)
+		d[i] = s[i];
+}
+
 /**
  * \brief Retrieve component attribute from a remote core (IPC4).
  * \param[in,out] dev Component device.
@@ -309,9 +346,12 @@ static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t 
 
 	ret = idc_send_msg(&msg, IDC_BLOCKING);
 
+	/* base_cfg is coherent (uncached) -- read it back with 32-bit word
+	 * accesses, not a struct memcpy that would fault on the uncached alias.
+	 */
 	if (ret == 0)
-		memcpy_s(value, sizeof(struct ipc4_base_module_cfg),
-			 base_cfg, sizeof(struct ipc4_base_module_cfg));
+		ipc4_coherent_copy32(value, base_cfg,
+				     sizeof(struct ipc4_base_module_cfg));
 
 	rfree(base_cfg);
 	return ret;
@@ -369,7 +409,22 @@ static inline int comp_reset_remote(struct comp_dev *dev)
 	struct idc_msg msg = { IDC_MSG_RESET,
 		IDC_MSG_RESET_EXT(dev->ipc_config.id), dev->ipc_config.core, };
 
-	return idc_send_msg(&msg, IDC_BLOCKING);
+	/*
+	 * Blocking, and waiting for actual completion (no timeout): the caller
+	 * (pipeline_reset -> host) depends on the reset being finished before it
+	 * frees the component and powers down the remote core. A DP decoder's
+	 * reset runs schedule_task_cancel() -> k_thread_join() on that core, which
+	 * only returns once the DP thread finishes its in-flight process() call.
+	 * That call is bounded but can be long during codec cold-start (a deferred
+	 * avcodec_open2 table build, ~1.4 s for aac, or the first decode after it),
+	 * exceeding CONFIG_IDC_TIMEOUT_US. A plain IDC_BLOCKING would give up at
+	 * that timeout (-EAGAIN) while the reset is still running remotely, leaving
+	 * the component un-reset; pipeline_reset() then fails and the subsequent
+	 * free is refused (invalid state) / the core cannot be disabled, wedging
+	 * every teardown until reboot. A normal end-of-stream teardown joins an
+	 * idle DP thread and returns immediately, so this only waits when it must.
+	 */
+	return idc_send_msg(&msg, IDC_BLOCKING_NO_TIMEOUT);
 }
 
 /**

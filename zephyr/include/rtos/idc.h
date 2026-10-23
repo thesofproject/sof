@@ -28,6 +28,15 @@
 /** \brief IDC send non-blocking flag. */
 #define IDC_NON_BLOCKING	1
 
+/** \brief IDC send blocking flag, wait for completion without timing out.
+ * Like IDC_BLOCKING but waits (K_FOREVER) for the handler to finish rather
+ * than only CONFIG_IDC_TIMEOUT_US. For remote ops whose completion the
+ * caller depends on and which are bounded but can exceed the IDC timeout
+ * (e.g. a DP component reset that joins a decoder thread mid codec
+ * cold-start).
+ */
+#define IDC_BLOCKING_NO_TIMEOUT	4
+
 /** \brief IDC send core power up flag. */
 #define IDC_POWER_UP		2
 
@@ -149,10 +158,20 @@
 /** \brief IDC free function flags */
 #define IDC_FREE_IRQ_ONLY	BIT(0)	/**< disable only irqs */
 
-/** \brief IDC message payload. */
+/**
+ * \brief IDC message payload.
+ *
+ * Placed in coherent (SHARED_DATA) memory and shared across cores. The struct
+ * is only a byte array, so without an explicit alignment the linker may drop
+ * it (and every per-core slot) on an odd address. Handlers that read the
+ * payload as wider types -- e.g. the cross-core get_attribute path reads a
+ * uint32 'type' field -- then take an EXCCAUSE 9 (load/store alignment) fault.
+ * Align to the cache line, which is the size this payload is already built
+ * around (IDC_MAX_PAYLOAD_SIZE == DCACHE_LINE_SIZE * 2).
+ */
 struct idc_payload {
 	uint8_t data[IDC_MAX_PAYLOAD_SIZE];
-};
+} __aligned(DCACHE_LINE_SIZE);
 
 /** \brief IDC message. */
 struct idc_msg {
