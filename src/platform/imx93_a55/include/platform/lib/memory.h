@@ -10,8 +10,6 @@
 
 #include <rtos/cache.h>
 
-#define PLATFORM_DCACHE_ALIGN DCACHE_LINE_SIZE
-
 /* seems like in xtensa architecture cached data
  * may be placed at some special addresses in the
  * SRAM?

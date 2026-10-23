@@ -41,6 +41,9 @@
 #endif /* defined(CONFIG_LIBRARY) || defined(CONFIG_ZEPHYR_POSIX) */
 #endif /* !defined(CONFIG_DCACHE_LINE_SIZE_DETECT) && (CONFIG_DCACHE_LINE_SIZE > 0) */
 
+/** Alignment that keeps a buffer on data cache lines of its own */
+#define PLATFORM_DCACHE_ALIGN	DCACHE_LINE_SIZE
+
 /**
  * @brief Write back (flush) modified data cache lines to memory.
  * @param addr Starting address of the memory region to flush.
