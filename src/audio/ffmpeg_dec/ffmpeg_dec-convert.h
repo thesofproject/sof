@@ -22,7 +22,8 @@
  * Dispatches to specialized HiFi/SIMD and unrolled scalar conversion routines
  * based on the source AVFrame format and the destination SOF sink format.
  *
- * Returns number of bytes written, or a negative errno on error.
+ * Returns number of bytes written, -ENOSPC if @out is too small, or -EINVAL for
+ * an empty frame or one whose channel count does not match @channels.
  */
 int ffmpeg_dec_convert_frame(const AVFrame *frame, uint8_t *out, size_t out_size,
 			     int sink_fmt, int channels);
