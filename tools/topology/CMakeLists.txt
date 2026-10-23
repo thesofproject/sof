@@ -56,6 +56,28 @@ else()
 	message("-- alsatplg version: " ${ALSATPLG_VERSION_NUMBER})
 endif()
 
+# Check every topology2 binary like the Linux SOF driver would when
+# loading it, see validator/README.md. Errors fail the build, warnings
+# are only counted. Needs the python3 construct module.
+option(TPLG_VALIDATE "Validate topology2 binaries after building them" ON)
+set(TPLG_VALIDATOR "${CMAKE_CURRENT_SOURCE_DIR}/validator/tplg_validate.py")
+set(TPLG_VALIDATE_WAIVERS "${CMAKE_CURRENT_SOURCE_DIR}/validator/known-issues.txt")
+set(TPLG_VALIDATE_ENABLED FALSE)
+if(TPLG_VALIDATE)
+	find_package(Python3 COMPONENTS Interpreter)
+	if(Python3_Interpreter_FOUND)
+		execute_process(COMMAND ${Python3_EXECUTABLE} -c "import construct"
+		  RESULT_VARIABLE construct_status OUTPUT_QUIET ERROR_QUIET)
+	endif()
+	if(Python3_Interpreter_FOUND AND construct_status EQUAL 0)
+		set(TPLG_VALIDATE_ENABLED TRUE)
+		message("-- topology validation: enabled")
+	else()
+		message(WARNING "topology validation skipped: python3 with the construct "
+			"module not found (install python3-construct or set -DTPLG_VALIDATE=OFF)")
+	endif()
+endif()
+
 
 # This use of VERBOSE relies on original CMake behavior.
 # From the add_custom_command() manual:
@@ -94,6 +116,15 @@ macro(add_alsatplg2_command conf_header conf_target input_name output_name inclu
 		set (defines "")
 	endif()
 
+	if (TPLG_VALIDATE_ENABLED)
+		set(tplg_validate_command COMMAND ${Python3_EXECUTABLE} ${TPLG_VALIDATOR}
+			--quiet --remove-on-error
+			--waivers ${TPLG_VALIDATE_WAIVERS}
+			${output_name}.tplg)
+	else()
+		set(tplg_validate_command "")
+	endif()
+
 	add_custom_command(
 		MAIN_DEPENDENCY ${input_name}.conf
 		# The conf_header file is the real dependency that
@@ -109,6 +140,8 @@ macro(add_alsatplg2_command conf_header conf_target input_name output_name inclu
 		# -p to pre-process Topology2.0 conf file
 		COMMAND ALSA_CONFIG_DIR=${CMAKE_SOURCE_DIR}/topology/topology2 ${ALSATPLG_CMD} \$\${VERBOSE:+-v 1}
 		        -I ${include_path} -D "'${defines}'" -p -c ${output_name}.conf -o ${output_name}.tplg
+
+		${tplg_validate_command}
 		${TPLG_USES_TERMINAL}
 		)
 endmacro()
