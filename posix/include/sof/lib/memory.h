@@ -9,16 +9,6 @@
 #define __SOF_LIB_MEMORY_H__
 
 #include <platform/lib/memory.h>
-
-#ifndef __cold
-#define __cold
-#endif
-
-#ifndef __cold_rodata
-#define __cold_rodata
-#endif
-
-#define assert_can_be_cold() do {} while (0)
-#define dbg_path_hot_confirm() do {} while (0)
+#include <sof/lib/cold.h>
 
 #endif /* __SOF_LIB_MEMORY_H__ */
