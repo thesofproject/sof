@@ -12,6 +12,7 @@
 #include <sof/audio/component.h>
 #include <sof/common.h>
 #include <sof/ipc/common.h>
+#include <sof/lib/mailbox.h>
 #include <sof/list.h>
 #include <sof/llext_manager.h>
 #include <sof/objpool.h>
