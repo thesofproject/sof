@@ -13,9 +13,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <rtos/alloc.h>
-#include <sof/lib/memory.h>
 #include <sof/list.h>
-#include <sof/platform.h>
 #include <rtos/task.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
