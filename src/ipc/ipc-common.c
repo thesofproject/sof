@@ -47,6 +47,7 @@
 #endif
 
 #include <sof/debug/telemetry/performance_monitor.h>
+#include <sof/userspace/syscall_caller.h>
 
 LOG_MODULE_REGISTER(ipc, CONFIG_SOF_LOG_LEVEL);
 
@@ -592,6 +593,7 @@ __cold static int ipc_user_init_thread(struct ipc_user *ipc_user, unsigned int c
 
 	ipc_user_kevent[core] = event;
 	ipc_user_kthread[core] = thread;
+	sof_sysuser_thread_set(SOF_SYSUSER_IPC, core, thread);
 
 	/* for ipc_user_thread_fn() and ipc_thread_user() in user context */
 	ipc_user->event[core] = event;
