@@ -191,6 +191,7 @@ target_compile_options(mww_tflm_lib PRIVATE
 	# ET_DYN/PIC LLEXT.
 	-DTF_LITE_STRIP_ERROR_STRINGS
 	-DNDEBUG
+	-imacros ${AUTOCONF_H}
 )
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|Xtensa" OR CMAKE_C_COMPILER MATCHES "xt-clang")
