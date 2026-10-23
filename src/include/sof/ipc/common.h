@@ -82,7 +82,6 @@ struct ipc_user {
 	struct k_thread *audio_thread[IPC_DSP_CORE_COUNT];
 	/** @brief Original kernel driver pointer for restoring dev->drv after create */
 	const struct comp_driver *init_drv;
-	bool init_needed[IPC_DSP_CORE_COUNT];
 	/**
 	 * @brief User-accessible copy of comp_driver + tr_ctx for create().
 	 *
@@ -366,5 +365,20 @@ int ipc_user_init_secondary(unsigned int core);
  * \brief get pointer to the userspace IPC thread for core
  */
 struct k_thread *ipc_thread_user(unsigned int core);
+
+/**
+ * Wait until the IPC user thread of core has finished its initialization.
+ * Kernel context only.
+ */
+void ipc_user_wait_core_init(unsigned int core);
+
+/**
+ * Return the IPC user thread context.
+ *
+ * Use this instead of ipc->ipc_user_pdata in kernel code: the pointer is
+ * kept in kernel-only storage, so user threads can not redirect it.
+ * Kernel context only.
+ */
+struct ipc_user *ipc_user_get(void);
 
 #endif /* __SOF_DRIVERS_IPC_H__ */
