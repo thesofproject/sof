@@ -22,6 +22,7 @@
 #include <iadk_module_adapter.h>
 #include <system_agent.h>
 #include <sof/audio/module_adapter/iadk/iadk_kpb_service.h>
+#include <sof/audio/module_adapter/iadk/iadk_timestamping_service.h>
 #include <sof/audio/module_adapter/library/native_system_service.h>
 #include <sof/audio/module_adapter/library/native_system_agent.h>
 
@@ -47,6 +48,10 @@ static AdspErrorCode iadk_system_service_get_interface(enum interface_id id,
 
 	*iface = NULL;
 
+	if (id == INTERFACE_ID_TIMESTAMPING_SERVICE)
+		return GetTimestampingServiceInterface(INTERFACE_VERSION_TIMESTAMPING_SERVICE_V1,
+						      iface);
+
 #if CONFIG_COMP_KPB
 	if (id == INTERFACE_ID_KPB_SERVICE)
 		return GetKpbServiceInterface(INTERFACE_VERSION_KPB_SERVICE_V1, iface);
@@ -63,6 +68,9 @@ static AdspErrorCode iadk_system_service_get_interface_versioned(enum interface_
 		return ADSP_INVALID_PARAMETERS;
 
 	*iface = NULL;
+
+	if (id == INTERFACE_ID_TIMESTAMPING_SERVICE)
+		return GetTimestampingServiceInterface(version, iface);
 
 #if CONFIG_COMP_KPB
 	if (id == INTERFACE_ID_KPB_SERVICE)
