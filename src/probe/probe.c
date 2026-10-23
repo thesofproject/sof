@@ -1633,8 +1633,8 @@ static int probe_get_config(struct processing_module *mod,
 }
 
 static int probe_dummy_process(struct processing_module *mod,
-			       struct input_stream_buffer *input_buffers, int num_input_buffers,
-			       struct output_stream_buffer *output_buffers, int num_output_buffers)
+			       struct sof_source **sources, int num_of_sources,
+			       struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_dev *dev = mod->dev;
 
@@ -1645,7 +1645,7 @@ static int probe_dummy_process(struct processing_module *mod,
 
 static const struct module_interface probe_interface = {
 	.init = probe_mod_init,
-	.process_audio_stream = probe_dummy_process,
+	.process = probe_dummy_process,
 	.set_configuration = probe_set_config,
 	.get_configuration = probe_get_config,
 	.free = probe_free,
