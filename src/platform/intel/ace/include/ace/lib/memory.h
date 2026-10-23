@@ -16,9 +16,6 @@
 #include <sof/lib/cpu.h>
 #endif
 
-/* data cache line alignment */
-#define PLATFORM_DCACHE_ALIGN		DCACHE_LINE_SIZE
-
 #include <zephyr/cache.h>
 
 #define uncache_to_cache(address)       sys_cache_cached_ptr_get(address)

@@ -116,8 +116,8 @@ struct comp_data {
 	int sink_frames_max;	/* Max # of frames to process at sink */
 	int data_shift;		/* Optional shift by 8 to process S24_4LE */
 	uint8_t *buf;		/* Samples buffer for input and output */
-	uint8_t *ibuf[PLATFORM_MAX_CHANNELS];	/* Input channels pointers */
-	uint8_t *obuf[PLATFORM_MAX_CHANNELS];	/* Output channels pointers */
+	uint8_t *ibuf[CONFIG_PLATFORM_MAX_CHANNELS];	/* Input channels pointers */
+	uint8_t *obuf[CONFIG_PLATFORM_MAX_CHANNELS];	/* Output channels pointers */
 	bool track_drift;
 	asrc_proc_func asrc_func;		/* ASRC processing function */
 };

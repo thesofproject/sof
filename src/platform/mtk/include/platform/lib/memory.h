@@ -5,10 +5,9 @@
 #ifndef _SOF_PLATFORM_MTK_LIB_MEMORY_H
 #define _SOF_PLATFORM_MTK_LIB_MEMORY_H
 
+#include <rtos/cache.h>
 #include <xtensa/config/core-isa.h>
 #include <ipc/info.h>
-
-#define PLATFORM_DCACHE_ALIGN 128
 
 /* Sigh, too many ways to get this wrong... */
 BUILD_ASSERT(PLATFORM_DCACHE_ALIGN == XCHAL_DCACHE_LINESIZE);

@@ -20,7 +20,6 @@
 #include <sof/math/fir_generic.h>
 #include <sof/math/fir_hifi2ep.h>
 #include <sof/math/fir_hifi3.h>
-#include <sof/platform.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
@@ -270,7 +269,7 @@ static void tdfb_free_delaylines(struct processing_module *mod)
 	mod_free(mod, cd->fir_delay);
 	cd->fir_delay = NULL;
 	cd->fir_delay_size = 0;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		fir[i].delay = NULL;
 }
 
@@ -333,7 +332,7 @@ static int tdfb_validate_config(struct comp_dev *dev,
 		return -EINVAL;
 	}
 	if (!config->num_output_channels ||
-	    config->num_output_channels > PLATFORM_MAX_CHANNELS) {
+	    config->num_output_channels > CONFIG_PLATFORM_MAX_CHANNELS) {
 		comp_err(dev, "invalid num_output_channels %u",
 			 config->num_output_channels);
 		return -EINVAL;
@@ -664,7 +663,7 @@ static int tdfb_init(struct processing_module *mod)
 	 */
 	comp_data_blob_set_validator(cd->model_handler, tdfb_validator);
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
 	 /* Allow different number  of channels in source and sink, in other
@@ -907,7 +906,7 @@ static int tdfb_reset(struct processing_module *mod)
 	tdfb_free_delaylines(mod);
 
 	cd->tdfb_func = NULL;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
 	/* Clear in/out buffers */

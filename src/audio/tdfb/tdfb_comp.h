@@ -14,7 +14,6 @@
 #include <sof/math/fir_hifi2ep.h>
 #include <sof/math/fir_hifi3.h>
 #include <sof/math/iir_df1.h>
-#include <sof/platform.h>
 #include <sof/common.h>
 
 /* TDFB and EQFIR depend on math FIR.
@@ -28,8 +27,8 @@
 #define TDFB_GENERIC	1
 #endif
 
-#define TDFB_IN_BUF_LENGTH (2 * PLATFORM_MAX_CHANNELS)
-#define TDFB_OUT_BUF_LENGTH (2 * PLATFORM_MAX_CHANNELS)
+#define TDFB_IN_BUF_LENGTH (2 * CONFIG_PLATFORM_MAX_CHANNELS)
+#define TDFB_OUT_BUF_LENGTH (2 * CONFIG_PLATFORM_MAX_CHANNELS)
 
 /* When set to one only one IPC is sent to host. There is not other requests
  * triggered. If set to zero the IPC sent will be empty and the driver will
@@ -48,9 +47,9 @@
 /* TDFB component private data */
 
 struct tdfb_direction_data {
-	struct iir_state_df1 emphasis[PLATFORM_MAX_CHANNELS];
-	int32_t timediff[PLATFORM_MAX_CHANNELS];
-	int32_t timediff_iter[PLATFORM_MAX_CHANNELS];
+	struct iir_state_df1 emphasis[CONFIG_PLATFORM_MAX_CHANNELS];
+	int32_t timediff[CONFIG_PLATFORM_MAX_CHANNELS];
+	int32_t timediff_iter[CONFIG_PLATFORM_MAX_CHANNELS];
 	int64_t level_ambient;
 	uint32_t trigger;
 	int32_t level;

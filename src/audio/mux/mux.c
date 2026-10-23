@@ -15,7 +15,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
@@ -46,9 +45,9 @@ bool mux_mix_check(struct sof_mux_config *cfg)
 
 	/* check for single matrix mixing, i.e multiple column bits are not set */
 	for (i = 0 ; i < cfg->num_streams; i++) {
-		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
+		for (j = 0 ; j < CONFIG_PLATFORM_MAX_CHANNELS; j++) {
 			channel_set = false;
-			for (k = 0 ; k < PLATFORM_MAX_CHANNELS; k++) {
+			for (k = 0 ; k < CONFIG_PLATFORM_MAX_CHANNELS; k++) {
 				if (cfg->streams[i].mask[k] & (1 << j)) {
 					if (!channel_set)
 						channel_set = true;
@@ -60,8 +59,8 @@ bool mux_mix_check(struct sof_mux_config *cfg)
 	}
 
 	/* check for inter matrix mixing, i.e corresponding bits are not set */
-	for (i = 0 ; i < PLATFORM_MAX_CHANNELS; i++) {
-		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
+	for (i = 0 ; i < CONFIG_PLATFORM_MAX_CHANNELS; i++) {
+		for (j = 0 ; j < CONFIG_PLATFORM_MAX_CHANNELS; j++) {
 			channel_set = false;
 			for (k = 0 ; k < cfg->num_streams; k++) {
 				if (cfg->streams[k].mask[i] & (1 << j)) {

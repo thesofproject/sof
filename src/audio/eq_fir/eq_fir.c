@@ -20,7 +20,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/fir_config.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
@@ -53,7 +52,7 @@ static void eq_fir_free_delaylines(struct processing_module *mod)
 	mod_free(mod, cd->fir_delay);
 	cd->fir_delay = NULL;
 	cd->fir_delay_size = 0;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		fir[i].delay = NULL;
 }
 
@@ -93,8 +92,8 @@ static int eq_fir_init_coef(struct comp_dev *dev, struct sof_eq_fir_config *conf
 		return -EINVAL;
 	}
 
-	if (nch > PLATFORM_MAX_CHANNELS ||
-	    config->channels_in_config > PLATFORM_MAX_CHANNELS ||
+	if (nch > CONFIG_PLATFORM_MAX_CHANNELS ||
+	    config->channels_in_config > CONFIG_PLATFORM_MAX_CHANNELS ||
 	    !config->channels_in_config) {
 		comp_err(dev, "invalid channels count");
 		return -EINVAL;
@@ -317,7 +316,7 @@ static int eq_fir_init(struct processing_module *mod)
 
 	md->private = cd;
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
 	return 0;
@@ -542,7 +541,7 @@ static int eq_fir_reset(struct processing_module *mod)
 	eq_fir_free_delaylines(mod);
 
 	cd->eq_fir_func = NULL;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
 	return 0;

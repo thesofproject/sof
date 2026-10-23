@@ -16,9 +16,6 @@
 #define PU_REGISTER_BASE        (0x9FD00000 - 0x01240000)
 #define PU_SCRATCH_REG_BASE	    (0x9FF00000 - 0x01250000)
 
-/* data cache line alignment */
-#define PLATFORM_DCACHE_ALIGN	128
-
 /* physical DSP addresses */
 #define IRAM_BASE	0x7F000000
 #define IRAM_SIZE	0x60000

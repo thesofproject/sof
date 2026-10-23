@@ -30,7 +30,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
@@ -368,7 +367,7 @@ void volume_reset_state(struct vol_data *cd)
 {
 	int i;
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++) {
 		cd->rvolume[i] = 0;
 		cd->ramp_coef[i] = 0;
 	}

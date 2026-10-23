@@ -17,7 +17,6 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/lib/mailbox.h>
-#include <sof/platform.h>
 #include <sof/ut.h>
 #include <sof/schedule/dp_schedule.h>
 #include <module/module/interface.h>
@@ -176,9 +175,9 @@ int module_adapter_init_data(struct comp_dev *dev,
 	dst->base_cfg = cfg->base_cfg;
 	dst->size = cfgsz;
 
-	/* Host-supplied channel count indexes PLATFORM_MAX_CHANNELS arrays. */
+	/* Host-supplied channel count indexes CONFIG_PLATFORM_MAX_CHANNELS arrays. */
 	if ((dst->base_cfg.audio_fmt.channels_count == 0 ||
-	     dst->base_cfg.audio_fmt.channels_count > PLATFORM_MAX_CHANNELS) &&
+	     dst->base_cfg.audio_fmt.channels_count > CONFIG_PLATFORM_MAX_CHANNELS) &&
 	    !is_probe_module(&dst->base_cfg)) {
 		comp_err(dev, "invalid channels count %u",
 			 dst->base_cfg.audio_fmt.channels_count);

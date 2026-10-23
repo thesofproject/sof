@@ -51,8 +51,8 @@ static int src_prepare(struct processing_module *mod,
 	a->out_fs = src_out_fs;
 	a->num_in_fs = NUM_IN_FS;
 	a->num_out_fs = NUM_OUT_FS;
-	a->max_fir_delay_size_xnch = (PLATFORM_MAX_CHANNELS * MAX_FIR_DELAY_SIZE);
-	a->max_out_delay_size_xnch = (PLATFORM_MAX_CHANNELS * MAX_OUT_DELAY_SIZE);
+	a->max_fir_delay_size_xnch = (CONFIG_PLATFORM_MAX_CHANNELS * MAX_FIR_DELAY_SIZE);
+	a->max_out_delay_size_xnch = (CONFIG_PLATFORM_MAX_CHANNELS * MAX_OUT_DELAY_SIZE);
 
 	src_get_source_sink_params(mod->dev, sources[0], sinks[0]);
 

@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <sof/boot_test.h>
 #include <sof/lib/uuid.h>
+#include <sof/lib/cpu.h>
 #include <sof/ipc/common.h>
 #include <ipc4/base_fw.h>
 #include <ipc4/error_status.h>

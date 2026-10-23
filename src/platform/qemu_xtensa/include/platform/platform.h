@@ -8,7 +8,6 @@
 
 /* Dummy platform header for qemu_xtensa */
 #define PLATFORM_CORE_COUNT 1
-#define PLATFORM_MAX_CHANNELS 8
 #define PLATFORM_MAX_STREAMS 8
 
 #define HW_CFG_VERSION 0x010000

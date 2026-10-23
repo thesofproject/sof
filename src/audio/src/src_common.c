@@ -25,7 +25,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
@@ -59,7 +58,7 @@ static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nc
 	fs_out = cd->sink_rate;
 	source_frames = cd->source_frames;
 
-	if (nch > PLATFORM_MAX_CHANNELS) {
+	if (nch > CONFIG_PLATFORM_MAX_CHANNELS) {
 		/* TODO: should be device, not class */
 		comp_err(dev, "nch = %u > PLATFORM_MAX_CHANNELS",
 			 nch);

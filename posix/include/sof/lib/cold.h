@@ -1,0 +1,20 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2019 Intel Corporation. All rights reserved.
+ */
+
+#ifndef __SOF_LIB_COLD_H__
+#define __SOF_LIB_COLD_H__
+
+#ifndef __cold
+#define __cold
+#endif
+
+#ifndef __cold_rodata
+#define __cold_rodata
+#endif
+
+#define assert_can_be_cold() do {} while (0)
+#define dbg_path_hot_confirm() do {} while (0)
+
+#endif /* __SOF_LIB_COLD_H__ */

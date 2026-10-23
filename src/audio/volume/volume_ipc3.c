@@ -19,7 +19,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
@@ -57,7 +56,7 @@ static void volume_ramp_check(struct processing_module *mod)
 	/* No need to ramp in idle state, jump volume to request. */
 	cd->ramp_finished = false;
 	if (dev->state == COMP_STATE_READY) {
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 			cd->volume[i] = cd->tvolume[i];
 
 		cd->ramp_finished = true;
@@ -133,7 +132,7 @@ int volume_init(struct processing_module *mod)
 		cd->vol_ramp_range = 0;
 	}
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++) {
 		cd->volume[i]  =  MAX(MIN(cd->vol_max, VOL_ZERO_DB),
 				      cd->vol_min);
 		cd->tvolume[i] = cd->volume[i];

@@ -13,9 +13,6 @@
 #include <rtos/cache.h>
 #include <platform/chip_offset_byte.h>
 
-/* data cache line alignment */
-#define PLATFORM_DCACHE_ALIGN	128
-
 /* physical DSP addresses */
 #define IRAM_BASE	0x7F000000
 #define IRAM_SIZE	0x60000

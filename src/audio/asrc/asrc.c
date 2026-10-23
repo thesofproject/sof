@@ -20,7 +20,6 @@
 #include <sof/common.h>
 #include <sof/compiler_attributes.h>
 #include <sof/list.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/lib/dai.h>
