@@ -15,9 +15,21 @@
 #include "tensorflow/lite/micro/micro_resource_variable.h"
 #include "mww_model.h"
 
+#if CONFIG_COMP_MWW_MODEL_HI_INTEL
+#include "mww_model_data_hi_intel.h"
+#elif CONFIG_COMP_MWW_MODEL_HEY_JARVIS
+#include "mww_model_data_hey_jarvis.h"
+#elif CONFIG_COMP_MWW_MODEL_STRAWBERRY
+#include "mww_model_data_strawberry.h"
+#elif CONFIG_COMP_MWW_MODEL_ORANGE
+#include "mww_model_data_orange.h"
+#elif CONFIG_COMP_MWW_MODEL_BANANA
+#include "mww_model_data_banana.h"
+#else
 #include "mww_model_data_strawberry.h"
 #include "mww_model_data_hi_intel.h"
 #include "mww_model_data_orange.h"
+#endif
 
 static constexpr int kFeatureSize = MWW_FEATURE_SIZE;
 static constexpr int kFeatureElementCount = MWW_FEATURE_ELEM_COUNT;
@@ -156,6 +168,32 @@ static int RegisterOps(MwwOpResolver *op_resolver) {
 
 const unsigned char *MWW_GetDefaultModel(uint8_t slot_id, size_t *size)
 {
+#if CONFIG_COMP_MWW_MODEL_HI_INTEL
+	(void)slot_id;
+	if (size)
+		*size = mww_model_data_hi_intel_size;
+	return mww_model_data_hi_intel;
+#elif CONFIG_COMP_MWW_MODEL_HEY_JARVIS
+	(void)slot_id;
+	if (size)
+		*size = mww_model_data_hey_jarvis_size;
+	return mww_model_data_hey_jarvis;
+#elif CONFIG_COMP_MWW_MODEL_STRAWBERRY
+	(void)slot_id;
+	if (size)
+		*size = mww_model_data_strawberry_size;
+	return mww_model_data_strawberry;
+#elif CONFIG_COMP_MWW_MODEL_ORANGE
+	(void)slot_id;
+	if (size)
+		*size = mww_model_data_orange_size;
+	return mww_model_data_orange;
+#elif CONFIG_COMP_MWW_MODEL_BANANA
+	(void)slot_id;
+	if (size)
+		*size = mww_model_data_banana_size;
+	return mww_model_data_banana;
+#else
 	switch (slot_id) {
 	case 0:
 		if (size)
@@ -171,6 +209,7 @@ const unsigned char *MWW_GetDefaultModel(uint8_t slot_id, size_t *size)
 			*size = mww_model_data_orange_size;
 		return mww_model_data_orange;
 	}
+#endif
 }
 
 int MWW_SetModel(struct mww_classify *mwc, const unsigned char *model_tflite, size_t model_size)

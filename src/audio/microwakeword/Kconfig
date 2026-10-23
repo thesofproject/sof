@@ -47,6 +47,54 @@ config COMP_MWW_MODEL_FROM_CONTROL
 	  or topology configuration data blob via binary kcontrol (bytes control)
 	  instead of using the static mww_model_data embedded in the firmware image.
 
+choice COMP_MWW_MODEL
+	prompt "microWakeWord built-in model"
+	default COMP_MWW_MODEL_PIPELINE_ID
+	help
+	  Select which wake-word model to build into the firmware image.
+	  By default, models are selected per pipeline ID at runtime, which
+	  compiles all default models into the image. Alternatively, a single
+	  built-in model can be selected at build time to save memory.
+
+config COMP_MWW_MODEL_PIPELINE_ID
+	bool "Select model via pipeline ID"
+	help
+	  Select model dynamically based on pipeline/slot ID (slot 0: strawberry,
+	  slot 1: hi_intel, slot 2: orange). All default models from available
+	  header files are built into the firmware image.
+
+config COMP_MWW_MODEL_HI_INTEL
+	bool "Hi Intel"
+	help
+	  Build only the "Hi Intel" keyword model (mww_model_data_hi_intel.h) into
+	  the firmware image and use it as the built-in model.
+
+config COMP_MWW_MODEL_HEY_JARVIS
+	bool "Hey Jarvis"
+	help
+	  Build only the "Hey Jarvis" keyword model (mww_model_data_hey_jarvis.h) into
+	  the firmware image and use it as the built-in model.
+
+config COMP_MWW_MODEL_STRAWBERRY
+	bool "Strawberry"
+	help
+	  Build only the "Strawberry" keyword model (mww_model_data_strawberry.h) into
+	  the firmware image and use it as the built-in model.
+
+config COMP_MWW_MODEL_ORANGE
+	bool "Orange"
+	help
+	  Build only the "Orange" keyword model (mww_model_data_orange.h) into
+	  the firmware image and use it as the built-in model.
+
+config COMP_MWW_MODEL_BANANA
+	bool "Banana"
+	help
+	  Build only the "Banana" keyword model (mww_model_data_banana.h) into
+	  the firmware image and use it as the built-in model.
+
+endchoice
+
 config COMP_MWW_FAKE_WAKE_MS
 	int "Fake wake timer delay in ms when wovdebug kcontrol is armed (0 = default 5000ms)"
 	default 0
