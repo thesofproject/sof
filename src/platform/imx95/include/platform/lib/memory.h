@@ -10,8 +10,6 @@
 
 #include <rtos/cache.h>
 
-#define PLATFORM_DCACHE_ALIGN DCACHE_LINE_SIZE
-
 #define uncache_to_cache(address) address
 #define cache_to_uncache(address) address
 #define cache_to_uncache_init(address) address

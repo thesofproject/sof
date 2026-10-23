@@ -12,10 +12,6 @@
 
 #include <rtos/cache.h>
 
-
-/* data cache line alignment */
-#define PLATFORM_DCACHE_ALIGN	32
-
 /* physical DSP addresses */
 
 #define IRAM_BASE	0x21170000

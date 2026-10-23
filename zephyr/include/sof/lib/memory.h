@@ -13,6 +13,7 @@
 #define __SOF_LIB_MEMORY_H__
 
 #include <platform/lib/memory.h>
+#include <rtos/cache.h>
 #include <sof/lib/cold.h>
 
 #endif /* __SOF_LIB_MEMORY_H__ */

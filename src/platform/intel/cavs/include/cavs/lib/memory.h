@@ -16,9 +16,6 @@
 #include <sof/lib/cpu.h>
 #endif
 
-/* data cache line alignment */
-#define PLATFORM_DCACHE_ALIGN	DCACHE_LINE_SIZE
-
 #define HEAP_BUF_ALIGNMENT		PLATFORM_DCACHE_ALIGN
 
 /** \brief EDF task's default stack size in bytes. */
