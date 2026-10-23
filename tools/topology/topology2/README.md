@@ -383,6 +383,13 @@ IncludeByKey.PLATFORM {
     "ptl"   "platform/intel/ptl.conf"
 }
 ```
+### Function topology
+
+A function topology provides generic and basic audio path for an individual hardware function, such
+as headset, amplifier or microphone. The Linux kernel driver uses function information exposed by
+ACPI when selecting and loading the corresponding topology.
+Function topologies are intended to be reusable across devices that provide the same function.
+Please do not add any customized feature in the function topology.
 
 ### Registering CMake Targets
 
