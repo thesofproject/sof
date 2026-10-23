@@ -4,6 +4,7 @@
 
 #include <sof/ipc/common.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/lib/cpu.h>
 #include <sof/lib/uuid.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>

@@ -25,6 +25,8 @@
 #include <zephyr/sys/p4wq.h>
 #include <rtos/idc.h>
 #include <sof/init.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
 #include <sof/ipc/common.h>
 #include <sof/schedule/edf_schedule.h>
 #include <rtos/alloc.h>
