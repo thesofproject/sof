@@ -20,7 +20,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/fir_config.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>

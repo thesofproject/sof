@@ -22,7 +22,6 @@
 #include <rtos/string.h>
 #include <sof/common.h>
 #include <sof/list.h>
-#include <sof/platform.h>
 #include <sof/ut.h>
 #include <user/eq.h>
 #include <user/trace.h>

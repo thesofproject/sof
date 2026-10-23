@@ -23,7 +23,6 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
-#include <sof/platform.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <rtos/symbol.h>

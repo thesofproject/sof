@@ -8,7 +8,6 @@
 #ifndef __USER_TDFB_H__
 #define __USER_TDFB_H__
 
-#include <sof/platform.h>
 #include <stdint.h>
 
 #define SOF_TDFB_NUM_INPUT_PINS 1	/* One source */

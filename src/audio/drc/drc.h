@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/buffer.h>
-#include <sof/platform.h>
 
 #include "drc_user.h"
 

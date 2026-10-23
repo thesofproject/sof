@@ -9,7 +9,6 @@
 #define __SOF_AUDIO_DCBLOCK_DCBLOCK_H__
 
 #include <stdint.h>
-#include <sof/platform.h>
 #include <ipc/stream.h>
 #include <sof/compiler_info.h>
 #include <sof/audio/sink_api.h>

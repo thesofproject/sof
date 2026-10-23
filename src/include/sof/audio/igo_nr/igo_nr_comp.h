@@ -8,7 +8,6 @@
 #ifndef __SOF_AUDIO_IGO_NR_CONFIG_H__
 #define __SOF_AUDIO_IGO_NR_CONFIG_H__
 
-#include <sof/platform.h>
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/igo_nr/igo_lib.h>
 #include <user/igo_nr.h>

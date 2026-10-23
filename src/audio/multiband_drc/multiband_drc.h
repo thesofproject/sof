@@ -12,7 +12,6 @@
 #include <sof/math/iir_df1.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
-#include <sof/platform.h>
 #include <stdint.h>
 
 #include "../drc/drc.h"

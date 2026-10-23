@@ -14,7 +14,6 @@
 #include <sof/math/fir_hifi2ep.h>
 #include <sof/math/fir_hifi3.h>
 #include <sof/math/iir_df1.h>
-#include <sof/platform.h>
 #include <sof/common.h>
 
 /* TDFB and EQFIR depend on math FIR.
