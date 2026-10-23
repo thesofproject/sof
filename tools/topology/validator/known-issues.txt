@@ -1,0 +1,34 @@
+# Known validation errors, reported as warnings so that they do not fail
+# the build. Format: <topology name glob> <rule id> [# reason]
+#
+# Do not add new entries to silence new errors; fix the topology instead.
+# Remove entries when the topology is fixed.
+
+# cavs-benchmark-sdw.conf has no BENCH_CONFIG cases for these modules, so
+# no host pipelines are built and the PCMs cannot bind to a host copier
+sof-mtl-sdw-benchmark-dolby-dax*	P001
+sof-mtl-sdw-benchmark-mfcc*		P001
+
+# Feature topologies: the kernel loads them into the same component after
+# the function topologies, and after the feature topologies given before
+# them in the feature_topologies module parameter. Their routes refer to
+# widgets of those topologies, so check them with --base in load order,
+# e.g. for sof-sdca-amp-ref: --base sof-sdca-1amp-id2.tplg
+# --base sof-sdca-jack-id0.tplg --base sof-sdca-jack-ref-dai.tplg
+sof-sdca-amp-compr	G001	# mixout.21.1 of an amp function topology
+sof-sdca-amp-ref	G001	# module-copier.21.22 of an amp function topology and
+				# the loopback DAI copier of sof-sdca-jack-ref-dai
+sof-sdca-amp-ref-dai	G001	# module-copier.21.22 of an amp function topology
+sof-sdca-jack-compr	G001	# mixout.1.1 of sof-sdca-jack-id0
+sof-sdca-jack-ref-dai	G001	# module-copier.1.12 of sof-sdca-jack-id0
+
+# UAOL DAI type is not known to the upstream kernel find_dai() table
+sof-hda-generic-uaol	W004
+sof-uaol-id*		W004
+
+# SAI DAI copier lacks UUID and DAI type and is not in a pipeline; SAI is
+# not handled by sof_ipc4_dai_config(); gain.1.1 declares 3 input formats
+# but defines 2
+sof-imx8mp-wm8960	G005
+sof-imx8mp-wm8960	W004
+sof-imx8mp-wm8960	T006
