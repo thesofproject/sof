@@ -459,9 +459,12 @@ struct zephyr_ll_task_sem {
 	struct list_item list;
 };
 
-int z_impl_zephyr_ll_task_sem_alloc(struct task *task)
+/*
+ * The syscall validators pass in pdata that they read once from user memory
+ * and validated, so these helpers must not read task->priv_data again.
+ */
+static int zephyr_ll_task_sem_alloc_pdata(struct task *task, struct zephyr_ll_pdata *pdata)
 {
-	struct zephyr_ll_pdata *pdata = task->priv_data;
 	struct zephyr_ll_task_sem *ts = rmalloc(SOF_MEM_FLAG_COHERENT, sizeof(*ts));
 
 	if (!ts)
@@ -502,9 +505,13 @@ int z_impl_zephyr_ll_task_sem_alloc(struct task *task)
 	return 0;
 }
 
-int z_impl_zephyr_ll_task_sem_free(struct task *task)
+int z_impl_zephyr_ll_task_sem_alloc(struct task *task)
 {
-	struct zephyr_ll_pdata *pdata = task->priv_data;
+	return zephyr_ll_task_sem_alloc_pdata(task, task->priv_data);
+}
+
+static int zephyr_ll_task_sem_free_pdata(struct task *task, struct zephyr_ll_pdata *pdata)
+{
 	struct list_item *list;
 	struct zephyr_ll_task_sem *ts;
 	bool found = false;
@@ -531,31 +538,56 @@ int z_impl_zephyr_ll_task_sem_free(struct task *task)
 	return 0;
 }
 
+int z_impl_zephyr_ll_task_sem_free(struct task *task)
+{
+	return zephyr_ll_task_sem_free_pdata(task, task->priv_data);
+}
+
 #ifdef CONFIG_USERSPACE
 #include <zephyr/internal/syscall_handler.h>
+/*
+ * Read task->priv_data exactly once. The task lives in user memory and a
+ * thread on another core can change the pointer after it has been checked.
+ *
+ * @return validated pdata pointer, or NULL if the task has none
+ */
+static struct zephyr_ll_pdata *zephyr_ll_task_pdata_vrfy(struct task *task)
+{
+	struct zephyr_ll_pdata *pdata;
+
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(task, sizeof(*task)));
+	K_OOPS(k_usermode_from_copy(&pdata, &task->priv_data, sizeof(pdata)));
+	if (pdata)
+		K_OOPS(K_SYSCALL_MEMORY_WRITE(pdata, sizeof(*pdata)));
+
+	return pdata;
+}
+
 static inline int z_vrfy_zephyr_ll_task_sem_alloc(struct task *task)
 {
+	struct zephyr_ll_pdata *pdata;
+
 	if (!task)
 		return -EINVAL;
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(task, sizeof(*task)));
-	if (!task->priv_data)
+	pdata = zephyr_ll_task_pdata_vrfy(task);
+	if (!pdata)
 		return -EINVAL;
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(task->priv_data, sizeof(struct zephyr_ll_pdata)));
 
-	return z_impl_zephyr_ll_task_sem_alloc(task);
+	return zephyr_ll_task_sem_alloc_pdata(task, pdata);
 }
 #include <zephyr/syscalls/zephyr_ll_task_sem_alloc_mrsh.c>
 
 static inline int z_vrfy_zephyr_ll_task_sem_free(struct task *task)
 {
+	struct zephyr_ll_pdata *pdata;
+
 	if (!task)
 		return -EINVAL;
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(task, sizeof(*task)));
-	if (!task->priv_data)
+	pdata = zephyr_ll_task_pdata_vrfy(task);
+	if (!pdata)
 		return -EINVAL;
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(task->priv_data, sizeof(struct zephyr_ll_pdata)));
 
-	return z_impl_zephyr_ll_task_sem_free(task);
+	return zephyr_ll_task_sem_free_pdata(task, pdata);
 }
 #include <zephyr/syscalls/zephyr_ll_task_sem_free_mrsh.c>
 #endif /* CONFIG_USERSPACE */
