@@ -7,6 +7,9 @@
  * Author: Jun Lai <jun.lai@dolby.com>
  */
 
+#ifndef DAX_H
+#define DAX_H
+
 #include <rtos/atomic.h>
 #include <rtos/spinlock.h>
 #include <sof/audio/module_adapter/module/generic.h>
@@ -22,14 +25,32 @@ enum dax_user_priority {
 	DAX_USER_PRIORITY_P1 = 1, /* Highest priority */
 };
 
+/**
+ * @brief DAX control parameters cached from the configuration thread.
+ *
+ * sof_dax_set_configuration() and sof_dax_process() may run in different
+ * threads. Control parameters are only cached here by the configuration
+ * thread and are applied to the DAX instance from the processing thread,
+ * which avoids concurrent access to struct sof_dax.
+ */
+struct dax_cache_params {
+	int32_t enable;
+	int32_t profile;
+	int32_t out_device;
+	int32_t ctc_enable;
+	int32_t content_processing_enable;
+	int32_t volume;
+	struct dax_buffer tuning_file;
+};
+
 struct dax_adapter_data {
-	struct sof_dax dax_ctx;
+	struct dax_cache_params cache_params;
 	atomic_t proc_flags;
 	uint32_t comp_id;
 	int32_t priority;
-	struct dax_buffer cache_tuning_buf;
 	struct k_spinlock lock;
 	char params_str[DAX_PARAMS_STR_BUFFER_SIZE];
+	struct sof_dax dax_ctx;
 };
 
 /**
@@ -77,3 +98,5 @@ int dax_unregister_user(struct processing_module *mod);
  * @return 0 on success, negative error code on failure.
  */
 int dax_check_and_update_instance(struct processing_module *mod);
+
+#endif /* DAX_H */
