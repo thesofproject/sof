@@ -22,18 +22,18 @@
 
 static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 				      int32_t *fir_start, int32_t *fir_end,
-				      const int taps_x_nch,
+				      const size_t taps_x_nch,
 				      const int shift, const int nch)
 {
 	int64_t y0;
 	int64_t y1;
 	int32_t *data;
 	const int16_t *coef;
-	int i;
+	size_t i;
 	int j;
-	int n1;
-	int n2;
-	int frames;
+	size_t n1;
+	size_t n2;
+	size_t frames;
 	const int qshift = 15 + shift; /* Q2.46 -> Q2.31 */
 	const int32_t rnd = 1 << (qshift - 1); /* Half LSB */
 	int32_t *d = rp;
@@ -115,7 +115,7 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 
 static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 				      int32_t *fir_start, int32_t *fir_end,
-				      const int taps_x_nch, const int shift,
+				      const size_t taps_x_nch, const int shift,
 				      const int nch)
 {
 	int64_t y0;
@@ -123,11 +123,11 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 	int32_t scaled_coef;
 	int32_t *data;
 	const int32_t *coef;
-	int i;
+	size_t i;
 	int j;
-	int frames;
-	int n1;
-	int n2;
+	size_t frames;
+	size_t n1;
+	size_t n2;
 
 	const int qshift = 23 + shift; /* Qx.54 -> Qx.31 */
 	const int32_t rnd = 1 << (qshift - 1); /* Half LSB */
@@ -212,12 +212,12 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 void src_polyphase_stage_cir(struct src_stage_prm *s)
 {
-	int i;
+	size_t i;
 	int n;
-	int m;
-	int n_wrap_buf;
-	int n_wrap_fir;
-	int n_min;
+	size_t m;
+	size_t n_wrap_buf;
+	size_t n_wrap_fir;
+	size_t n_min;
 	int32_t *rp;
 	int32_t *wp;
 
@@ -229,13 +229,13 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	const void *cp; /* Can be int32_t or int16_t */
 	const size_t out_size = fir->out_delay_size * sizeof(int32_t);
 	const int nch = s->nch;
-	const int nch_x_odm = cfg->odm * nch;
-	const int blk_in_words = nch * cfg->blk_in;
-	const int blk_out_words = nch * cfg->num_of_subfilters;
-	const int rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
-	const int nch_x_idm = nch * cfg->idm;
+	const size_t nch_x_odm = cfg->odm * nch;
+	const size_t blk_in_words = nch * cfg->blk_in;
+	const size_t blk_out_words = nch * cfg->num_of_subfilters;
+	const size_t rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
+	const size_t nch_x_idm = nch * cfg->idm;
 	const size_t fir_size = fir->fir_delay_size * sizeof(int32_t);
-	const int taps_x_nch = cfg->subfilter_length * nch;
+	const size_t taps_x_nch = cfg->subfilter_length * nch;
 	int32_t *x_rptr = (int32_t *)s->x_rptr;
 	int32_t *y_wptr = (int32_t *)s->y_wptr;
 	int32_t *x_end_addr = (int32_t *)s->x_end_addr;
@@ -310,12 +310,12 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 #if CONFIG_FORMAT_S16LE
 void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 {
-	int i;
+	size_t i;
 	int n;
-	int m;
-	int n_wrap_buf;
-	int n_wrap_fir;
-	int n_min;
+	size_t m;
+	size_t n_wrap_buf;
+	size_t n_wrap_fir;
+	size_t n_min;
 	int32_t *rp;
 	int32_t *wp;
 
@@ -327,13 +327,13 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	const void *cp; /* Can be int32_t or int16_t */
 	const size_t out_size = fir->out_delay_size * sizeof(int32_t);
 	const int nch = s->nch;
-	const int nch_x_odm = cfg->odm * nch;
-	const int blk_in_words = nch * cfg->blk_in;
-	const int blk_out_words = nch * cfg->num_of_subfilters;
-	const int rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
-	const int nch_x_idm = nch * cfg->idm;
+	const size_t nch_x_odm = cfg->odm * nch;
+	const size_t blk_in_words = nch * cfg->blk_in;
+	const size_t blk_out_words = nch * cfg->num_of_subfilters;
+	const size_t rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
+	const size_t nch_x_idm = nch * cfg->idm;
 	const size_t fir_size = fir->fir_delay_size * sizeof(int32_t);
-	const int taps_x_nch = cfg->subfilter_length * nch;
+	const size_t taps_x_nch = cfg->subfilter_length * nch;
 	int16_t *x_rptr = (int16_t *)s->x_rptr;
 	int16_t *y_wptr = (int16_t *)s->y_wptr;
 	int16_t *x_end_addr = (int16_t *)s->x_end_addr;

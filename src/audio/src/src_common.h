@@ -23,8 +23,8 @@ struct src_stage {
 	int num_of_subfilters;
 	int subfilter_length;
 	int filter_length;
-	int blk_in;
-	int blk_out;
+	size_t blk_in;
+	size_t blk_out;
 	int halfband;
 	int shift;
 	const void *coefs; /* Can be int16_t or int32_t depending on config */
@@ -38,8 +38,8 @@ struct src_param {
 	int sbuf_length;
 	int src_multich;
 	int total;
-	int blk_in;
-	int blk_out;
+	size_t blk_in;
+	size_t blk_out;
 	int stage1_times;
 	int stage2_times;
 	int idx_in;
@@ -48,7 +48,7 @@ struct src_param {
 	int num_out_fs;
 	int max_fir_delay_size_xnch;
 	int max_out_delay_size_xnch;
-	int nch;
+	unsigned int nch;
 	const struct src_stage *stage1;
 	const struct src_stage *stage2;
 	const int *in_fs;
@@ -73,7 +73,7 @@ struct polyphase_src {
 };
 
 struct src_stage_prm {
-	int nch;
+	unsigned int nch;
 	int times;
 	void const *x_rptr;
 	void const *x_end_addr;
@@ -160,10 +160,10 @@ struct comp_data {
 	int32_t const *sbuf_r_ptr;
 	int sbuf_avail;
 	int data_shift;
-	int source_frames;
-	int sink_frames;
-	int sample_container_bytes;
-	int channels_count;
+	size_t source_frames;
+	size_t sink_frames;
+	size_t sample_container_bytes;
+	unsigned int channels_count;
 	int (*src_func)(struct comp_data *cd, struct sof_source *source,
 			struct sof_sink *sink);
 	void (*polyphase_func)(struct src_stage_prm *s);

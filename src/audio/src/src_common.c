@@ -45,13 +45,13 @@
 LOG_MODULE_REGISTER(src, CONFIG_SOF_LOG_LEVEL);
 
 /* Calculates buffers to allocate for a SRC mode */
-static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nch)
+static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, unsigned int nch)
 {
 	const struct src_stage *stage1;
 	const struct src_stage *stage2;
 	struct src_param *a;
 	int fs_in, fs_out;
-	int source_frames;
+	size_t source_frames;
 	int r1, n;
 
 	a = &cd->param;
@@ -240,13 +240,13 @@ static int src_2s(struct comp_data *cd,
 	void *sbuf_end_addr = &cd->delay_lines[cd->param.sbuf_length];
 	size_t sbuf_size = cd->param.sbuf_length * sizeof(int32_t);
 	/* chan sink == chan src therefore we only need to use one*/
-	int nch = source_get_channels(source);
+	unsigned int nch = source_get_channels(source);
 	int sbuf_free = cd->param.sbuf_length - cd->sbuf_avail;
-	int avail_b = source_get_data_available(source);
-	int free_b = sink_get_free_size(sink);
-	int sz = cd->sample_container_bytes;
-	uint32_t source_frag_size = cd->param.blk_in * source_get_frame_bytes(source);
-	uint32_t sink_frag_size = cd->param.blk_out * sink_get_frame_bytes(sink);
+	size_t avail_b = source_get_data_available(source);
+	size_t free_b = sink_get_free_size(sink);
+	size_t sz = cd->sample_container_bytes;
+	size_t source_frag_size = cd->param.blk_in * source_get_frame_bytes(source);
+	size_t sink_frag_size = cd->param.blk_out * sink_get_frame_bytes(sink);
 
 	ret = source_get_data(source, source_frag_size,
 			      &s1.x_rptr, (void const **)&source_buffer_start, &s1.x_size);
@@ -333,8 +333,8 @@ static int src_1s(struct comp_data *cd, struct sof_source *source,
 	int ret;
 	uint8_t const *source_buffer_start;
 	uint8_t *sink_buffer_start;
-	uint32_t source_frag_size = cd->param.blk_in * source_get_frame_bytes(source);
-	uint32_t sink_frag_size = cd->param.blk_out * sink_get_frame_bytes(sink);
+	size_t source_frag_size = cd->param.blk_in * source_get_frame_bytes(source);
+	size_t sink_frag_size = cd->param.blk_out * sink_get_frame_bytes(sink);
 
 	ret = source_get_data(source, source_frag_size,
 			      &s1.x_rptr, (void const **)&source_buffer_start, &s1.x_size);
@@ -369,7 +369,7 @@ static int src_1s(struct comp_data *cd, struct sof_source *source,
 int src_copy_sxx(struct comp_data *cd, struct sof_source *source,
 		 struct sof_sink *sink)
 {
-	int frames = cd->param.blk_in;
+	size_t frames = cd->param.blk_in;
 
 	switch (source_get_frm_fmt(source)) {
 	case SOF_IPC_FRAME_S16_LE:
@@ -436,8 +436,8 @@ static bool src_get_copy_limits(struct comp_data *cd,
 	struct src_param *sp;
 	const struct src_stage *s1;
 	const struct src_stage *s2;
-	int frames_src;
-	int frames_snk;
+	size_t frames_src;
+	size_t frames_snk;
 
 	/* Get SRC parameters */
 	sp = &cd->param;
@@ -501,7 +501,7 @@ int src_params_general(struct processing_module *mod,
 
 	comp_info(dev, "source_rate = %u, sink_rate = %u",
 		  cd->source_rate, cd->sink_rate);
-	comp_dbg(dev, "sample_container_bytes = %d, channels = %u, dev->frames = %u",
+	comp_dbg(dev, "sample_container_bytes = %zu, channels = %u, dev->frames = %u",
 		 cd->sample_container_bytes, cd->channels_count, dev->frames);
 	if (!cd->sink_rate) {
 		comp_err(dev, "zero sink rate");
