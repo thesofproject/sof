@@ -158,8 +158,8 @@ static int dcblock_process(struct processing_module *mod,
 	size_t source_frame_bytes = source_get_frame_bytes(source);
 	size_t sink_frame_bytes = sink_get_frame_bytes(sink);
 	size_t source_bytes, sink_bytes, bytes;
-	uint32_t frames = source_get_data_frames_available(source);
-	uint32_t sink_frames = sink_get_free_frames(sink);
+	size_t frames = source_get_data_frames_available(source);
+	size_t sink_frames = sink_get_free_frames(sink);
 	int ret;
 
 	comp_dbg(dev, "entry");
