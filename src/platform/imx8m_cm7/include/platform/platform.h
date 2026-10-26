@@ -15,12 +15,6 @@
 
 #define PLATFORM_PAGE_TABLE_SIZE 256
 
-/* TODO: generous (SOF is usually used with 2 channels at most on i.MX
- * platforms) and (potentially) not true. Can be adjusted later on if
- * need be.
- */
-#define PLATFORM_MAX_STREAMS 5
-
 /* WAKEUP domain MU7 side B */
 #define PLATFORM_IPC_INTERRUPT 97
 

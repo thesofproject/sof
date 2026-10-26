@@ -250,6 +250,17 @@ config PLATFORM_MAX_CHANNELS
 	  configurable: some component state is sized for at most eight
 	  channels.
 
+config PLATFORM_MAX_STREAMS
+	int
+	default 5 if ZEPHYR_SOF_MODULE && (IMX8 || IMX8X || IMX8ULP || IMX8M_CM7 || IMX93_A55 || IMX95 || MTK || AMD)
+	default 8 if ZEPHYR_SOF_MODULE && (IMX8M || BOARD_QEMU_XTENSA)
+	default 16
+	help
+	  Maximum number of input or output streams of a processing
+	  component, e.g. the number of mixer inputs. Components size their
+	  per-stream state with it. Host builds (testbench, unit tests)
+	  use 16.
+
 config MAX_CORE_COUNT
 	int
 	default MP_MAX_NUM_CPUS

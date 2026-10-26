@@ -15,9 +15,6 @@
 
 #define PLATFORM_PAGE_TABLE_SIZE 256
 
-/* TODO: these values are taken from i.MX8 platform */
-#define PLATFORM_MAX_STREAMS 5
-
 /* SOF uses A side of the WAKEUPMIX MU.
  * We need to add 32 (SPI_BASE) to the
  * INTID found in the TRM since all the
