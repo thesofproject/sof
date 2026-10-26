@@ -22,6 +22,7 @@
 #include <sof/debug/telemetry/telemetry.h>
 #include <rtos/mutex.h>
 #include <rtos/userspace_data.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/uuid.h>
 #include <ipc/control.h>
 #include <sof/ipc/topology.h>
