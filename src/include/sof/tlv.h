@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <rtos/string.h>
 #include <sof/compiler_attributes.h>
 
 /**
