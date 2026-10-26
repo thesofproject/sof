@@ -82,6 +82,14 @@ target_link_libraries(${testbench} PRIVATE -lm)
 
 install(TARGETS ${testbench} DESTINATION bin)
 
+if(NOT TESTBENCH_XTENSA_SIM)
+	add_executable(sof-tb-ctl tb_ctl.c)
+	target_include_directories(sof-tb-ctl PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+	target_compile_options(sof-tb-ctl PRIVATE -g -O3 -Wall -Werror -Wmissing-prototypes
+		${implicit_fallthrough})
+	install(TARGETS sof-tb-ctl DESTINATION bin)
+endif()
+
 include(ExternalProject)
 
 # Should we do this? Only for sof_ep, not for parser_ep?
