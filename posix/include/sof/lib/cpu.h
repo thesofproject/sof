@@ -54,7 +54,11 @@ static inline bool cpu_is_primary(int id)
 
 static inline bool cpu_is_me(int id)
 {
+#if CONFIG_LIBRARY
+	return true;
+#else
 	return id == cpu_get_id();
+#endif
 }
 #endif
 
