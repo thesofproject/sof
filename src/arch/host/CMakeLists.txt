@@ -22,6 +22,12 @@ target_compile_options(sof_options INTERFACE -g -O3 -fPIC -DPIC -std=c99 -std=gn
   -Wall -Werror -Wmissing-prototypes ${implicit_fallthrough} -Wno-pointer-to-int-cast
   -Wno-int-to-pointer-cast -Wpointer-arith
   -DCONFIG_LIBRARY "-imacros${CONFIG_H_PATH}")
+if(CMAKE_C_COMPILER MATCHES "xt-|xtensa-")
+	target_compile_options(sof_options INTERFACE
+		-U__INT32_TYPE__ -D__INT32_TYPE__=int
+		-U__UINT32_TYPE__ "-D__UINT32_TYPE__=unsigned int"
+		-Wno-format)
+endif()
 
 if(NOT BUILD_UNIT_TESTS_HOST)
 	add_subdirectory(lib)

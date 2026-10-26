@@ -130,14 +130,31 @@ static struct block_map lp_buf_heap_map[] = {
 
 static struct mm memmap;
 
+size_t __attribute__((weak)) host_platform_get_hpsram_size(void);
+size_t __attribute__((weak)) host_platform_get_lpsram_size(void);
+
 void platform_init_memmap(struct sof *sof)
 {
-	uint32_t heap_buffer_size = SOF_FW_END - HEAP_BUFFER_BASE;
+	uint32_t hp_sram_total = HP_SRAM_SIZE;
+	uint32_t lp_buffer_size = HEAP_LP_BUFFER_SIZE;
+	uint32_t heap_buffer_size;
 	uint32_t buffer_count;
 	int i;
 
+	if (host_platform_get_hpsram_size && host_platform_get_hpsram_size() >= 0x40000U)
+		hp_sram_total = (uint32_t)host_platform_get_hpsram_size();
+	if (host_platform_get_lpsram_size && host_platform_get_lpsram_size() >= 0x1000U)
+		lp_buffer_size = (uint32_t)host_platform_get_lpsram_size();
+
+	if (hp_sram_total > (HEAP_BUFFER_BASE - HP_SRAM_BASE))
+		heap_buffer_size = hp_sram_total - (HEAP_BUFFER_BASE - HP_SRAM_BASE);
+	else
+		heap_buffer_size = hp_sram_total / 2;
+
 	/* calculate the buffer heap size */
 	buffer_count = heap_buffer_size / HEAP_BUFFER_BLOCK_SIZE;
+	if (buffer_count > HEAP_BUFFER_COUNT_MAX)
+		buffer_count = HEAP_BUFFER_COUNT_MAX;
 	heap_buffer_size = buffer_count * HEAP_BUFFER_BLOCK_SIZE;
 
 	for (i = 0; i < ARRAY_SIZE(buf_heap_map); i++) {
@@ -172,10 +189,20 @@ void platform_init_memmap(struct sof *sof)
 
 	/* .system and .system_runtime secondary core initialization */
 	for (i = 1; i < CONFIG_CORE_COUNT; i++) {
+#if CONFIG_CORE_COUNT > 1
+		sys_rt_heap_map[i][0] = (struct block_map)
+			BLOCK_DEF(64, HEAP_SYS_RT_X_COUNT64,
+				  uncached_block_hdr(sys_rt_x_block64[i - 1]));
+		sys_rt_heap_map[i][1] = (struct block_map)
+			BLOCK_DEF(512, HEAP_SYS_RT_X_COUNT512,
+				  uncached_block_hdr(sys_rt_x_block512[i - 1]));
+		sys_rt_heap_map[i][2] = (struct block_map)
+			BLOCK_DEF(1024, HEAP_SYS_RT_X_COUNT1024,
+				  uncached_block_hdr(sys_rt_x_block1024[i - 1]));
+#endif
 		/* .system init */
 		sof->memory_map->system[i].heap =
-				(unsigned long)malloc(HEAP_SYSTEM_S_SIZE) +
-			((i - 1) * SOF_CORE_S_SIZE);
+				(unsigned long)malloc(HEAP_SYSTEM_S_SIZE);
 		sof->memory_map->system[i].size = HEAP_SYSTEM_S_SIZE;
 		sof->memory_map->system[i].info.free = HEAP_SYSTEM_S_SIZE;
 		sof->memory_map->system[i].caps = SOF_MEM_CAPS_RAM |
@@ -187,8 +214,7 @@ void platform_init_memmap(struct sof *sof)
 		sof->memory_map->system_runtime[i].map =
 			uncached_block_map(sys_rt_heap_map[i]);
 		sof->memory_map->system_runtime[i].heap =
-			(unsigned long)malloc(HEAP_SYS_RUNTIME_S_SIZE) +
-			((i - 1) * SOF_CORE_S_SIZE) + HEAP_SYSTEM_S_SIZE;
+			(unsigned long)malloc(HEAP_SYS_RUNTIME_S_SIZE);
 		sof->memory_map->system_runtime[i].size =
 			HEAP_SYS_RUNTIME_S_SIZE;
 		sof->memory_map->system_runtime[i].info.free =
@@ -240,15 +266,15 @@ void platform_init_memmap(struct sof *sof)
 	/* heap lp buffer init */
 	sof->memory_map->buffer[1].blocks = ARRAY_SIZE(lp_buf_heap_map);
 	sof->memory_map->buffer[1].map = uncached_block_map(lp_buf_heap_map);
-	sof->memory_map->buffer[1].heap = (unsigned long)malloc(HEAP_LP_BUFFER_SIZE);
-	sof->memory_map->buffer[1].size = HEAP_LP_BUFFER_SIZE;
-	sof->memory_map->buffer[1].info.free = HEAP_LP_BUFFER_SIZE;
+	sof->memory_map->buffer[1].heap = (unsigned long)malloc(lp_buffer_size);
+	sof->memory_map->buffer[1].size = lp_buffer_size;
+	sof->memory_map->buffer[1].info.free = lp_buffer_size;
 	sof->memory_map->buffer[1].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_LP |
 		SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA;
 
 	/* .total init */
 	sof->memory_map->total.free = HEAP_SYSTEM_T_SIZE +
 		HEAP_SYS_RUNTIME_T_SIZE + HEAP_RUNTIME_SIZE + heap_buffer_size +
-		HEAP_LP_BUFFER_SIZE;
+		lp_buffer_size;
 
 }

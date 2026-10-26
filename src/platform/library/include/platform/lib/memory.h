@@ -28,7 +28,7 @@ uint8_t *get_library_mailbox(void);
 
 #define MAILBOX_BASE	get_library_mailbox()
 
-#define PLATFORM_HEAP_SYSTEM		2
+#define PLATFORM_HEAP_SYSTEM		CONFIG_CORE_COUNT
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	CONFIG_CORE_COUNT
 #define PLATFORM_HEAP_RUNTIME		1
 #define PLATFORM_HEAP_BUFFER		2

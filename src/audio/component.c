@@ -25,6 +25,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if CONFIG_LIBRARY && !defined(UNIT_TEST)
+#include <platform/lib/telemetry_sched.h>
+#endif
+
 #if defined(__XCC__)
 #include <xtensa/config/core-isa.h>
 # if XCHAL_HAVE_HIFI5
@@ -619,7 +623,13 @@ int comp_copy(struct comp_dev *dev)
 		if (comp_check_eos(dev))
 			return 0;
 
+#if CONFIG_LIBRARY && !defined(UNIT_TEST)
+		uint64_t telem_start = host_telem_mod_entry(dev, false);
+#endif
 		ret = dev->drv->ops.copy(dev);
+#if CONFIG_LIBRARY && !defined(UNIT_TEST)
+		host_telem_mod_exit(dev, false, telem_start, ret);
+#endif
 
 #ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 		const uint32_t cycles_consumed = (uint32_t)telemetry_timestamp() - begin_stamp;

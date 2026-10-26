@@ -35,6 +35,10 @@
 
 #include "../audio/copier/copier.h"
 
+#if CONFIG_LIBRARY && !defined(UNIT_TEST)
+#include <platform/lib/telemetry_sched.h>
+#endif
+
 LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
 
 /*
@@ -176,6 +180,9 @@ int pipeline_copy(struct pipeline *p)
 	struct comp_dev *start;
 	uint32_t dir;
 	int ret;
+#if CONFIG_LIBRARY && !defined(UNIT_TEST)
+	uint64_t telem_start = host_telem_pipe_begin(p);
+#endif
 
 	PPL_LOCK(p->core);
 
@@ -196,6 +203,10 @@ int pipeline_copy(struct pipeline *p)
 			 ret, dev_comp_id(start), dir);
 
 	PPL_UNLOCK();
+
+#if CONFIG_LIBRARY && !defined(UNIT_TEST)
+	host_telem_pipe_end(p, telem_start, ret);
+#endif
 
 	return ret;
 }

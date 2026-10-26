@@ -6,6 +6,7 @@ add_local_sources(sof
 	dai.c
 	pm_runtime.c
 	memory.c
+	telemetry_sched.c
 )
 
 if (CONFIG_TRACE)
