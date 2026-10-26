@@ -9,7 +9,6 @@
 #include <sof/platform.h>
 #include <sof/trace/trace.h>
 #include <sof/audio/component_dai.h>
-#include <sof/audio/component_ext.h>
 #include <ipc/dai.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include "copier.h"

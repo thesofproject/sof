@@ -5,7 +5,6 @@
 // Author: Baofeng Tian <baofeng.tian@intel.com>
 
 #include <sof/audio/coefficients/volume/windows_fade.h>
-#include <sof/audio/component_ext.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/module_adapter/module/generic.h>

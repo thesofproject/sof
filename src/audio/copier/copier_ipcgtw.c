@@ -3,7 +3,6 @@
 // Copyright 2023 Intel Corporation. All rights reserved.
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/component_ext.h>
 #include <sof/audio/audio_buffer.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>

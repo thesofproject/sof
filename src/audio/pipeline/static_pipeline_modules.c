@@ -14,7 +14,6 @@
  */
 
 #include <sof/audio/pipeline/static_pipeline.h>
-#include <sof/audio/component_ext.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <ipc/topology.h>
