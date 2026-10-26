@@ -21,7 +21,7 @@
 #include <sof/lib/cold.h>
 #include <sof/lib/vregion.h>
 #include <sof/schedule/dp_schedule.h>
-#include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/common.h>
 #include <sof/ut.h>
 #include <sof/schedule/schedule.h>

@@ -13,7 +13,6 @@
 #include <sof/lib/agent.h>
 #include <sof/list.h>
 #include <sof/schedule/ll_schedule.h>
-#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/audio/module_adapter/module/generic.h>

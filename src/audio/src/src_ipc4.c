@@ -16,7 +16,7 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
-#include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/ll_schedule.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
