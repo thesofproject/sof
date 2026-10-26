@@ -4,7 +4,6 @@
 //
 // Author: Baofeng Tian <baofeng.tian@intel.com>
 
-#include <sof/audio/component_ext.h>
 #include <sof/lib/memory.h>
 #include <sof/tlv.h>
 #include <sof/trace/trace.h>

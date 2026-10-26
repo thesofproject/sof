@@ -6,7 +6,6 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 
 #include <sof/audio/buffer.h>
-#include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
 #include <sof/list.h>
