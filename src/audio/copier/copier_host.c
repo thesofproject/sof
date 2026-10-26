@@ -4,7 +4,7 @@
 //
 // Author: Baofeng Tian <baofeng.tian@intel.com>
 
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <sof/tlv.h>
 #include <sof/trace/trace.h>
 #include <sof/audio/module_adapter/module/generic.h>

@@ -22,7 +22,7 @@
 #include <rtos/cache.h>
 #include <rtos/init.h>
 #include <rtos/userspace_helper.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <rtos/string.h>
