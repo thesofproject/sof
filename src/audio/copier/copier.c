@@ -16,7 +16,7 @@
 #include <rtos/interrupt.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/topology.h>
-#include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/ll_schedule.h>
 #include <rtos/interrupt.h>
 #include <rtos/timer.h>
 #include <rtos/cache.h>
