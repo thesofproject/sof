@@ -44,6 +44,44 @@
 /** Alignment that keeps a buffer on data cache lines of its own */
 #define PLATFORM_DCACHE_ALIGN	DCACHE_LINE_SIZE
 
+/*
+ * Conversion between the cached and uncached aliases of an address, for
+ * platforms whose memory is mapped twice. Platforms without such aliases
+ * use the same address for both.
+ */
+#if defined(CONFIG_ACE)
+
+#define uncache_to_cache(address)	sys_cache_cached_ptr_get(address)
+#define cache_to_uncache(address)	sys_cache_uncached_ptr_get(address)
+#define is_uncached(address)		(!sys_cache_is_ptr_cached(address))
+
+#elif defined(CONFIG_CAVS)
+
+#define SRAM_ALIAS_BASE		0x9E000000
+#define SRAM_ALIAS_MASK		0xFF000000
+#define SRAM_ALIAS_OFFSET	SRAM_UNCACHED_ALIAS
+
+static inline void __sparse_cache *uncache_to_cache(void *address)
+{
+	return (void __sparse_cache *)((uintptr_t)(address) | SRAM_ALIAS_OFFSET);
+}
+
+static inline void *cache_to_uncache(void __sparse_cache *address)
+{
+	return (void *)((uintptr_t)(address) & ~SRAM_ALIAS_OFFSET);
+}
+
+#define is_uncached(address) \
+	(((uint32_t)(address) & SRAM_ALIAS_MASK) == SRAM_ALIAS_BASE)
+
+#else
+
+#define uncache_to_cache(address)	address
+#define cache_to_uncache(address)	address
+#define is_uncached(address)		0
+
+#endif
+
 /**
  * @brief Write back (flush) modified data cache lines to memory.
  * @param addr Starting address of the memory region to flush.

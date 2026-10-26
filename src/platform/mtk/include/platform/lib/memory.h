@@ -12,9 +12,6 @@
 /* Sigh, too many ways to get this wrong... */
 BUILD_ASSERT(PLATFORM_DCACHE_ALIGN == XCHAL_DCACHE_LINESIZE);
 
-#define uncache_to_cache(addr) (addr)
-#define cache_to_uncache(addr) (addr)
-
 #define host_to_local(addr) (addr)
 
 #define PLATFORM_HEAP_SYSTEM 1

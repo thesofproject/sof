@@ -22,4 +22,12 @@
 /* invalidate data */
 #define CACHE_INVALIDATE	1
 
+/*
+ * The host has a single address space, so the cached and uncached aliases
+ * of an address are the same.
+ */
+#define uncache_to_cache(address)	address
+#define cache_to_uncache(address)	address
+#define is_uncached(address)		1
+
 #endif /* __SOF_LIB_CACHE_H__ */
