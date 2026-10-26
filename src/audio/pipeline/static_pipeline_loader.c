@@ -19,6 +19,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
+#include <sof/audio/component_dai.h>
 #include <sof/lib/dai.h>
 #include <ipc/topology.h>
 #include <ipc/control.h>

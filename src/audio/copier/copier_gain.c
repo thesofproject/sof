@@ -8,6 +8,7 @@
 #include <sof/trace/trace.h>
 #include <ipc4/base-config.h>
 #include <sof/audio/component_ext.h>
+#include <sof/lib/dai.h>
 #include <module/module/base.h>
 #include <sof/tlv.h>
 #include <ipc4/dmic.h>
