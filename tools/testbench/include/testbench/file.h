@@ -50,6 +50,7 @@ struct file_state {
 	bool reached_eof;
 	bool write_failed;
 	bool copy_timeout;
+	double tone_phase;
 };
 
 struct file_comp_data;

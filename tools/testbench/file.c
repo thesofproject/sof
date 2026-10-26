@@ -23,9 +23,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "testbench/utils.h"
 #include "testbench/file.h"
 #include "testbench/file_ipc4.h"
+#include "testbench/remote_server.h"
 #include "../../src/audio/copier/copier.h"
 
 SOF_DEFINE_REG_UUID(file);
@@ -80,6 +82,75 @@ static void sign_extend_source_s24(const struct audio_stream *source, int sample
 	}
 }
 
+static int generate_tone_s32(struct file_comp_data *cd, const struct audio_stream *sink,
+			     int samples, uint32_t freq_hz, int fmt)
+{
+	int32_t *snk = (int32_t *)sink->w_ptr;
+	int nch = cd->fs.channels > 0 ? cd->fs.channels : 2;
+	int rate = cd->fs.rate > 0 ? cd->fs.rate : 48000;
+	double step = 2.0 * M_PI * (double)freq_hz / (double)rate;
+	double scale = (fmt == SOF_IPC_FRAME_S24_4LE) ? (16000.0 * 256.0) : (16000.0 * 65536.0);
+	size_t bytes = samples * sizeof(int32_t);
+	int copied = 0;
+
+	while (bytes >= nch * sizeof(int32_t)) {
+		size_t bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
+		int frames_avail = FILE_BYTES_TO_S32_SAMPLES(MIN(bytes, bytes_snk)) / nch;
+		int f, c;
+
+		if (frames_avail <= 0)
+			frames_avail = 1;
+		for (f = 0; f < frames_avail && bytes >= nch * sizeof(int32_t); f++) {
+			int32_t val = (int32_t)(scale * sin(cd->fs.tone_phase));
+
+			cd->fs.tone_phase += step;
+			if (cd->fs.tone_phase >= 2.0 * M_PI)
+				cd->fs.tone_phase -= 2.0 * M_PI;
+			for (c = 0; c < nch; c++) {
+				*snk = val;
+				snk = audio_stream_wrap(sink, snk + 1);
+				bytes -= sizeof(int32_t);
+				copied++;
+			}
+		}
+	}
+	return copied;
+}
+
+static int generate_tone_s16(struct file_comp_data *cd, const struct audio_stream *sink,
+			     int samples, uint32_t freq_hz)
+{
+	int16_t *snk = (int16_t *)sink->w_ptr;
+	int nch = cd->fs.channels > 0 ? cd->fs.channels : 2;
+	int rate = cd->fs.rate > 0 ? cd->fs.rate : 48000;
+	double step = 2.0 * M_PI * (double)freq_hz / (double)rate;
+	size_t bytes = samples * sizeof(int16_t);
+	int copied = 0;
+
+	while (bytes >= nch * sizeof(int16_t)) {
+		size_t bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
+		int frames_avail = FILE_BYTES_TO_S16_SAMPLES(MIN(bytes, bytes_snk)) / nch;
+		int f, c;
+
+		if (frames_avail <= 0)
+			frames_avail = 1;
+		for (f = 0; f < frames_avail && bytes >= nch * sizeof(int16_t); f++) {
+			int16_t val = (int16_t)(16000.0 * sin(cd->fs.tone_phase));
+
+			cd->fs.tone_phase += step;
+			if (cd->fs.tone_phase >= 2.0 * M_PI)
+				cd->fs.tone_phase -= 2.0 * M_PI;
+			for (c = 0; c < nch; c++) {
+				*snk = val;
+				snk = audio_stream_wrap(sink, snk + 1);
+				bytes -= sizeof(int16_t);
+				copied++;
+			}
+		}
+	}
+	return copied;
+}
+
 /*
  * Read 32-bit samples from binary file
  */
@@ -91,6 +162,10 @@ static int read_binary_s32(struct file_comp_data *cd, const struct audio_stream 
 	size_t bytes = samples * sizeof(int32_t);
 	int ret;
 	int samples_copied = 0;
+	uint32_t tone_freq = 0;
+
+	if (tb_remote_is_tone_active(&tone_freq))
+		return generate_tone_s32(cd, sink, samples, tone_freq, cd->frame_fmt);
 
 	while (bytes) {
 		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
@@ -121,6 +196,7 @@ static int write_binary_s32(struct file_comp_data *cd, const struct audio_stream
 	size_t bytes = samples * sizeof(int32_t);
 	int ret;
 	int samples_copied = 0;
+	int shift = (cd->frame_fmt == SOF_IPC_FRAME_S24_4LE) ? 8 : 16;
 
 	while (bytes) {
 		bytes_src = audio_stream_bytes_without_wrap(source, src);
@@ -130,6 +206,8 @@ static int write_binary_s32(struct file_comp_data *cd, const struct audio_stream
 			cd->fs.write_failed = true;
 			return samples_copied;
 		}
+		tb_remote_record_output_samples_s32(src, ret, cd->fs.channels,
+						    cd->fs.rate, shift);
 		samples_copied += ret;
 		bytes -= ret * sizeof(int32_t);
 		src = audio_stream_wrap(source, src + ret);
@@ -260,6 +338,10 @@ static int read_binary_s16(struct file_comp_data *cd, const struct audio_stream 
 	size_t bytes = samples * sizeof(int16_t);
 	int ret;
 	int samples_copied = 0;
+	uint32_t tone_freq = 0;
+
+	if (tb_remote_is_tone_active(&tone_freq))
+		return generate_tone_s16(cd, sink, samples, tone_freq);
 
 	while (bytes) {
 		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
@@ -299,6 +381,7 @@ static int write_binary_s16(struct file_comp_data *cd, const struct audio_stream
 			cd->fs.write_failed = true;
 			return samples_copied;
 		}
+		tb_remote_record_output_samples_s16(src, ret, cd->fs.channels, cd->fs.rate);
 
 		samples_copied += ret;
 		bytes -= ret * sizeof(int16_t);
@@ -550,7 +633,8 @@ static void file_free_dai_data(struct processing_module *mod)
 {
 	struct copier_data *ccd = module_get_private_data(mod);
 
-	free(ccd->dd[0]);
+	rfree(ccd->dd[0]);
+	ccd->dd[0] = NULL;
 }
 #else
 /* Minimal support for IPC3 pipeline_comp_trigger()'s dai_get_init_delay_ms() */
@@ -577,7 +661,8 @@ static void file_free_dai_data(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 
 	dd = comp_get_drvdata(dev);
-	free(dd);
+	rfree(dd);
+	dev->priv_data = NULL;
 }
 #endif
 
@@ -610,7 +695,7 @@ static int file_init(struct processing_module *mod)
 	/* File component data is placed to copier's ipcgtw_data */
 	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd) {
-		free(ccd);
+		rfree(ccd);
 		return -ENOMEM;
 	}
 
@@ -647,6 +732,7 @@ static int file_init(struct processing_module *mod)
 				cd->fs.fn, strerror(errno));
 			goto error;
 		}
+		mod->max_sinks = SOF_WIDGET_MAX_NUM_PINS;
 
 		/* Change to DAI type is needed to avoid uninitialized hw params in
 		 * pipeline_params, A file host can be left as SOF_COMP_MODULE_ADAPTER
@@ -699,8 +785,14 @@ static int file_init(struct processing_module *mod)
 	return 0;
 
 error:
-	free(cd);
-	free(ccd);
+	if (cd->fs.rfh)
+		fclose(cd->fs.rfh);
+	if (cd->fs.wfh)
+		fclose(cd->fs.wfh);
+	file_free_dai_data(mod);
+	free(cd->fs.fn);
+	rfree(cd);
+	rfree(ccd);
 	return -EINVAL;
 }
 
@@ -718,8 +810,8 @@ static int file_free(struct processing_module *mod)
 
 	file_free_dai_data(mod);
 	free(cd->fs.fn);
-	free(cd);
-	free(ccd);
+	rfree(cd);
+	rfree(ccd);
 	return 0;
 }
 
@@ -741,29 +833,82 @@ static int file_process(struct processing_module *mod,
 	int samples = 0;
 	int ret = 0;
 
-	if (cd->fs.reached_eof)
-		return -ENODATA;
+	if (cd->fs.reached_eof) {
+		uint32_t tone_freq = 0;
+
+		if (tb_remote_is_tone_active(&tone_freq)) {
+			cd->fs.reached_eof = false;
+			cd->fs.copy_timeout = false;
+			cd->copies_timeout_count = 0;
+		} else {
+			return 0;
+		}
+	}
 
 	/* Note: a SOF_COMP_DAI does not have input_buffers and output buffers set */
 	tb_getcycles(&cycles0);
 	switch (cd->fs.mode) {
 	case FILE_READ:
-		/* read PCM samples from file */
+	{
+		struct comp_buffer *next_buf;
+		void *first_wptr;
+		size_t bytes_produced;
+
+		/* read PCM samples from file into first consumer buffer */
 		buffer = comp_dev_get_first_data_consumer(dev);
+		comp_dev_for_each_consumer(dev, next_buf)
+			comp_buffer_shared_lock(next_buf);
 		sink = &buffer->stream;
 		frames = audio_stream_get_free_frames(sink);
 		frames = MIN(frames, cd->max_frames);
+		comp_dev_for_each_consumer(dev, next_buf) {
+			if (next_buf == buffer)
+				continue;
+			frames = MIN(frames, audio_stream_get_free_frames(&next_buf->stream));
+		}
+		first_wptr = sink->w_ptr;
 		samples = cd->file_func(cd, sink, NULL, frames);
-		audio_stream_produce(sink, audio_stream_sample_bytes(sink) * samples);
+		bytes_produced = audio_stream_sample_bytes(sink) * samples;
+
+		/* replicate samples to any additional consumer buffers */
+		comp_dev_for_each_consumer(dev, next_buf) {
+			struct audio_stream *nsink = &next_buf->stream;
+			uint8_t *src_ptr = first_wptr;
+			uint8_t *dst_ptr = nsink->w_ptr;
+			size_t rem = bytes_produced;
+
+			if (next_buf == buffer)
+				continue;
+
+			while (rem > 0) {
+				size_t src_chunk = audio_stream_bytes_without_wrap(sink, src_ptr);
+				size_t dst_chunk = audio_stream_bytes_without_wrap(nsink, dst_ptr);
+				size_t chunk = MIN(rem, MIN(src_chunk, dst_chunk));
+
+				memcpy(dst_ptr, src_ptr, chunk);
+				rem -= chunk;
+				src_ptr = audio_stream_wrap(sink, src_ptr + chunk);
+				dst_ptr = audio_stream_wrap(nsink, dst_ptr + chunk);
+			}
+			comp_update_buffer_produce(next_buf, bytes_produced);
+		}
+		comp_update_buffer_produce(buffer, bytes_produced);
+		comp_dev_for_each_consumer(dev, next_buf)
+			comp_buffer_shared_unlock(next_buf);
 		break;
+	}
 	case FILE_WRITE:
 		/* write PCM samples into file */
 		buffer = comp_dev_get_first_data_producer(dev);
+		comp_buffer_shared_lock(buffer);
 		source = &buffer->stream;
 		frames = audio_stream_get_avail_frames(source);
 		frames = MIN(frames, cd->max_frames);
 		samples = cd->file_func(cd, NULL, source, frames);
-		audio_stream_consume(source, audio_stream_sample_bytes(source) * samples);
+		comp_update_buffer_consume(buffer, audio_stream_sample_bytes(source) * samples);
+		comp_buffer_shared_unlock(buffer);
+		if (samples > 0 && cd->fs.wfh)
+			fflush(cd->fs.wfh);
 		break;
 	default:
 		/* TODO: duplex mode */
@@ -779,6 +924,7 @@ static int file_process(struct processing_module *mod,
 
 	if (samples) {
 		cd->copies_timeout_count = 0;
+		cd->fs.copy_timeout = false;
 	} else {
 		cd->copies_timeout_count++;
 		if (cd->copies_timeout_count == FILE_MAX_COPIES_TIMEOUT) {
@@ -807,10 +953,13 @@ static int file_prepare(struct processing_module *mod,
 	cd->max_frames = dev->frames;
 	switch (cd->fs.mode) {
 	case FILE_READ:
+		comp_dev_for_each_consumer(dev, buffer)
+			audio_stream_set_valid_fmt(&buffer->stream, cd->frame_fmt);
 		buffer = comp_dev_get_first_data_consumer(dev);
 		break;
 	case FILE_WRITE:
 		buffer = comp_dev_get_first_data_producer(dev);
+		audio_stream_set_valid_fmt(&buffer->stream, cd->frame_fmt);
 		break;
 	default:
 		/* TODO: duplex mode */
@@ -820,13 +969,6 @@ static int file_prepare(struct processing_module *mod,
 
 	/* set file function */
 	stream = &buffer->stream;
-
-	/*
-	 * Real copier/DAI components call ipc4_update_buffer_format() to populate
-	 * valid_sample_fmt; the testbench file component is the host endpoint stub
-	 * so propagate cd->frame_fmt to the buffer's valid format too.
-	 */
-	audio_stream_set_valid_fmt(stream, cd->frame_fmt);
 
 	switch (audio_stream_get_frm_fmt(stream)) {
 	case SOF_IPC_FRAME_S16_LE:
@@ -849,10 +991,25 @@ static int file_prepare(struct processing_module *mod,
 
 static int file_reset(struct processing_module *mod)
 {
-	struct file_comp_data *cd = module_get_private_data(mod);
+	struct file_comp_data *cd = get_file_comp_data(module_get_private_data(mod));
 
 	tb_debug_print("file_reset()\n");
 	cd->copies_timeout_count = 0;
+	cd->fs.reached_eof = false;
+	cd->fs.write_failed = false;
+	cd->fs.copy_timeout = false;
+	cd->fs.n = 0;
+	cd->fs.copy_count = 0;
+	cd->fs.cycles_count = 0;
+	cd->fs.tone_phase = 0.0;
+	if (cd->fs.mode == FILE_READ && cd->fs.fn) {
+		if (cd->fs.rfh)
+			fclose(cd->fs.rfh);
+		cd->fs.rfh = fopen(cd->fs.fn, "r");
+	} else if (cd->fs.mode == FILE_WRITE && cd->fs.fn) {
+		if (cd->fs.wfh)
+			fflush(cd->fs.wfh);
+	}
 	return 0;
 }
 

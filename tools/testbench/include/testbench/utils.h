@@ -105,7 +105,13 @@ struct testbench_prm {
 	int copy_iterations;
 	bool copy_check;
 	int trace_level;
+	int sched_trace_limit;
 	int dynamic_pipeline_iterations;
+	int server_port;
+	bool server_wait;
+	char server_tmp_dir[64];
+	int64_t last_output_time_ns;
+	bool has_output_file;
 	char *pipeline_string;
 	int output_file_index;
 	int input_file_index;
@@ -142,6 +148,8 @@ struct testbench_prm {
 	struct tb_mq_desc ipc_rx;
 	int pcm_id;	// TODO: This needs to be cleaned up
 	struct tplg_pcm_info *pcm_info;
+	struct tplg_pipeline_list playback_pipeline_list;
+	struct tplg_pipeline_list capture_pipeline_list;
 	struct tb_config config[TB_MAX_CONFIG_COUNT];
 	int num_configs;
 	int period_frames;
@@ -171,12 +179,14 @@ int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p);
 int tb_pipeline_start(struct ipc *ipc, struct pipeline *p);
 int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p);
 int tb_read_controls(struct testbench_prm *tp, int64_t *sleep_ns);
+int tb_apply_control_line(struct testbench_prm *tp, const char *raw_line);
 int tb_set_bytes_control(struct testbench_prm *tp, struct tb_ctl *ctl, uint32_t *data);
 int tb_set_enum_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *control_params);
 int tb_set_reset_state(struct testbench_prm *tp);
 int tb_set_mixer_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *control_params);
 int tb_set_running_state(struct testbench_prm *tp);
 int tb_set_up_all_pipelines(struct testbench_prm *tp);
+int tb_configure_audio_params(struct testbench_prm *tp);
 int tb_setup(struct sof *sof, struct testbench_prm *tp);
 bool tb_is_pipeline_enabled(struct testbench_prm *tp, int pipeline_id);
 bool tb_schedule_pipeline_check_state(struct testbench_prm *tp);

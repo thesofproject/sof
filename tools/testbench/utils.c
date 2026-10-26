@@ -21,8 +21,9 @@
 #include "testbench/utils.h"
 #include "testbench/trace.h"
 #include "testbench/file.h"
+#include "testbench/remote_server.h"
 
-#if defined __XCC__
+#if defined(__XCC__)
 #include <xtensa/tie/xt_timer.h>
 #endif
 
@@ -177,17 +178,36 @@ bool tb_is_pipeline_enabled(struct testbench_prm *tp, int pipeline_id)
 
 bool tb_schedule_pipeline_check_state(struct testbench_prm *tp)
 {
-	uint64_t cycles0, cycles1;
+	struct timespec td0 = {0}, td1 = {0};
+	uint64_t cycles0, cycles1, delta_ns = 0;
+	bool file_eof;
 
+	tb_remote_tick_begin(tp);
+	tb_gettime(&td0);
 	tb_getcycles(&cycles0);
 
-	schedule_ll_run_tasks();
+	if (!sof_get() || !sof_get()->ipc || !list_is_empty(&sof_get()->ipc->comp_list))
+		schedule_ll_run_tasks();
 
 	tb_getcycles(&cycles1);
+	tb_gettime(&td1);
 	tp->total_cycles += cycles1 - cycles0;
+	delta_ns = (uint64_t)(td1.tv_sec - td0.tv_sec) * 1000000000ULL +
+		   (uint64_t)(td1.tv_nsec - td0.tv_nsec);
+	file_eof = tb_is_file_component_at_eof(tp);
+	if (tp->fw[0].state && tp->fw[0].state->channels > 0 && tp->fw[0].state->rate > 0) {
+		double samples_to_ns = 1.0e9 / ((double)tp->fw[0].state->channels *
+						tp->fw[0].state->rate);
+		tp->last_output_time_ns = (int64_t)(samples_to_ns * tp->fw[0].state->n);
+		tp->has_output_file = true;
+	} else {
+		tp->last_output_time_ns = 0;
+		tp->has_output_file = false;
+	}
+	tb_remote_tick_end(tp, cycles1 - cycles0, delta_ns);
 
 	/* Check if all file components are running */
-	return tb_is_file_component_at_eof(tp);
+	return !tb_remote_should_continue(tp, file_eof);
 }
 
 struct ipc_data {
@@ -252,7 +272,7 @@ bool tb_check_trace(unsigned int log_level)
 
 void tb_gettime(struct timespec *td)
 {
-#if !defined __XCC__
+#if !defined(__XCC__) && !defined(__XTENSA__) && !defined(CONFIG_XT_SIMULATOR)
 	clock_gettime(CLOCK_MONOTONIC, td);
 #else
 	td->tv_nsec = 0;
@@ -262,8 +282,13 @@ void tb_gettime(struct timespec *td)
 
 void tb_getcycles(uint64_t *cycles)
 {
-#if defined __XCC__
+#if defined(__XCC__)
 	*cycles = XT_RSR_CCOUNT();
+#elif defined(__XTENSA__)
+	uint32_t ccount = 0;
+
+	__asm__ __volatile__("rsr.ccount %0" : "=a"(ccount));
+	*cycles = ccount;
 #else
 	*cycles = 0;
 #endif
@@ -591,5 +616,40 @@ int tb_read_controls(struct testbench_prm *tp, int64_t *sleep_ns)
 
 	free(line);
 	free(raw_line);
+	return ret;
+}
+
+int tb_apply_control_line(struct testbench_prm *tp, const char *raw_line)
+{
+	const char *amixer_cmd = "amixer ";
+	const char *cset_cmd = "cset ";
+	const char *sofctl_cmd = "sof-ctl ";
+	char *dup_raw;
+	char *line;
+	int ret = -EINVAL;
+
+	if (!raw_line)
+		return -EINVAL;
+
+	dup_raw = strdup(raw_line);
+	if (!dup_raw)
+		return -ENOMEM;
+
+	line = calloc(1, strlen(raw_line) + 16);
+	if (!line) {
+		free(dup_raw);
+		return -ENOMEM;
+	}
+
+	tb_trim_line(line, dup_raw);
+	if (strncmp(line, amixer_cmd, strlen(amixer_cmd)) == 0 ||
+	    strncmp(line, cset_cmd, strlen(cset_cmd)) == 0) {
+		ret = tb_parse_amixer(tp, line);
+	} else if (strncmp(line, sofctl_cmd, strlen(sofctl_cmd)) == 0) {
+		ret = tb_parse_sofctl(tp, line);
+	}
+
+	free(line);
+	free(dup_raw);
 	return ret;
 }

@@ -35,6 +35,24 @@
 static const struct sof_topology_token ipc4_comp_tokens[] = {
 	{SOF_TKN_COMP_IS_PAGES, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
 		offsetof(struct ipc4_base_module_cfg, is_pages)},
+	{SOF_TKN_COMP_CPC, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
+		offsetof(struct ipc4_base_module_cfg, cpc)},
+};
+
+static const struct sof_topology_token ipc4_comp_sched_domain_tokens[] = {
+	{SOF_TKN_COMP_SCHED_DOMAIN, SND_SOC_TPLG_TUPLE_TYPE_STRING, tplg_token_get_comp_domain,
+		offsetof(struct tplg_comp_info, proc_domain)},
+};
+
+static const struct sof_topology_token ipc4_comp_domain_word_tokens[] = {
+	{SOF_TKN_COMP_CORE_ID, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
+		offsetof(struct tplg_comp_info, core_id)},
+	{SOF_TKN_COMP_DOMAIN_ID, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
+		offsetof(struct tplg_comp_info, domain_id)},
+	{SOF_TKN_COMP_STACK_BYTES, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
+		offsetof(struct tplg_comp_info, stack_bytes)},
+	{SOF_TKN_COMP_HEAP_BYTES, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
+		offsetof(struct tplg_comp_info, heap_bytes)},
 };
 
 /*
@@ -74,6 +92,55 @@ static int tb_mq_cmd_tx_rx(struct tb_mq_desc *ipc_tx, struct tb_mq_desc *ipc_rx,
 	return 0;
 }
 
+static uint32_t tb_default_cpc_for_widget_name(const char *name, uint32_t proc_domain)
+{
+	if (!name)
+		return (proc_domain == COMP_PROCESSING_DOMAIN_DP) ? 48000 : 12000;
+	if (strncmp(name, "host-copier", 11) == 0 ||
+	    strncmp(name, "dai-copier", 10) == 0 ||
+	    strncmp(name, "module-copier", 13) == 0 ||
+	    strncmp(name, "alh-dai-copier", 14) == 0)
+		return 1647;
+	if (strncmp(name, "gain", 4) == 0 || strncmp(name, "volume", 6) == 0)
+		return 10183;
+	if (strncmp(name, "mixin", 5) == 0)
+		return 910;
+	if (strncmp(name, "mixout", 6) == 0)
+		return 5000;
+	if (strncmp(name, "eqiir", 5) == 0 || strncmp(name, "eq-iir", 6) == 0)
+		return 18500;
+	if (strncmp(name, "eqfir", 5) == 0 || strncmp(name, "eq-fir", 6) == 0)
+		return 26000;
+	if (strncmp(name, "src", 3) == 0)
+		return 24000;
+	if (strncmp(name, "asrc", 4) == 0)
+		return 32000;
+	if (strncmp(name, "multiband_drc", 13) == 0)
+		return 48000;
+	if (strncmp(name, "drc", 3) == 0)
+		return 22000;
+	if (strncmp(name, "tdfb", 4) == 0)
+		return 35000;
+	if (strncmp(name, "crossover", 9) == 0)
+		return 16000;
+	if (strncmp(name, "dcblock", 7) == 0)
+		return 6400;
+	if (strncmp(name, "micsel", 6) == 0 || strncmp(name, "mux", 3) == 0 ||
+	    strncmp(name, "demux", 5) == 0)
+		return 29000;
+	if (strncmp(name, "aria", 4) == 0)
+		return 5000;
+	if (strncmp(name, "stft", 4) == 0)
+		return 64000;
+	if (strncmp(name, "mfcc", 4) == 0)
+		return 42000;
+	if (strncmp(name, "kpb", 3) == 0)
+		return 3500;
+	if (strncmp(name, "smart_amp", 9) == 0)
+		return 38000;
+	return (proc_domain == COMP_PROCESSING_DOMAIN_DP) ? 48000 : 12000;
+}
+
 static int tb_parse_ipc4_comp_tokens(struct testbench_prm *tp,
 				     struct ipc4_base_module_cfg *base_cfg)
 {
@@ -88,6 +155,20 @@ static int tb_parse_ipc4_comp_tokens(struct testbench_prm *tp,
 	if (ret < 0)
 		return ret;
 
+	ret = sof_parse_token_sets(comp_info, ipc4_comp_sched_domain_tokens,
+				   ARRAY_SIZE(ipc4_comp_sched_domain_tokens), array, size, 1, 0);
+	if (ret < 0)
+		return ret;
+
+	ret = sof_parse_token_sets(comp_info, ipc4_comp_domain_word_tokens,
+				   ARRAY_SIZE(ipc4_comp_domain_word_tokens), array, size, 1, 0);
+	if (ret < 0)
+		return ret;
+
+	if (base_cfg->cpc == 0)
+		base_cfg->cpc = tb_default_cpc_for_widget_name(comp_info->name,
+							       comp_info->proc_domain);
+
 	return sof_parse_tokens(&comp_info->uuid, comp_ext_tokens,
 			       ARRAY_SIZE(comp_ext_tokens), array, size);
 }
@@ -101,6 +182,8 @@ static void tb_setup_widget_ipc_msg(struct tplg_comp_info *comp_info)
 	module_init->primary.r.instance_id = comp_info->instance_id;
 	module_init->primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_MODULE_MSG;
 	module_init->primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	module_init->extension.r.proc_domain = comp_info->proc_domain;
+	module_init->extension.r.core_id = comp_info->core_id;
 }
 
 int tb_set_up_widget_ipc(struct testbench_prm *tp, struct tplg_comp_info *comp_info)
@@ -113,6 +196,7 @@ int tb_set_up_widget_ipc(struct testbench_prm *tp, struct tplg_comp_info *comp_i
 
 	module_init->extension.r.param_block_size = comp_info->ipc_size >> 2;
 	module_init->extension.r.ppl_instance_id = comp_info->pipe_info->instance_id;
+	module_init->extension.r.core_id = comp_info->core_id;
 
 	size = sizeof(*module_init) + comp_info->ipc_size;
 	msg = calloc(size, 1);
@@ -137,13 +221,134 @@ int tb_set_up_widget_ipc(struct testbench_prm *tp, struct tplg_comp_info *comp_i
 	return 0;
 }
 
+static int tb_get_queue_id(struct tplg_comp_info *comp_info,
+			   struct tplg_comp_info *buddy_comp_info, bool is_output)
+{
+	struct tplg_pins_info *pins = &comp_info->pins_info;
+	uint32_t num_pins = is_output ? pins->num_output_pins : pins->num_input_pins;
+	char **pin_binding = is_output ? pins->output_pin_binding : pins->input_pin_binding;
+	uint32_t *pin_mask = is_output ? &pins->output_pin_mask : &pins->input_pin_mask;
+	int i;
+
+	if (num_pins <= 1)
+		return 0;
+
+	if (pin_binding && pin_binding[0] &&
+	    strncmp(pin_binding[0], "NotConnected", strlen("NotConnected"))) {
+		for (i = 0; i < num_pins; i++) {
+			if (pin_binding[i] && !strcmp(pin_binding[i], buddy_comp_info->name)) {
+				*pin_mask |= BIT(i);
+				return i;
+			}
+		}
+	}
+
+	for (i = 0; i < SOF_WIDGET_MAX_NUM_PINS; i++) {
+		if (!(*pin_mask & BIT(i))) {
+			*pin_mask |= BIT(i);
+			return i;
+		}
+	}
+
+	fprintf(stderr, "error: no free %s queue ID for %s\n",
+		is_output ? "output" : "input", comp_info->name);
+	return -EINVAL;
+}
+
+static void tb_put_queue_id(struct tplg_comp_info *comp_info, int queue_id, bool is_output)
+{
+	struct tplg_pins_info *pins = &comp_info->pins_info;
+	uint32_t *pin_mask = is_output ? &pins->output_pin_mask : &pins->input_pin_mask;
+
+	if (queue_id >= 0 && queue_id < SOF_WIDGET_MAX_NUM_PINS)
+		*pin_mask &= ~BIT(queue_id);
+}
+
+static void tb_copy_audio_format(struct ipc4_audio_format *dst,
+				 const struct sof_ipc4_audio_format *src);
+static struct sof_ipc4_pin_format *tb_find_pin_format(struct sof_ipc4_pin_format *fmts,
+						      uint32_t num_formats, uint32_t pin_index,
+						      uint32_t target_rate,
+						      uint32_t target_channels,
+						      uint32_t target_valid_bits);
+
+static int tb_copier_set_sink_format(struct testbench_prm *tp,
+				     struct tplg_comp_info *src_comp_info, int sink_id)
+{
+	struct {
+		struct ipc4_module_large_config config;
+		struct ipc4_copier_config_set_sink_format sink_fmt;
+	} msg = { 0 };
+	struct ipc4_message_reply reply;
+	struct sof_ipc4_pin_format *pin_fmt;
+	int ret;
+
+	msg.config.primary.r.type = SOF_IPC4_MOD_LARGE_CONFIG_SET;
+	msg.config.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_MODULE_MSG;
+	msg.config.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	msg.config.primary.r.module_id = src_comp_info->module_id;
+	msg.config.primary.r.instance_id = src_comp_info->instance_id;
+	msg.config.extension.r.data_off_size = sizeof(msg.sink_fmt);
+	msg.config.extension.r.large_param_id = IPC4_COPIER_MODULE_CFG_PARAM_SET_SINK_FORMAT;
+	msg.config.extension.r.init_block = 1;
+	msg.config.extension.r.final_block = 1;
+
+	msg.sink_fmt.sink_id = sink_id;
+	msg.sink_fmt.source_fmt = src_comp_info->basecfg.audio_fmt;
+	pin_fmt = tb_find_pin_format(src_comp_info->available_fmt.output_pin_fmts,
+				     src_comp_info->available_fmt.num_output_formats,
+				     (uint32_t)sink_id,
+				     src_comp_info->out_audio_fmt.sampling_frequency,
+				     src_comp_info->out_audio_fmt.channels_count,
+				     src_comp_info->out_audio_fmt.valid_bit_depth);
+	if (pin_fmt)
+		tb_copy_audio_format(&msg.sink_fmt.sink_fmt, &pin_fmt->audio_fmt);
+	else
+		msg.sink_fmt.sink_fmt = src_comp_info->out_audio_fmt;
+
+	ret = tb_mq_cmd_tx_rx(&tp->ipc_tx, &tp->ipc_rx, &msg, sizeof(msg), &reply, sizeof(reply));
+	if (ret < 0 || reply.primary.r.status != IPC4_SUCCESS) {
+		fprintf(stderr, "error: failed to set copier sink format for %s sink %d\n",
+			src_comp_info->name, sink_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int tb_set_up_route(struct testbench_prm *tp, struct tplg_route_info *route_info)
 {
 	struct tplg_comp_info *src_comp_info = route_info->source;
 	struct tplg_comp_info *sink_comp_info = route_info->sink;
 	struct ipc4_module_bind_unbind bu = {{0}};
 	struct ipc4_message_reply reply;
+	int src_queue, dst_queue;
 	int ret;
+
+	if (route_info->set_up)
+		return 0;
+
+	src_queue = tb_get_queue_id(src_comp_info, sink_comp_info, true);
+	if (src_queue < 0)
+		return src_queue;
+
+	dst_queue = tb_get_queue_id(sink_comp_info, src_comp_info, false);
+	if (dst_queue < 0) {
+		tb_put_queue_id(src_comp_info, src_queue, true);
+		return dst_queue;
+	}
+
+	route_info->src_queue_id = src_queue;
+	route_info->dst_queue_id = dst_queue;
+
+	if (src_comp_info->module_id == TB_COPIER_MODULE_ID && src_queue > 0) {
+		ret = tb_copier_set_sink_format(tp, src_comp_info, src_queue);
+		if (ret < 0) {
+			tb_put_queue_id(src_comp_info, src_queue, true);
+			tb_put_queue_id(sink_comp_info, dst_queue, false);
+			return ret;
+		}
+	}
 
 	bu.primary.r.module_id = src_comp_info->module_id;
 	bu.primary.r.instance_id = src_comp_info->instance_id;
@@ -153,25 +358,29 @@ int tb_set_up_route(struct testbench_prm *tp, struct tplg_route_info *route_info
 
 	bu.extension.r.dst_module_id = sink_comp_info->module_id;
 	bu.extension.r.dst_instance_id = sink_comp_info->instance_id;
-
-	/* FIXME: assign queue ID for components with multiple inputs/outputs */
-	bu.extension.r.dst_queue = 0;
-	bu.extension.r.src_queue = 0;
+	bu.extension.r.dst_queue = dst_queue;
+	bu.extension.r.src_queue = src_queue;
 
 	ret = tb_mq_cmd_tx_rx(&tp->ipc_tx, &tp->ipc_rx, &bu, sizeof(bu), &reply, sizeof(reply));
 	if (ret < 0) {
 		fprintf(stderr, "error: can't set up route %s -> %s\n", src_comp_info->name,
 			sink_comp_info->name);
+		tb_put_queue_id(src_comp_info, src_queue, true);
+		tb_put_queue_id(sink_comp_info, dst_queue, false);
 		return ret;
 	}
 
 	if (reply.primary.r.status != IPC4_SUCCESS) {
 		fprintf(stderr, "route %s -> %s ID set up failed with status %d\n",
 			src_comp_info->name, sink_comp_info->name, reply.primary.r.status);
+		tb_put_queue_id(src_comp_info, src_queue, true);
+		tb_put_queue_id(sink_comp_info, dst_queue, false);
 		return -EINVAL;
 	}
 
-	tplg_debug("route %s -> %s set up\n", src_comp_info->name, sink_comp_info->name);
+	route_info->set_up = true;
+	tplg_debug("route %s (q %d) -> %s (q %d) set up\n",
+		   src_comp_info->name, src_queue, sink_comp_info->name, dst_queue);
 
 	return 0;
 }
@@ -187,7 +396,9 @@ int tb_set_up_pipeline(struct testbench_prm *tp, struct tplg_pipeline_info *pipe
 	msg.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
 	pipe_info->instance_id = tp->instance_ids[SND_SOC_TPLG_DAPM_SCHEDULER]++;
 	msg.primary.r.instance_id = pipe_info->instance_id;
+	msg.primary.r.ppl_priority = pipe_info->priority;
 	msg.primary.r.ppl_mem_size = pipe_info->mem_usage;
+	msg.extension.r.core_id = pipe_info->core_id;
 	ret = tb_mq_cmd_tx_rx(&tp->ipc_tx, &tp->ipc_rx, &msg, sizeof(msg), &reply, sizeof(reply));
 	if (ret < 0) {
 		fprintf(stderr, "error: can't set up pipeline %s\n", pipe_info->name);
@@ -265,15 +476,95 @@ int tb_is_single_format(struct sof_ipc4_pin_format *fmts, int num_formats)
 	return true;
 }
 
+static void tb_copy_audio_format(struct ipc4_audio_format *dst,
+				 const struct sof_ipc4_audio_format *src)
+{
+	dst->sampling_frequency = src->sampling_frequency;
+	dst->depth = src->bit_depth;
+	dst->ch_map = src->ch_map;
+	dst->ch_cfg = src->ch_cfg;
+	dst->interleaving_style = src->interleaving_style;
+	dst->channels_count = src->fmt_cfg & MASK(7, 0);
+	dst->valid_bit_depth = (src->fmt_cfg & MASK(15, 8)) >> 8;
+	dst->s_type = (src->fmt_cfg & MASK(23, 16)) >> 16;
+}
+
+static struct sof_ipc4_pin_format *tb_find_pin_format(struct sof_ipc4_pin_format *fmts,
+						      uint32_t num_formats, uint32_t pin_index,
+						      uint32_t target_rate,
+						      uint32_t target_channels,
+						      uint32_t target_valid_bits)
+{
+	struct sof_ipc4_pin_format *fmt;
+	int i;
+
+	if (!fmts || !num_formats)
+		return NULL;
+
+	if (pin_index == 0 && tb_is_single_format(fmts, num_formats))
+		return &fmts[0];
+
+	/* 1. Exact match on pin_index, rate, channels, valid_bits */
+	for (i = 0; i < num_formats; i++) {
+		uint32_t rate, channels, valid_bits;
+
+		fmt = &fmts[i];
+		if (fmt->pin_index != pin_index)
+			continue;
+
+		rate = fmt->audio_fmt.sampling_frequency;
+		channels = fmt->audio_fmt.fmt_cfg & MASK(7, 0);
+		valid_bits = (fmt->audio_fmt.fmt_cfg & MASK(15, 8)) >> 8;
+		if (rate == target_rate && channels == target_channels &&
+		    valid_bits == target_valid_bits)
+			return fmt;
+	}
+
+	/* 2. Match on pin_index, rate, channels (when bit depth is converted upstream) */
+	for (i = 0; i < num_formats; i++) {
+		uint32_t rate, channels;
+
+		fmt = &fmts[i];
+		if (fmt->pin_index != pin_index)
+			continue;
+
+		rate = fmt->audio_fmt.sampling_frequency;
+		channels = fmt->audio_fmt.fmt_cfg & MASK(7, 0);
+		if (rate == target_rate && channels == target_channels)
+			return fmt;
+	}
+
+	/* 3. Match on pin_index, channels (when rate is converted upstream) */
+	for (i = 0; i < num_formats; i++) {
+		uint32_t channels;
+
+		fmt = &fmts[i];
+		if (fmt->pin_index != pin_index)
+			continue;
+
+		channels = fmt->audio_fmt.fmt_cfg & MASK(7, 0);
+		if (channels == target_channels)
+			return fmt;
+	}
+
+	/* 4. First format matching pin_index */
+	for (i = 0; i < num_formats; i++) {
+		if (fmts[i].pin_index == pin_index)
+			return &fmts[i];
+	}
+
+	return NULL;
+}
+
 int tb_match_audio_format(struct testbench_prm *tp, struct tplg_comp_info *comp_info,
 			  struct tb_config *config)
 {
 	struct sof_ipc4_available_audio_format *available_fmt = &comp_info->available_fmt;
 	struct ipc4_base_module_cfg *base_cfg = &comp_info->basecfg;
 	struct sof_ipc4_pin_format *fmt;
+	struct sof_ipc4_pin_format *out_fmt = NULL;
 	int config_valid_bits;
 	int sample_bytes;
-	int i;
 
 	switch (config->format) {
 	case SOF_IPC_FRAME_S16_LE:
@@ -289,52 +580,65 @@ int tb_match_audio_format(struct testbench_prm *tp, struct tplg_comp_info *comp_
 		return -EINVAL;
 	}
 
-	if (tb_is_single_format(available_fmt->input_pin_fmts,
-				available_fmt->num_input_formats)) {
-		fmt = &available_fmt->input_pin_fmts[0];
-		goto out;
-	}
-
-	for (i = 0; i < available_fmt->num_input_formats; i++) {
-		uint32_t rate, channels, valid_bits;
-
-		fmt = &available_fmt->input_pin_fmts[i];
-
-		rate = fmt->audio_fmt.sampling_frequency;
-		channels = fmt->audio_fmt.fmt_cfg & MASK(7, 0);
-		valid_bits = (fmt->audio_fmt.fmt_cfg & MASK(15, 8)) >> 8;
-
-		if (rate == config->rate && channels == config->channels &&
-		    valid_bits == config_valid_bits)
-			break;
-	}
-
-	if (i == available_fmt->num_input_formats) {
+	fmt = tb_find_pin_format(available_fmt->input_pin_fmts,
+				 available_fmt->num_input_formats, 0,
+				 config->rate, config->channels, config_valid_bits);
+	if (!fmt) {
 		fprintf(stderr,
 			"Cannot find matching format for rate %d channels %d valid_bits %d for %s\n",
-		       config->rate, config->channels, config_valid_bits, comp_info->name);
+			config->rate, config->channels, config_valid_bits, comp_info->name);
 		return -EINVAL;
 	}
-out:
 
-	base_cfg->audio_fmt.sampling_frequency = fmt->audio_fmt.sampling_frequency;
-	base_cfg->audio_fmt.depth = fmt->audio_fmt.bit_depth;
-	base_cfg->audio_fmt.ch_map = fmt->audio_fmt.ch_map;
-	base_cfg->audio_fmt.ch_cfg = fmt->audio_fmt.ch_cfg;
-	base_cfg->audio_fmt.interleaving_style = fmt->audio_fmt.interleaving_style;
-	base_cfg->audio_fmt.channels_count = fmt->audio_fmt.fmt_cfg & MASK(7, 0);
-	base_cfg->audio_fmt.valid_bit_depth =
-		(fmt->audio_fmt.fmt_cfg & MASK(15, 8)) >> 8;
-	base_cfg->audio_fmt.s_type =
-		(fmt->audio_fmt.fmt_cfg & MASK(23, 16)) >> 16;
-	sample_bytes = fmt->audio_fmt.bit_depth >> 3;
-	base_cfg->ibs = 2 * tp->period_frames * base_cfg->audio_fmt.channels_count * sample_bytes;
-	base_cfg->obs = base_cfg->ibs;
+	if (available_fmt->num_output_formats > 0) {
+		out_fmt = tb_find_pin_format(available_fmt->output_pin_fmts,
+					     available_fmt->num_output_formats, 0,
+					     config->rate, config->channels, config_valid_bits);
+	}
+
+	/*
+	 * For capture DAI_OUT (represented by a FILE_READ component in testbench),
+	 * input_pin_fmts describes the hardware DAI link while output_pin_fmts
+	 * describes the SOF pipeline buffer. If output_pin_fmts matches the requested
+	 * testbench format, use it for base_cfg->audio_fmt so the buffer format
+	 * matches the file reader and downstream capture pipeline.
+	 */
+	if (comp_info->type == SND_SOC_TPLG_DAPM_DAI_OUT && out_fmt) {
+		uint32_t out_valid_bits = (out_fmt->audio_fmt.fmt_cfg & MASK(15, 8)) >> 8;
+		uint32_t in_valid_bits = (fmt->audio_fmt.fmt_cfg & MASK(15, 8)) >> 8;
+
+		if (in_valid_bits != config_valid_bits && out_valid_bits == config_valid_bits)
+			fmt = out_fmt;
+	}
+
+	tb_copy_audio_format(&base_cfg->audio_fmt, &fmt->audio_fmt);
+	if (fmt->buffer_size > 0) {
+		base_cfg->ibs = fmt->buffer_size;
+	} else {
+		sample_bytes = fmt->audio_fmt.bit_depth >> 3;
+		base_cfg->ibs = 2 * tp->period_frames * base_cfg->audio_fmt.channels_count *
+				sample_bytes;
+	}
+
+	if (out_fmt) {
+		tb_copy_audio_format(&comp_info->out_audio_fmt, &out_fmt->audio_fmt);
+		if (out_fmt->buffer_size > 0) {
+			base_cfg->obs = out_fmt->buffer_size;
+		} else {
+			sample_bytes = out_fmt->audio_fmt.bit_depth >> 3;
+			base_cfg->obs = 2 * tp->period_frames *
+					comp_info->out_audio_fmt.channels_count * sample_bytes;
+		}
+	} else {
+		comp_info->out_audio_fmt = base_cfg->audio_fmt;
+		base_cfg->obs = base_cfg->ibs;
+	}
 
 	return 0;
 }
 
-static int tb_set_pin_formats(struct tplg_comp_info *comp_info,
+static int tb_set_pin_formats(struct testbench_prm *tp,
+			      struct tplg_comp_info *comp_info,
 			      struct ipc4_base_module_cfg *base_cfg,
 			      struct ipc4_base_module_cfg_ext *base_cfg_ext,
 			      enum tb_pin_type pin_type)
@@ -344,9 +648,10 @@ static int tb_set_pin_formats(struct tplg_comp_info *comp_info,
 	struct sof_ipc4_pin_format *pin_format;
 	struct sof_ipc4_pin_format *base_cfg_ext_pin_formats =
 		(struct sof_ipc4_pin_format *)base_cfg_ext->pin_formats;
+	uint32_t target_rate, target_channels, target_valid_bits;
 	int format_list_count;
 	int num_pins;
-	int i, j;
+	int i;
 	int pin_format_offset = 0;
 
 	switch (pin_type) {
@@ -354,21 +659,30 @@ static int tb_set_pin_formats(struct tplg_comp_info *comp_info,
 		num_pins = base_cfg_ext->nb_input_pins;
 		formats_array = comp_info->available_fmt.input_pin_fmts;
 		format_list_count = comp_info->available_fmt.num_input_formats;
+		target_rate = base_cfg->audio_fmt.sampling_frequency;
+		target_channels = base_cfg->audio_fmt.channels_count;
+		target_valid_bits = base_cfg->audio_fmt.valid_bit_depth;
 		break;
 	case TB_PIN_TYPE_OUTPUT:
 		num_pins = base_cfg_ext->nb_output_pins;
 		pin_format_offset = base_cfg_ext->nb_input_pins;
 		formats_array = comp_info->available_fmt.output_pin_fmts;
 		format_list_count = comp_info->available_fmt.num_output_formats;
+		target_rate = comp_info->out_audio_fmt.sampling_frequency;
+		target_channels = comp_info->out_audio_fmt.channels_count;
+		target_valid_bits = comp_info->out_audio_fmt.valid_bit_depth;
 		break;
 	default:
 		fprintf(stderr, "Error: Illegal pin type %d for %s\n", pin_type, comp_info->name);
+		return -EINVAL;
 	}
 
 	for (i = pin_format_offset; i < num_pins + pin_format_offset; i++) {
+		uint32_t pin_index = i - pin_format_offset;
+
 		pin_format = &base_cfg_ext_pin_formats[i];
 
-		if (i == pin_format_offset) {
+		if (pin_index == 0) {
 			if (pin_type == TB_PIN_TYPE_INPUT) {
 				pin_format->buffer_size = base_cfg->ibs;
 				/* Note: Copy "struct ipc4_audio_format" to
@@ -381,30 +695,28 @@ static int tb_set_pin_formats(struct tplg_comp_info *comp_info,
 				       sizeof(pin_format->audio_fmt));
 			} else {
 				pin_format->buffer_size = base_cfg->obs;
-				/* TODO: Using workaround, need to find out how to do this. This
-				 * is copied kernel function sof_ipc4_process_set_pin_formats()
-				 * from process->output_format. It's set in
-				 * sof_ipc4_prepare_process_module().
-				 */
-				memcpy(&pin_format->audio_fmt, &base_cfg->audio_fmt,
+				memcpy(&pin_format->audio_fmt, &comp_info->out_audio_fmt,
 				       sizeof(pin_format->audio_fmt));
 			}
 			continue;
 		}
 
-		for (j = 0; j < format_list_count; j++) {
-			pin_format_item = &formats_array[j];
-			if (pin_format_item->pin_index == i - pin_format_offset) {
-				*pin_format = *pin_format_item;
-				break;
-			}
+		pin_format_item = tb_find_pin_format(formats_array, format_list_count, pin_index,
+						     target_rate, target_channels,
+						     target_valid_bits);
+		if (!pin_format_item) {
+			fprintf(stderr, "%s pin %u format not found for %s\n",
+				(pin_type == TB_PIN_TYPE_INPUT) ? "input" : "output",
+				pin_index, comp_info->name);
+			return -EINVAL;
 		}
 
-		if (j == format_list_count) {
-			fprintf(stderr, "%s pin %d format not found for %s\n",
-				(pin_type == TB_PIN_TYPE_INPUT) ? "input" : "output",
-				i - pin_format_offset, comp_info->name);
-			return -EINVAL;
+		*pin_format = *pin_format_item;
+		if (pin_format->buffer_size == 0) {
+			uint32_t channels = pin_format->audio_fmt.fmt_cfg & MASK(7, 0);
+			uint32_t sample_bytes = pin_format->audio_fmt.bit_depth >> 3;
+
+			pin_format->buffer_size = 2 * tp->period_frames * channels * sample_bytes;
 		}
 	}
 
@@ -443,17 +755,37 @@ int tb_set_up_widget_base_config(struct testbench_prm *tp, struct tplg_comp_info
 	/* copy the basecfg into the ipc payload */
 	memcpy(comp_info->ipc_payload, &comp_info->basecfg, sizeof(struct ipc4_base_module_cfg));
 
+	if (comp_info->type == SND_SOC_TPLG_DAPM_BUFFER) {
+		struct ipc4_copier_module_cfg *copier = comp_info->ipc_payload;
+
+		copier->out_fmt = comp_info->out_audio_fmt;
+	}
+
+	if (comp_info->type == SND_SOC_TPLG_DAPM_SRC) {
+		struct ipc4_config_src *src = comp_info->ipc_payload;
+
+		if (!src->sink_rate)
+			src->sink_rate = comp_info->out_audio_fmt.sampling_frequency;
+	}
+
+	if (comp_info->type == SND_SOC_TPLG_DAPM_ASRC) {
+		struct ipc4_asrc_module_cfg *asrc = comp_info->ipc_payload;
+
+		if (!asrc->out_freq)
+			asrc->out_freq = comp_info->out_audio_fmt.sampling_frequency;
+	}
+
 	/* Copy ext config for process type */
 	if (comp_info->module_id == TB_PROCESS_MODULE_ID) {
 		base_cfg = comp_info->ipc_payload;
 		base_cfg_ext = comp_info->ipc_payload + sizeof(*base_cfg);
 		base_cfg_ext->nb_input_pins = pins->num_input_pins;
 		base_cfg_ext->nb_output_pins = pins->num_output_pins;
-		ret = tb_set_pin_formats(comp_info, base_cfg, base_cfg_ext, TB_PIN_TYPE_INPUT);
+		ret = tb_set_pin_formats(tp, comp_info, base_cfg, base_cfg_ext, TB_PIN_TYPE_INPUT);
 		if (ret)
 			return ret;
 
-		ret = tb_set_pin_formats(comp_info, base_cfg, base_cfg_ext, TB_PIN_TYPE_OUTPUT);
+		ret = tb_set_pin_formats(tp, comp_info, base_cfg, base_cfg_ext, TB_PIN_TYPE_OUTPUT);
 		if (ret)
 			return ret;
 	}
@@ -488,9 +820,9 @@ int tb_pipelines_set_state(struct testbench_prm *tp, int state, int dir)
 	int i;
 
 	if (dir == SOF_IPC_STREAM_CAPTURE)
-		pipeline_list = &tp->pcm_info->capture_pipeline_list;
+		pipeline_list = &tp->capture_pipeline_list;
 	else
-		pipeline_list = &tp->pcm_info->playback_pipeline_list;
+		pipeline_list = &tp->playback_pipeline_list;
 
 	pipe_state.primary.r.ppl_state = state;
 	pipe_state.primary.r.type = SOF_IPC4_GLB_SET_PIPELINE_STATE;
@@ -530,7 +862,7 @@ int tb_pipelines_set_state(struct testbench_prm *tp, int state, int dir)
 
 static int tb_new_src(struct testbench_prm *tp)
 {
-	struct ipc4_config_src src;
+	struct ipc4_config_src src = { 0 };
 	struct tplg_context *ctx = &tp->tplg;
 	struct tplg_comp_info *comp_info = ctx->current_comp_info;
 	struct snd_soc_tplg_ctl_hdr *tplg_ctl;
@@ -577,7 +909,7 @@ out:
 
 static int tb_new_asrc(struct testbench_prm *tp)
 {
-	struct ipc4_asrc_module_cfg asrc;
+	struct ipc4_asrc_module_cfg asrc = { 0 };
 	struct tplg_context *ctx = &tp->tplg;
 	struct tplg_comp_info *comp_info = ctx->current_comp_info;
 	struct snd_soc_tplg_ctl_hdr *tplg_ctl;
@@ -699,8 +1031,11 @@ static int tb_new_pipeline(struct testbench_prm *tp)
 		goto out;
 	}
 
+	pipe_info->core_id = pipeline.core;
+	pipe_info->priority = pipeline.priority;
 	list_item_append(&pipe_info->item, &tp->pipeline_list);
-	tplg_debug("loading pipeline %s\n", pipe_info->name);
+	tplg_debug("loading pipeline %s core %d priority %d\n",
+		   pipe_info->name, pipe_info->core_id, pipe_info->priority);
 out:
 	free(tplg_ctl);
 	return ret;
@@ -708,23 +1043,35 @@ out:
 
 static int tb_new_buffer(struct testbench_prm *tp)
 {
-	struct ipc4_copier_module_cfg *copier = calloc(sizeof(struct ipc4_copier_module_cfg), 1);
+	struct ipc4_copier_module_cfg *copier;
 	struct tplg_context *ctx = &tp->tplg;
 	struct tplg_comp_info *comp_info = ctx->current_comp_info;
+	size_t uuid_offset;
 	int ret;
 
-	if (!copier)
+	comp_info->ipc_size = sizeof(struct ipc4_copier_module_cfg);
+	uuid_offset = comp_info->ipc_size;
+	comp_info->ipc_size += sizeof(struct sof_uuid);
+	comp_info->ipc_payload = calloc(comp_info->ipc_size, 1);
+	if (!comp_info->ipc_payload)
 		return -ENOMEM;
 
-	comp_info->ipc_payload = copier;
+	copier = comp_info->ipc_payload;
+	comp_info->instance_id = tp->instance_ids[SND_SOC_TPLG_DAPM_BUFFER]++;
+	comp_info->module_id = TB_COPIER_MODULE_ID;
 
-	ret = tplg_new_buffer(ctx, copier, sizeof(copier), NULL, 0);
+	ret = tplg_new_buffer(ctx, copier, sizeof(*copier), NULL, 0);
 	if (ret < 0) {
-		fprintf(stderr, "error: failed to create pipeline\n");
-		free(copier);
+		fprintf(stderr, "error: failed to create buffer\n");
+		free(comp_info->ipc_payload);
+		comp_info->ipc_payload = NULL;
+		return ret;
 	}
 
-	return ret;
+	memcpy(comp_info->ipc_payload + uuid_offset, &comp_info->uuid, sizeof(struct sof_uuid));
+	tb_setup_widget_ipc_msg(comp_info);
+
+	return 0;
 }
 
 int tb_new_aif_in_out(struct testbench_prm *tp, int dir)
@@ -760,7 +1107,8 @@ int tb_new_aif_in_out(struct testbench_prm *tp, int dir)
 				return -EINVAL;
 			}
 			file->config.fn = tp->input_file[tp->input_file_index];
-			tp->fr[tp->input_file_index].id = comp_info->module_id;
+			tp->fr[tp->input_file_index].id = IPC4_COMP_ID(comp_info->module_id,
+								       comp_info->instance_id);
 			tp->fr[tp->input_file_index].instance_id = comp_info->instance_id;
 			tp->fr[tp->input_file_index].pipeline_id = ctx->pipeline_id;
 			tp->input_file_index++;
@@ -783,7 +1131,8 @@ int tb_new_aif_in_out(struct testbench_prm *tp, int dir)
 				return -EINVAL;
 			}
 			file->config.fn = tp->output_file[tp->output_file_index];
-			tp->fw[tp->output_file_index].id = comp_info->module_id;
+			tp->fw[tp->output_file_index].id = IPC4_COMP_ID(comp_info->module_id,
+									comp_info->instance_id);
 			tp->fw[tp->output_file_index].instance_id = comp_info->instance_id;
 			tp->fw[tp->output_file_index].pipeline_id = ctx->pipeline_id;
 			tp->output_file_index++;
@@ -829,7 +1178,8 @@ int tb_new_dai_in_out(struct testbench_prm *tp, int dir)
 				return -EINVAL;
 			}
 			file->config.fn = tp->output_file[tp->output_file_index];
-			tp->fw[tp->output_file_index].id = comp_info->module_id;
+			tp->fw[tp->output_file_index].id = IPC4_COMP_ID(comp_info->module_id,
+									comp_info->instance_id);
 			tp->fw[tp->output_file_index].instance_id = comp_info->instance_id;
 			tp->fw[tp->output_file_index].pipeline_id = ctx->pipeline_id;
 			tp->output_file_index++;
@@ -851,7 +1201,8 @@ int tb_new_dai_in_out(struct testbench_prm *tp, int dir)
 				return -EINVAL;
 			}
 			file->config.fn = tp->input_file[tp->input_file_index];
-			tp->fr[tp->input_file_index].id = comp_info->module_id;
+			tp->fr[tp->input_file_index].id = IPC4_COMP_ID(comp_info->module_id,
+								       comp_info->instance_id);
 			tp->fr[tp->input_file_index].instance_id = comp_info->instance_id;
 			tp->fr[tp->input_file_index].pipeline_id = ctx->pipeline_id;
 			tp->input_file_index++;
@@ -1410,6 +1761,18 @@ int tb_parse_topology(struct testbench_prm *tp)
 	ctx->ipc_major = 4;
 	ctx->ctl_arg = tp;
 	ctx->ctl_cb = tb_kcontrol_cb_new;
+	tb_configure_audio_params(tp);
+	tp->input_file_index = 0;
+	tp->output_file_index = 0;
+	memset(tp->fr, 0, sizeof(tp->fr));
+	memset(tp->fw, 0, sizeof(tp->fw));
+	for (i = 0; i < TB_MAX_INPUT_FILE_NUM; i++)
+		tp->fr[i].id = -1;
+	for (i = 0; i < TB_MAX_OUTPUT_FILE_NUM; i++)
+		tp->fw[i].id = -1;
+	tp->glb_ctx.num_ctls = 0;
+	tp->glb_ctx.size = 0;
+	free(tp->glb_ctx.ctl);
 	tp->glb_ctx.ctl = calloc(TB_MAX_CTLS, sizeof(struct tb_ctl));
 	if (!tp->glb_ctx.ctl) {
 		fprintf(stderr, "error: failed to allocate for controls.\n");
@@ -1525,6 +1888,9 @@ int tb_parse_topology(struct testbench_prm *tp)
 			pipe_info = container_of(pipe_item, struct tplg_pipeline_info, item);
 			if (pipe_info->id == comp_info->pipeline_id) {
 				comp_info->pipe_info = pipe_info;
+				if (comp_info->proc_domain == COMP_PROCESSING_DOMAIN_LL)
+					comp_info->core_id = pipe_info->core_id;
+				comp_info->module_init.extension.r.core_id = comp_info->core_id;
 				break;
 			}
 		}
@@ -1655,6 +2021,13 @@ int tb_free_route(struct testbench_prm *tp, struct tplg_route_info *route_info)
 	struct ipc4_message_reply reply;
 	int ret;
 
+	if (!route_info->set_up)
+		return 0;
+
+	tb_put_queue_id(src_comp_info, route_info->src_queue_id, true);
+	tb_put_queue_id(sink_comp_info, route_info->dst_queue_id, false);
+	route_info->set_up = false;
+
 	/* only unbind when widgets belong to separate pipelines */
 	if (src_comp_info->pipeline_id == sink_comp_info->pipeline_id)
 		return 0;
@@ -1667,25 +2040,25 @@ int tb_free_route(struct testbench_prm *tp, struct tplg_route_info *route_info)
 
 	bu.extension.r.dst_module_id = sink_comp_info->module_id;
 	bu.extension.r.dst_instance_id = sink_comp_info->instance_id;
-
-	/* FIXME: assign queue ID for components with multiple inputs/outputs */
-	bu.extension.r.dst_queue = 0;
-	bu.extension.r.src_queue = 0;
+	bu.extension.r.dst_queue = route_info->dst_queue_id;
+	bu.extension.r.src_queue = route_info->src_queue_id;
 
 	ret = tb_mq_cmd_tx_rx(&tp->ipc_tx, &tp->ipc_rx, &bu, sizeof(bu), &reply, sizeof(reply));
 	if (ret < 0) {
-		fprintf(stderr, "error: can't set up route %s -> %s\n", src_comp_info->name,
+		fprintf(stderr, "error: can't free route %s -> %s\n", src_comp_info->name,
 			sink_comp_info->name);
 		return ret;
 	}
 
 	if (reply.primary.r.status != IPC4_SUCCESS) {
-		fprintf(stderr, "route %s -> %s ID set up failed with status %d\n",
+		fprintf(stderr, "route %s -> %s unbind failed with status %d\n",
 			src_comp_info->name, sink_comp_info->name, reply.primary.r.status);
 		return -EINVAL;
 	}
 
-	tplg_debug("route %s -> %s freed\n", src_comp_info->name, sink_comp_info->name);
+	tplg_debug("route %s (q %d) -> %s (q %d) freed\n",
+		   src_comp_info->name, route_info->src_queue_id,
+		   sink_comp_info->name, route_info->dst_queue_id);
 
 	return 0;
 }
