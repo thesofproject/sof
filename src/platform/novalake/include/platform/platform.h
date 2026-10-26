@@ -27,9 +27,6 @@
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
 
-/* Platform stream capabilities */
-#define PLATFORM_MAX_STREAMS	16
-
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	(HOST_PAGE_SIZE * 2)
 

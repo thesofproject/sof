@@ -37,9 +37,6 @@ struct timer;
 #define PLATFORM_SCHEDULE_IRQ		IRQ_NUM_SOFTWARE0
 #define PLATFORM_SCHEDULE_IRQ_NAME	NULL
 
-/* Platform stream capabilities */
-#define PLATFORM_MAX_STREAMS	5
-
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	8192
 

@@ -77,8 +77,8 @@ static int mixer_process(struct processing_module *mod,
 {
 	struct mixer_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct sof_source *active_sources[PLATFORM_MAX_STREAMS];
-	struct cir_buf_source source_bufs[PLATFORM_MAX_STREAMS];
+	struct sof_source *active_sources[CONFIG_PLATFORM_MAX_STREAMS];
+	struct cir_buf_source source_bufs[CONFIG_PLATFORM_MAX_STREAMS];
 	struct cir_buf_sink sink_buf;
 	size_t bytes, samples, source_bytes, sink_bytes;
 	size_t frames = SIZE_MAX;
@@ -88,7 +88,7 @@ static int mixer_process(struct processing_module *mod,
 	comp_dbg(dev, "%d", num_of_sources);
 
 	/* too many sources ? */
-	if (num_of_sources >= PLATFORM_MAX_STREAMS)
+	if (num_of_sources >= CONFIG_PLATFORM_MAX_STREAMS)
 		return -EINVAL;
 
 	/* find active sources and compute frame count */
