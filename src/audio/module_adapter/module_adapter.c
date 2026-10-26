@@ -1074,6 +1074,9 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	uint32_t frames;
 	int ret;
 
+	comp_buffer_shared_lock(mod->source_comp_buffer);
+	comp_buffer_shared_lock(mod->sink_comp_buffer);
+
 	frames = audio_stream_avail_frames_aligned(&mod->source_comp_buffer->stream,
 						   &mod->sink_comp_buffer->stream);
 	mod->input_buffers[0].size = frames;
@@ -1102,8 +1105,8 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	/* consume from the input buffer */
 	mod->total_data_consumed += mod->input_buffers[0].consumed;
 	if (mod->input_buffers[0].consumed)
-		audio_stream_consume(&mod->source_comp_buffer->stream,
-				     mod->input_buffers[0].consumed);
+		comp_update_buffer_consume(mod->source_comp_buffer,
+					   mod->input_buffers[0].consumed);
 
 	/* produce data into the output buffer */
 	mod->total_data_produced += mod->output_buffers[0].size;
@@ -1112,6 +1115,9 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 
 	if (mod->output_buffers[0].size)
 		comp_update_buffer_produce(mod->sink_comp_buffer, mod->output_buffers[0].size);
+
+	comp_buffer_shared_unlock(mod->sink_comp_buffer);
+	comp_buffer_shared_unlock(mod->source_comp_buffer);
 
 	return ret;
 }
@@ -1124,6 +1130,7 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	struct comp_buffer *source;
 	struct processing_module *mod = comp_mod(dev);
 	uint32_t num_input_buffers, num_output_buffers;
+	uint32_t locked_inputs, locked_outputs;
 	int ret, i;
 
 	/* handle special case of HOST/DAI type components */
@@ -1151,6 +1158,13 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 		comp_err(dev, "Invalid number of sources %d\n", num_input_buffers);
 		return -EINVAL;
 	}
+
+	locked_inputs = num_input_buffers;
+	locked_outputs = num_output_buffers;
+	for (i = 0; i < locked_inputs; i++)
+		comp_buffer_shared_lock(sources[i]);
+	for (i = 0; i < locked_outputs; i++)
+		comp_buffer_shared_lock(sinks[i]);
 
 	/* setup active input/output buffers for processing */
 	if (num_output_buffers == 1) {
@@ -1184,7 +1198,7 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 			container_of(mod->input_buffers[i].data, struct comp_buffer, stream);
 
 		if (mod->input_buffers[i].consumed)
-			audio_stream_consume(&src->stream, mod->input_buffers[i].consumed);
+			comp_update_buffer_consume(src, mod->input_buffers[i].consumed);
 	}
 
 	/* compute data consumed based on pin 0 since it is processed with base config
@@ -1216,6 +1230,11 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 		mod->output_buffers[i].size = 0;
 	}
 
+	for (i = 0; i < locked_outputs; i++)
+		comp_buffer_shared_unlock(sinks[i]);
+	for (i = 0; i < locked_inputs; i++)
+		comp_buffer_shared_unlock(sources[i]);
+
 	return 0;
 out:
 	for (i = 0; i < num_output_buffers; i++) {
@@ -1226,6 +1245,11 @@ out:
 		mod->input_buffers[i].size = 0;
 		mod->input_buffers[i].consumed = 0;
 	}
+
+	for (i = 0; i < locked_outputs; i++)
+		comp_buffer_shared_unlock(sinks[i]);
+	for (i = 0; i < locked_inputs; i++)
+		comp_buffer_shared_unlock(sources[i]);
 
 	return ret;
 }

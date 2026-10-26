@@ -157,7 +157,9 @@ if(CONFIG_ZEPHYR_NATIVE_DRIVERS)
 	sof_list_append_ifdef(CONFIG_COMP_DAI base_files dai-zephyr.c)
 else()
 	list(APPEND base_files host-legacy.c)
-	sof_list_append_ifdef(CONFIG_COMP_DAI base_files dai-legacy.c)
+	if(CONFIG_COMP_DAI AND NOT CONFIG_LIBRARY)
+		list(APPEND base_files dai-legacy.c)
+	endif()
 endif()
 
 ### Common files
@@ -180,7 +182,7 @@ else() ### library, e.g. testbench ###
 		${base_files}
 	)
 
-	if(CONFIG_COMP_DAI)
+	if(CONFIG_COMP_DAI AND NOT CONFIG_LIBRARY)
 		add_local_sources(sof
 			dai-legacy.c
 		)

@@ -86,7 +86,7 @@ config COMP_GOOGLE_CTC_AUDIO_PROCESSING
 	select COMP_BLOB
 	select GOOGLE_CTC_AUDIO_PROCESSING_MOCK if COMP_STUBS
 	select STATIC_INIT_GNU if ZEPHYR_SOF_MODULE
-	depends on ZEPHYR_SOF_MODULE
+	depends on ZEPHYR_SOF_MODULE || LIBRARY
 	help
 	  Select for Google crosstalk cancellation audio processing. It
 	  uses the Google real-time audio processing library to perform

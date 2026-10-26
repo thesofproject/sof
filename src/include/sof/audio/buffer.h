@@ -500,6 +500,22 @@ static inline void buffer_init_stream(struct comp_buffer *buffer, size_t size)
 	audio_stream_init(&buffer->stream, buffer->stream.addr, size);
 }
 
+#if defined(CONFIG_LIBRARY) && !defined(__XTENSA__) && !defined(CONFIG_XT_SIMULATOR) && \
+	!defined(UNIT_TEST)
+void comp_buffer_shared_lock(struct comp_buffer *buffer);
+void comp_buffer_shared_unlock(struct comp_buffer *buffer);
+#else
+static inline void comp_buffer_shared_lock(struct comp_buffer *buffer)
+{
+	(void)buffer;
+}
+
+static inline void comp_buffer_shared_unlock(struct comp_buffer *buffer)
+{
+	(void)buffer;
+}
+#endif
+
 /** @}*/
 
 #endif /* __SOF_AUDIO_BUFFER_H__ */

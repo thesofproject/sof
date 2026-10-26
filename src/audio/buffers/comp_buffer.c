@@ -31,11 +31,43 @@ SOF_DEFINE_REG_UUID(buffer);
 /* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(buffer_tr, SOF_UUID(buffer_uuid), LOG_LEVEL_INFO);
 
+#if defined(CONFIG_LIBRARY) && !defined(__XTENSA__) && !defined(CONFIG_XT_SIMULATOR) && \
+	!defined(UNIT_TEST)
+static volatile int shared_comp_buf_lock;
+static __thread int shared_comp_buf_lock_depth;
+
+void comp_buffer_shared_lock(struct comp_buffer *buffer)
+{
+	if (buffer && audio_buffer_is_shared(&buffer->audio_buffer)) {
+		if (shared_comp_buf_lock_depth++ == 0) {
+			while (__atomic_test_and_set(&shared_comp_buf_lock, __ATOMIC_ACQUIRE))
+				;
+		}
+	}
+}
+
+void comp_buffer_shared_unlock(struct comp_buffer *buffer)
+{
+	if (buffer && audio_buffer_is_shared(&buffer->audio_buffer)) {
+		if (--shared_comp_buf_lock_depth == 0)
+			__atomic_clear(&shared_comp_buf_lock, __ATOMIC_RELEASE);
+	}
+}
+#endif
+
+#define shared_buf_lock(buffer)		comp_buffer_shared_lock(buffer)
+#define shared_buf_unlock(buffer)	comp_buffer_shared_unlock(buffer)
+
 static size_t comp_buffer_get_data_available(struct sof_source *source)
 {
 	struct comp_buffer *buffer = comp_buffer_get_from_source(source);
+	size_t avail;
 
-	return audio_stream_get_avail_bytes(&buffer->stream);
+	shared_buf_lock(buffer);
+	avail = audio_stream_get_avail_bytes(&buffer->stream);
+	shared_buf_unlock(buffer);
+
+	return avail;
 }
 
 static int comp_buffer_get_data(struct sof_source *source, size_t req_size,
@@ -44,8 +76,11 @@ static int comp_buffer_get_data(struct sof_source *source, size_t req_size,
 {
 	struct comp_buffer *buffer = comp_buffer_get_from_source(source);
 
-	if (req_size > audio_stream_get_avail_bytes(&buffer->stream))
+	shared_buf_lock(buffer);
+	if (req_size > audio_stream_get_avail_bytes(&buffer->stream)) {
+		shared_buf_unlock(buffer);
 		return -ENODATA;
+	}
 
 	buffer_stream_invalidate(buffer, req_size);
 
@@ -53,6 +88,7 @@ static int comp_buffer_get_data(struct sof_source *source, size_t req_size,
 	*data_ptr = buffer->stream.r_ptr;
 	*buffer_start = buffer->stream.addr;
 	*buffer_size = buffer->stream.size;
+	shared_buf_unlock(buffer);
 	return 0;
 }
 
@@ -60,8 +96,11 @@ static int comp_buffer_release_data(struct sof_source *source, size_t free_size)
 {
 	struct comp_buffer *buffer = comp_buffer_get_from_source(source);
 
-	if (free_size)
+	if (free_size) {
+		shared_buf_lock(buffer);
 		audio_stream_consume(&buffer->stream, free_size);
+		shared_buf_unlock(buffer);
+	}
 
 	return 0;
 }
@@ -69,8 +108,13 @@ static int comp_buffer_release_data(struct sof_source *source, size_t free_size)
 static size_t comp_buffer_get_free_size(struct sof_sink *sink)
 {
 	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
+	size_t free_size;
 
-	return audio_stream_get_free_bytes(&buffer->stream);
+	shared_buf_lock(buffer);
+	free_size = audio_stream_get_free_bytes(&buffer->stream);
+	shared_buf_unlock(buffer);
+
+	return free_size;
 }
 
 static int comp_buffer_get_buffer(struct sof_sink *sink, size_t req_size,
@@ -78,13 +122,17 @@ static int comp_buffer_get_buffer(struct sof_sink *sink, size_t req_size,
 {
 	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
 
-	if (req_size >  audio_stream_get_free_bytes(&buffer->stream))
+	shared_buf_lock(buffer);
+	if (req_size >  audio_stream_get_free_bytes(&buffer->stream)) {
+		shared_buf_unlock(buffer);
 		return -ENODATA;
+	}
 
 	/* get circular buffer parameters */
 	*data_ptr = buffer->stream.w_ptr;
 	*buffer_start = buffer->stream.addr;
 	*buffer_size = buffer->stream.size;
+	shared_buf_unlock(buffer);
 	return 0;
 }
 
@@ -93,8 +141,10 @@ static int comp_buffer_commit_buffer(struct sof_sink *sink, size_t commit_size)
 	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
 
 	if (commit_size) {
+		shared_buf_lock(buffer);
 		buffer_stream_writeback(buffer, commit_size);
 		comp_update_buffer_produce(buffer, commit_size);
+		shared_buf_unlock(buffer);
 	}
 
 	return 0;
@@ -560,6 +610,8 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
+	shared_buf_lock(buffer);
+
 #if CONFIG_PROBE
 	void *produce_begin = audio_stream_get_wptr(&buffer->stream);
 #endif
@@ -589,6 +641,8 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		((char *)audio_stream_get_wptr(&buffer->stream) -
 		 (char *)audio_stream_get_addr(&buffer->stream)));
 #endif
+
+	shared_buf_unlock(buffer);
 }
 
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
@@ -610,6 +664,8 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
+	shared_buf_lock(buffer);
+
 	audio_stream_consume(&buffer->stream, bytes);
 
 #if CONFIG_SOF_LOG_DBG_BUFFER
@@ -622,6 +678,8 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		((char *)audio_stream_get_wptr(&buffer->stream) -
 		 (char *)audio_stream_get_addr(&buffer->stream)));
 #endif
+
+	shared_buf_unlock(buffer);
 }
 
 static inline struct list_item *buffer_comp_list(struct comp_buffer *buffer,

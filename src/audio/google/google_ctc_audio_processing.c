@@ -380,7 +380,7 @@ static int ctc_prepare(struct processing_module *mod,
 	struct sof_source *source;
 	unsigned int num_channels;
 	uint8_t *config;
-	int config_size;
+	size_t config_size;
 
 	comp_info(mod->dev, "entry");
 
@@ -422,7 +422,7 @@ static int ctc_prepare(struct processing_module *mod,
 	config = comp_get_data_blob(cd->tuning_handler, &config_size, NULL);
 
 	if (config_size != CTC_BLOB_CONFIG_SIZE) {
-		comp_info(mod->dev, "config_size not expected: %d", config_size);
+		comp_info(mod->dev, "config_size not expected: %zu", config_size);
 		config = NULL;
 		config_size = 0;
 	}

@@ -144,7 +144,13 @@ size_t ring_buffer_inc_offset(struct ring_buffer *ring_buffer, size_t offset, si
 static inline
 size_t _ring_buffer_get_data_available(struct ring_buffer *ring_buffer)
 {
+#if defined(CONFIG_LIBRARY) && !defined(__XTENSA__) && !defined(CONFIG_XT_SIMULATOR)
+	int32_t w_off = __atomic_load_n(&ring_buffer->_write_offset, __ATOMIC_ACQUIRE);
+	int32_t r_off = __atomic_load_n(&ring_buffer->_read_offset, __ATOMIC_ACQUIRE);
+	int32_t avail_data = w_off - r_off;
+#else
 	int32_t avail_data =  ring_buffer->_write_offset - ring_buffer->_read_offset;
+#endif
 	/* wrap around ? 2*size because of "double area" */
 	if (avail_data < 0)
 		avail_data = 2 * ring_buffer->data_buffer_size + avail_data;
@@ -199,9 +205,17 @@ static int ring_buffer_commit_buffer(struct sof_sink *sink, size_t commit_size)
 					     commit_size);
 
 		/* move write pointer */
+#if defined(CONFIG_LIBRARY) && !defined(__XTENSA__) && !defined(CONFIG_XT_SIMULATOR)
+		__atomic_store_n(&ring_buffer->_write_offset,
+				 ring_buffer_inc_offset(ring_buffer,
+							ring_buffer->_write_offset,
+							commit_size),
+				 __ATOMIC_RELEASE);
+#else
 		ring_buffer->_write_offset = ring_buffer_inc_offset(ring_buffer,
 								    ring_buffer->_write_offset,
 								    commit_size);
+#endif
 	}
 
 	return 0;
@@ -237,15 +251,23 @@ static int ring_buffer_release_data(struct sof_source *source, size_t free_size)
 	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
 	if (free_size) {
 		/* data consumed, free buffer space, no need for any special cache operations */
+#if defined(CONFIG_LIBRARY) && !defined(__XTENSA__) && !defined(CONFIG_XT_SIMULATOR)
+		__atomic_store_n(&ring_buffer->_read_offset,
+				 ring_buffer_inc_offset(ring_buffer,
+							ring_buffer->_read_offset,
+							free_size),
+				 __ATOMIC_RELEASE);
+#else
 		ring_buffer->_read_offset = ring_buffer_inc_offset(ring_buffer,
 								   ring_buffer->_read_offset,
 								   free_size);
+#endif
 	}
 
 	return 0;
 }
 
-int ring_buffer_module_unbind(struct sof_sink *sink)
+static int ring_buffer_module_unbind(struct sof_sink *sink)
 {
 	struct ring_buffer *ring_buffer = ring_buffer_from_sink(sink);
 
