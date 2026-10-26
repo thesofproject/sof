@@ -14,6 +14,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
+#include <sof/lib/dai.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/debug/gdb/gdb.h>
