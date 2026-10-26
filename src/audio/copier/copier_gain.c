@@ -4,7 +4,7 @@
 //
 // Author: Ievgen Ganakov <ievgen.ganakov@intel.com>
 
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <sof/trace/trace.h>
 #include <ipc4/base-config.h>
 #include <sof/audio/component.h>
