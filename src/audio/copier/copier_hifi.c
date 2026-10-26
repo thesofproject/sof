@@ -12,7 +12,7 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <module/module/base.h>
 #include <stddef.h>
 #include <errno.h>
