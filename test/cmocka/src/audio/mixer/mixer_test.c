@@ -110,7 +110,7 @@ static void test_audio_mixer_copy(void **state)
 	struct processing_module_test_data *tc = *state;
 	struct processing_module *mod = tc->mod;
 	struct mixer_data *md = module_get_private_data(tc->mod);
-	struct cir_buf_source sources_buf[PLATFORM_MAX_STREAMS];
+	struct cir_buf_source sources_buf[CONFIG_PLATFORM_MAX_STREAMS];
 	struct cir_buf_sink sink_buf;
 
 	for (src_idx = 0; src_idx < tc->num_sources; ++src_idx) {

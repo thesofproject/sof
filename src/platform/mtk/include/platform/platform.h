@@ -7,8 +7,6 @@
 
 #include <platform/lib/clk.h>
 
-#define PLATFORM_MAX_STREAMS 5
-
 #define HOST_PAGE_SIZE 4096
 
 #define PLATFORM_DEFAULT_CLOCK CLK_CPU(0)

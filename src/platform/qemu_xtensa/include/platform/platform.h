@@ -8,8 +8,6 @@
 
 /* Dummy platform header for qemu_xtensa */
 #define PLATFORM_CORE_COUNT 1
-#define PLATFORM_MAX_STREAMS 8
-
 #define HW_CFG_VERSION 0x010000
 #define DMA_TRACE_LOCAL_SIZE HOST_PAGE_SIZE
 

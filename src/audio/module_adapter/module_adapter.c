@@ -1118,8 +1118,8 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 
 static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 {
-	struct comp_buffer *sources[PLATFORM_MAX_STREAMS];
-	struct comp_buffer *sinks[PLATFORM_MAX_STREAMS];
+	struct comp_buffer *sources[CONFIG_PLATFORM_MAX_STREAMS];
+	struct comp_buffer *sinks[CONFIG_PLATFORM_MAX_STREAMS];
 	struct comp_buffer *sink;
 	struct comp_buffer *source;
 	struct processing_module *mod = comp_mod(dev);
