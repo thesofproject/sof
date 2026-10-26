@@ -42,9 +42,6 @@ static inline void *platform_rfree_prepare(void *ptr)
 	return ptr;
 }
 
-#define uncache_to_cache(address)	address
-#define cache_to_uncache(address)	address
-#define is_uncached(address)		1
 #define cache_to_uncache_init(address)	address
 
 #define ARCH_OOPS_SIZE	0
