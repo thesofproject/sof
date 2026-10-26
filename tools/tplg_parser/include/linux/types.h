@@ -14,6 +14,16 @@
 
 /* There are minimum types needed for alsa/sound/uapi/asoc.h */
 
+#define __SOUND_ASOUND_H
+
+#ifndef __DECLARE_FLEX_ARRAY
+#define __DECLARE_FLEX_ARRAY(TYPE, NAME)	\
+	struct { \
+		struct { } __empty_ ## NAME; \
+		TYPE NAME[]; \
+	}
+#endif
+
 typedef int64_t __le64;
 typedef int32_t __le32;
 typedef int16_t __le16;

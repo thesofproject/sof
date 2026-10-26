@@ -56,6 +56,13 @@ static inline void tplg_debug(char *fmt, ...) {}
 #define TPLG_PARSER_FUZZER_DEV 2
 #define TPLG_MAX_PCM_PIPELINES	16
 
+#ifndef COMP_PROCESSING_DOMAIN_LL
+#define COMP_PROCESSING_DOMAIN_LL 0
+#endif
+#ifndef COMP_PROCESSING_DOMAIN_DP
+#define COMP_PROCESSING_DOMAIN_DP 1
+#endif
+
 #define MOVE_POINTER_BY_BYTES(p, b) ((typeof(p))((uint8_t *)(p) + (b)))
 
 struct testbench_prm;
@@ -109,13 +116,22 @@ struct tplg_pipeline_info {
 	int instance_id;
 	int usage_count;
 	int mem_usage;
+	int core_id;
+	int priority;
+	bool set_up;
 	char *name;
 	struct list_item item; /* item in a list */
 };
 
+#define SOF_WIDGET_MAX_NUM_PINS	8
+
 struct tplg_pins_info {
 	uint32_t num_input_pins;
 	uint32_t num_output_pins;
+	char **input_pin_binding;
+	char **output_pin_binding;
+	uint32_t input_pin_mask;
+	uint32_t output_pin_mask;
 };
 
 struct tplg_comp_info {
@@ -123,6 +139,7 @@ struct tplg_comp_info {
 	struct sof_ipc4_available_audio_format available_fmt; /* available formats in tplg */
 	struct ipc4_module_init_instance module_init;
 	struct ipc4_base_module_cfg basecfg;
+	struct ipc4_audio_format out_audio_fmt;
 	struct tplg_pipeline_info *pipe_info;
 	struct sof_uuid uuid;
 	struct tplg_pins_info pins_info;
@@ -135,11 +152,21 @@ struct tplg_comp_info {
 	int ipc_size;
 	int instance_id;
 	int module_id;
+	int core_id;
+	uint32_t proc_domain;
+	uint32_t domain_id;
+	uint32_t stack_bytes;
+	uint32_t heap_bytes;
+	bool prepared;
+	bool set_up;
 };
 
 struct tplg_route_info {
 	struct tplg_comp_info *source;
 	struct tplg_comp_info *sink;
+	int src_queue_id;
+	int dst_queue_id;
+	bool set_up;
 	struct list_item item; /* item in a list */
 };
 
@@ -270,6 +297,12 @@ int tplg_token_get_uint32_t(void *elem, void *object, uint32_t offset,
 			    uint32_t size);
 
 int tplg_token_get_comp_format(void *elem, void *object, uint32_t offset,
+			       uint32_t size);
+
+int tplg_token_get_string(void *elem, void *object, uint32_t offset,
+			  uint32_t size);
+
+int tplg_token_get_comp_domain(void *elem, void *object, uint32_t offset,
 			       uint32_t size);
 
 int tplg_token_get_uuid(void *elem, void *object, uint32_t offset, uint32_t size);

@@ -62,6 +62,8 @@ static int pipeline_ipc3_build(struct tplg_context *ctx, void *_pipeline)
 
 /* Pipeline - IPC4 */
 static const struct sof_topology_token pipeline4_tokens[] = {
+	{SOF_TKN_SCHED_PRIORITY, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
+		offsetof(struct sof_ipc_pipe_new, priority)},
 	{SOF_TKN_SCHED_CORE, SND_SOC_TPLG_TUPLE_TYPE_WORD, tplg_token_get_uint32_t,
 		offsetof(struct sof_ipc_pipe_new, core)},
 };

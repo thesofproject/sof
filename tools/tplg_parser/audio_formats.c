@@ -75,6 +75,71 @@ static const struct sof_topology_token ipc4_comp_pin_tokens[] = {
 		tplg_token_get_uint32_t, offsetof(struct tplg_pins_info, num_output_pins)},
 };
 
+static const struct sof_topology_token ipc4_comp_input_pin_binding_tokens[] = {
+	{SOF_TKN_COMP_INPUT_PIN_BINDING_WNAME, SND_SOC_TPLG_TUPLE_TYPE_STRING,
+		tplg_token_get_string, 0},
+};
+
+static const struct sof_topology_token ipc4_comp_output_pin_binding_tokens[] = {
+	{SOF_TKN_COMP_OUTPUT_PIN_BINDING_WNAME, SND_SOC_TPLG_TUPLE_TYPE_STRING,
+		tplg_token_get_string, 0},
+};
+
+static int tplg_parse_pin_binding(struct tplg_context *ctx, bool is_output)
+{
+	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
+	struct tplg_comp_info *comp_info = ctx->current_comp_info;
+	struct tplg_pins_info *pins = &comp_info->pins_info;
+	const struct sof_topology_token *tokens;
+	char *pin_binding[SOF_WIDGET_MAX_NUM_PINS] = { 0 };
+	int size = ctx->widget->priv.size;
+	uint32_t num_pins;
+	char **pb;
+	int ret, i;
+
+	if (is_output) {
+		num_pins = pins->num_output_pins;
+		tokens = ipc4_comp_output_pin_binding_tokens;
+	} else {
+		num_pins = pins->num_input_pins;
+		tokens = ipc4_comp_input_pin_binding_tokens;
+	}
+
+	if (num_pins <= 1)
+		return 0;
+
+	if (num_pins > SOF_WIDGET_MAX_NUM_PINS) {
+		fprintf(stderr, "widget: %s: invalid num_pins %u\n",
+			ctx->widget->name, num_pins);
+		return -EINVAL;
+	}
+
+	ret = sof_parse_token_sets(pin_binding, tokens, 1, array, size,
+				   num_pins, sizeof(char *));
+	if (ret < 0)
+		goto err;
+
+	if (pin_binding[0]) {
+		pb = calloc(num_pins, sizeof(char *));
+		if (!pb) {
+			ret = -ENOMEM;
+			goto err;
+		}
+		memcpy(pb, pin_binding, num_pins * sizeof(char *));
+		if (is_output)
+			pins->output_pin_binding = pb;
+		else
+			pins->input_pin_binding = pb;
+	}
+
+	return 0;
+
+err:
+	for (i = 0; i < num_pins; i++)
+		free(pin_binding[i]);
+	return ret;
+}
+
 int tplg_parse_widget_audio_formats(struct tplg_context *ctx)
 {
 	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
@@ -155,9 +220,25 @@ int tplg_parse_widget_audio_formats(struct tplg_context *ctx)
 
 	ret = sof_parse_token_sets(&comp_info->pins_info, ipc4_comp_pin_tokens,
 				   ARRAY_SIZE(ipc4_comp_pin_tokens), array, size, 1, 0);
-	if (ret < 0)
+	if (ret < 0) {
 		fprintf(stderr, "widget: %s: Failed to parse ipc4_comp_pin_tokens\n",
 			ctx->widget->name);
+		return ret;
+	}
 
-	return ret;
+	ret = tplg_parse_pin_binding(ctx, false);
+	if (ret < 0) {
+		fprintf(stderr, "widget: %s: Failed to parse input pin bindings\n",
+			ctx->widget->name);
+		return ret;
+	}
+
+	ret = tplg_parse_pin_binding(ctx, true);
+	if (ret < 0) {
+		fprintf(stderr, "widget: %s: Failed to parse output pin bindings\n",
+			ctx->widget->name);
+		return ret;
+	}
+
+	return 0;
 }

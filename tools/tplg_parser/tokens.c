@@ -83,6 +83,33 @@ int tplg_token_get_comp_format(void *elem, void *object, uint32_t offset,
 	return 0;
 }
 
+int tplg_token_get_string(void *elem, void *object, uint32_t offset,
+			  uint32_t size)
+{
+	struct snd_soc_tplg_vendor_string_elem *velem = elem;
+	char **dst = (char **)((uint8_t *)object + offset);
+
+	*dst = strdup(velem->string);
+	if (!*dst)
+		return -ENOMEM;
+
+	return 0;
+}
+
+int tplg_token_get_comp_domain(void *elem, void *object, uint32_t offset,
+			       uint32_t size)
+{
+	struct snd_soc_tplg_vendor_string_elem *velem = elem;
+	uint32_t *val = (uint32_t *)((uint8_t *)object + offset);
+
+	if (strcasecmp(velem->string, "DP") == 0)
+		*val = COMP_PROCESSING_DOMAIN_DP;
+	else
+		*val = COMP_PROCESSING_DOMAIN_LL;
+
+	return 0;
+}
+
 int sof_parse_token_sets(void *object, const struct sof_topology_token *tokens,
 			 int count, struct snd_soc_tplg_vendor_array *array,
 			 int priv_size, int num_sets, int object_size)

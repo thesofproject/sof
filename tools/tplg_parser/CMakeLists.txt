@@ -7,7 +7,11 @@ project(SOF_TPLG_PARSER C)
 include(../../scripts/cmake/misc.cmake)
 include(CheckCCompilerFlag)
 
-set(default_asoc_h "/usr/include/alsa/sound/uapi/asoc.h")
+if(EXISTS "/usr/include/alsa/sound/uapi/asoc.h")
+	set(default_asoc_h "/usr/include/alsa/sound/uapi/asoc.h")
+else()
+	set(default_asoc_h "/usr/include/sound/asoc.h")
+endif()
 
 set(sof_source_directory "${PROJECT_SOURCE_DIR}/../..")
 
@@ -63,6 +67,12 @@ target_compile_options(sof_tplg_parser PRIVATE
 	-g -O -Wall -Werror -fPIC -DPIC
 	-Wmissing-prototypes ${implicit_fallthrough}
 	-DCONFIG_LIBRARY -D${tplg_ipc})
+if(CMAKE_C_COMPILER MATCHES "xt-|xtensa-")
+	target_compile_options(sof_tplg_parser PRIVATE
+		-U__INT32_TYPE__ -D__INT32_TYPE__=int
+		-U__UINT32_TYPE__ "-D__UINT32_TYPE__=unsigned int"
+		-Wno-format)
+endif()
 
 target_link_libraries(sof_tplg_parser PRIVATE -lm)
 
