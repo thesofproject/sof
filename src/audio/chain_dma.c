@@ -15,7 +15,6 @@
 #include <ipc/dai.h>
 #include <ipc4/gateway.h>
 #include <sof/schedule/ll_schedule.h>
-#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
 #include <rtos/alloc.h>
 #include <rtos/task.h>

@@ -21,7 +21,7 @@
 #include <rtos/kernel.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/lib/cpu-clk-manager.h>
-#include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/ll_schedule.h>
 
 #ifdef CONFIG_IPC_MAJOR_4
 #include <ipc4/notification.h>
