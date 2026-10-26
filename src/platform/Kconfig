@@ -233,6 +233,7 @@ if !ZEPHYR_SOF_MODULE
 
 config MP_MAX_NUM_CPUS
 	int
+	default 8 if LIBRARY
 	default 1
 	help
 	  Maximum number of cores per configuration

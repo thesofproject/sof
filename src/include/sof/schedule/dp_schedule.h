@@ -91,6 +91,8 @@ __syscall void scheduler_dp_internal_free(struct task *task);
  */
 __syscall void scheduler_dp_ll_tick(void);
 #include <zephyr/syscalls/dp_schedule.h>
+#else
+void scheduler_dp_ll_tick(void);
 #endif
 
 /**
