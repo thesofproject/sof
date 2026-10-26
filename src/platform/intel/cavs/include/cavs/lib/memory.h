@@ -30,29 +30,6 @@
 
 struct sof;
 
-#define SRAM_ALIAS_BASE		0x9E000000
-#define SRAM_ALIAS_MASK		0xFF000000
-#define SRAM_ALIAS_OFFSET	SRAM_UNCACHED_ALIAS
-
-#if !defined UNIT_TEST
-static inline void __sparse_cache *uncache_to_cache(void *address)
-{
-	return (void __sparse_cache *)((uintptr_t)(address) | SRAM_ALIAS_OFFSET);
-}
-
-static inline void *cache_to_uncache(void __sparse_cache *address)
-{
-	return (void *)((uintptr_t)(address) & ~SRAM_ALIAS_OFFSET);
-}
-
-#define is_uncached(address) \
-	(((uint32_t)(address) & SRAM_ALIAS_MASK) == SRAM_ALIAS_BASE)
-#else
-#define uncache_to_cache(address)	address
-#define cache_to_uncache(address)	address
-#define is_uncached(address)		0
-#endif
-
 #if !defined UNIT_TEST && !defined __ZEPHYR__
 #define cache_to_uncache_init(address) \
 	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
