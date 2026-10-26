@@ -12,6 +12,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
+#include <sof/lib/dma.h>
 #include <sof/common.h>
 #include <sof/compiler_attributes.h>
 #include <sof/ipc/topology.h>
