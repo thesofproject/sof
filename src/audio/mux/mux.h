@@ -16,7 +16,6 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/common.h>
-#include <sof/platform.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
 #include <sof/lib/uuid.h>
