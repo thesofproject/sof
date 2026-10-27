@@ -117,8 +117,7 @@ int module_init(struct processing_module *mod)
 
 	/* check interface, there must be one and only one of processing procedure */
 	if (!interface->init ||
-	    (!!interface->process + !!interface->process_audio_stream +
-	     !!interface->process_raw_data < 1)) {
+	    (!!interface->process + !!interface->process_audio_stream < 1)) {
 		comp_err(dev, "comp is missing mandatory interfaces");
 		return -EIO;
 	}
@@ -701,9 +700,6 @@ int module_process_legacy(struct processing_module *mod,
 	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod))
 		ret = ops->process_audio_stream(mod, input_buffers, num_input_buffers,
 							     output_buffers, num_output_buffers);
-	else if (IS_PROCESSING_MODE_RAW_DATA(mod))
-		ret = ops->process_raw_data(mod, input_buffers, num_input_buffers,
-							 output_buffers, num_output_buffers);
 	else
 		ret = -EOPNOTSUPP;
 

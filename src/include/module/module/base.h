@@ -89,7 +89,6 @@ struct module_data {
 enum module_processing_type {
 	MODULE_PROCESS_TYPE_SOURCE_SINK,
 	MODULE_PROCESS_TYPE_STREAM,
-	MODULE_PROCESS_TYPE_RAW,
 };
 
 struct userspace_context;
@@ -111,18 +110,12 @@ struct processing_module {
 	 */
 #ifdef SOF_MODULE_API_PRIVATE
 	struct sof_ipc_stream_params *stream_params;
-	/* list of sink buffers to save produced output, to be used in Raw data
-	 * processing mode
-	 */
-	struct list_item raw_data_buffers_list;
 
 	/*
 	 * This is a temporary change in order to support the trace messages in the modules. This
 	 * will be removed once the trace API is updated.
 	 */
 	struct comp_dev *dev;
-	uint32_t deep_buff_bytes; /**< copy start threshold */
-	uint32_t output_buffer_size; /**< size of local buffer to save produced samples */
 
 	/* number of sinks / sources and (when in use) input_buffers / input_buffers */
 	uint32_t num_of_sources;
@@ -132,7 +125,7 @@ struct processing_module {
 	struct sof_sink *sinks[CONFIG_MODULE_MAX_CONNECTIONS];
 	struct sof_source *sources[CONFIG_MODULE_MAX_CONNECTIONS];
 
-	/* this is used in case of raw data or audio_stream mode
+	/* this is used in case of audio_stream mode
 	 * number of buffers described by fields:
 	 * input_buffers  - num_of_sources
 	 * output_buffers - num_of_sinks

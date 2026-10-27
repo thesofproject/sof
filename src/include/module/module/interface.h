@@ -139,12 +139,12 @@ struct module_interface {
 	 * samples provided by the module_adapter and produce/output the processed
 	 * ones back to module_adapter.
 	 *
-	 * there are 3 versions of the procedure, the difference is the format of
+	 * there are 2 versions of the procedure, the difference is the format of
 	 * input/output data
 	 *
 	 * the module MUST implement one and ONLY one of them
 	 *
-	 * process_audio_stream and process_raw_data are depreciated and will be removed
+	 * process_audio_stream is depreciated and will be removed
 	 * once pipeline learns to use module API directly (without module adapter)
 	 * modules that need such processing should use proper wrappers
 	 *
@@ -174,21 +174,6 @@ struct module_interface {
 				    int num_input_buffers,
 				    struct output_stream_buffer *output_buffers,
 				    int num_output_buffers);
-
-	/**
-	 * process_raw_data (depreciated)
-	 *	- sources are input_stream_buffer[]
-	 *	    - sources[].data is a pointer to raw audio data
-	 *	- sinks are output_stream_buffer[]
-	 *	    - sinks[].data is a pointer to raw audio data
-	 *
-	 * Usually shouldn't be __cold
-	 */
-	int (*process_raw_data)(struct processing_module *mod,
-				struct input_stream_buffer *input_buffers,
-				int num_input_buffers,
-				struct output_stream_buffer *output_buffers,
-				int num_output_buffers);
 
 	/**
 	 * (optional) Set module configuration parameter

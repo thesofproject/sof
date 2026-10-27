@@ -285,7 +285,6 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		return NULL;
 
 	module_set_private_data(mod, mod_priv);
-	list_init(&mod->raw_data_buffers_list);
 #if CONFIG_USERSPACE
 	mod->user_ctx = user_ctx;
 #endif /* CONFIG_USERSPACE */
@@ -347,8 +346,6 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
 	else if (interface->process_audio_stream)
 		mod->proc_type = MODULE_PROCESS_TYPE_STREAM;
-	else if (interface->process_raw_data)
-		mod->proc_type = MODULE_PROCESS_TYPE_RAW;
 	else
 		goto err;
 
@@ -458,13 +455,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_mod(dev);
-	struct module_data *md = &mod->priv;
 	struct comp_buffer *sink;
-	struct list_item *blist, *_blist;
-	uint32_t buff_periods;
-	uint32_t buff_size; /* size of local buffer */
+	struct list_item *blist;
 	int memory_flags;
-	int i = 0;
 
 	comp_dbg(dev, "start");
 #if CONFIG_IPC_MAJOR_4
@@ -483,7 +476,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
 		ret = module_adapter_sink_src_prepare(dev);
 
-	else if ((IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod)) &&
+	else if (IS_PROCESSING_MODE_AUDIO_STREAM(mod) &&
 		 mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
 		ret = module_prepare(mod, NULL, 0, NULL, 0);
 
@@ -541,8 +534,6 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* nothing more to do for HOST/DAI type modules */
 	if (dev->ipc_config.type == SOF_COMP_HOST || dev->ipc_config.type == SOF_COMP_DAI)
 		return 0;
-
-	mod->deep_buff_bytes = 0;
 
 	/* Get period_bytes first on prepare(). At this point the stream parameter from sink buffer
 	 * shall be settled, provided that the pipeline is built correctly (bind IPC received).
@@ -634,145 +625,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 		mod->output_buffers = NULL;
 	}
 
-	/*
-	 * no need to allocate intermediate sink buffers if the module produces only period bytes
-	 * every period and has only 1 input and 1 output buffer
-	 */
-	if (!IS_PROCESSING_MODE_RAW_DATA(mod))
-		return 0;
-
-	/* Module is prepared, now we need to configure processing settings.
-	 * If module internal buffer is not equal to natural multiple of pipeline
-	 * buffer we have a situation where module adapter have to deep buffer certain amount
-	 * of samples on its start (typically few periods) in order to regularly
-	 * generate output once started (same situation happens for compress streams
-	 * as well).
-	 */
-	if (md->mpd.in_buff_size > mod->period_bytes) {
-		buff_periods = (md->mpd.in_buff_size % mod->period_bytes) ?
-			       (md->mpd.in_buff_size / mod->period_bytes) + 2 :
-			       (md->mpd.in_buff_size / mod->period_bytes) + 1;
-	} else {
-		buff_periods = (mod->period_bytes % md->mpd.in_buff_size) ?
-			       (mod->period_bytes / md->mpd.in_buff_size) + 2 :
-			       (mod->period_bytes / md->mpd.in_buff_size) + 1;
-	}
-
-	/*
-	 * deep_buffer_bytes is a measure of how many bytes we need to send to the DAI before
-	 * the module starts producing samples. In a normal copy() walk it might be possible that
-	 * the first period_bytes copied to input_buffer might not be enough for the processing
-	 * to begin. So, in order to prevent the DAI from starving, it needs to be fed zeroes until
-	 * the module starts processing and generating output samples.
-	 */
-	if (md->mpd.in_buff_size != mod->period_bytes)
-		mod->deep_buff_bytes = MIN(mod->period_bytes, md->mpd.in_buff_size) * buff_periods;
-
-	if (md->mpd.out_buff_size > mod->period_bytes) {
-		buff_periods = (md->mpd.out_buff_size % mod->period_bytes) ?
-			       (md->mpd.out_buff_size / mod->period_bytes) + 2 :
-			       (md->mpd.out_buff_size / mod->period_bytes) + 1;
-	} else {
-		buff_periods = (mod->period_bytes % md->mpd.out_buff_size) ?
-			       (mod->period_bytes / md->mpd.out_buff_size) + 2 :
-			       (mod->period_bytes / md->mpd.out_buff_size) + 1;
-	}
-
-	/*
-	 * It is possible that the module process() will produce more data than period_bytes but
-	 * the DAI can consume only period_bytes every period. So, the local buffer needs to be
-	 * large enough to save the produced output samples.
-	 */
-	buff_size = MAX(mod->period_bytes, md->mpd.out_buff_size) * buff_periods;
-	mod->output_buffer_size = buff_size;
-
-	/* allocate memory for input buffer data */
-	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
-
-	list_for_item(blist, &dev->bsource_list) {
-		mod->input_buffers[i].data = sof_heap_alloc(sof_sys_user_heap_get(),
-							     memory_flags, size, 0);
-		if (!mod->input_buffers[i].data) {
-			comp_err(mod->dev, "Failed to alloc input buffer data");
-			ret = -ENOMEM;
-			goto in_data_free;
-		}
-		i++;
-	}
-
-	/* allocate memory for output buffer data */
-	i = 0;
-	list_for_item(blist, &dev->bsink_list) {
-		mod->output_buffers[i].data = sof_heap_alloc(sof_sys_user_heap_get(),
-							      memory_flags,
-							      md->mpd.out_buff_size, 0);
-		if (!mod->output_buffers[i].data) {
-			comp_err(mod->dev, "Failed to alloc output buffer data");
-			ret = -ENOMEM;
-			goto out_data_free;
-		}
-		i++;
-	}
-
-	/* allocate buffer for all sinks */
-	if (list_is_empty(&mod->raw_data_buffers_list)) {
-		for (i = 0; i < mod->num_of_sinks; i++) {
-			/* allocate not shared buffer */
-			struct comp_buffer *buffer = buffer_alloc(md->resources.alloc,
-								  buff_size, memory_flags,
-								  PLATFORM_DCACHE_ALIGN,
-								  BUFFER_USAGE_NOT_SHARED);
-
-			if (!buffer) {
-				comp_err(dev, "failed to allocate local buffer");
-				ret = -ENOMEM;
-				goto free;
-			}
-
-			vregion_get(md->resources.alloc->vreg);
-
-			list_item_prepend(&buffer->buffers_list, &mod->raw_data_buffers_list);
-
-			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
-			audio_buffer_reset(&buffer->audio_buffer);
-		}
-	} else {
-		list_for_item(blist, &mod->raw_data_buffers_list) {
-			struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-								  buffers_list);
-
-			ret = buffer_set_size(buffer, buff_size, 0);
-			if (ret < 0) {
-				comp_err(dev, "buffer_set_size() failed, buff_size = %u",
-					 buff_size);
-				goto free;
-			}
-
-			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
-			audio_buffer_reset(&buffer->audio_buffer);
-		}
-	}
-
 	comp_dbg(dev, "done");
-
+	
 	return 0;
-
-free:
-	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
-		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-							  buffers_list);
-
-		list_item_del(&buffer->buffers_list);
-		buffer_free(buffer);
-	}
-
-out_data_free:
-	for (i = 0; i < mod->num_of_sinks; i++)
-		sof_heap_free(sof_sys_user_heap_get(), mod->output_buffers[i].data);
-
-in_data_free:
-	for (i = 0; i < mod->num_of_sources; i++)
-		sof_heap_free(sof_sys_user_heap_get(), mod->input_buffers[i].data);
 
 in_out_free:
 	sof_heap_free(sof_sys_user_heap_get(), mod->output_buffers);
@@ -819,170 +674,6 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 	}
 
 	return 0;
-}
-
-/*
- * Function to copy from source buffer to the module buffer
- * @source: source audio buffer stream
- * @buff: pointer to the module input buffer
- * @buff_size: size of the module input buffer
- * @bytes: number of bytes available in the source buffer
- */
-static void ca_copy_from_source_to_module(const struct audio_stream *source,
-					  void *buff, uint32_t buff_size, size_t bytes)
-{
-	/* head_size - available data until end of source buffer */
-	const int without_wrap = audio_stream_bytes_without_wrap(source,
-								 audio_stream_get_rptr(source));
-	uint32_t head_size = MIN(bytes, without_wrap);
-	/* tail_size - residual data to be copied starting from the beginning of the buffer */
-	uint32_t tail_size = bytes - head_size;
-
-	/* copy head_size to module buffer */
-	memcpy((__sparse_force void *)buff, audio_stream_get_rptr(source),
-	       MIN(buff_size, head_size));
-
-	/* copy residual samples after wrap */
-	if (tail_size)
-		memcpy((__sparse_force char *)buff + head_size,
-		       audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + head_size),
-					 MIN(buff_size, tail_size));
-}
-
-/*
- * Function to copy processed samples from the module buffer to sink buffer
- * @sink: sink audio buffer stream
- * @buff: pointer to the module output buffer
- * @bytes: number of bytes available in the module output buffer
- */
-static void ca_copy_from_module_to_sink(const struct audio_stream *sink,
-					void *buff, size_t bytes)
-{
-	/* head_size - free space until end of sink buffer */
-	const int without_wrap = audio_stream_bytes_without_wrap(sink, audio_stream_get_wptr(sink));
-	uint32_t head_size = MIN(bytes, without_wrap);
-	/* tail_size - rest of the bytes that needs to be written
-	 * starting from the beginning of the buffer
-	 */
-	uint32_t tail_size = bytes - head_size;
-
-	/* copy "head_size" samples to sink buffer */
-	memcpy(audio_stream_get_wptr(sink), (__sparse_force void *)buff,
-	       MIN(audio_stream_get_size(sink), head_size));
-
-	/* copy rest of the samples after buffer wrap */
-	if (tail_size)
-		memcpy(audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + head_size),
-		       (__sparse_force char *)buff + head_size,
-		       MIN(audio_stream_get_size(sink), tail_size));
-}
-
-/**
- * \brief Generate zero samples of "bytes" size for the sink.
- * \param[in] sink - a pointer to sink buffer.
- * \param[in] bytes - number of zero bytes to produce.
- *
- * \return: none.
- */
-static void generate_zeroes(struct comp_buffer *sink, uint32_t bytes)
-{
-	uint32_t tmp, copy_bytes = bytes;
-	void *ptr;
-
-	while (copy_bytes) {
-		ptr = audio_stream_wrap(&sink->stream, audio_stream_get_wptr(&sink->stream));
-		tmp = audio_stream_bytes_without_wrap(&sink->stream, ptr);
-		tmp = MIN(tmp, copy_bytes);
-		ptr = (char *)ptr + tmp;
-		copy_bytes -= tmp;
-	}
-	comp_update_buffer_produce(sink, bytes);
-}
-
-static void module_copy_samples(struct comp_dev *dev, struct comp_buffer *src_buffer,
-				struct comp_buffer *sink_buffer, uint32_t produced)
-{
-	struct processing_module *mod = comp_mod(dev);
-	struct comp_copy_limits cl;
-	uint32_t copy_bytes;
-
-	if (mod->deep_buff_bytes) {
-		if (mod->deep_buff_bytes >= audio_stream_get_avail_bytes(&src_buffer->stream)) {
-			generate_zeroes(sink_buffer, mod->period_bytes);
-			return;
-		}
-
-		comp_dbg(dev, "deep buffering has ended after gathering %d bytes of processed data",
-			 audio_stream_get_avail_bytes(&src_buffer->stream));
-		mod->deep_buff_bytes = 0;
-	} else if (!produced) {
-		comp_dbg(dev, "nothing processed in this call");
-		/*
-		 * No data produced anything in this period but there still be data in the buffer
-		 * to copy to sink
-		 */
-		if (audio_stream_get_avail_bytes(&src_buffer->stream) < mod->period_bytes)
-			return;
-	}
-
-	comp_get_copy_limits(src_buffer, sink_buffer, &cl);
-	copy_bytes = cl.frames * cl.source_frame_bytes;
-	if (!copy_bytes)
-		return;
-	audio_stream_copy(&src_buffer->stream, 0, &sink_buffer->stream, 0,
-			  copy_bytes / mod->stream_params->sample_container_bytes);
-	buffer_stream_writeback(sink_buffer, copy_bytes);
-
-	comp_update_buffer_produce(sink_buffer, copy_bytes);
-	comp_update_buffer_consume(src_buffer, copy_bytes);
-}
-
-static void module_adapter_process_output(struct comp_dev *dev)
-{
-	struct processing_module *mod = comp_mod(dev);
-	struct comp_buffer *sink;
-	struct list_item *blist;
-	int i = 0;
-
-	/*
-	 * copy all produced output samples to output buffers. This loop will do nothing when
-	 * there are no samples produced.
-	 */
-	list_for_item(blist, &mod->raw_data_buffers_list) {
-		if (mod->output_buffers[i].size > 0) {
-			struct comp_buffer *buffer;
-
-			buffer = container_of(blist, struct comp_buffer, buffers_list);
-
-			ca_copy_from_module_to_sink(&buffer->stream, mod->output_buffers[i].data,
-						    mod->output_buffers[i].size);
-			audio_stream_produce(&buffer->stream, mod->output_buffers[i].size);
-		}
-		i++;
-	}
-
-	/* copy from all output local buffers to sink buffers */
-	i = 0;
-	comp_dev_for_each_consumer(dev, sink) {
-		int j = 0;
-
-		list_for_item(blist, &mod->raw_data_buffers_list) {
-			if (i == j) {
-				struct comp_buffer *source;
-
-				source = container_of(blist, struct comp_buffer, buffers_list);
-				module_copy_samples(dev, source, sink,
-						    mod->output_buffers[i].size);
-
-				mod->output_buffers[i].size = 0;
-				break;
-			}
-			j++;
-		}
-		i++;
-	}
-
-	mod->total_data_produced += mod->output_buffers[0].size;
 }
 
 static uint32_t module_single_sink_setup(struct comp_dev *dev,
@@ -1324,93 +1015,6 @@ static int module_adapter_sink_source_copy(struct comp_dev *dev)
 	return ret;
 }
 
-static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
-{
-	struct processing_module *mod = comp_mod(dev);
-	struct module_data *md = &mod->priv;
-	struct comp_buffer *source, *sink;
-	struct list_item *blist;
-	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
-	uint32_t min_free_frames = UINT_MAX;
-	int ret, i = 0;
-
-	comp_dbg(dev, "start");
-
-	list_for_item(blist, &mod->raw_data_buffers_list) {
-		sink = container_of(blist, struct comp_buffer, buffers_list);
-
-		min_free_frames = MIN(min_free_frames,
-				      audio_stream_get_free_frames(&sink->stream));
-	}
-
-	/* copy source samples into input buffer */
-	comp_dev_for_each_producer(dev, source) {
-		uint32_t bytes_to_process;
-		int frames, source_frame_bytes;
-
-		/* check if the source dev is in the same state as the dev */
-		if (comp_buffer_get_source_state(source) != dev->state)
-			continue;
-
-		frames = MIN(min_free_frames,
-			     audio_stream_get_avail_frames(&source->stream));
-		source_frame_bytes = audio_stream_frame_bytes(&source->stream);
-
-		bytes_to_process = MIN(frames * source_frame_bytes, md->mpd.in_buff_size);
-
-		buffer_stream_invalidate(source, bytes_to_process);
-		mod->input_buffers[i].size = bytes_to_process;
-		mod->input_buffers[i].consumed = 0;
-
-		ca_copy_from_source_to_module(&source->stream, mod->input_buffers[i].data,
-					      md->mpd.in_buff_size, bytes_to_process);
-		i++;
-	}
-
-	ret = module_process_legacy(mod, mod->input_buffers, mod->num_of_sources,
-				    mod->output_buffers, mod->num_of_sinks);
-	if (ret) {
-		if (ret != -ENOSPC && ret != -ENODATA) {
-			comp_err(dev, "%d: module processing failed", ret);
-			goto out;
-		}
-
-		ret = 0;
-	}
-
-	i = 0;
-	/* consume from all input buffers */
-	comp_dev_for_each_producer(dev, source) {
-		comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
-
-		bzero((__sparse_force void *)mod->input_buffers[i].data, size);
-		mod->input_buffers[i].size = 0;
-		mod->input_buffers[i].consumed = 0;
-
-		i++;
-	}
-
-	mod->total_data_consumed += mod->input_buffers[0].consumed;
-
-	module_adapter_process_output(dev);
-
-	comp_dbg(dev, "done");
-
-	return 0;
-
-out:
-	for (i = 0; i < mod->num_of_sinks; i++)
-		mod->output_buffers[i].size = 0;
-
-	for (i = 0; i < mod->num_of_sources; i++) {
-		bzero((__sparse_force void *)mod->input_buffers[i].data, size);
-		mod->input_buffers[i].size = 0;
-		mod->input_buffers[i].consumed = 0;
-	}
-	comp_dbg(dev, "error %x", ret);
-	return ret;
-}
-
 int module_adapter_copy(struct comp_dev *dev)
 {
 	comp_dbg(dev, "start");
@@ -1419,9 +1023,6 @@ int module_adapter_copy(struct comp_dev *dev)
 
 	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod))
 		return module_adapter_audio_stream_type_copy(dev);
-
-	if (IS_PROCESSING_MODE_RAW_DATA(mod))
-		return module_adapter_raw_data_type_copy(dev);
 
 	if (IS_PROCESSING_MODE_SINK_SOURCE(mod)) {
 		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
@@ -1476,9 +1077,8 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 
 int module_adapter_reset(struct comp_dev *dev)
 {
-	int ret, i;
+	int ret;
 	struct processing_module *mod = comp_mod(dev);
-	struct list_item *blist;
 
 	comp_dbg(dev, "resetting");
 
@@ -1489,16 +1089,7 @@ int module_adapter_reset(struct comp_dev *dev)
 		return ret;
 	}
 
-	if (IS_PROCESSING_MODE_RAW_DATA(mod)) {
-		for (i = 0; i < mod->num_of_sinks; i++)
-			sof_heap_free(sof_sys_user_heap_get(),
-				      (__sparse_force void *)mod->output_buffers[i].data);
-		for (i = 0; i < mod->num_of_sources; i++)
-			sof_heap_free(sof_sys_user_heap_get(),
-				      (__sparse_force void *)mod->input_buffers[i].data);
-	}
-
-	if (IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod)) {
+	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod)) {
 		sof_heap_free(sof_sys_user_heap_get(), mod->output_buffers);
 		sof_heap_free(sof_sys_user_heap_get(), mod->input_buffers);
 
@@ -1508,12 +1099,6 @@ int module_adapter_reset(struct comp_dev *dev)
 
 	mod->total_data_consumed = 0;
 	mod->total_data_produced = 0;
-
-	list_for_item(blist, &mod->raw_data_buffers_list) {
-		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-							  buffers_list);
-		buffer_zero(buffer);
-	}
 
 	mod_free(mod, mod->stream_params);
 	mod->stream_params = NULL;
@@ -1527,7 +1112,6 @@ void module_adapter_free(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_mod(dev);
-	struct list_item *blist, *_blist;
 
 	comp_dbg(dev, "start");
 
@@ -1537,13 +1121,6 @@ void module_adapter_free(struct comp_dev *dev)
 
 	if (dev->task)
 		schedule_task_free(dev->task);
-
-	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
-		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-							  buffers_list);
-		list_item_del(&buffer->buffers_list);
-		buffer_free(buffer);
-	}
 
 	mod_free(mod, mod->stream_params);
 	mod_free_all(mod);

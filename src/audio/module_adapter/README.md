@@ -65,7 +65,7 @@ sequenceDiagram
 
     Pipe->>ModAd: comp_prepare()
     activate ModAd
-    ModAd->>ModAd: Calculate chunks (period bytes, deep_buff_bytes)
+    ModAd->>ModAd: Calculate period bytes
     ModAd->>Mod: module_prepare()
     Mod-->>ModAd: External DSP prepared internal states
     ModAd-->>Pipe: Prepared (Buffer formats synced)
