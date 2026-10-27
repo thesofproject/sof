@@ -95,6 +95,14 @@ __cold int copier_gain_set_fade_params(struct comp_dev *dev, struct copier_gain_
 		gain_params->fade_sg_length = frames * fade_period;
 	}
 
+	/*
+	 * fade_sg_length derives from the host-supplied sampling frequency,
+	 * pipeline period and fade period, so it can legitimately round down to
+	 * zero. Leave the fade disabled rather than dividing by it below.
+	 */
+	if (!gain_params->fade_sg_length)
+		return 0;
+
 	/* High precision step for fade-in calculation, keeps accurate precision */
 	gain_params->step_i64 = INT64_MAX / gain_params->fade_sg_length;
 	step_i64_to_i16 = gain_params->step_i64 >> I64_TO_I16_SHIFT;
