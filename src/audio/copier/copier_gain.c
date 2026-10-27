@@ -16,6 +16,18 @@
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 
+/**
+ * \brief Minimum DMIC gateway blob size, in dwords, holding the global config.
+ *
+ * The gateway blob length is host-controlled and expressed in dwords. The DMIC
+ * fade/silence parameters live in the global config part of the blob, so a blob
+ * shorter than this cannot be dereferenced for them.
+ */
+#define DMIC_GLOBAL_CFG_MIN_BLOB_WORDS \
+       ((offsetof(struct dmic_config_data, dmic_blob) + \
+         offsetof(struct dmic_config_blob, global_cfg) + \
+         sizeof(union dmic_global_cfg)) / sizeof(uint32_t))
+
 __cold int copier_gain_set_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
 				  uint32_t fade_period, enum sof_ipc_dai_type dai_type)
 {
@@ -34,10 +46,17 @@ __cold int copier_gain_set_params(struct comp_dev *dev, struct copier_gain_param
 	switch (dai_type) {
 	case SOF_DAI_INTEL_DMIC:
 		{
-			struct dmic_config_data *dmic_cfg =
-					(void *)cd->config.gtw_cfg.config_data;
+			struct dmic_config_data *dmic_cfg;
+			union dmic_global_cfg *dmic_glb_cfg;
 
-			union dmic_global_cfg *dmic_glb_cfg = &dmic_cfg->dmic_blob.global_cfg;
+			if (cd->config.gtw_cfg.config_length < DMIC_GLOBAL_CFG_MIN_BLOB_WORDS) {
+				comp_err(dev, "DMIC gateway blob too short: %u dwords",
+					 cd->config.gtw_cfg.config_length);
+				return -EINVAL;
+			}
+
+			dmic_cfg = (void *)cd->config.gtw_cfg.config_data;
+			dmic_glb_cfg = &dmic_cfg->dmic_blob.global_cfg;
 
 			/* Get fade period from DMIC blob */
 			fade_period = dmic_glb_cfg->ext_global_cfg.fade_in_period;
