@@ -33,11 +33,6 @@ int module_adapter_test_setup(struct processing_module_test_data *test_data)
 	test_data->sinks = test_calloc(test_data->num_sinks, sizeof(struct comp_buffer *));
 	test_data->sources = test_calloc(test_data->num_sources, sizeof(struct comp_buffer *));
 
-	test_data->input_buffers = test_calloc(test_data->num_sources,
-					       sizeof(struct input_stream_buffer *));
-	test_data->output_buffers = test_calloc(test_data->num_sinks,
-						sizeof(struct output_stream_buffer *));
-
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
@@ -45,22 +40,16 @@ int module_adapter_test_setup(struct processing_module_test_data *test_data)
 	size = parameters->frames *
 		get_frame_bytes(parameters->sink_format, parameters->channels) *
 		parameters->buffer_size_ms;
-	for (i = 0; i < test_data->num_sinks; i++) {
+	for (i = 0; i < test_data->num_sinks; i++)
 		test_data->sinks[i] = create_test_sink(dev, 0, parameters->sink_format,
 						       parameters->channels, size);
-		test_data->output_buffers[i] = test_malloc(sizeof(struct output_stream_buffer));
-		test_data->output_buffers[i]->data = &test_data->sinks[i]->stream;
-	}
 
 	/* allocate source buffers */
 	size = parameters->frames * get_frame_bytes(parameters->source_format,
 	       parameters->channels) * parameters->buffer_size_ms;
-	for (i = 0; i < test_data->num_sources; i++) {
+	for (i = 0; i < test_data->num_sources; i++)
 		test_data->sources[i] = create_test_source(dev, 0, parameters->source_format,
 							   parameters->channels, size);
-		test_data->input_buffers[i] = test_malloc(sizeof(struct input_stream_buffer));
-		test_data->input_buffers[i]->data = &test_data->sources[i]->stream;
-	}
 
 	test_data->verify = parameters->verify;
 
@@ -71,18 +60,12 @@ void module_adapter_test_free(struct processing_module_test_data *test_data)
 {
 	int i;
 
-	for (i = 0; i < test_data->num_sinks; i++) {
+	for (i = 0; i < test_data->num_sinks; i++)
 		free_test_sink(test_data->sinks[i]);
-		test_free(test_data->output_buffers[i]);
-	}
 
-	for (i = 0; i < test_data->num_sources; i++) {
+	for (i = 0; i < test_data->num_sources; i++)
 		free_test_source(test_data->sources[i]);
-		test_free(test_data->input_buffers[i]);
-	}
 
-	test_free(test_data->input_buffers);
-	test_free(test_data->output_buffers);
 	test_free(test_data->sinks);
 	test_free(test_data->sources);
 	test_free(test_data->mod->dev);
