@@ -18,6 +18,10 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec.bin,\
 SSP1_PCM_CORE_ID=0,SSP2_PCM_CORE_ID=0,\
 SSP0_MIXER_2LEVEL=1,PLATFORM=tgl"
 
+# Lean SSP0 NoCodec WoV topology for TGL
+"cavs-nocodec-wov\;sof-tgl-nocodec-wov\;PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-tgl-nocodec-wov.bin,PLATFORM=tgl,MWW_PCAN=true"
+
 # multicore disabled due to SOF issue #8942
 "cavs-nocodec\;sof-adl-nocodec\;NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 SSP1_PCM_CORE_ID=0,SSP2_PCM_CORE_ID=0,\
@@ -63,6 +67,10 @@ NHLT_BIN=nhlt-sof-lnl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000
 # SSP topology for PTL, includes Data Processing SRC
 "cavs-nocodec\;sof-ptl-nocodec\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin,SRC_DOMAIN=DP"
+
+# Lean SSP0 NoCodec WoV topology for PTL
+"cavs-nocodec-wov\;sof-ptl-nocodec-wov\;PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-nocodec-wov.bin,PLATFORM=ptl,MWW_PCAN=true"
 
 # SSP topology for PTL with 96 kHz DMIC
 "cavs-nocodec\;sof-ptl-nocodec-dmic-4ch-96k\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
