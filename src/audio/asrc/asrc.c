@@ -221,8 +221,6 @@ static int asrc_init(struct processing_module *mod)
 	 */
 	cd->track_drift = asrc_get_asynchronous_mode(ipc_asrc);
 	cd->skew = 0;
-	mod->skip_src_buffer_invalidate = true;
-	mod->skip_sink_buffer_writeback = true;
 
 	return 0;
 }

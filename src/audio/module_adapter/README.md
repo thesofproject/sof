@@ -81,7 +81,7 @@ To unify components operating directly in interrupt boundaries (DMA Low Latency 
 For LL modules, processing is fully synchronous within the pipeline tick:
 
 1. `comp_copy()` invokes `module_adapter_copy()`.
-2. Data is fetched directly into `module_process_legacy()` or `module_process_sink_src()`.
+2. Data is fetched directly into `module_process_sink_src()`.
 3. `ops->process()` consumes upstream arrays and produces downstream arrays.
 
 ### Data Processing (DP) Execution
