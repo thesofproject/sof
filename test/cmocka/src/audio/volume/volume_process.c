@@ -291,9 +291,6 @@ static void test_audio_vol(void **state)
 		break;
 	}
 
-	vol_state->input_buffers[0]->consumed = 0;
-	vol_state->output_buffers[0]->size = 0;
-
 	source_buf.buf_start = audio_stream_get_addr(&vol_state->sources[0]->stream);
 	source_buf.buf_end = audio_stream_get_end_addr(&vol_state->sources[0]->stream);
 	source_buf.ptr = audio_stream_get_rptr(&vol_state->sources[0]->stream);
