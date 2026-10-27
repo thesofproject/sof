@@ -29,7 +29,6 @@
  * Needed till all the modules use PROCESSING_MODE_SINK_SOURCE
  */
 #define IS_PROCESSING_MODE_AUDIO_STREAM(mod) ((mod)->proc_type == MODULE_PROCESS_TYPE_STREAM)
-#define IS_PROCESSING_MODE_RAW_DATA(mod) ((mod)->proc_type == MODULE_PROCESS_TYPE_RAW)
 #define IS_PROCESSING_MODE_SINK_SOURCE(mod) ((mod)->proc_type == MODULE_PROCESS_TYPE_SOURCE_SINK)
 
 #if CONFIG_IPC_MAJOR_4
