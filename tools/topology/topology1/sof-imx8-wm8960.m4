@@ -1,7 +1,7 @@
 #
 # Topology for i.MX8QM/i.MX8QXP/i.MX8MP board with 'CODEC' codec
 #
-# CODEC: wm8960, wm8962
+# CODEC: wm8960, wm8962, wm8904, tlv320 (tlv320aic3007)
 #
 
 # Include topology builder
@@ -57,6 +57,7 @@ define(`STREAM_NAME',
 	`ifelse(CODEC, `wm8960', `-wm8960-hifi',
 			CODEC, `wm8904', `-wm8904-hifi',
 			CODEC, `wm8962', `-wm8962',
+			CODEC, `tlv320', `-tlv320',
 			`fatal_error(`Codec not supported.')')')
 
 # define DAI BE dai_link name
@@ -106,6 +107,12 @@ ifelse(
 	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_in),
 		SAI_CLOCK(bclk, 3072000, codec_provider),
 		SAI_CLOCK(fsync, RATE, codec_provider),
+		SAI_TDM(2, 32, 3, 3),
+		SAI_CONFIG_DATA(SAI, SAI_INDEX, 0)))',
+	CODEC, `tlv320', `
+	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_in),
+		SAI_CLOCK(bclk, 3072000, codec_consumer),
+		SAI_CLOCK(fsync, RATE, codec_consumer),
 		SAI_TDM(2, 32, 3, 3),
 		SAI_CONFIG_DATA(SAI, SAI_INDEX, 0)))',
 	)
