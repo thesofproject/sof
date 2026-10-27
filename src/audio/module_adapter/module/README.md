@@ -16,7 +16,7 @@ It implements the full `struct module_interface` contract:
 
 * **Memory Management**: It intercepts memory allocation mappings using `mod_balloc_align` and tracks memory requests in a module-specific resource pool (`module_resource`). When the module goes out of scope, the framework garbage-collects any leaked allocations automatically via `mod_free_all()`.
 * **Configuration Handling**: Manages large blob configuration messages across multiple IPC fragments (`module_set_configuration`). It allocates memory for `runtime_params` until the blob is fully assembled, then triggers the underlying algorithm with the completed struct.
-* **State Machine Enforcement**: It wraps `process_audio_stream` calls to verify the module is in either `MODULE_IDLE` or `MODULE_PROCESSING` states before execution.
+* **State Machine Enforcement**: It wraps `process` calls to verify the module is in either `MODULE_IDLE` or `MODULE_PROCESSING` states before execution.
 
 ## 2. Modules (IADK Shim) Adapter (`modules.c`)
 

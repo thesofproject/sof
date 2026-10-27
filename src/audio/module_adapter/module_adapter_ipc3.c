@@ -112,20 +112,6 @@ void module_adapter_reset_data(struct module_config *dst)
 {
 }
 
-void module_adapter_check_data(struct processing_module *mod, struct comp_dev *dev,
-			       struct comp_buffer *sink)
-{
-	/* Check if audio stream client has only one source and one sink buffer to use a
-	 * simplified copy function.
-	 */
-	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod) && mod->num_of_sources == 1 &&
-	    mod->num_of_sinks == 1) {
-		mod->source_comp_buffer = comp_dev_get_first_data_producer(dev);
-		mod->sink_comp_buffer = sink;
-		mod->stream_copy_single_to_single = true;
-	}
-}
-
 void module_adapter_set_params(struct processing_module *mod, struct sof_ipc_stream_params *params)
 {
 }
