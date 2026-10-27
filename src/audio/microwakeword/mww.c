@@ -110,6 +110,11 @@ void __assert_func(const char *file, int line, const char *func,
 /* Number of startup inferences to warm up the temporal ring buffers before enabling triggers (~1 sec). */
 #define MWW_WARMUP_INFERENCES 33
 
+/** VAD speech activity hold window in hops (100 hops @ 10 ms = 1000 ms = 1.0 s).
+ *  Keeps detection active across unvoiced keyword segments and brief speech pauses.
+ */
+#define MWW_VAD_HOLD_HOPS 100
+
 /* Hop interval for live scoring kcontrol updates (50 hops @ 10ms = 500 ms = 2 Hz). */
 #define MWW_SCORE_UPDATE_HOPS 50
 
@@ -172,6 +177,8 @@ struct mww_comp_data {
 
 	/* Bitmask of VAD flags for the MWW_FEATURE_SLICE_COUNT frames */
 	uint32_t vad_history;
+	/** Remaining hops of speech activity hold window */
+	uint32_t vad_active_hops;
 #if !CONFIG_COMP_MWW_PCAN
 	/* Persistent AGC gain applied to every Q9.23 mel value */
 	int32_t agc_gain_q23;
@@ -284,6 +291,7 @@ static void on_wov_ctrl(void *arg, enum notify_id id, void *data)
 	} else if (n->cmd == WOV_ARB_CMD_RESUME) {
 		comp_info(dev, "mww slot %u: resumed by arbiter", cd->wov_slot_id);
 		cd->paused = false;
+		cd->vad_active_hops = 0;
 		memset(cd->prob_hist, 0, sizeof(cd->prob_hist));
 		MWW_Reset(&cd->mwc);
 	}
@@ -511,6 +519,7 @@ __cold static int mww_init(struct processing_module *mod)
 
 	cd->mwc.slot_id = cd->wov_slot_id;
 	cd->paused = false;
+	cd->vad_active_hops = 0;
 	cd->wovdebug = 0;
 	cd->wovdebug_ctl_id = 0;
 	cd->fake_wake_armed = false;
@@ -613,6 +622,7 @@ static int mww_prepare(struct processing_module *mod,
 
 	cd->feature_slices_filled = 0;
 	cd->vad_history = 0;
+	cd->vad_active_hops = 0;
 	memset(cd->prob_hist, 0, sizeof(cd->prob_hist));
 
 	return 0;
@@ -705,6 +715,11 @@ static int mww_process(struct processing_module *mod,
 		/* Update VAD history bitmask across MWW_FEATURE_SLICE_COUNT slices */
 		cd->vad_history = ((cd->vad_history << 1) | (hdr->vad_flag ? 1U : 0U)) &
 				  ((1U << MWW_FEATURE_SLICE_COUNT) - 1);
+
+		if (hdr->vad_flag)
+			cd->vad_active_hops = MWW_VAD_HOLD_HOPS;
+		else if (cd->vad_active_hops > 0)
+			cd->vad_active_hops--;
 
 #if CONFIG_COMP_MWW_PCAN
 		/* PCAN mode: MFCC has already normalized and quantized Mel energies
@@ -881,31 +896,38 @@ static int mww_process(struct processing_module *mod,
 			}
 #endif
 
-			if (cd->mwc.probability > cd->window_peak_prob)
-				cd->window_peak_prob = cd->mwc.probability;
-
 			float prob_avg = 0.0f;
 
-			cd->prob_hist[cd->prob_hist_idx] = cd->mwc.probability;
-			cd->prob_hist_idx = (cd->prob_hist_idx + 1) % MWW_DETECT_AVG_LEN;
-			for (i = 0; i < MWW_DETECT_AVG_LEN; i++)
-				prob_avg += cd->prob_hist[i];
-			prob_avg /= MWW_DETECT_AVG_LEN;
+			if (!cd->vad_active_hops) {
+				cd->prob_hist[cd->prob_hist_idx] = 0.0f;
+				cd->prob_hist_idx = (cd->prob_hist_idx + 1) % MWW_DETECT_AVG_LEN;
+				if (cd->mwc.probability >= MWW_DETECT_THRESHOLD)
+					cd->vad_gated_inferences++;
+			} else {
+				if (cd->mwc.probability > cd->window_peak_prob)
+					cd->window_peak_prob = cd->mwc.probability;
 
-			if (cd->total_inferences > MWW_WARMUP_INFERENCES &&
-			    prob_avg >= MWW_DETECT_THRESHOLD) {
-				cd->detections++;
-				comp_info(dev, "MWW keyword detected: avg probability=%d pct (slot %u, total=%u)",
-					  (int)(prob_avg * 100.0f),
-					  cd->wov_slot_id, cd->detections);
-				cd->kpb_trigger_events++;
-				struct wov_detect_notif payload = { .slot_id = cd->wov_slot_id };
-				/* activate arbiter before KPB drains, see mww_fake_wake_fire() */
-				notifier_event(dev, NOTIFIER_ID_WOV_DETECT,
-					       NOTIFIER_TARGET_CORE_ALL_MASK,
-					       &payload, sizeof(payload));
-				mww_notify_kpb(mod);
-				memset(cd->prob_hist, 0, sizeof(cd->prob_hist));
+				cd->prob_hist[cd->prob_hist_idx] = cd->mwc.probability;
+				cd->prob_hist_idx = (cd->prob_hist_idx + 1) % MWW_DETECT_AVG_LEN;
+				for (i = 0; i < MWW_DETECT_AVG_LEN; i++)
+					prob_avg += cd->prob_hist[i];
+				prob_avg /= MWW_DETECT_AVG_LEN;
+
+				if (cd->total_inferences > MWW_WARMUP_INFERENCES &&
+				    prob_avg >= MWW_DETECT_THRESHOLD) {
+					cd->detections++;
+					comp_info(dev, "MWW keyword detected: avg probability=%d pct (slot %u, total=%u)",
+						  (int)(prob_avg * 100.0f),
+						  cd->wov_slot_id, cd->detections);
+					cd->kpb_trigger_events++;
+					struct wov_detect_notif payload = { .slot_id = cd->wov_slot_id };
+					/* activate arbiter before KPB drains, see mww_fake_wake_fire() */
+					notifier_event(dev, NOTIFIER_ID_WOV_DETECT,
+						       NOTIFIER_TARGET_CORE_ALL_MASK,
+						       &payload, sizeof(payload));
+					mww_notify_kpb(mod);
+					memset(cd->prob_hist, 0, sizeof(cd->prob_hist));
+				}
 			}
 		}
 
@@ -941,6 +963,7 @@ static int mww_reset(struct processing_module *mod)
 	cd->wovdebug = 0;
 	cd->feature_slices_filled = 0;
 	cd->vad_history = 0;
+	cd->vad_active_hops = 0;
 	memset(cd->prob_hist, 0, sizeof(cd->prob_hist));
 	cd->total_inferences = 0;
 	cd->score_hop_counter = 0;
