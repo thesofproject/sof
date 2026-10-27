@@ -17,8 +17,6 @@ struct processing_module_test_data {
 	struct processing_module *mod;
 	struct comp_buffer **sinks;
 	struct comp_buffer **sources;
-	struct input_stream_buffer **input_buffers;
-	struct output_stream_buffer **output_buffers;
 	uint32_t num_sources;
 	uint32_t num_sinks;
 	struct processing_module_test_parameters parameters;
