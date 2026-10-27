@@ -150,8 +150,6 @@ static int mixin_init(struct processing_module *mod)
 		md->sink_config[i].gain = IPC4_MIXIN_UNITY_GAIN;
 	}
 
-	mod->skip_src_buffer_invalidate = true;
-
 	mod->max_sinks = MIXIN_MAX_SINKS;
 	return 0;
 }
@@ -168,8 +166,6 @@ static int mixout_init(struct processing_module *mod)
 		return -ENOMEM;
 
 	mod->priv.private = mo_data;
-
-	mod->skip_sink_buffer_writeback = true;
 
 	mod->max_sources = MIXOUT_MAX_SOURCES;
 	return 0;

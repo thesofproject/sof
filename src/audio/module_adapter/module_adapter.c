@@ -242,7 +242,6 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 {
 	int ret;
 	struct module_config *dst;
-	const struct module_interface *const interface = ops ? : drv->adapter_ops;
 	struct ipc_config_process spec =
 		*((const struct ipc_config_process *) const_spec);
 #if CONFIG_IPC_MAJOR_4
@@ -341,19 +340,10 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	mod->max_sources = 1;
 	mod->max_sinks = 1;
 
-	/* The order of preference */
-	if (interface->process)
-		mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
-	else if (interface->process_audio_stream)
-		mod->proc_type = MODULE_PROCESS_TYPE_STREAM;
-	else
-		goto err;
-
 	/* Init processing module */
 	ret = module_init(mod);
 	if (ret) {
-		comp_err(dev, "%d: module initialization failed",
-			 ret);
+		comp_err(dev, "%d: module initialization failed", ret);
 		goto err;
 	}
 
@@ -456,8 +446,6 @@ int module_adapter_prepare(struct comp_dev *dev)
 	int ret;
 	struct processing_module *mod = comp_mod(dev);
 	struct comp_buffer *sink;
-	struct list_item *blist;
-	int memory_flags;
 
 	comp_dbg(dev, "start");
 #if CONFIG_IPC_MAJOR_4
@@ -473,16 +461,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	}
 #endif
 	/* Prepare module */
-	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
-		ret = module_adapter_sink_src_prepare(dev);
-
-	else if (IS_PROCESSING_MODE_AUDIO_STREAM(mod) &&
-		 mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
-		ret = module_prepare(mod, NULL, 0, NULL, 0);
-
-	else
-		ret = -EINVAL;
-
+	ret = module_adapter_sink_src_prepare(dev);
 	if (ret) {
 		if (ret != PPL_STATUS_PATH_STOP)
 			comp_err(dev, "error %d: module prepare failed", ret);
@@ -540,10 +519,6 @@ int module_adapter_prepare(struct comp_dev *dev)
 	 * Hence check for NULL.
 	 */
 	sink = comp_dev_get_first_data_consumer(dev);
-	if (!sink && !IS_PROCESSING_MODE_SINK_SOURCE(mod)) {
-		comp_err(dev, "no sink present on period size calculation");
-		return -EINVAL;
-	}
 
 	/* A sinkless module still needs at least one source. */
 	if (!sink && !comp_dev_get_first_data_producer(dev)) {
@@ -554,87 +529,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	mod->period_bytes = sink ? audio_stream_period_bytes(&sink->stream, dev->frames) : 0;
 	comp_dbg(dev, "got period_bytes = %u", mod->period_bytes);
 
-	/* no more to do for sink/source mode */
-	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
-		return 0;
-
-	/* compute number of input buffers */
-	mod->num_of_sources = 0;
-	list_for_item(blist, &dev->bsource_list)
-		mod->num_of_sources++;
-
-	/* compute number of output buffers */
-	mod->num_of_sinks = 0;
-	list_for_item(blist, &dev->bsink_list)
-		mod->num_of_sinks++;
-
-	if (!mod->num_of_sources && !mod->num_of_sinks) {
-		comp_err(dev, "no source and sink buffers connected!");
-		return -EINVAL;
-	}
-	if (mod->num_of_sources > CONFIG_MODULE_MAX_CONNECTIONS ||
-	    mod->num_of_sinks > CONFIG_MODULE_MAX_CONNECTIONS) {
-		comp_err(dev, "too many connected sinks %d or sources %d!",
-			 mod->num_of_sinks, mod->num_of_sources);
-		return -EINVAL;
-	}
-
-	if (mod->num_of_sources > mod->max_sources ||
-	    mod->num_of_sinks > mod->max_sinks) {
-		comp_err(dev, "connected sources %d (max %d) or sinks %d (max %d) exceed module capacity",
-			 mod->num_of_sources, mod->max_sources,
-			 mod->num_of_sinks, mod->max_sinks);
-		return -EINVAL;
-	}
-
-	/* check processing mode */
-	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod) && mod->max_sources > 1 && mod->max_sinks > 1) {
-		comp_err(dev, "Invalid use of simple_copy");
-		return -EINVAL;
-	}
-
-	module_adapter_check_data(mod, dev, sink);
-
-	memory_flags = user_get_buffer_memory_region(dev->drv);
-	/* allocate memory for input buffers */
-	if (mod->max_sources) {
-		mod->input_buffers =
-			sof_heap_alloc(sof_sys_user_heap_get(), memory_flags,
-				       sizeof(*mod->input_buffers) * mod->max_sources, 0);
-		if (!mod->input_buffers) {
-			comp_err(dev, "failed to allocate input buffers");
-			return -ENOMEM;
-		}
-		memset(mod->input_buffers, 0, sizeof(*mod->input_buffers) * mod->max_sources);
-	} else {
-		mod->input_buffers = NULL;
-	}
-
-	/* allocate memory for output buffers */
-	if (mod->max_sinks) {
-		mod->output_buffers =
-			sof_heap_alloc(sof_sys_user_heap_get(), memory_flags,
-				       sizeof(*mod->output_buffers) * mod->max_sinks, 0);
-		if (!mod->output_buffers) {
-			comp_err(dev, "failed to allocate output buffers");
-			ret = -ENOMEM;
-			goto in_out_free;
-		}
-		memset(mod->output_buffers, 0, sizeof(*mod->output_buffers) * mod->max_sinks);
-	} else {
-		mod->output_buffers = NULL;
-	}
-
-	comp_dbg(dev, "done");
-	
 	return 0;
-
-in_out_free:
-	sof_heap_free(sof_sys_user_heap_get(), mod->output_buffers);
-	mod->output_buffers = NULL;
-	sof_heap_free(sof_sys_user_heap_get(), mod->input_buffers);
-	mod->input_buffers = NULL;
-	return ret;
 }
 
 int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
@@ -674,251 +569,6 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 	}
 
 	return 0;
-}
-
-static uint32_t module_single_sink_setup(struct comp_dev *dev,
-					 struct comp_buffer **source,
-					 struct comp_buffer **sinks)
-{
-	struct processing_module *mod = comp_mod(dev);
-	struct list_item *blist;
-	uint32_t num_input_buffers;
-	uint32_t frames;
-	int i = 0;
-
-	list_for_item(blist, &dev->bsource_list) {
-		frames = audio_stream_avail_frames_aligned(&source[i]->stream,
-							   &sinks[0]->stream);
-
-		if (!mod->skip_src_buffer_invalidate) {
-			uint32_t source_frame_bytes;
-
-			source_frame_bytes = audio_stream_frame_bytes(&source[i]->stream);
-			buffer_stream_invalidate(source[i], frames * source_frame_bytes);
-		}
-
-		/*
-		 * note that the size is in number of frames not the number of
-		 * bytes
-		 */
-		mod->input_buffers[i].size = frames;
-		mod->input_buffers[i].consumed = 0;
-
-		mod->input_buffers[i].data = &source[i]->stream;
-		i++;
-	}
-
-	num_input_buffers = i;
-
-	mod->output_buffers[0].size = 0;
-	mod->output_buffers[0].data = &sinks[0]->stream;
-
-	return num_input_buffers;
-}
-
-static uint32_t module_single_source_setup(struct comp_dev *dev,
-					   struct comp_buffer **source,
-					   struct comp_buffer **sinks)
-{
-	struct processing_module *mod = comp_mod(dev);
-	struct list_item *blist;
-	uint32_t min_frames = UINT32_MAX;
-	uint32_t num_output_buffers;
-	uint32_t source_frame_bytes;
-	int i = 0;
-
-	source_frame_bytes = audio_stream_frame_bytes(&source[0]->stream);
-	if (list_is_empty(&dev->bsink_list)) {
-		min_frames = audio_stream_get_avail_frames(&source[0]->stream);
-	} else {
-		uint32_t frames;
-
-		list_for_item(blist, &dev->bsink_list) {
-			frames = audio_stream_avail_frames_aligned(&source[0]->stream,
-								   &sinks[i]->stream);
-
-			min_frames = MIN(min_frames, frames);
-
-			mod->output_buffers[i].size = 0;
-			mod->output_buffers[i].data = &sinks[i]->stream;
-			i++;
-		}
-	}
-
-	num_output_buffers = i;
-
-	if (!mod->skip_src_buffer_invalidate)
-		buffer_stream_invalidate(source[0], min_frames * source_frame_bytes);
-
-	/* note that the size is in number of frames not the number of bytes */
-	mod->input_buffers[0].size = min_frames;
-	mod->input_buffers[0].consumed = 0;
-	mod->input_buffers[0].data = &source[0]->stream;
-
-	return num_output_buffers;
-}
-
-static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
-{
-	struct processing_module *mod = comp_mod(dev);
-	uint32_t num_output_buffers = 0;
-	uint32_t frames;
-	int ret;
-
-	frames = audio_stream_avail_frames_aligned(&mod->source_comp_buffer->stream,
-						   &mod->sink_comp_buffer->stream);
-	mod->input_buffers[0].size = frames;
-	mod->input_buffers[0].consumed = 0;
-	mod->input_buffers[0].data = &mod->source_comp_buffer->stream;
-	mod->output_buffers[0].size = 0;
-	mod->output_buffers[0].data = &mod->sink_comp_buffer->stream;
-
-	if (!mod->skip_src_buffer_invalidate) { /* TODO: add mod->is_multi_core && optimization */
-		/* moved bytes to its own variable to fix checkpatch */
-		uint32_t bytes =
-			frames * audio_stream_frame_bytes(&mod->source_comp_buffer->stream);
-		buffer_stream_invalidate(mod->source_comp_buffer,
-					 bytes);
-	}
-
-	/* Note: Source buffer state is not checked to enable mixout to generate zero
-	 * PCM codes when source is not active.
-	 */
-	if (comp_buffer_get_sink_state(mod->sink_comp_buffer) == dev->state)
-		num_output_buffers = 1;
-
-	ret = module_process_legacy(mod, mod->input_buffers, 1,
-				    mod->output_buffers, num_output_buffers);
-
-	/* consume from the input buffer */
-	mod->total_data_consumed += mod->input_buffers[0].consumed;
-	if (mod->input_buffers[0].consumed)
-		audio_stream_consume(&mod->source_comp_buffer->stream,
-				     mod->input_buffers[0].consumed);
-
-	/* produce data into the output buffer */
-	mod->total_data_produced += mod->output_buffers[0].size;
-	if (!mod->skip_sink_buffer_writeback) /* TODO: add mod->is_multi_core && optimization */
-		buffer_stream_writeback(mod->sink_comp_buffer, mod->output_buffers[0].size);
-
-	if (mod->output_buffers[0].size)
-		comp_update_buffer_produce(mod->sink_comp_buffer, mod->output_buffers[0].size);
-
-	return ret;
-}
-
-static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
-{
-	struct comp_buffer *sources[PLATFORM_MAX_STREAMS];
-	struct comp_buffer *sinks[PLATFORM_MAX_STREAMS];
-	struct comp_buffer *sink;
-	struct comp_buffer *source;
-	struct processing_module *mod = comp_mod(dev);
-	uint32_t num_input_buffers, num_output_buffers;
-	int ret, i;
-
-	/* handle special case of HOST/DAI type components */
-	if (dev->ipc_config.type == SOF_COMP_HOST || dev->ipc_config.type == SOF_COMP_DAI)
-		return module_process_endpoint(mod, NULL, 0, NULL, 0);
-
-	if (mod->stream_copy_single_to_single)
-		return module_adapter_audio_stream_copy_1to1(dev);
-
-	/* acquire all sink and source buffers */
-	i = 0;
-	comp_dev_for_each_consumer(dev, sink)
-		sinks[i++] = sink;
-	num_output_buffers = i;
-	if (num_output_buffers > mod->max_sinks) {
-		comp_err(dev, "Invalid number of sinks %d\n", num_output_buffers);
-		return -EINVAL;
-	}
-
-	i = 0;
-	comp_dev_for_each_producer(dev, source)
-		sources[i++] = source;
-	num_input_buffers = i;
-	if (num_input_buffers > mod->max_sources) {
-		comp_err(dev, "Invalid number of sources %d\n", num_input_buffers);
-		return -EINVAL;
-	}
-
-	/* setup active input/output buffers for processing */
-	if (num_output_buffers == 1) {
-		module_single_sink_setup(dev, sources, sinks);
-		if (comp_buffer_get_sink_state(sinks[0]) != dev->state)
-			num_output_buffers = 0;
-	} else if (num_input_buffers == 1) {
-		module_single_source_setup(dev, sources, sinks);
-		if (comp_buffer_get_source_state(sources[0]) != dev->state) {
-			num_input_buffers = 0;
-		}
-	} else {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	ret = module_process_legacy(mod, mod->input_buffers, num_input_buffers,
-				    mod->output_buffers, num_output_buffers);
-	if (ret) {
-		if (ret != -ENOSPC && ret != -ENODATA) {
-			comp_err(dev, "failed with error: %d", ret);
-			goto out;
-		}
-
-		ret = 0;
-	}
-
-	/* consume from all active input buffers */
-	for (i = 0; i < num_input_buffers; i++) {
-		struct comp_buffer *src =
-			container_of(mod->input_buffers[i].data, struct comp_buffer, stream);
-
-		if (mod->input_buffers[i].consumed)
-			audio_stream_consume(&src->stream, mod->input_buffers[i].consumed);
-	}
-
-	/* compute data consumed based on pin 0 since it is processed with base config
-	 * which is set for pin 0
-	 */
-	mod->total_data_consumed += mod->input_buffers[0].consumed;
-
-	/* release all source buffers */
-	for (i = 0; i < num_input_buffers; i++) {
-		mod->input_buffers[i].size = 0;
-		mod->input_buffers[i].consumed = 0;
-	}
-
-	/* produce data into all active output buffers */
-	for (i = 0; i < num_output_buffers; i++) {
-		struct comp_buffer *sink =
-			container_of(mod->output_buffers[i].data, struct comp_buffer, stream);
-
-		if (!mod->skip_sink_buffer_writeback)
-			buffer_stream_writeback(sink, mod->output_buffers[i].size);
-		if (mod->output_buffers[i].size)
-			comp_update_buffer_produce(sink, mod->output_buffers[i].size);
-	}
-
-	mod->total_data_produced += mod->output_buffers[0].size;
-
-	/* release all sink buffers */
-	for (i = 0; i < num_output_buffers; i++) {
-		mod->output_buffers[i].size = 0;
-	}
-
-	return 0;
-out:
-	for (i = 0; i < num_output_buffers; i++) {
-		mod->output_buffers[i].size = 0;
-	}
-
-	for (i = 0; i < num_input_buffers; i++) {
-		mod->input_buffers[i].size = 0;
-		mod->input_buffers[i].consumed = 0;
-	}
-
-	return ret;
 }
 
 #if CONFIG_PIPELINE_2_0
@@ -1021,19 +671,10 @@ int module_adapter_copy(struct comp_dev *dev)
 
 	struct processing_module *mod = comp_mod(dev);
 
-	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod))
-		return module_adapter_audio_stream_type_copy(dev);
+	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		return module_adapter_copy_ring_buffers(dev);
 
-	if (IS_PROCESSING_MODE_SINK_SOURCE(mod)) {
-		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
-			return module_adapter_copy_ring_buffers(dev);
-		else
-			return module_adapter_sink_source_copy(dev);
-
-	}
-
-	comp_err(dev, "unknown processing_data_type");
-	return -EINVAL;
+	return module_adapter_sink_source_copy(dev);
 }
 
 int module_adapter_trigger(struct comp_dev *dev, int cmd)
@@ -1087,14 +728,6 @@ int module_adapter_reset(struct comp_dev *dev)
 		if (ret != PPL_STATUS_PATH_STOP)
 			comp_err(dev, "failed with error: %d", ret);
 		return ret;
-	}
-
-	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod)) {
-		sof_heap_free(sof_sys_user_heap_get(), mod->output_buffers);
-		sof_heap_free(sof_sys_user_heap_get(), mod->input_buffers);
-
-		mod->num_of_sources = 0;
-		mod->num_of_sinks = 0;
 	}
 
 	mod->total_data_consumed = 0;

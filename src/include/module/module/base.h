@@ -86,11 +86,6 @@ struct module_data {
 #endif /* SOF_MODULE_PRIVATE */
 };
 
-enum module_processing_type {
-	MODULE_PROCESS_TYPE_SOURCE_SINK,
-	MODULE_PROCESS_TYPE_STREAM,
-};
-
 struct userspace_context;
 struct k_mem_domain;
 
@@ -117,23 +112,13 @@ struct processing_module {
 	 */
 	struct comp_dev *dev;
 
-	/* number of sinks / sources and (when in use) input_buffers / input_buffers */
+	/* number of sinks / sources */
 	uint32_t num_of_sources;
 	uint32_t num_of_sinks;
 
 	/* sink and source handlers for the module */
 	struct sof_sink *sinks[CONFIG_MODULE_MAX_CONNECTIONS];
 	struct sof_source *sources[CONFIG_MODULE_MAX_CONNECTIONS];
-
-	/* this is used in case of audio_stream mode
-	 * number of buffers described by fields:
-	 * input_buffers  - num_of_sources
-	 * output_buffers - num_of_sinks
-	 */
-	struct input_stream_buffer *input_buffers;
-	struct output_stream_buffer *output_buffers;
-	struct comp_buffer *source_comp_buffer; /**< single source component buffer */
-	struct comp_buffer *sink_comp_buffer; /**< single sink compoonent buffer */
 
 	/* module-specific flags for comp_verify_params() */
 	uint32_t verify_params_flags;
@@ -172,25 +157,6 @@ struct processing_module {
 	bool no_pause;
 #endif
 
-	/*
-	 * flag to indicate that the sink buffer writeback should be skipped. It will be handled
-	 * in the module's process callback
-	 */
-	bool skip_sink_buffer_writeback;
-
-	/*
-	 * flag to indicate that the source buffer invalidate should be skipped. It will be handled
-	 * in the module's process callback
-	 */
-	bool skip_src_buffer_invalidate;
-
-	/*
-	 * True for module with one source component buffer and one sink component buffer
-	 * to enable reduction of module processing overhead. False if component uses
-	 * multiple buffers.
-	 */
-	bool stream_copy_single_to_single;
-
 	/* total processed data after stream started */
 	uint64_t total_data_consumed;
 	uint64_t total_data_produced;
@@ -199,7 +165,6 @@ struct processing_module {
 	uint32_t max_sources;
 	uint32_t max_sinks;
 
-	enum module_processing_type proc_type;
 #if CONFIG_USERSPACE
 	struct userspace_context *user_ctx;
 	struct k_mem_domain *mdom;
