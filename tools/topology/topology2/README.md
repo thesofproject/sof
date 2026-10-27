@@ -55,6 +55,7 @@ tools/topology/topology2/
 ├── sof-hda-generic.conf               # HDA generic topology entry point
 ├── cavs-mixin-mixout-hda.conf         # HDA with mixer pipelines
 ├── cavs-nocodec.conf                  # SSP nocodec topology
+├── cavs-nocodec-wov.conf              # SSP0 nocodec Wake-on-Voice (WoV) loopback topology
 ├── ...                                # Other top-level .conf entry points
 ├── include/
 │   ├── common/                        # Core class definitions (PCM, route, audio formats)
