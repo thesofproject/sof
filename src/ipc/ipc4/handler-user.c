@@ -1603,7 +1603,7 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 
 			if (ctx && drv->type == SOF_COMP_MODULE_ADAPTER) {
 				int err = ipc4_user_module_load(drv, mi);
-
+				tr_info(&ipc_tr, "User module loaded");
 				if (err < 0) {
 					ret = IPC4_MOD_NOT_INITIALIZED;
 					break;
@@ -1754,6 +1754,8 @@ int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
 	msg.primary.dat = ipc_user->ipc_msg_pri;
 	msg.extension.dat = ipc_user->ipc_msg_ext;
 
+	tr_info(&ipc_tr, "user dispatch: message primary type %#x", msg.primary.r.type);
+
 	ipc_user->reply_ext = 0;
 
 	if (msg.primary.r.msg_tgt == SOF_IPC4_MESSAGE_TARGET_MODULE_MSG) {
@@ -1795,26 +1797,37 @@ int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
 			 */
 			const struct comp_driver *drv = ipc_user->init_drv;
 
+			tr_info(&ipc_tr, "INIT_INSTANCE: driver received %p", drv);
 			ipc_user->init_drv = NULL;
 			if (!drv) {
+				tr_err(&ipc_tr, "INIT_INSTANCE: driver missing");
 				result = IPC4_MOD_NOT_INITIALIZED;
 				break;
 			}
 
+			tr_info(&ipc_tr, "INIT_INSTANCE: driver validated, creating component");
 			struct comp_dev *dev = comp_new_ipc4_user(&msg, drv);
 
 			if (!dev) {
+				tr_err(&ipc_tr, "INIT_INSTANCE: component creation failed");
 				result = IPC4_MOD_NOT_INITIALIZED;
 				break;
 			}
 
+			tr_info(&ipc_tr, "INIT_INSTANCE: component created %p, registering", dev);
 			result = ipc4_add_comp_dev(dev);
-			if (result != IPC4_SUCCESS)
+			if (result != IPC4_SUCCESS) {
+				tr_err(&ipc_tr, "INIT_INSTANCE: component registration failed %d",
+				       result);
 				break;
+			}
 
+			tr_info(&ipc_tr, "INIT_INSTANCE: component registered, updating IBS/OBS/CPC");
 			comp_update_ibs_obs_cpc(dev);
+			tr_info(&ipc_tr, "INIT_INSTANCE: IBS/OBS/CPC update completed");
 
 			result = 0;
+			tr_info(&ipc_tr, "INIT_INSTANCE: completed");
 			break;
 		}
 		case SOF_IPC4_MOD_DELETE_INSTANCE: {

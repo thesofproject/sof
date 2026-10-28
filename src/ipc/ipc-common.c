@@ -440,7 +440,7 @@ int ipc_user_forward_cmd(uint32_t primary, uint32_t extension, unsigned int core
 	if (core >= CONFIG_CORE_COUNT)
 		return -EINVAL;
 
-	LOG_DBG("IPC: forward cmd %08x", primary);
+	LOG_INF("IPC: forward cmd %08x", primary);
 
 	/* Copy message words — original buffer may be reused */
 	pdata->ipc_msg_pri = primary;
@@ -455,6 +455,7 @@ int ipc_user_forward_cmd(uint32_t primary, uint32_t extension, unsigned int core
 	/* Wake the user thread */
 	k_event_set(pdata->event[core], IPC_USER_EVENT_CMD);
 
+	LOG_INF("IPC: waiting for user thread to complete");
 	/* Wait for user thread to complete */
 	ret = k_sem_take(pdata->sem, K_MSEC(100));
 	if (ret) {
@@ -505,7 +506,7 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 						  IPC_USER_EVENT_CMD | IPC_USER_EVENT_STOP,
 						  false, K_FOREVER);
 
-		LOG_DBG("IPC user wake, mask %u", mask);
+		LOG_INF("IPC user wake, mask %u", mask);
 
 		if (mask & IPC_USER_EVENT_CMD) {
 			ipc_user->result = ipc_user_thread_dispatch(ipc_user);

@@ -360,6 +360,10 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		goto err;
 	}
 
+	comp_info(dev, "module adapter: proc_domain=%u period=%u",
+          (unsigned int)dev->ipc_config.proc_domain,
+          (unsigned int)dev->period);
+
 	module_adapter_reset_data(dst);
 
 	dev->state = COMP_STATE_READY;

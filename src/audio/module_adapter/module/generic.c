@@ -133,7 +133,11 @@ int module_init(struct processing_module *mod)
 		ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_INIT_INSTANCE, &param);
 	} else
 #endif
+	{
+		comp_info(dev, "module_init: calling module init callback");
 		ret = interface->init(mod);
+		comp_info(dev, "module_init: module init callback returned %d", ret);
+	}
 
 	if (ret) {
 		comp_err(dev, "error %d: module specific init failed", ret);
