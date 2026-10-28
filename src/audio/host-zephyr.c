@@ -388,7 +388,7 @@ static int host_get_status(struct comp_dev *dev, struct host_data *hd, struct dm
 }
 
 /* Minimum time between 2 consecutive "no bytes to copy" messages in milliseconds */
-#define SOF_MIN_NO_BYTES_INTERVAL_MS 20
+#define SOF_MIN_NO_BYTES_INTERVAL_MS 1000
 
 static inline bool host_handle_eos(struct host_data *hd, struct comp_dev *dev,
 				   uint32_t avail_samples)
