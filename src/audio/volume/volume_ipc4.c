@@ -15,6 +15,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/init.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/mailbox.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
