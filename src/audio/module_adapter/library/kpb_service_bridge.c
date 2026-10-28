@@ -10,7 +10,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <rtos/userspace_helper.h>
 #include <sof/audio/component.h>
 #include <sof/audio/kpb.h>
 #include <sof/audio/module_adapter/library/kpb_service.h>

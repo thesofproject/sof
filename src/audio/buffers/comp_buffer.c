@@ -11,7 +11,6 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
-#include <rtos/userspace_helper.h>
 #include <sof/common.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>

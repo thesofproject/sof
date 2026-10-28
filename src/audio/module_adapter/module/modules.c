@@ -7,10 +7,8 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
-#include <rtos/userspace_helper.h>
 #include <utilities/array.h>
 #include <iadk_module_adapter.h>
-#include <sof/lib_manager.h>
 #include <sof/audio/module_adapter/module/module_interface.h>
 
 /* Intel module adapter is an extension to SOF module adapter component that allows to integrate

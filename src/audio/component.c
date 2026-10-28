@@ -9,7 +9,6 @@
 #include <sof/common.h>
 #include <sof/debug/telemetry/performance_monitor.h>
 #include <rtos/panic.h>
-#include <rtos/interrupt.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>

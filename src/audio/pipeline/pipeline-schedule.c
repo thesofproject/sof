@@ -19,7 +19,6 @@
 #include <rtos/task.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
-#include <rtos/userspace_helper.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
