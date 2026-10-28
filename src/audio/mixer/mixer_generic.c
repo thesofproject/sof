@@ -33,16 +33,36 @@ static void mix_n_s16(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 			ns = cir_buf_samples_without_wrap_s16(src[j], sources[j].buf_end);
 			n = MIN(n, ns);
 		}
-		for (i = 0; i < n; i++) {
-			val = 0;
-			for (j = 0; j < num_sources; j++) {
-				val += *src[j];
-				src[j]++;
+		if (num_sources == 2) {
+			const int16_t *s0 = src[0];
+			const int16_t *s1 = src[1];
+			i = 0;
+			for (; i + 3 < n; i += 4) {
+				dest[0] = sat_int16((int32_t)s0[0] + (int32_t)s1[0]);
+				dest[1] = sat_int16((int32_t)s0[1] + (int32_t)s1[1]);
+				dest[2] = sat_int16((int32_t)s0[2] + (int32_t)s1[2]);
+				dest[3] = sat_int16((int32_t)s0[3] + (int32_t)s1[3]);
+				s0 += 4;
+				s1 += 4;
+				dest += 4;
 			}
+			for (; i < n; i++) {
+				*dest++ = sat_int16((int32_t)*s0++ + (int32_t)*s1++);
+			}
+			src[0] = (int16_t *)s0;
+			src[1] = (int16_t *)s1;
+		} else {
+			for (i = 0; i < n; i++) {
+				val = 0;
+				for (j = 0; j < num_sources; j++) {
+					val += *src[j];
+					src[j]++;
+				}
 
-			/* Saturate to 16 bits */
-			*dest = sat_int16(val);
-			dest++;
+				/* Saturate to 16 bits */
+				*dest = sat_int16(val);
+				dest++;
+			}
 		}
 		processed += n;
 		dest = cir_buf_wrap(dest, sink->buf_start, sink->buf_end);
@@ -77,17 +97,37 @@ static void mix_n_s24(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 			ns = cir_buf_samples_without_wrap_s32(src[j], sources[j].buf_end);
 			n = MIN(n, ns);
 		}
-		for (i = 0; i < n; i++) {
-			val = 0;
-			for (j = 0; j < num_sources; j++) {
-				x = *src[j] << 8;
-				val += x >> 8; /* Sign extend */
-				src[j]++;
+		if (num_sources == 2) {
+			const int32_t *s0 = src[0];
+			const int32_t *s1 = src[1];
+			i = 0;
+			for (; i + 3 < n; i += 4) {
+				dest[0] = sat_int24(sign_extend_s24(s0[0]) + sign_extend_s24(s1[0]));
+				dest[1] = sat_int24(sign_extend_s24(s0[1]) + sign_extend_s24(s1[1]));
+				dest[2] = sat_int24(sign_extend_s24(s0[2]) + sign_extend_s24(s1[2]));
+				dest[3] = sat_int24(sign_extend_s24(s0[3]) + sign_extend_s24(s1[3]));
+				s0 += 4;
+				s1 += 4;
+				dest += 4;
 			}
+			for (; i < n; i++) {
+				*dest++ = sat_int24(sign_extend_s24(*s0++) + sign_extend_s24(*s1++));
+			}
+			src[0] = (int32_t *)s0;
+			src[1] = (int32_t *)s1;
+		} else {
+			for (i = 0; i < n; i++) {
+				val = 0;
+				for (j = 0; j < num_sources; j++) {
+					x = *src[j] << 8;
+					val += x >> 8; /* Sign extend */
+					src[j]++;
+				}
 
-			/* Saturate to 24 bits */
-			*dest = sat_int24(val);
-			dest++;
+				/* Saturate to 24 bits */
+				*dest = sat_int24(val);
+				dest++;
+			}
 		}
 		processed += n;
 		dest = cir_buf_wrap(dest, sink->buf_start, sink->buf_end);
@@ -121,16 +161,36 @@ static void mix_n_s32(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 			ns = cir_buf_samples_without_wrap_s32(src[j], sources[j].buf_end);
 			n = MIN(n, ns);
 		}
-		for (i = 0; i < n; i++) {
-			val = 0;
-			for (j = 0; j < num_sources; j++) {
-				val += *src[j];
-				src[j]++;
+		if (num_sources == 2) {
+			const int32_t *s0 = src[0];
+			const int32_t *s1 = src[1];
+			i = 0;
+			for (; i + 3 < n; i += 4) {
+				dest[0] = sat_int32((int64_t)s0[0] + (int64_t)s1[0]);
+				dest[1] = sat_int32((int64_t)s0[1] + (int64_t)s1[1]);
+				dest[2] = sat_int32((int64_t)s0[2] + (int64_t)s1[2]);
+				dest[3] = sat_int32((int64_t)s0[3] + (int64_t)s1[3]);
+				s0 += 4;
+				s1 += 4;
+				dest += 4;
 			}
+			for (; i < n; i++) {
+				*dest++ = sat_int32((int64_t)*s0++ + (int64_t)*s1++);
+			}
+			src[0] = (int32_t *)s0;
+			src[1] = (int32_t *)s1;
+		} else {
+			for (i = 0; i < n; i++) {
+				val = 0;
+				for (j = 0; j < num_sources; j++) {
+					val += *src[j];
+					src[j]++;
+				}
 
-			/* Saturate to 32 bits */
-			*dest = sat_int32(val);
-			dest++;
+				/* Saturate to 32 bits */
+				*dest = sat_int32(val);
+				dest++;
+			}
 		}
 		processed += n;
 		dest = cir_buf_wrap(dest, sink->buf_start, sink->buf_end);
