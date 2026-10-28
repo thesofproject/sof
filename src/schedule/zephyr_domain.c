@@ -363,6 +363,7 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 	k_thread_access_grant(thread, dt->sem, domain->lock, zephyr_domain->timer);
 	user_grant_dai_access_all(thread);
 	user_grant_dma_access_all(thread);
+	user_grant_uaol_access_all(thread);
 	tr_dbg(&ll_tr, "granted LL access to thread %p (core %d)", thread, core);
 
 	k_thread_start(thread);

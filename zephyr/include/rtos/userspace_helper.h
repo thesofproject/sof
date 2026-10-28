@@ -125,6 +125,13 @@ void user_grant_dai_access_all(struct k_thread *thread);
  */
 void user_grant_dma_access_all(struct k_thread *thread);
 
+/**
+ * Grant UAOL device access to a user-space thread.
+ *
+ * @param thread user-space thread for which UAOL access is granted
+ */
+void user_grant_uaol_access_all(struct k_thread *thread);
+
 #else
 
 /**
