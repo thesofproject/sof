@@ -10,7 +10,6 @@
  */
 
 #include <rtos/init.h>
-#include <sof/lib/memory.h>
 #include <module/module/llext.h>
 
 #include "src_common.h"

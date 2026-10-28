@@ -16,7 +16,7 @@
 #include <ipc/stream.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/audio_stream.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <sof/list.h>
 
 #include "multiband_drc.h"
