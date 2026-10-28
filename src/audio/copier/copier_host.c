@@ -9,7 +9,6 @@
 #include <sof/trace/trace.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/lib/mailbox.h>
-#include <rtos/userspace_helper.h>
 #include "copier.h"
 #include "host_copier.h"
 

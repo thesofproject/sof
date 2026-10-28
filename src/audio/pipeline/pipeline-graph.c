@@ -16,7 +16,6 @@
 #include <rtos/interrupt.h>
 #include <rtos/symbol.h>
 #include <rtos/alloc.h>
-#include <rtos/userspace_helper.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>
 #include <sof/compiler_attributes.h>

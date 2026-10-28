@@ -21,7 +21,6 @@
 #include <sof/ut.h>
 #include <sof/schedule/dp_schedule.h>
 #include <module/module/interface.h>
-#include <rtos/interrupt.h>
 #include <rtos/symbol.h>
 #include <ipc4/base_fw.h>
 #include <limits.h>

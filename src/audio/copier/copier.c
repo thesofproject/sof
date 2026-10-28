@@ -18,10 +18,8 @@
 #include <sof/ipc/topology.h>
 #include <sof/schedule/ll_schedule.h>
 #include <rtos/interrupt.h>
-#include <rtos/timer.h>
 #include <rtos/cache.h>
 #include <rtos/init.h>
-#include <rtos/userspace_helper.h>
 #include <sof/lib/cold.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>

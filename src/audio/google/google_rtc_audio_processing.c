@@ -22,7 +22,6 @@
 #include <rtos/init.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
-#include <rtos/wait.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <rtos/string.h>
