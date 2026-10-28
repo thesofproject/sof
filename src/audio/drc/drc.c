@@ -13,7 +13,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/audio/sink_source_utils.h>
 #include <sof/ipc/msg.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
 #include <sof/trace/trace.h>
