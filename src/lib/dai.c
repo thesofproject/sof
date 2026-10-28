@@ -383,6 +383,9 @@ void dai_put(struct dai *dai)
 	int ret;
 	struct k_heap *heap = NULL;
 
+	if (!dai)
+		return;
+
 #ifdef CONFIG_SOF_USERSPACE_LL
 	heap = zephyr_ll_user_heap();
 #endif
@@ -450,6 +453,9 @@ void dai_put(struct dai *dai)
 {
 	int ret;
 	k_spinlock_key_t key;
+
+	if (!dai)
+		return;
 
 	key = k_spin_lock(&dai->lock);
 	if (--dai->sref == 0) {
