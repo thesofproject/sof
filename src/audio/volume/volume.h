@@ -22,7 +22,6 @@
 #include <rtos/bit.h>
 #include <sof/common.h>
 #include <sof/trace/trace.h>
-#include <sof/lib/mailbox.h>
 #include <ipc/stream.h>
 #include <user/trace.h>
 #include <stddef.h>
@@ -289,14 +288,6 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
 	}
 }
 #endif
-
-static inline void peak_vol_update(struct vol_data *cd)
-{
-#if CONFIG_COMP_PEAK_VOL
-	/* update peakvol in mailbox */
-	mailbox_sw_regs_write(cd->mailbox_offset, &cd->peak_regs, sizeof(cd->peak_regs));
-#endif
-}
 
 #ifdef UNIT_TEST
 void sys_comp_module_volume_interface_init(void);

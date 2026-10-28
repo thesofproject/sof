@@ -26,6 +26,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/init.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/mailbox.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
@@ -46,6 +47,14 @@ LOG_MODULE_REGISTER(volume, CONFIG_SOF_LOG_LEVEL);
 
 #include "volume_uuid.h"
 #include "volume.h"
+
+#if CONFIG_COMP_PEAK_VOL
+static inline void peak_vol_update(struct vol_data *cd)
+{
+	/* update peakvol in mailbox */
+	mailbox_sw_regs_write(cd->mailbox_offset, &cd->peak_regs, sizeof(cd->peak_regs));
+}
+#endif
 
 #if CONFIG_FORMAT_S16LE
 /**
