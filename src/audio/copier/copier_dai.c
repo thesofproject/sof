@@ -339,7 +339,7 @@ __cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		break;
 	case ipc4_alh_link_output_class:
 	case ipc4_alh_link_input_class:
-#if ACE_VERSION > ACE_VERSION_1_5
+#if CONFIG_ACE_VERSION_2_0_OR_LATER
 		dai.type = SOF_DAI_INTEL_HDA;
 		dai.is_config_blob = true;
 		cd->gtw_type = ipc4_gtw_link;
@@ -347,7 +347,7 @@ __cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		dai.type = SOF_DAI_INTEL_ALH;
 		dai.is_config_blob = true;
 		cd->gtw_type = ipc4_gtw_alh;
-#endif /* ACE_VERSION > ACE_VERSION_1_5 */
+#endif /* CONFIG_ACE_VERSION_2_0_OR_LATER */
 		ret = copier_alh_assign_dai_index(dev, gtw_cfg_data, node_id, &dai, dai_index,
 						  &dai_count);
 		if (ret)

@@ -344,6 +344,14 @@ config ACE_VERSION_4_0
 	help
 	  Select for ACE version 4.0
 
+config ACE_VERSION_2_0_OR_LATER
+	bool
+	default y if ACE && !ACE_VERSION_1_5
+	help
+	  ACE version 2.0 or later. Lets code that differs between ACE 1.5
+	  and later versions test the version without including the
+	  platform headers.
+
 config HP_MEMORY_BANKS
 	int "HP memory banks count"
 	depends on CAVS

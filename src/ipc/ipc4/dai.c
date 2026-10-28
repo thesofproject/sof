@@ -42,7 +42,7 @@ void dai_set_link_hda_config(uint16_t *link_config,
 			     struct ipc_config_dai *common_config,
 			     const void *spec_config)
 {
-#if ACE_VERSION > ACE_VERSION_1_5
+#if CONFIG_ACE_VERSION_2_0_OR_LATER
 	const struct ipc4_audio_format *gtw_fmt = common_config->gtw_fmt;
 	union hdalink_cfg link_cfg;
 
@@ -76,7 +76,7 @@ void dai_set_link_hda_config(uint16_t *link_config,
 		return;
 	}
 	*link_config = link_cfg.full;
-#endif /* ACE_VERSION > ACE_VERSION_1_5 */
+#endif /* CONFIG_ACE_VERSION_2_0_OR_LATER */
 }
 
 int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void *spec_config)
@@ -90,13 +90,13 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 		COMPILER_FALLTHROUGH;
 	case SOF_DAI_INTEL_DMIC:
 		channel = 0;
-#if ACE_VERSION > ACE_VERSION_1_5
+#if CONFIG_ACE_VERSION_2_0_OR_LATER
 		if (dai->host_dma_config[0]->pre_allocated_by_host)
 			channel = dai->host_dma_config[0]->dma_channel_id;
 #endif
 		break;
 	case SOF_DAI_INTEL_HDA:
-#if ACE_VERSION > ACE_VERSION_1_5
+#if CONFIG_ACE_VERSION_2_0_OR_LATER
 		if (copier_cfg->gtw_cfg.node_id.f.dma_type == ipc4_alh_link_output_class ||
 		    copier_cfg->gtw_cfg.node_id.f.dma_type == ipc4_alh_link_input_class) {
 			struct processing_module *mod = comp_mod(dev);
@@ -114,7 +114,7 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 			}
 			break;
 		}
-#endif /* ACE_VERSION > ACE_VERSION_1_5 */
+#endif /* CONFIG_ACE_VERSION_2_0_OR_LATER */
 		channel = copier_cfg->gtw_cfg.node_id.f.v_index;
 		break;
 	case SOF_DAI_INTEL_ALH:
@@ -123,7 +123,7 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 		 */
 		channel = 0;
 		break;
-#if ACE_VERSION > ACE_VERSION_1_5
+#if CONFIG_ACE_VERSION_2_0_OR_LATER
 	case SOF_DAI_INTEL_UAOL:
 		channel = 0;
 		if (dai->host_dma_config[0]->pre_allocated_by_host)
