@@ -642,10 +642,12 @@ static void build_config(struct comp_data *cd, struct module_config *cfg)
 				    &frame_fmt, &valid_fmt,
 				    cfg->base_cfg.audio_fmt.s_type);
 	cd->source_format = frame_fmt;
+	cd->source_valid_format = valid_fmt;
 
 	audio_stream_fmt_conversion(out_fmt->depth, out_fmt->valid_bit_depth,
 				    &frame_fmt, &valid_fmt, out_fmt->s_type);
 	cd->sink_format = frame_fmt;
+	cd->sink_valid_format = valid_fmt;
 
 	cd->config.in_channels_count = cfg->base_cfg.audio_fmt.channels_count;
 	cd->config.out_channels_count = out_fmt->channels_count;
@@ -746,7 +748,7 @@ static void set_selector_params(struct processing_module *mod,
 
 	comp_dev_for_each_consumer(dev, sink_buf) {
 		ipc4_update_buffer_format(sink_buf, out_fmt);
-		audio_stream_set_channels(&sink_buf->stream, params->channels);
+		audio_stream_set_channels(&sink_buf->stream, cd->config.out_channels_count);
 		audio_stream_set_rate(&sink_buf->stream, params->rate);
 	}
 
@@ -788,9 +790,11 @@ static int selector_verify_params(struct processing_module *mod,
 	/* apply input/output channels count according to stream direction */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		params->channels = out_channels;
+		params->frame_fmt = cd->sink_format;
 		buffer = comp_dev_get_first_data_consumer(dev);
 	} else {
 		params->channels = in_channels;
+		params->frame_fmt = cd->source_format;
 		buffer = comp_dev_get_first_data_producer(dev);
 	}
 	buffer_set_params(buffer, params, BUFFER_UPDATE_FORCE);
@@ -988,7 +992,9 @@ static int selector_find_coefficients(struct processing_module *mod)
 	/* The pass-through copy function can be used if coefficients are a unit matrix for
 	 * 1:1 stream copy.
 	 */
-	if (source_channels == sink_channels) {
+	if (source_channels == sink_channels &&
+	    cd->source_format == cd->sink_format &&
+	    cd->source_valid_format == cd->sink_valid_format) {
 		cd->passthrough = true;
 		for (i = 0; i < sink_channels; i++) {
 			for (j = 0; j < source_channels; j++) {
@@ -1109,10 +1115,12 @@ static int selector_prepare(struct processing_module *mod,
 
 	/* get source data format and period bytes */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
+	cd->source_valid_format = audio_stream_get_valid_fmt(&sourceb->stream);
 	cd->source_period_bytes = audio_stream_period_bytes(&sourceb->stream, dev->frames);
 
 	/* get sink data format and period bytes */
 	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
+	cd->sink_valid_format = audio_stream_get_valid_fmt(&sinkb->stream);
 	cd->sink_period_bytes = audio_stream_period_bytes(&sinkb->stream, dev->frames);
 	sink_size = audio_stream_get_size(&sinkb->stream);
 	md->mpd.in_buff_size = cd->source_period_bytes;
@@ -1325,6 +1333,8 @@ static int sel_static_apply_enum(struct comp_dev *dev, uint32_t channel, int32_t
 	 * output channel counts match and coeffs form an identity matrix.
 	 */
 	if (cd->config.in_channels_count == cd->config.out_channels_count &&
+	    cd->source_format == cd->sink_format &&
+	    cd->source_valid_format == cd->sink_valid_format &&
 	    cd->config.in_channels_count > 0) {
 		cd->passthrough = true;
 		for (uint32_t i = 0; i < cd->config.out_channels_count; i++) {
