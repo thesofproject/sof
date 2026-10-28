@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2026 Intel Corporation.
+#
+# Math matrix operation unit tests converted from CMock to Ztest
+#
+# These contents may have been developed with support from one or more Intel-operated
+# generative artificial intelligence solutions.
+#
+
+common:
+  tags:
+    - SOF
+    - unit_test
+    - math
+    - matrix
+  integration_platforms:
+    - native_sim
+  arch_exclude: xtensa
+
+tests:
+  sof.unit.math.matrix:
+    platform_allow:
+      - native_sim
+    build_only: false
