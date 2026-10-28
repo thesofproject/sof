@@ -201,6 +201,68 @@ static void mix_n_s32(struct cir_buf_sink *sink, struct cir_buf_source *sources,
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_FLOAT
+/* Mix n float source streams to one sink stream */
+static void mix_n_float(struct cir_buf_sink *sink, struct cir_buf_source *sources,
+			int num_sources, size_t samples)
+{
+	const float *src[CONFIG_PLATFORM_MAX_CHANNELS];
+	float *dest = sink->ptr;
+	float val;
+	size_t nmax, ns, n, i;
+	size_t processed = 0;
+	int j;
+
+	for (j = 0; j < num_sources; j++)
+		src[j] = sources[j].ptr;
+
+	while (processed < samples) {
+		nmax = samples - processed;
+		n = cir_buf_samples_without_wrap_s32(dest, sink->buf_end);
+		n = MIN(n, nmax);
+		for (j = 0; j < num_sources; j++) {
+			ns = cir_buf_samples_without_wrap_s32(src[j], sources[j].buf_end);
+			n = MIN(n, ns);
+		}
+
+		if (num_sources == 2) {
+			const float *s0 = src[0];
+			const float *s1 = src[1];
+			i = 0;
+			for (; i + 3 < n; i += 4) {
+				dest[0] = s0[0] + s1[0];
+				dest[1] = s0[1] + s1[1];
+				dest[2] = s0[2] + s1[2];
+				dest[3] = s0[3] + s1[3];
+				s0 += 4;
+				s1 += 4;
+				dest += 4;
+			}
+			for (; i < n; i++) {
+				*dest++ = *s0++ + *s1++;
+			}
+			src[0] = s0;
+			src[1] = s1;
+		} else {
+			for (i = 0; i < n; i++) {
+				val = 0.0f;
+				for (j = 0; j < num_sources; j++) {
+					val += *src[j];
+					src[j]++;
+				}
+				*dest++ = val;
+			}
+		}
+
+		processed += n;
+		dest = cir_buf_wrap(dest, sink->buf_start, sink->buf_end);
+		for (j = 0; j < num_sources; j++)
+			src[j] = source_cir_buf_wrap(src[j], sources[j].buf_start,
+						     sources[j].buf_end);
+	}
+}
+#endif /* CONFIG_FORMAT_FLOAT */
+
 const struct mixer_func_map mixer_func_map[] = {
 #if CONFIG_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, mix_n_s16 },
@@ -210,6 +272,9 @@ const struct mixer_func_map mixer_func_map[] = {
 #endif
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, mix_n_s32 },
+#endif
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, mix_n_float },
 #endif
 };
 
