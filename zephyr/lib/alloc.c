@@ -392,10 +392,13 @@ SYS_INIT(virtual_heap_init, POST_KERNEL, 1);
 
 #endif /* CONFIG_VIRTUAL_HEAP */
 
+#if CONFIG_SOF_FULL_ZEPHYR_APPLICATION
+/* unit-test builds get a static inline NULL stub from rtos/alloc.h */
 struct k_heap *sof_sys_heap_get(void)
 {
 	return &sof_heap;
 }
+#endif
 
 struct k_heap *sof_sys_user_heap_get(void)
 {
