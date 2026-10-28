@@ -16,7 +16,6 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
-#include <sof/platform.h>
 #include <rtos/sof.h>
 #include <rtos/timer.h>
 #include <ipc4/gateway.h>

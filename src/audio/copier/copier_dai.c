@@ -5,8 +5,6 @@
 // Author: Baofeng Tian <baofeng.tian@intel.com>
 
 #include <sof/lib/cold.h>
-/* ACE_VERSION, see the ALH case below */
-#include <sof/platform.h>
 #include <sof/trace/trace.h>
 #include <sof/audio/component_dai.h>
 #include <ipc/dai.h>

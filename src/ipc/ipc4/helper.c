@@ -24,7 +24,6 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/vregion.h>
 #include <sof/list.h>
-#include <sof/platform.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/symbol.h>
