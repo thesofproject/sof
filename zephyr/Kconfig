@@ -50,6 +50,7 @@ config SOF_USERSPACE_LL
 	select SOF_USERSPACE_INTERFACE_ALLOC
 	select SOF_USERSPACE_INTERFACE_DMA
 	select SOF_USERSPACE_INTERFACE_VREGION if SOF_VREGIONS
+	select UAOL_USERSPACE if UAOL_INTEL_ADSP
 	help
 	  Run Low-Latency (LL) pipelines in userspace threads. This adds
 	  memory protection between operating system resources and

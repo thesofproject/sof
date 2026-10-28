@@ -29,7 +29,8 @@ struct ipc4_uaol_capabilities {
 } __packed __aligned(4);
 
 #define DEV_AND_COMMA(node) DEVICE_DT_GET(node),
-static const struct device *uaol_devs[] = {
+/* const pointers keep the array in rodata, readable by the user-space LL thread */
+static const struct device *const uaol_devs[] = {
 	DT_FOREACH_STATUS_OKAY(intel_adsp_uaol, DEV_AND_COMMA)
 };
 
