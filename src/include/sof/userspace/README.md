@@ -16,7 +16,7 @@ SOF supports several privilege configurations. On PTL (`intel_adsp_ace30_ptl`) t
 config enables `CONFIG_USERSPACE` and `CONFIG_SOF_USERSPACE_PROXY`, running individual audio
 modules in isolated user threads via the proxy container. For Linux builds
 (`os_linux_overlay.conf`), `app/CMakeLists.txt` automatically includes
-`app/overlays/ptl/ll_userspace_overlay.conf`, which additionally enables
+`app/ll_userspace_overlay.conf`, which additionally enables
 `CONFIG_SOF_USERSPACE_LL` so the entire LL pipeline and the module-facing IPC run in user
 threads. This is the standard PTL Linux build configuration. The kernel keeps the OS/HAL,
 boot, drivers, and the syscall validators in both cases.
