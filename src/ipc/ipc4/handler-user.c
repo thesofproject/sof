@@ -1805,7 +1805,7 @@ int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
 				break;
 			}
 
-			tr_info(&ipc_tr, "INIT_INSTANCE: driver validated, creating component");
+			//tr_info(&ipc_tr, "INIT_INSTANCE: driver validated, creating component");
 			struct comp_dev *dev = comp_new_ipc4_user(&msg, drv);
 
 			if (!dev) {
@@ -1814,7 +1814,7 @@ int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
 				break;
 			}
 
-			tr_info(&ipc_tr, "INIT_INSTANCE: component created %p, registering", dev);
+			//tr_info(&ipc_tr, "INIT_INSTANCE: component created %p, registering", dev);
 			result = ipc4_add_comp_dev(dev);
 			if (result != IPC4_SUCCESS) {
 				tr_err(&ipc_tr, "INIT_INSTANCE: component registration failed %d",
@@ -1822,9 +1822,9 @@ int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
 				break;
 			}
 
-			tr_info(&ipc_tr, "INIT_INSTANCE: component registered, updating IBS/OBS/CPC");
+			//tr_info(&ipc_tr, "INIT_INSTANCE: component registered, updating IBS/OBS/CPC");
 			comp_update_ibs_obs_cpc(dev);
-			tr_info(&ipc_tr, "INIT_INSTANCE: IBS/OBS/CPC update completed");
+			//tr_info(&ipc_tr, "INIT_INSTANCE: IBS/OBS/CPC update completed");
 
 			result = 0;
 			tr_info(&ipc_tr, "INIT_INSTANCE: completed");

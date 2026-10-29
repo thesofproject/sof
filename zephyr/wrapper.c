@@ -28,6 +28,10 @@
 
 /* Zephyr includes */
 #include <zephyr/arch/cpu.h>
+#if defined(CONFIG_XTENSA) && defined(CONFIG_USERSPACE)
+/* Zephyr arch-internal header, from zephyr/arch/xtensa/include */
+#include <xtensa_internal.h>
+#endif
 #include <zephyr/device.h>
 #include <zephyr/fatal.h>
 #include <zephyr/kernel_structs.h>
@@ -362,6 +366,14 @@ void k_sys_fatal_error_handler(unsigned int reason,
 	}
 #endif
 
+#if defined(CONFIG_XTENSA) && defined(CONFIG_USERSPACE)
+		if (reason != K_ERR_KERNEL_PANIC && xtensa_exception_is_user(esf)) {
+			LOG_ERR("ERROR: Unexpected fatal error %u in Xtensa user mode; "
+			       "aborting thread.\n", reason);
+			return;
+		}
+#endif
+
 	/* flush and switch to immediate mode */
 	LOG_PANIC();
 
@@ -369,6 +381,8 @@ void k_sys_fatal_error_handler(unsigned int reason,
 #ifndef CONFIG_SOF_BOOT_TEST_STANDALONE
 	ipc_send_panic_notification();
 #endif
+
+
 
 #if defined(CONFIG_ARCH_POSIX) || defined(CONFIG_ZEPHYR_POSIX)
 	LOG_ERR("Halting emulation");

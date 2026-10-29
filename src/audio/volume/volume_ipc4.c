@@ -32,6 +32,9 @@ LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
 
 #include "volume.h"
 
+/* Debug only: remove to disable the deliberate fault in volume_init() */
+#define VOLUME_INJECT_FAULT 1
+
 void set_volume_process(struct vol_data *cd, struct comp_dev *dev, bool source_or_sink)
 {
 	cd->scale_vol = vol_get_processing_function(dev, cd);
@@ -116,10 +119,16 @@ int volume_init(struct processing_module *mod)
 	uint8_t channel_cfg;
 	uint8_t channel;
 	bool all_channels;
+
+
+#ifdef VOLUME_INJECT_FAULT
+	/* Debug only: deliberately write to NULL to raise a DSP exception */
+	comp_err(dev, "volume_init: injecting NULL pointer write fault");
+	*(volatile uint32_t *)NULL = 0xdeadbeef;
+#endif
+
 	uint32_t instance_id = IPC4_INST_ID(dev_comp_id(dev));
 
-	comp_info(dev, "volume_init: entry, instance %u payload size %zu",
-		  instance_id, cfg->size);
 
 	if (instance_id >= IPC4_MAX_PEAK_VOL_REG_SLOTS) {
 		comp_err(dev, "instance_id %u out of array bounds.", instance_id);
