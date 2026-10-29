@@ -18,8 +18,9 @@
 
 #include <sof/audio/component.h>
 #include <ipc/topology.h>
-/* TODO: the cross-core helpers below send IDC messages, which is kernel only */
+/* in user-space LL builds idc_send_msg() forwards to the remote user IPC thread */
 #include <rtos/idc.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
 
 /** \addtogroup component_infra_api
@@ -299,9 +300,18 @@ static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t 
 	if (type != COMP_ATTR_BASE_CONFIG)
 		return -EINVAL;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/* must be writable by the user-space thread on the remote core */
+	base_cfg = sof_heap_alloc(zephyr_ll_user_heap(), SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				  sizeof(*base_cfg), 0);
+	if (!base_cfg)
+		return -ENOMEM;
+	memset(base_cfg, 0, sizeof(*base_cfg));
+#else
 	base_cfg = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*base_cfg));
 	if (!base_cfg)
 		return -ENOMEM;
+#endif
 
 	payload.type = type;
 	payload.value = base_cfg;
@@ -312,7 +322,11 @@ static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t 
 		memcpy_s(value, sizeof(struct ipc4_base_module_cfg),
 			 base_cfg, sizeof(struct ipc4_base_module_cfg));
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	sof_heap_free(zephyr_ll_user_heap(), base_cfg);
+#else
 	rfree(base_cfg);
+#endif
 	return ret;
 }
 #endif	/* CONFIG_IPC_MAJOR_4 */
