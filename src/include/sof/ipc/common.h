@@ -70,6 +70,11 @@ struct ipc_user {
 	uint32_t ipc_msg_pri;
 	/** @brief Copy of IPC4 message extension word forwarded to user thread */
 	uint32_t ipc_msg_ext;
+	/**
+	 * @brief SET_PIPELINE_STATE phase(s) to run for a forwarded single
+	 * pipeline (IDC_PPL_STATE_PHASE_*), or 0 to process the message fully
+	 */
+	uint32_t ppl_phase;
 	/** @brief Result code from user thread processing */
 	int result;
 	/** @brief Reply extension word from user thread (e.g. CONFIG_GET result) */
