@@ -875,8 +875,10 @@ static int sof_static_topology_prepare_comps(const struct sof_static_topology *t
 		if (!dev)
 			continue;
 
-		/* Only prepare components currently in READY state */
+		/* Only prepare components currently in READY state that are connected to buffers */
 		if (dev->state == COMP_STATE_READY) {
+			if (list_is_empty(&dev->bsource_list) && list_is_empty(&dev->bsink_list))
+				continue;
 			const struct sof_static_comp *cdesc = &topo->comps[i];
 			const struct sof_static_pipeline_desc *pdesc =
 				sof_static_find_pipeline_desc(topo, cdesc->pipeline_id);
@@ -1108,6 +1110,9 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 		goto err_unwind;
 	}
 
+	/* Publish topology as active before initializing kcontrols */
+	s_active_topo = topo;
+
 	/* Stage 7: Initialize kcontrols with default values */
 	ret = sof_static_topology_init_controls(topo);
 	if (ret < 0) {
@@ -1115,14 +1120,12 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 		goto err_unwind;
 	}
 
-	/* Publish topology as active only after all construction stages succeed */
-	s_active_topo = topo;
-
 	LOG_INF("Static audio topology initialized successfully (%zu pipelines, %zu comps, %zu buffers, %zu controls)",
 		topo->num_pipelines, topo->num_comps, topo->num_buffers, topo->num_controls);
 	return 0;
 
 err_unwind:
+	s_active_topo = NULL;
 	sof_static_topology_unwind();
 	return ret;
 }
