@@ -516,6 +516,23 @@ static inline void comp_make_shared(struct comp_dev *dev)
 }
 
 /**
+ * \brief Get the core of the parent pipeline of a component.
+ *
+ * Use this instead of dev->pipeline->core on other cores than the pipeline
+ * core: struct pipeline isn't coherent between cores, struct comp_dev is.
+ * \param[in] dev Component device.
+ * \return Pipeline core, or the component core if it has no pipeline.
+ */
+static inline uint32_t comp_ppl_core(const struct comp_dev *dev)
+{
+#if CONFIG_IPC_MAJOR_4
+	return dev->ipc_config.ppl_core;
+#else
+	return dev->ipc_config.core;
+#endif
+}
+
+/**
  * \brief Get the global component driver list.
  * \return Pointer to the component driver list.
  */

@@ -564,6 +564,9 @@ static int sof_static_topology_init_comps(const struct sof_static_topology *topo
 			.id = cdesc->id,
 			.pipeline_id = cdesc->pipeline_id,
 			.core = comp_core,
+#if CONFIG_IPC_MAJOR_4
+			.ppl_core = comp_core,
+#endif
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
 			.frame_fmt = cdesc->caps.default_fmt,
 			.type = drv_type,

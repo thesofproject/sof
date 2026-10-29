@@ -571,6 +571,7 @@ struct comp_ipc_config {
 #if CONFIG_IPC_MAJOR_4
 	bool ipc_extended_init;		/**< True if extended init is included in IPC payload */
 	uint32_t ipc_config_size;	/**< Size of config received by IPC */
+	uint32_t ppl_core;		/**< Core of the parent pipeline */
 #endif
 };
 

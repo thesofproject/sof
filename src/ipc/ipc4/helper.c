@@ -132,6 +132,7 @@ __cold static int ipc4_comp_new_config(struct comp_ipc_config *ipc_config,
 	ipc_config->id = comp_id;
 	ipc_config->pipeline_id = module_init->extension.r.ppl_instance_id;
 	ipc_config->core = module_init->extension.r.core_id;
+	ipc_config->ppl_core = ipc_config->core;
 	ipc_config->ipc_config_size = module_init->extension.r.param_block_size * sizeof(uint32_t);
 	ipc_config->ipc_extended_init = module_init->extension.r.extended_init;
 	if (ipc_config->ipc_config_size > MAILBOX_HOSTBOX_SIZE) {
@@ -177,6 +178,8 @@ __cold static int ipc4_comp_new_config(struct comp_ipc_config *ipc_config,
 			       (uint32_t)ipc_config->pipeline_id, (uint32_t)ppl->core);
 			return -EINVAL;
 		}
+
+		ipc_config->ppl_core = ppl->core;
 	}
 
 	return 0;
@@ -735,19 +738,69 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
  */
 
 #if CONFIG_SOF_USERSPACE_LL
-#error "CONFIG_SOF_USERSPACE_LL not compatible with cross-core streams"
-#else
-#define ll_block(src_core, dst_core, flags) \
+/*
+ * Cores, whose LL threads can access the two modules or the buffer between
+ * them: the cores of the modules and of their pipelines. The pipeline core
+ * differs from the module core for DP modules on another core.
+ */
+__cold static uint32_t ll_block_cores(struct comp_dev *src, struct comp_dev *dst)
+{
+	assert_can_be_cold();
+
+	return BIT(src->ipc_config.core) | BIT(dst->ipc_config.core) |
+	       BIT(comp_ppl_core(src)) | BIT(comp_ppl_core(dst));
+}
+
+/*
+ * The LL thread holds its scheduler lock for the whole LL cycle, so taking
+ * the lock both blocks the next cycle and waits for the current one to
+ * finish. Take the locks in ascending core order to avoid deadlocks.
+ */
+__cold static void ll_lock_cores(uint32_t cores)
+{
+	int core;
+
+	assert_can_be_cold();
+
+	for (core = 0; core < CONFIG_CORE_COUNT; core++)
+		if (cores & BIT(core))
+			user_ll_lock_sched(core);
+}
+
+__cold static void ll_unlock_cores(uint32_t cores)
+{
+	int core;
+
+	assert_can_be_cold();
+
+	for (core = CONFIG_CORE_COUNT - 1; core >= 0; core--)
+		if (cores & BIT(core))
+			user_ll_unlock_sched(core);
+}
+
+#define ll_block(src, dst, flags) \
 	do { \
-		if (src_core != dst_core) \
+		ll_lock_cores(ll_block_cores(src, dst)); \
+		ARG_UNUSED(flags); \
+	} while (0)
+
+#define ll_unblock(src, dst, flags) \
+	do { \
+		ll_unlock_cores(ll_block_cores(src, dst)); \
+		ARG_UNUSED(flags); \
+	} while (0)
+#else
+#define ll_block(src, dst, flags) \
+	do { \
+		if ((src)->ipc_config.core != (dst)->ipc_config.core) \
 			domain_block(sof_get()->platform_timer_domain); \
 		else \
 			irq_local_disable(flags); \
 	} while (0)
 
-#define ll_unblock(src_core, dst_core, flags) \
+#define ll_unblock(src, dst, flags) \
 	do { \
-		if (src_core != dst_core) \
+		if ((src)->ipc_config.core != (dst)->ipc_config.core) \
 			domain_unblock(sof_get()->platform_timer_domain); \
 		else \
 			irq_local_enable(flags); \
@@ -759,6 +812,10 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
  */
 __cold static int ll_wait_finished_on_core(struct comp_dev *dev)
 {
+#if CONFIG_SOF_USERSPACE_LL
+	/* ll_block() has already waited for the LL cycle to finish */
+	return 0;
+#else
 	/* To make sure (blocked) LL has finished its current cycle, it is
 	 * enough to send any blocking IDC to the core. Since IDC task has lower
 	 * priority then LL thread and cannot preempt it, execution of IDC task
@@ -782,25 +839,26 @@ __cold static int ll_wait_finished_on_core(struct comp_dev *dev)
 	}
 
 	return 0;
+#endif
 }
 
 #else /* CONFIG_CROSS_CORE_STREAM */
 
 #if CONFIG_SOF_USERSPACE_LL
-/* note: cross-core streams are disabled so src_core==dst_core */
-#define ll_block(src_core, dst_core, flags) \
+/* note: cross-core streams are disabled so src and dst are on the same core */
+#define ll_block(src, dst, flags) \
 	do {				      \
-		user_ll_lock_sched(src_core); \
+		user_ll_lock_sched((src)->ipc_config.core); \
 		ARG_UNUSED(flags); \
 	} while(0)
-#define ll_unblock(src_core, dst_core, flags) \
+#define ll_unblock(src, dst, flags) \
 	do { \
-		user_ll_unlock_sched(src_core); \
+		user_ll_unlock_sched((src)->ipc_config.core); \
 		ARG_UNUSED(flags); \
 	} while(0)
 #else
-#define ll_block(src_core, dst_core, flags)	irq_local_disable(flags)
-#define ll_unblock(src_core, dst_core, flags)	irq_local_enable(flags)
+#define ll_block(src, dst, flags)	irq_local_disable(flags)
+#define ll_unblock(src, dst, flags)	irq_local_enable(flags)
 #endif
 
 #endif /* CONFIG_CROSS_CORE_STREAM */
@@ -1000,7 +1058,7 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 	 * blocked on corresponding core(s) to prevent IPC or IDC task getting preempted which
 	 * could result in buffers being only half connected when a pipeline task gets executed.
 	 */
-	ll_block(source->ipc_config.core, sink->ipc_config.core, flags);
+	ll_block(source, sink, flags);
 
 #if CONFIG_CROSS_CORE_STREAM
 	if (cross_core_bind) {
@@ -1054,7 +1112,7 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 		source->direction_set = true;
 	}
 
-	ll_unblock(source->ipc_config.core, sink->ipc_config.core, flags);
+	ll_unblock(source, sink, flags);
 
 	return IPC4_SUCCESS;
 
@@ -1068,7 +1126,7 @@ e_src_bind:
 e_sink_connect:
 	pipeline_disconnect(source, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 free:
-	ll_unblock(source->ipc_config.core, sink->ipc_config.core, flags);
+	ll_unblock(source, sink, flags);
 	buffer_free(buffer);
 	return IPC4_INVALID_RESOURCE_STATE;
 }
@@ -1139,24 +1197,24 @@ __cold int ipc4_comp_disconnect(struct ipc *ipc, const struct ipc4_module_bind_u
 	 * IPC or IDC task getting preempted which could result in buffers being only half connected
 	 * when a pipeline task gets executed.
 	 */
-	ll_block(src->ipc_config.core, sink->ipc_config.core, flags);
+	ll_block(src, sink, flags);
 
 	if (cross_core_unbind) {
 #if CONFIG_CROSS_CORE_STREAM
 		/* Make sure LL has finished on both cores */
 		if (!cpu_is_me(src->ipc_config.core))
 			if (ll_wait_finished_on_core(src) < 0) {
-				ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
+				ll_unblock(src, sink, flags);
 				return IPC4_FAILURE;
 			}
 		if (!cpu_is_me(sink->ipc_config.core))
 			if (ll_wait_finished_on_core(sink) < 0) {
-				ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
+				ll_unblock(src, sink, flags);
 				return IPC4_FAILURE;
 			}
 #else
 		tr_err(&ipc_tr, "Cross-core binding is disabled");
-		ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
+		ll_unblock(src, sink, flags);
 		return IPC4_FAILURE;
 #endif /* CONFIG_CROSS_CORE_STREAM */
 	}
@@ -1173,7 +1231,7 @@ __cold int ipc4_comp_disconnect(struct ipc *ipc, const struct ipc4_module_bind_u
 	unbind_data.source = audio_buffer_get_source(&buffer->audio_buffer);
 	ret1 = comp_unbind(sink, &unbind_data);
 
-	ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
+	ll_unblock(src, sink, flags);
 
 	buffer_free(buffer);
 
