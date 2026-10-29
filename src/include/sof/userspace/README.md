@@ -16,10 +16,10 @@ SOF supports several privilege configurations. On PTL (`intel_adsp_ace30_ptl`) t
 config enables `CONFIG_USERSPACE` and `CONFIG_SOF_USERSPACE_PROXY`, running individual audio
 modules in isolated user threads via the proxy container. For Linux builds
 (`os_linux_overlay.conf`), `app/CMakeLists.txt` automatically includes
-`app/ll_userspace_overlay.conf`, which additionally enables
-`CONFIG_SOF_USERSPACE_LL` so the entire LL pipeline and the module-facing IPC run in user
-threads. This is the standard PTL Linux build configuration. The kernel keeps the OS/HAL,
-boot, drivers, and the syscall validators in both cases.
+`app/ll_userspace_overlay.conf` on Intel ACE3.x and newer targets (e.g. ptl, wcl, nvl), which
+additionally enables `CONFIG_SOF_USERSPACE_LL` so the entire LL pipeline and the module-facing
+IPC run in user threads. This is the standard Linux build configuration for these targets.
+The kernel keeps the OS/HAL, boot, drivers, and the syscall validators in both cases.
 
 The privilege boundary is real, but nothing in the source *layout* signals which side a given
 file belongs to. This document makes that explicit.
@@ -179,7 +179,7 @@ graph TD
 Key options:
 
 - **`SOF_USERSPACE_LL`** — run LL pipelines in user threads (`depends on USERSPACE`; selects
-  the ALLOC/DMA/VREGION interfaces). This is what the PTL overlay turns on.
+  the ALLOC/DMA/VREGION interfaces). This is what `ll_userspace_overlay.conf` turns on.
 - **`SOF_USERSPACE_PROXY`** — run modules inside a proxy container that forwards kernel-side
   calls to user-privileged module code (selects the driver + shared heaps).
 - **`SOF_USERSPACE_APPLICATION`** — not user-settable; a shortcut for
