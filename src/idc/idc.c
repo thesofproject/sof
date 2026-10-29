@@ -84,50 +84,38 @@ static void idc_ipc(void)
 	ipc_cmd(ipc->comp_data);
 }
 
-static int idc_ipc4_bind(uint32_t comp_id)
+static int idc_ipc4_bind(uint32_t comp_id, void *payload)
 {
 	struct ipc_comp_dev *ipc_dev;
-	struct idc_payload *payload;
-	struct bind_info *bu;
+	struct bind_info *bu = payload;
 
 	ipc_dev = ipc_get_comp_by_id(ipc_get(), comp_id);
 	if (!ipc_dev)
 		return -ENODEV;
-
-	payload = idc_payload_get(*idc_get(), cpu_get_id());
-	bu = (struct bind_info *)payload;
 
 	return comp_bind(ipc_dev->cd, bu);
 }
 
-static int idc_ipc4_unbind(uint32_t comp_id)
+static int idc_ipc4_unbind(uint32_t comp_id, void *payload)
 {
 	struct ipc_comp_dev *ipc_dev;
-	struct idc_payload *payload;
-	struct bind_info *bu;
+	struct bind_info *bu = payload;
 
 	ipc_dev = ipc_get_comp_by_id(ipc_get(), comp_id);
 	if (!ipc_dev)
 		return -ENODEV;
-
-	payload = idc_payload_get(*idc_get(), cpu_get_id());
-	bu = (struct bind_info *)payload;
 
 	return comp_unbind(ipc_dev->cd, bu);
 }
 
-static int idc_get_attribute(uint32_t comp_id)
+static int idc_get_attribute(uint32_t comp_id, void *payload)
 {
 	struct ipc_comp_dev *ipc_dev;
-	struct idc_payload *idc_payload;
-	struct get_attribute_remote_payload *get_attr_payload;
+	struct get_attribute_remote_payload *get_attr_payload = payload;
 
 	ipc_dev = ipc_get_comp_by_id(ipc_get(), comp_id);
 	if (!ipc_dev)
 		return -ENODEV;
-
-	idc_payload = idc_payload_get(*idc_get(), cpu_get_id());
-	get_attr_payload = (struct get_attribute_remote_payload *)idc_payload;
 
 	return comp_get_attribute(ipc_dev->cd, get_attr_payload->type, get_attr_payload->value);
 }
@@ -137,14 +125,11 @@ static int idc_get_attribute(uint32_t comp_id)
  * \param[in] comp_id Component id to have params set.
  * \return Error code.
  */
-static int idc_params(uint32_t comp_id)
+static int idc_params(uint32_t comp_id, void *payload)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *ipc_dev;
-	struct idc *idc = *idc_get();
-	struct idc_payload *payload = idc_payload_get(idc, cpu_get_id());
-	struct sof_ipc_stream_params *params =
-		(struct sof_ipc_stream_params *)payload;
+	struct sof_ipc_stream_params *params = payload;
 	int ret;
 
 	ipc_dev = ipc_get_comp_by_id(ipc, comp_id);
@@ -185,6 +170,12 @@ static int idc_prepare(uint32_t comp_id)
 
 	/* we're running LL on different core, so allocate our own task */
 	if (!dev->task && dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL) {
+#ifdef CONFIG_SOF_USERSPACE_LL
+		/* user-space LL modules must run on their pipeline core */
+		tr_err(&idc_tr, "comp %#x: LL module on a remote core", comp_id);
+		ret = -EINVAL;
+		goto out;
+#endif
 		/* allocate task for shared component */
 		dev->task = sof_heap_alloc(dev->drv->user_heap, SOF_MEM_FLAG_USER,
 					   sizeof(*dev->task), 0);
@@ -218,12 +209,10 @@ out:
  * \param[in] comp_id Component id to be triggered.
  * \return Error code.
  */
-static int idc_trigger(uint32_t comp_id)
+static int idc_trigger(uint32_t comp_id, void *payload)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *ipc_dev;
-	struct idc *idc = *idc_get();
-	struct idc_payload *payload = idc_payload_get(idc, cpu_get_id());
 	uint32_t cmd = *(uint32_t *)payload;
 
 	ipc_dev = ipc_get_comp_by_id(ipc, comp_id);
@@ -356,6 +345,7 @@ static void idc_secondary_core_crashed(const uint32_t header)
  */
 void idc_cmd(struct idc_msg *msg)
 {
+	void *payload = idc_payload_get(*idc_get(), cpu_get_id());
 	uint32_t type = iTS(msg->header);
 	int ret = 0;
 
@@ -377,25 +367,25 @@ void idc_cmd(struct idc_msg *msg)
 		dbg_path_hot_stop_watching();
 		break;
 	case iTS(IDC_MSG_BIND):
-		ret = idc_ipc4_bind(msg->extension);
+		ret = idc_ipc4_bind(msg->extension, payload);
 		break;
 	case iTS(IDC_MSG_UNBIND):
-		ret = idc_ipc4_unbind(msg->extension);
+		ret = idc_ipc4_unbind(msg->extension, payload);
 		break;
 	case iTS(IDC_MSG_GET_ATTRIBUTE):
-		ret = idc_get_attribute(msg->extension);
+		ret = idc_get_attribute(msg->extension, payload);
 		break;
 	case iTS(IDC_MSG_FREE):
 		ret = idc_comp_free(msg->extension);
 		break;
 	case iTS(IDC_MSG_PARAMS):
-		ret = idc_params(msg->extension);
+		ret = idc_params(msg->extension, payload);
 		break;
 	case iTS(IDC_MSG_PREPARE):
 		ret = idc_prepare(msg->extension);
 		break;
 	case iTS(IDC_MSG_TRIGGER):
-		ret = idc_trigger(msg->extension);
+		ret = idc_trigger(msg->extension, payload);
 		break;
 	case iTS(IDC_MSG_RESET):
 		ret = idc_reset(msg->extension);
@@ -420,6 +410,42 @@ void idc_cmd(struct idc_msg *msg)
 
 	idc_msg_status_set(ret, cpu_get_id());
 }
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+/**
+ * \brief Executes a component IDC message in a user-space thread.
+ * \param[in] msg IDC message, forwarded by a user thread on another core.
+ * \param[in,out] payload Message payload.
+ * \return Error code.
+ *
+ * Only the component messages, that can be sent from the user-space IPC
+ * and LL threads, are supported.
+ */
+int idc_cmd_user(const struct idc_msg *msg, void *payload)
+{
+	switch (iTS(msg->header)) {
+	case iTS(IDC_MSG_BIND):
+		return idc_ipc4_bind(msg->extension, payload);
+	case iTS(IDC_MSG_UNBIND):
+		return idc_ipc4_unbind(msg->extension, payload);
+	case iTS(IDC_MSG_GET_ATTRIBUTE):
+		return idc_get_attribute(msg->extension, payload);
+	case iTS(IDC_MSG_FREE):
+		return idc_comp_free(msg->extension);
+	case iTS(IDC_MSG_PARAMS):
+		return idc_params(msg->extension, payload);
+	case iTS(IDC_MSG_PREPARE):
+		return idc_prepare(msg->extension);
+	case iTS(IDC_MSG_TRIGGER):
+		return idc_trigger(msg->extension, payload);
+	case iTS(IDC_MSG_RESET):
+		return idc_reset(msg->extension);
+	default:
+		tr_err(&idc_tr, "unsupported user msg->header = %#x", msg->header);
+		return -EINVAL;
+	}
+}
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 /* Runs on each CPU */
 __cold int idc_init(void)
