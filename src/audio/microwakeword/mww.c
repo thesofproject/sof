@@ -172,6 +172,11 @@ struct mww_comp_data {
 	struct kpb_event_data event_data;
 #endif
 	bool initialized;
+#if CONFIG_IPC_MAJOR_4
+	/* Control notification messages, allocated on first use and reused */
+	struct ipc_msg *wovdebug_msg;
+	struct ipc_msg *score_msg;
+#endif
 	int8_t feature_buf[MWW_FEATURE_ELEM_COUNT];
 	int feature_slices_filled;
 
@@ -318,15 +323,18 @@ static void mww_fake_wake_fire(struct processing_module *mod, struct comp_dev *d
 }
 
 #if CONFIG_IPC_MAJOR_4
-static void mww_notify_wovdebug(const struct comp_dev *dev, struct mww_comp_data *cd, uint32_t val)
+/* Allocate on first use a control change notification for this module */
+static struct ipc_msg *mww_ctl_msg_get(const struct comp_dev *dev, struct ipc_msg **msgp,
+				       uint32_t param_id)
 {
 	struct sof_ipc4_notify_module_data *msg_module_data;
-	struct sof_ipc4_control_msg_payload *msg_payload;
-	struct ipc_msg *msg;
 	uint32_t data_size = sizeof(struct sof_ipc4_notify_module_data) +
 			     sizeof(struct sof_ipc4_control_msg_payload) +
 			     sizeof(struct sof_ipc4_ctrl_value_chan);
 	struct ipc4_voice_cmd_notification notif;
+
+	if (*msgp)
+		return *msgp;
 
 	memset_s(&notif, sizeof(notif), 0, sizeof(notif));
 	notif.primary.r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
@@ -334,18 +342,30 @@ static void mww_notify_wovdebug(const struct comp_dev *dev, struct mww_comp_data
 	notif.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
 	notif.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
 
-	msg = ipc_msg_w_ext_init(NULL, notif.primary.dat, 0, data_size);
+	*msgp = ipc_msg_w_ext_init(NULL, notif.primary.dat, 0, data_size);
+	if (!*msgp)
+		return NULL;
+
+	msg_module_data = (struct sof_ipc4_notify_module_data *)(*msgp)->tx_data;
+	msg_module_data->instance_id = IPC4_INST_ID(dev->ipc_config.id);
+	msg_module_data->module_id = IPC4_MOD_ID(dev->ipc_config.id);
+	msg_module_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL | param_id;
+	msg_module_data->event_data_size = sizeof(struct sof_ipc4_control_msg_payload) +
+					   sizeof(struct sof_ipc4_ctrl_value_chan);
+	return *msgp;
+}
+
+static void mww_notify_wovdebug(const struct comp_dev *dev, struct mww_comp_data *cd, uint32_t val)
+{
+	struct sof_ipc4_notify_module_data *msg_module_data;
+	struct sof_ipc4_control_msg_payload *msg_payload;
+	struct ipc_msg *msg;
+
+	msg = mww_ctl_msg_get(dev, &cd->wovdebug_msg, SOF_IPC4_SWITCH_CONTROL_PARAM_ID);
 	if (!msg)
 		return;
 
 	msg_module_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
-	msg_module_data->instance_id = IPC4_INST_ID(dev->ipc_config.id);
-	msg_module_data->module_id = IPC4_MOD_ID(dev->ipc_config.id);
-	msg_module_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL |
-				    SOF_IPC4_SWITCH_CONTROL_PARAM_ID;
-	msg_module_data->event_data_size = sizeof(struct sof_ipc4_control_msg_payload) +
-					   sizeof(struct sof_ipc4_ctrl_value_chan);
-
 	msg_payload = (struct sof_ipc4_control_msg_payload *)msg_module_data->event_data;
 	msg_payload->id = cd->wovdebug_ctl_id;
 	msg_payload->num_elems = 1;
@@ -444,10 +464,6 @@ static void mww_notify_score(const struct comp_dev *dev, struct mww_comp_data *c
 	struct sof_ipc4_notify_module_data *msg_module_data;
 	struct sof_ipc4_control_msg_payload *msg_payload;
 	struct ipc_msg *msg;
-	uint32_t data_size = sizeof(struct sof_ipc4_notify_module_data) +
-			     sizeof(struct sof_ipc4_control_msg_payload) +
-			     sizeof(struct sof_ipc4_ctrl_value_chan);
-	struct ipc4_voice_cmd_notification notif;
 
 	/* Do not send telemetry score notifications to host while host is in D0i3 (suspended),
 	 * as any IPC notification would prematurely wake the host up.
@@ -455,24 +471,11 @@ static void mww_notify_score(const struct comp_dev *dev, struct mww_comp_data *c
 	if (cd->in_d0ix)
 		return;
 
-	memset_s(&notif, sizeof(notif), 0, sizeof(notif));
-	notif.primary.r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
-	notif.primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
-	notif.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
-	notif.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
-
-	msg = ipc_msg_w_ext_init(NULL, notif.primary.dat, 0, data_size);
+	msg = mww_ctl_msg_get(dev, &cd->score_msg, SOF_IPC4_ENUM_CONTROL_PARAM_ID);
 	if (!msg)
 		return;
 
 	msg_module_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
-	msg_module_data->instance_id = IPC4_INST_ID(dev->ipc_config.id);
-	msg_module_data->module_id = IPC4_MOD_ID(dev->ipc_config.id);
-	msg_module_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL |
-				    SOF_IPC4_ENUM_CONTROL_PARAM_ID;
-	msg_module_data->event_data_size = sizeof(struct sof_ipc4_control_msg_payload) +
-					   sizeof(struct sof_ipc4_ctrl_value_chan);
-
 	msg_payload = (struct sof_ipc4_control_msg_payload *)msg_module_data->event_data;
 	msg_payload->id = 0; /* Index of the enum control on this widget */
 	msg_payload->num_elems = 1;
@@ -1012,6 +1015,10 @@ __cold static int mww_free(struct processing_module *mod)
 
 	MWW_Free(&cd->mwc);
 
+#if CONFIG_IPC_MAJOR_4
+	ipc_msg_free(cd->wovdebug_msg);
+	ipc_msg_free(cd->score_msg);
+#endif
 	mod_data_blob_handler_free(mod, cd->model_handler);
 	mod_free(mod, cd);
 	return 0;
