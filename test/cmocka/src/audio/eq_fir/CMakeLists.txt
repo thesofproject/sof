@@ -18,6 +18,7 @@ add_library(audio_for_eq_fir STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir_hifi2ep.c
 	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir_hifi3.c
 	${PROJECT_SOURCE_DIR}/src/math/fir_generic.c
+	${PROJECT_SOURCE_DIR}/src/math/fir_float.c
 	${PROJECT_SOURCE_DIR}/src/math/fir_hifi2ep.c
 	${PROJECT_SOURCE_DIR}/src/math/fir_hifi3.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c

@@ -47,6 +47,9 @@ typedef int (*level_multiplier_func)(const struct processing_module *mod,
 struct level_multiplier_comp_data {
 	level_multiplier_func level_multiplier_func;
 	int32_t gain;
+#if CONFIG_FORMAT_FLOAT
+	float gain_f;
+#endif
 	int source_format;
 	int frame_bytes;
 	int channels;

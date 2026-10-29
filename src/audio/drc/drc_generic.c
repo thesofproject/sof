@@ -114,6 +114,21 @@ void drc_update_detector_average(struct drc_state *state,
 				abs_input_array[i] = MAX(abs_input_array[i], ABS(sample));
 			}
 		}
+#if CONFIG_FORMAT_FLOAT
+	} else if (nbyte == 0) { /* float */
+		for (i = 0; i < DRC_DIVISION_FRAMES; i++) {
+			abs_input_array[i] = 0;
+			for (ch = 0; ch < nch; ch++) {
+				const float *sample_f = (const float *)state->pre_delay_buffers[ch] + div_start + i;
+				float val = *sample_f < 0.0f ? -*sample_f : *sample_f;
+				if (val > 1.0f)
+					val = 1.0f;
+				float scaled = val * 2147483647.0f;
+				sample = scaled >= 2147483647.0f ? INT32_MAX : (int32_t)scaled;
+				abs_input_array[i] = MAX(abs_input_array[i], sample);
+			}
+		}
+#endif
 	} else { /* 4 bytes per sample */
 		for (i = 0; i < DRC_DIVISION_FRAMES; i++) {
 			abs_input_array[i] = 0;
@@ -329,6 +344,34 @@ void drc_compress_output(struct drc_state *state,
 				for (j = 0; j < 4; j++)
 					x[j] = Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30);
 			}
+#if CONFIG_FORMAT_FLOAT
+		} else if (nbyte == 0) { /* float */
+			const float gain_scale = 1.0f / 16777216.0f;
+			while (1) {
+				for (j = 0; j < 4; j++) {
+					post_warp_compressor_gain =
+						drc_sin_fixed(x[j] + base);
+					total_gain = Q_MULTSR_32X32((int64_t)p->master_linear_gain,
+								    post_warp_compressor_gain,
+								    24, 31, 24);
+					float total_gain_f = (float)total_gain * gain_scale;
+
+					for (ch = 0; ch < nch; ch++) {
+						float *sample_f =
+							(float *)state->pre_delay_buffers[ch] +
+								div_start + inc;
+						*sample_f = *sample_f * total_gain_f;
+					}
+					inc++;
+				}
+
+				if (++i == count)
+					break;
+
+				for (j = 0; j < 4; j++)
+					x[j] = Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30);
+			}
+#endif
 		} else { /* 4 bytes per sample */
 			while (1) {
 				for (j = 0; j < 4; j++) {
@@ -412,6 +455,34 @@ void drc_compress_output(struct drc_state *state,
 					x[j] = MIN(ONE_Q30,
 						   Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30));
 			}
+#if CONFIG_FORMAT_FLOAT
+		} else if (nbyte == 0) { /* float */
+			const float gain_scale = 1.0f / 16777216.0f;
+			while (1) {
+				for (j = 0; j < 4; j++) {
+					post_warp_compressor_gain = drc_sin_fixed(x[j]);
+					total_gain = Q_MULTSR_32X32((int64_t)p->master_linear_gain,
+								    post_warp_compressor_gain,
+								    24, 31, 24);
+					float total_gain_f = (float)total_gain * gain_scale;
+
+					for (ch = 0; ch < nch; ch++) {
+						float *sample_f =
+							(float *)state->pre_delay_buffers[ch] +
+								div_start + inc;
+						*sample_f = *sample_f * total_gain_f;
+					}
+					inc++;
+				}
+
+				if (++i == count)
+					break;
+
+				for (j = 0; j < 4; j++)
+					x[j] = MIN(ONE_Q30,
+						   Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30));
+			}
+#endif
 		} else { /* 4 bytes per sample */
 			while (1) {
 				for (j = 0; j < 4; j++) {
@@ -598,7 +669,7 @@ static void drc_s16_default(struct processing_module *mod,
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE || CONFIG_FORMAT_FLOAT
 static void drc_delay_input_sample_s32(struct drc_state *state,
 				       const struct cir_buf_source *source,
 				       struct cir_buf_sink *sink,
@@ -790,6 +861,47 @@ static void drc_s32_default(struct processing_module *mod,
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_FLOAT
+static void drc_float_default(struct processing_module *mod,
+			      const struct cir_buf_source *source,
+			      struct cir_buf_sink *sink,
+			      uint32_t frames)
+{
+	struct drc_comp_data *cd = module_get_private_data(mod);
+	int nch = cd->channels;
+	const int32_t *x = (int32_t *)source->ptr;
+	int32_t *y = (int32_t *)sink->ptr;
+	size_t samples = frames * nch;
+	struct drc_state *state = &cd->state;
+	const struct sof_drc_params *p = &cd->config->params;
+	size_t fragment_samples;
+	size_t fragment;
+
+	if (!cd->enabled) {
+		drc_delay_input_sample_s32(state, source, sink, &x, &y, samples, nch);
+		return;
+	}
+
+	if (!state->processed) {
+		drc_update_envelope(state, p);
+		drc_compress_output(state, p, 0, nch);
+		state->processed = 1;
+	}
+
+	while (samples) {
+		fragment = DRC_DIVISION_FRAMES -
+			(state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK);
+		fragment_samples = fragment * nch;
+		fragment_samples = MIN(samples, fragment_samples);
+		drc_delay_input_sample_s32(state, source, sink, &x, &y, fragment_samples, nch);
+		samples -= fragment_samples;
+
+		if ((state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK) == 0)
+			drc_process_one_division(state, p, 0, nch);
+	}
+}
+#endif /* CONFIG_FORMAT_FLOAT */
+
 const struct drc_proc_fnmap drc_proc_fnmap[] = {
 /* { SOURCE_FORMAT , PROCESSING FUNCTION } */
 #if CONFIG_FORMAT_S16LE
@@ -803,6 +915,10 @@ const struct drc_proc_fnmap drc_proc_fnmap[] = {
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, drc_s32_default },
 #endif /* CONFIG_FORMAT_S32LE */
+
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, drc_float_default },
+#endif /* CONFIG_FORMAT_FLOAT */
 };
 
 const size_t drc_proc_fncount = ARRAY_SIZE(drc_proc_fnmap);
