@@ -202,6 +202,11 @@ enum task_state idc_do_cmd(void *data);
 
 void idc_cmd(struct idc_msg *msg);
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+int idc_cmd_user(const struct idc_msg *msg, void *payload);
+int ipc_user_xcore_send(const struct idc_msg *msg);
+#endif
+
 int idc_msg_status_get(uint32_t core);
 
 int idc_init(void);
