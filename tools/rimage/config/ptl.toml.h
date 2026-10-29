@@ -174,5 +174,9 @@ index = __COUNTER__
 #include <audio/stft_process/stft_process.toml>
 #endif
 
+#if defined(CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/google/google_ctc_audio_processing.toml>
+#endif
+
 [module]
 count = __COUNTER__
