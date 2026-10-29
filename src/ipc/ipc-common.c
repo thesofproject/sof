@@ -689,6 +689,9 @@ __cold static void ipc_user_init(void)
 		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 
+	/* sof_heap_alloc() does not zero, start with clean state (e.g. ppl_phase) */
+	memset(ipc_user, 0, sizeof(*ipc_user));
+
 	assert_can_be_cold();
 
 	for (core = 0; core < CONFIG_CORE_COUNT; core++) {

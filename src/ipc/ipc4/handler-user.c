@@ -606,6 +606,101 @@ int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 	return IPC4_SUCCESS;
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+/*
+ * Run the given SET_PIPELINE_STATE phase(s) for the single pipeline of the
+ * forwarded message. Used, when the kernel splits a multi-pipeline request,
+ * spanning multiple cores, into per-core parts.
+ */
+static int ipc4_set_pipeline_state_phase(struct ipc4_message_request *ipc4, uint32_t phase)
+{
+	struct ipc4_pipeline_set_state state;
+	struct ipc_comp_dev *ppl_icd;
+	uint32_t cmd;
+	int ret;
+
+	state.primary.dat = ipc4->primary.dat;
+	state.extension.dat = ipc4->extension.dat;
+	cmd = state.primary.r.ppl_state;
+
+	ppl_icd = ipc_get_comp_by_ppl_id(ipc_get(), COMP_TYPE_PIPELINE,
+					 state.primary.r.ppl_id, IPC_COMP_IGNORE_REMOTE);
+	if (!ppl_icd) {
+		ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", state.primary.r.ppl_id);
+		return IPC4_INVALID_RESOURCE_ID;
+	}
+
+	if (phase & IDC_PPL_STATE_PHASE_PREPARE) {
+		ret = ipc4_pipeline_prepare(ppl_icd, cmd);
+		if (ret != 0)
+			return ret;
+	}
+
+	if (phase & IDC_PPL_STATE_PHASE_TRIGGER) {
+		bool delayed = false;
+
+		ipc_compound_pre_start(state.primary.r.type);
+		ret = ipc4_pipeline_trigger(ppl_icd, cmd, &delayed);
+		ipc_compound_post_start(state.primary.r.type, ret, delayed);
+		if (ret != 0)
+			return ret;
+	}
+
+	return IPC4_SUCCESS;
+}
+
+/*
+ * Handle a multi-pipeline SET_PIPELINE_STATE, where the pipelines are on
+ * different cores. The user-space IPC thread can't use IDC to reach the
+ * other cores, so the kernel runs the prepare phase on all pipelines and
+ * then the trigger phase on all pipelines, forwarding each step to the
+ * user-space IPC thread of the core, owning the pipeline.
+ */
+__cold static int ipc4_user_set_pipeline_state_multicore(struct ipc4_message_request *ipc4,
+							 const uint32_t *ppl_id,
+							 unsigned int ppl_count)
+{
+	static const uint32_t phases[] = {
+		IDC_PPL_STATE_PHASE_PREPARE,
+		IDC_PPL_STATE_PHASE_TRIGGER,
+	};
+	struct ipc *ipc = ipc_get();
+	struct ipc_user *pdata = ipc->ipc_user_pdata;
+	struct ipc4_pipeline_set_state state;
+	struct ipc_comp_dev *ppl_icd;
+	unsigned int i, j;
+	int ret;
+
+	assert_can_be_cold();
+
+	for (j = 0; j < ARRAY_SIZE(phases); j++) {
+		for (i = 0; i < ppl_count; i++) {
+			ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, ppl_id[i],
+							 IPC_COMP_ALL);
+			if (!ppl_icd) {
+				ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", ppl_id[i]);
+				return IPC4_INVALID_RESOURCE_ID;
+			}
+
+			/* Forward as a single-pipeline request */
+			state.primary.dat = ipc4->primary.dat;
+			state.extension.dat = ipc4->extension.dat;
+			state.primary.r.ppl_id = ppl_id[i];
+			state.extension.r.multi_ppl = 0;
+
+			pdata->ppl_phase = phases[j];
+			ret = ipc_user_forward_cmd(state.primary.dat, state.extension.dat,
+						   ppl_icd->core);
+			pdata->ppl_phase = 0;
+			if (ret != 0)
+				return ret;
+		}
+	}
+
+	return IPC4_SUCCESS;
+}
+#endif /* CONFIG_SOF_USERSPACE_LL */
+
 __cold static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 {
 	assert_can_be_cold();
@@ -759,7 +854,9 @@ int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4,
 			.primary.dat = ipc4->primary.dat,
 			.extension.dat = ipc4->extension.dat,
 		};
-		int id = ipc4_pipeline_id_get(ipc4, &state, NULL, NULL);
+		const uint32_t *ppl_id;
+		unsigned int ppl_count;
+		int id = ipc4_pipeline_id_get(ipc4, &state, &ppl_id, &ppl_count);
 		if (id < 0) {
 			ret = IPC4_INVALID_RESOURCE_ID;
 			break;
@@ -772,7 +869,36 @@ int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4,
 			ret = IPC4_INVALID_RESOURCE_ID;
 			break;
 		}
-		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat, ppl->core);
+
+		/*
+		 * Validate all pipelines before any state change and check,
+		 * if they span multiple cores, needing per-core processing
+		 */
+		bool multicore = false;
+
+		ret = IPC4_SUCCESS;
+		for (unsigned int i = 1; i < ppl_count; i++) {
+			struct ipc_comp_dev *icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
+									  ppl_id[i], IPC_COMP_ALL);
+
+			if (!icd) {
+				ipc_cmd_err(&ipc_tr, "ipc: comp %d not found", ppl_id[i]);
+				ret = IPC4_INVALID_RESOURCE_ID;
+				break;
+			}
+
+			if (icd->core != ppl->core)
+				multicore = true;
+		}
+
+		if (ret != IPC4_SUCCESS)
+			break;
+
+		if (multicore)
+			ret = ipc4_user_set_pipeline_state_multicore(ipc4, ppl_id, ppl_count);
+		else
+			ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat,
+						   ppl->core);
 	}
 #else /* CONFIG_SOF_USERSPACE_LL */
 		ret = ipc4_set_pipeline_state(ipc4);
@@ -1858,7 +1984,10 @@ int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
 			break;
 		}
 		case SOF_IPC4_GLB_SET_PIPELINE_STATE:
-			result = ipc4_set_pipeline_state(&msg);
+			if (ipc_user->ppl_phase)
+				result = ipc4_set_pipeline_state_phase(&msg, ipc_user->ppl_phase);
+			else
+				result = ipc4_set_pipeline_state(&msg);
 			break;
 		default:
 			LOG_ERR("IPC user: unsupported glb cmd type %d",
