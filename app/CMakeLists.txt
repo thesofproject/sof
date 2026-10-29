@@ -11,7 +11,7 @@ if(DEFINED EXTRA_CONF_FILE AND (BOARD MATCHES "/ptl" OR BOARD_QUALIFIERS MATCHES
   string(FIND "${EXTRA_CONF_FILE}" "ll_userspace_overlay" _ll_overlay_idx)
   if(_linux_overlay_idx GREATER_EQUAL 0 AND _ll_overlay_idx LESS 0)
     list(APPEND EXTRA_CONF_FILE
-      "${CMAKE_CURRENT_SOURCE_DIR}/overlays/ptl/ll_userspace_overlay.conf")
+      "${CMAKE_CURRENT_SOURCE_DIR}/ll_userspace_overlay.conf")
   endif()
 endif()
 
