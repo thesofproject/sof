@@ -20,6 +20,7 @@ LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component.h>
+#include <sof/ipc/common.h>
 #include <stddef.h>
 #include <errno.h>
 #include <stdint.h>
@@ -374,6 +375,7 @@ __cold int create_multi_endpoint_buffer(struct comp_dev *dev,
 	enum sof_ipc_frame in_frame_fmt, out_frame_fmt;
 	enum sof_ipc_frame in_valid_fmt, out_valid_fmt;
 	enum sof_ipc_frame valid_fmt;
+	struct mod_alloc_ctx *alloc_ctx = NULL;
 	struct sof_ipc_buffer ipc_buf;
 	struct comp_buffer *buffer;
 	uint32_t buf_size;
@@ -441,7 +443,13 @@ __cold int create_multi_endpoint_buffer(struct comp_dev *dev,
 	ipc_buf.size = buf_size;
 	ipc_buf.comp.pipeline_id = config->pipeline_id;
 	ipc_buf.comp.core = config->core;
-	buffer = buffer_new(NULL, &ipc_buf, BUFFER_USAGE_NOT_SHARED);
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/* must be reachable by the unprivileged user LL thread */
+	alloc_ctx = ipc_get()->ll_alloc;
+#endif
+
+	buffer = buffer_new(alloc_ctx, &ipc_buf, BUFFER_USAGE_NOT_SHARED);
 	if (!buffer)
 		return -ENOMEM;
 
