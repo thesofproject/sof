@@ -197,7 +197,7 @@ __cold static int copier_init(struct processing_module *mod)
 	if (node_id.dw != IPC4_INVALID_NODE_ID) {
 		/* A gateway copier wires itself into the pipeline graph, so it needs a
 		 * valid parent pipeline (base FW modules using IPC4_INVALID_PIPELINE_ID
-		 * are exempt in comp_new_ipc4()). Reject here to avoid a NULL deref.
+		 * are exempt in ipc4_comp_new_config()). Reject here to avoid a NULL deref.
 		 */
 		if (!dev->pipeline) {
 			comp_err(dev, "gateway copier requires a valid parent pipeline");

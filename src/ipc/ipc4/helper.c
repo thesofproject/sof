@@ -150,6 +150,36 @@ __cold static int ipc4_comp_new_config(struct comp_ipc_config *ipc_config,
 		return -EINVAL;
 	}
 
+	/* Reject a module naming a non-existent parent pipeline: otherwise
+	 * dev->pipeline stays NULL and a later init path (e.g. the copier)
+	 * dereferences it. IPC4_INVALID_PIPELINE_ID is exempt - it marks base FW
+	 * modules with no parent pipeline. IPC_COMP_ALL: the pipeline may run on a
+	 * different core than this module.
+	 */
+	if (ipc_config->pipeline_id != IPC4_INVALID_PIPELINE_ID) {
+		struct ipc_comp_dev *ppl = ipc_get_comp_by_ppl_id(ipc_get(), COMP_TYPE_PIPELINE,
+								  ipc_config->pipeline_id,
+								  IPC_COMP_ALL);
+
+		if (!ppl) {
+			tr_err(&ipc_tr, "comp 0x%x: parent pipeline %u does not exist", comp_id,
+			       (uint32_t)ipc_config->pipeline_id);
+			return -EINVAL;
+		}
+
+		/* Without cross-core streams a stream is processed entirely on a
+		 * single core, so a module cannot live on another core than its
+		 * pipeline.
+		 */
+		if (!IS_ENABLED(CONFIG_CROSS_CORE_STREAM) && ppl->core != ipc_config->core) {
+			tr_err(&ipc_tr,
+			       "comp 0x%x: core %u != pipeline %u core %u, cross-core disabled",
+			       comp_id, (uint32_t)ipc_config->core,
+			       (uint32_t)ipc_config->pipeline_id, (uint32_t)ppl->core);
+			return -EINVAL;
+		}
+	}
+
 	return 0;
 }
 
@@ -169,20 +199,6 @@ __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *mo
 
 	if (ret < 0)
 		return NULL;
-
-	/* Reject a module naming a non-existent parent pipeline: otherwise
-	 * dev->pipeline stays NULL and a later init path (e.g. the copier)
-	 * dereferences it. IPC4_INVALID_PIPELINE_ID is exempt - it marks base FW
-	 * modules with no parent pipeline. IPC_COMP_ALL: the pipeline may run on a
-	 * different core than this module.
-	 */
-	if (ipc_config.pipeline_id != IPC4_INVALID_PIPELINE_ID &&
-	    !ipc_get_comp_by_ppl_id(ipc_get(), COMP_TYPE_PIPELINE, ipc_config.pipeline_id,
-				    IPC_COMP_ALL)) {
-		tr_err(&ipc_tr, "comp 0x%x: parent pipeline %u does not exist", comp_id,
-		       (uint32_t)ipc_config.pipeline_id);
-		return NULL;
-	}
 
 #ifdef CONFIG_DCACHE_LINE_SIZE
 	if (!IS_ENABLED(CONFIG_LIBRARY))
@@ -846,6 +862,15 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 #endif
 	bool cross_core_bind = source->ipc_config.core != sink->ipc_config.core;
 
+#if !CONFIG_CROSS_CORE_STREAM
+	/* reject early: the remote attribute/bind calls below are privileged */
+	if (cross_core_bind) {
+		tr_err(&ipc_tr, "Cross-core binding is disabled: can't bind %x to %x",
+		       src_id, sink_id);
+		return IPC4_INVALID_REQUEST;
+	}
+#endif
+
 	/* If both components are on same core -- process IPC on that core,
 	 * otherwise stay on core 0
 	 */
@@ -976,8 +1001,8 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 	 */
 	ll_block(source->ipc_config.core, sink->ipc_config.core, flags);
 
-	if (cross_core_bind) {
 #if CONFIG_CROSS_CORE_STREAM
+	if (cross_core_bind) {
 		/* Make sure LL has finished on both cores */
 		if (!cpu_is_me(source->ipc_config.core))
 			if (ll_wait_finished_on_core(source) < 0)
@@ -985,11 +1010,8 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 		if (!cpu_is_me(sink->ipc_config.core))
 			if (ll_wait_finished_on_core(sink) < 0)
 				goto free;
-#else
-		tr_err(&ipc_tr, "Cross-core binding is disabled");
-		goto free;
-#endif
 	}
+#endif
 
 	ret = comp_buffer_connect(source, source->ipc_config.core, buffer,
 				  PPL_CONN_DIR_COMP_TO_BUFFER);
