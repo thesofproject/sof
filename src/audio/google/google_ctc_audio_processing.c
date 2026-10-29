@@ -22,42 +22,69 @@ LOG_MODULE_REGISTER(google_ctc_audio_processing, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(google_ctc_audio_processing);
 
-// TODO(eddyhsu): Share these utils function with RTC.
-static inline float clamp_rescale(float max_val, float x)
-{
-	float min = -1.0f;
-	float max = 1.0f - 1.0f / max_val;
-
-	return max_val * (x < min ? min : (x > max ? max : x));
-}
-
+/**
+ * \brief Converts a float sample to signed 16-bit integer with clamping and NaN guard.
+ * \param[in] data Float sample in range [-1.0, 1.0].
+ * \return Signed 16-bit integer sample.
+ */
 static inline int16_t convert_float_to_int16(float data)
 {
-	return (int16_t)clamp_rescale(-(float)SHRT_MIN, data);
+	if (data >= 0.9999f)
+		return SHRT_MAX;
+	if (data <= -0.9999f)
+		return SHRT_MIN;
+	if (data != data)
+		return 0;
+	return (int16_t)(data * 32767.0f);
 }
 
+/**
+ * \brief Converts a signed 16-bit integer sample to float.
+ * \param[in] data Signed 16-bit integer sample.
+ * \return Float sample in range [-1.0, 1.0].
+ */
 static inline float convert_int16_to_float(int16_t data)
 {
-	float scale = -(float)SHRT_MIN;
-
-	return (1.0f / scale) * data;
+	return (float)data * (1.0f / 32768.0f);
 }
 
+/**
+ * \brief Converts a float sample to signed 32-bit integer with clamping and NaN guard.
+ * \param[in] data Float sample in range [-1.0, 1.0].
+ * \return Signed 32-bit integer sample.
+ */
 static inline int32_t convert_float_to_int32(float data)
 {
-	return (int32_t)clamp_rescale(-(float)INT_MIN, data);
+	if (data >= 0.999999f)
+		return INT_MAX;
+	if (data <= -0.999999f)
+		return INT_MIN;
+	if (data != data)
+		return 0;
+	return (int32_t)(data * 2147483647.0f);
 }
 
+/**
+ * \brief Converts a signed 32-bit integer sample to float.
+ * \param[in] data Signed 32-bit integer sample.
+ * \return Float sample in range [-1.0, 1.0].
+ */
 static inline float convert_int32_to_float(int32_t data)
 {
-	float scale = -(float)INT_MIN;
-
-	return (1.0f / scale) * data;
+	return (float)data * (1.0f / 2147483648.0f);
 }
 
 static const int kChunkFrames = 48;
 static const int kMaxChannels = 2;
 
+/**
+ * \brief Passthrough fallback when CTC processing is disabled.
+ * \param[in] source Audio source stream.
+ * \param[in,out] sink Audio sink stream.
+ * \param[in,out] input_buffers Input stream buffers.
+ * \param[in,out] output_buffers Output stream buffers.
+ * \param[in] frames Number of audio frames to copy.
+ */
 static void ctc_passthrough(const struct audio_stream *source,
 			    struct audio_stream *sink,
 			    struct input_stream_buffer *input_buffers,
@@ -82,47 +109,60 @@ static void ctc_s16_default(struct google_ctc_audio_processing_comp_data *cd,
 	int n_ch = audio_stream_get_channels(source);
 	int samples = frames * n_ch;
 
-	int16_t *src = audio_stream_get_rptr(source);
-	int16_t *dest = audio_stream_get_wptr(sink);
-
-	int samples_to_process = MIN(samples, audio_stream_samples_without_wrap_s16(source, src));
-	int samples_to_written = MIN(samples, audio_stream_samples_without_wrap_s16(sink, dest));
-	int written_samples = 0;
-
 	if (!cd->enabled) {
 		ctc_passthrough(source, sink, input_buffers, output_buffers, frames);
 		return;
 	}
 
-	// writes previous processed samples to the output.
+	int16_t *src = audio_stream_get_rptr(source);
+	int16_t *dest = audio_stream_get_wptr(sink);
+	int free_samples = audio_stream_get_free_samples(sink);
+	int total_consumed = 0;
+	int total_produced = 0;
+
+	/* 1. Drain any leftover outputs produced in prior passes */
 	while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
-	       written_samples < samples_to_written) {
-		dest[written_samples++] =
-			convert_float_to_int16(cd->output[cd->next_avail_output_samples]);
-		cd->next_avail_output_samples++;
+	       total_produced < free_samples) {
+		int to_write = MIN(cd->chunk_frames * n_ch - cd->next_avail_output_samples,
+				   free_samples - total_produced);
+		to_write = MIN(to_write, audio_stream_samples_without_wrap_s16(sink, dest));
+		for (int i = 0; i < to_write; i++)
+			dest[i] = convert_float_to_int16(cd->output[cd->next_avail_output_samples++]);
+		dest = audio_stream_wrap(sink, dest + to_write);
+		total_produced += to_write;
 	}
-	for (int i = 0; i < samples_to_process; ++i) {
-		cd->input[cd->input_samples++] = convert_int16_to_float(src[i]);
+
+	/* 2. Process new input blocks only if we have room and no pending outputs */
+	while (cd->next_avail_output_samples == cd->chunk_frames * n_ch &&
+	       total_consumed < samples) {
+		int needed = cd->chunk_frames * n_ch - cd->input_samples;
+		int to_read = MIN(samples - total_consumed, needed);
+		to_read = MIN(to_read, audio_stream_samples_without_wrap_s16(source, src));
+		for (int i = 0; i < to_read; i++)
+			cd->input[cd->input_samples++] = convert_int16_to_float(src[i]);
+		src = audio_stream_wrap(source, src + to_read);
+		total_consumed += to_read;
+
 		if (cd->input_samples == cd->chunk_frames * n_ch) {
 			GoogleCtcAudioProcessingProcess(cd->state, cd->input, cd->output,
 							cd->chunk_frames, n_ch);
 			cd->input_samples = 0;
 			cd->next_avail_output_samples = 0;
-			// writes processed samples to the output.
 			while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
-			       written_samples < samples_to_written) {
-				dest[written_samples++] =
-					convert_float_to_int16(cd->output[cd->next_avail_output_samples]);
-				cd->next_avail_output_samples++;
+			       total_produced < free_samples) {
+				int to_write = MIN(cd->chunk_frames * n_ch - cd->next_avail_output_samples,
+						   free_samples - total_produced);
+				to_write = MIN(to_write, audio_stream_samples_without_wrap_s16(sink, dest));
+				for (int i = 0; i < to_write; i++)
+					dest[i] = convert_float_to_int16(cd->output[cd->next_avail_output_samples++]);
+				dest = audio_stream_wrap(sink, dest + to_write);
+				total_produced += to_write;
 			}
 		}
 	}
-	if (written_samples > 0) {
-		dest = audio_stream_wrap(sink, dest + written_samples);
-		output_buffers->size += audio_stream_frame_bytes(sink) * written_samples / n_ch;
-	}
-	src = audio_stream_wrap(source, src + samples_to_process);
-	input_buffers->consumed += audio_stream_frame_bytes(source) * samples_to_process / n_ch;
+
+	input_buffers->consumed = audio_stream_frame_bytes(source) * total_consumed / n_ch;
+	output_buffers->size = audio_stream_frame_bytes(sink) * total_produced / n_ch;
 }
 #endif
 
@@ -137,47 +177,60 @@ static void ctc_s24_default(struct google_ctc_audio_processing_comp_data *cd,
 	int n_ch = audio_stream_get_channels(source);
 	int samples = frames * n_ch;
 
-	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dest = audio_stream_get_wptr(sink);
-
-	int samples_to_process = MIN(samples, audio_stream_samples_without_wrap_s24(source, src));
-	int samples_to_written = MIN(samples, audio_stream_samples_without_wrap_s24(sink, dest));
-	int written_samples = 0;
-
 	if (!cd->enabled) {
 		ctc_passthrough(source, sink, input_buffers, output_buffers, frames);
 		return;
 	}
 
-	// writes previous processed samples to the output.
+	int32_t *src = audio_stream_get_rptr(source);
+	int32_t *dest = audio_stream_get_wptr(sink);
+	int free_samples = audio_stream_get_free_samples(sink);
+	int total_consumed = 0;
+	int total_produced = 0;
+
+	/* 1. Drain any leftover outputs produced in prior passes */
 	while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
-	       written_samples < samples_to_written) {
-		dest[written_samples++] =
-			convert_float_to_int32(cd->output[cd->next_avail_output_samples]);
-		cd->next_avail_output_samples++;
+	       total_produced < free_samples) {
+		int to_write = MIN(cd->chunk_frames * n_ch - cd->next_avail_output_samples,
+				   free_samples - total_produced);
+		to_write = MIN(to_write, audio_stream_samples_without_wrap_s24(sink, dest));
+		for (int i = 0; i < to_write; i++)
+			dest[i] = convert_float_to_int32(cd->output[cd->next_avail_output_samples++]);
+		dest = audio_stream_wrap(sink, dest + to_write);
+		total_produced += to_write;
 	}
-	for (int i = 0; i < samples_to_process; ++i) {
-		cd->input[cd->input_samples++] = convert_int32_to_float(src[i]);
+
+	/* 2. Process new input blocks only if we have room and no pending outputs */
+	while (cd->next_avail_output_samples == cd->chunk_frames * n_ch &&
+	       total_consumed < samples) {
+		int needed = cd->chunk_frames * n_ch - cd->input_samples;
+		int to_read = MIN(samples - total_consumed, needed);
+		to_read = MIN(to_read, audio_stream_samples_without_wrap_s24(source, src));
+		for (int i = 0; i < to_read; i++)
+			cd->input[cd->input_samples++] = convert_int32_to_float(src[i]);
+		src = audio_stream_wrap(source, src + to_read);
+		total_consumed += to_read;
+
 		if (cd->input_samples == cd->chunk_frames * n_ch) {
 			GoogleCtcAudioProcessingProcess(cd->state, cd->input, cd->output,
 							cd->chunk_frames, n_ch);
 			cd->input_samples = 0;
 			cd->next_avail_output_samples = 0;
-			// writes processed samples to the output.
 			while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
-			       written_samples < samples_to_written) {
-				dest[written_samples++] =
-					convert_float_to_int32(cd->output[cd->next_avail_output_samples]);
-				cd->next_avail_output_samples++;
+			       total_produced < free_samples) {
+				int to_write = MIN(cd->chunk_frames * n_ch - cd->next_avail_output_samples,
+						   free_samples - total_produced);
+				to_write = MIN(to_write, audio_stream_samples_without_wrap_s24(sink, dest));
+				for (int i = 0; i < to_write; i++)
+					dest[i] = convert_float_to_int32(cd->output[cd->next_avail_output_samples++]);
+				dest = audio_stream_wrap(sink, dest + to_write);
+				total_produced += to_write;
 			}
 		}
 	}
-	if (written_samples > 0) {
-		dest = audio_stream_wrap(sink, dest + written_samples);
-		output_buffers->size += audio_stream_frame_bytes(sink) * written_samples / n_ch;
-	}
-	src = audio_stream_wrap(source, src + samples_to_process);
-	input_buffers->consumed += audio_stream_frame_bytes(source) * samples_to_process / n_ch;
+
+	input_buffers->consumed = audio_stream_frame_bytes(source) * total_consumed / n_ch;
+	output_buffers->size = audio_stream_frame_bytes(sink) * total_produced / n_ch;
 }
 #endif
 
@@ -192,47 +245,60 @@ static void ctc_s32_default(struct google_ctc_audio_processing_comp_data *cd,
 	int n_ch = audio_stream_get_channels(source);
 	int samples = frames * n_ch;
 
-	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dest = audio_stream_get_wptr(sink);
-
-	int samples_to_process = MIN(samples, audio_stream_samples_without_wrap_s32(source, src));
-	int samples_to_written = MIN(samples, audio_stream_samples_without_wrap_s32(sink, dest));
-	int written_samples = 0;
-
 	if (!cd->enabled) {
 		ctc_passthrough(source, sink, input_buffers, output_buffers, frames);
 		return;
 	}
 
-	// writes previous processed samples to the output.
+	int32_t *src = audio_stream_get_rptr(source);
+	int32_t *dest = audio_stream_get_wptr(sink);
+	int free_samples = audio_stream_get_free_samples(sink);
+	int total_consumed = 0;
+	int total_produced = 0;
+
+	/* 1. Drain any leftover outputs produced in prior passes */
 	while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
-	       written_samples < samples_to_written) {
-		dest[written_samples++] =
-			convert_float_to_int32(cd->output[cd->next_avail_output_samples]);
-		cd->next_avail_output_samples++;
+	       total_produced < free_samples) {
+		int to_write = MIN(cd->chunk_frames * n_ch - cd->next_avail_output_samples,
+				   free_samples - total_produced);
+		to_write = MIN(to_write, audio_stream_samples_without_wrap_s32(sink, dest));
+		for (int i = 0; i < to_write; i++)
+			dest[i] = convert_float_to_int32(cd->output[cd->next_avail_output_samples++]);
+		dest = audio_stream_wrap(sink, dest + to_write);
+		total_produced += to_write;
 	}
-	for (int i = 0; i < samples_to_process; ++i) {
-		cd->input[cd->input_samples++] = convert_int32_to_float(src[i]);
+
+	/* 2. Process new input blocks only if we have room and no pending outputs */
+	while (cd->next_avail_output_samples == cd->chunk_frames * n_ch &&
+	       total_consumed < samples) {
+		int needed = cd->chunk_frames * n_ch - cd->input_samples;
+		int to_read = MIN(samples - total_consumed, needed);
+		to_read = MIN(to_read, audio_stream_samples_without_wrap_s32(source, src));
+		for (int i = 0; i < to_read; i++)
+			cd->input[cd->input_samples++] = convert_int32_to_float(src[i]);
+		src = audio_stream_wrap(source, src + to_read);
+		total_consumed += to_read;
+
 		if (cd->input_samples == cd->chunk_frames * n_ch) {
 			GoogleCtcAudioProcessingProcess(cd->state, cd->input, cd->output,
 							cd->chunk_frames, n_ch);
 			cd->input_samples = 0;
 			cd->next_avail_output_samples = 0;
-			// writes processed samples to the output.
 			while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
-			       written_samples < samples_to_written) {
-				dest[written_samples++] =
-					convert_float_to_int32(cd->output[cd->next_avail_output_samples]);
-				cd->next_avail_output_samples++;
+			       total_produced < free_samples) {
+				int to_write = MIN(cd->chunk_frames * n_ch - cd->next_avail_output_samples,
+						   free_samples - total_produced);
+				to_write = MIN(to_write, audio_stream_samples_without_wrap_s32(sink, dest));
+				for (int i = 0; i < to_write; i++)
+					dest[i] = convert_float_to_int32(cd->output[cd->next_avail_output_samples++]);
+				dest = audio_stream_wrap(sink, dest + to_write);
+				total_produced += to_write;
 			}
 		}
 	}
-	if (written_samples > 0) {
-		dest = audio_stream_wrap(sink, dest + written_samples);
-		output_buffers->size += audio_stream_frame_bytes(sink) * written_samples / n_ch;
-	}
-	src = audio_stream_wrap(source, src + samples_to_process);
-	input_buffers->consumed += audio_stream_frame_bytes(source) * samples_to_process / n_ch;
+
+	input_buffers->consumed = audio_stream_frame_bytes(source) * total_consumed / n_ch;
+	output_buffers->size = audio_stream_frame_bytes(sink) * total_produced / n_ch;
 }
 #endif
 
@@ -245,7 +311,10 @@ static int ctc_free(struct processing_module *mod)
 	if (cd) {
 		mod_free(mod, cd->input);
 		mod_free(mod, cd->output);
-		GoogleCtcAudioProcessingFree(cd->state);
+		if (cd->state) {
+			GoogleCtcAudioProcessingFree(cd->state);
+			cd->state = NULL;
+		}
 		mod_data_blob_handler_free(mod, cd->tuning_handler);
 		mod_free(mod, cd);
 		module_set_private_data(mod, NULL);
@@ -336,6 +405,7 @@ static int google_ctc_audio_processing_reconfigure(struct processing_module *mod
 			 ret);
 		return ret;
 	}
+
 	return 0;
 }
 
@@ -384,6 +454,7 @@ static int ctc_prepare(struct processing_module *mod,
 		comp_err(mod->dev, "invalid number of channels");
 		return -EINVAL;
 	}
+	cd->input_samples = 0;
 	cd->next_avail_output_samples = cd->chunk_frames * num_channels;
 
 	config = comp_get_data_blob(cd->tuning_handler, &config_size, NULL);
@@ -408,17 +479,25 @@ static int ctc_prepare(struct processing_module *mod,
 static int ctc_reset(struct processing_module *mod)
 {
 	struct google_ctc_audio_processing_comp_data *cd = module_get_private_data(mod);
-	size_t buf_size = cd->chunk_frames * sizeof(cd->input[0]) * kMaxChannels;
 
 	comp_info(mod->dev, "entry");
 
-	GoogleCtcAudioProcessingFree(cd->state);
-	cd->state = NULL;
+	if (!cd)
+		return 0;
+
+	size_t buf_size = cd->chunk_frames * sizeof(cd->input[0]) * kMaxChannels;
+
+	if (cd->state) {
+		GoogleCtcAudioProcessingFree(cd->state);
+		cd->state = NULL;
+	}
 	cd->ctc_func = NULL;
 	cd->input_samples = 0;
 	cd->next_avail_output_samples = 0;
-	memset(cd->input, 0, buf_size);
-	memset(cd->output, 0, buf_size);
+	if (cd->input)
+		memset(cd->input, 0, buf_size);
+	if (cd->output)
+		memset(cd->output, 0, buf_size);
 	return 0;
 }
 
@@ -441,6 +520,11 @@ static int ctc_process(struct processing_module *mod,
 		ret = google_ctc_audio_processing_reconfigure(mod);
 		if (ret)
 			return ret;
+	}
+
+	if (!cd->enabled) {
+		ctc_passthrough(source, sink, &input_buffers[0], &output_buffers[0], frames);
+		return 0;
 	}
 
 	cd->ctc_func(cd, source, sink, &input_buffers[0], &output_buffers[0], frames);

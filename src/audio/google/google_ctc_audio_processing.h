@@ -39,6 +39,7 @@ struct google_ctc_audio_processing_comp_data {
 	struct comp_data_blob_handler *tuning_handler;
 	bool enabled;
 	bool reconfigure;
+	bool config_loaded;
 	ctc_func ctc_func;
 };
 
