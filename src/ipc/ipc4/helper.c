@@ -589,14 +589,11 @@ __cold static inline int ipc_comp_free_remote(struct comp_dev *dev)
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
 
-__cold static int ipc_pipeline_module_free(uint32_t pipeline_id)
+__cold static int ipc_pipeline_module_free(uint32_t pipeline_id, uint32_t ppl_core)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
 	int ret;
-#ifdef CONFIG_SOF_USERSPACE_LL
-	int ppl_core;
-#endif
 
 	assert_can_be_cold();
 
@@ -605,7 +602,11 @@ __cold static int ipc_pipeline_module_free(uint32_t pipeline_id)
 		return IPC4_SUCCESS;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
-	ppl_core = icd->core;
+	/*
+	 * Lock the pipeline core's LL scheduler. Not the core of the first
+	 * module, which can be a remote one: freeing a remote module takes
+	 * the LL lock of its core on that core.
+	 */
 	user_ll_lock_sched(ppl_core);
 #endif
 
@@ -672,7 +673,7 @@ __cold int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc4_process_on_core(ipc_pipe->core, false);
 
-	ret = ipc_pipeline_module_free(ipc_pipe->pipeline->pipeline_id);
+	ret = ipc_pipeline_module_free(ipc_pipe->pipeline->pipeline_id, ipc_pipe->core);
 	if (ret != IPC4_SUCCESS) {
 		tr_err(&ipc_tr, "module free () failed");
 		return ret;
