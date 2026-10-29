@@ -63,6 +63,11 @@ struct wov_arb_data {
 	uint32_t copy_count;
 	uint32_t drain_frames_copied;
 	uint32_t drain_frames_total;
+#if CONFIG_IPC_MAJOR_4
+	/* Notification messages, allocated on first use and reused */
+	struct ipc_msg *ctl_msg;
+	struct ipc_msg *detect_msg;
+#endif
 };
 
 /*
@@ -73,7 +78,8 @@ struct wov_arb_data {
 static unsigned int wov_arb_instances;
 
 #if CONFIG_IPC_MAJOR_4
-static void notify_control_change(const struct comp_dev *dev, uint16_t control_id, uint32_t val)
+static void notify_control_change(const struct comp_dev *dev, struct wov_arb_data *cd,
+				  uint16_t control_id, uint32_t val)
 {
 	struct sof_ipc4_notify_module_data *msg_module_data;
 	struct sof_ipc4_control_msg_payload *msg_payload;
@@ -83,15 +89,18 @@ static void notify_control_change(const struct comp_dev *dev, uint16_t control_i
 			     sizeof(struct sof_ipc4_ctrl_value_chan);
 	struct ipc4_voice_cmd_notification notif;
 
-	memset_s(&notif, sizeof(notif), 0, sizeof(notif));
-	notif.primary.r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
-	notif.primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
-	notif.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
-	notif.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+	if (!cd->ctl_msg) {
+		memset_s(&notif, sizeof(notif), 0, sizeof(notif));
+		notif.primary.r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
+		notif.primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
+		notif.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+		notif.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
 
-	msg = ipc_msg_w_ext_init(NULL, notif.primary.dat, 0, data_size);
-	if (!msg)
-		return;
+		cd->ctl_msg = ipc_msg_w_ext_init(NULL, notif.primary.dat, 0, data_size);
+		if (!cd->ctl_msg)
+			return;
+	}
+	msg = cd->ctl_msg;
 
 	msg_module_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
 	msg_module_data->instance_id = IPC4_INST_ID(dev->ipc_config.id);
@@ -120,10 +129,10 @@ static void notify_control_change(const struct comp_dev *dev, uint16_t control_i
  * it is a one-shot simulated interrupt, not a substitute for the host's own
  * period-elapsed mechanism on streams that never requested no-period-wakeup.
  */
-static void notify_host_detect(const struct comp_dev *dev, uint32_t slot_id)
+static void notify_host_detect(const struct comp_dev *dev, struct wov_arb_data *cd,
+			       uint32_t slot_id)
 {
 	struct ipc4_voice_cmd_notification notif;
-	struct ipc_msg *msg;
 
 	memset_s(&notif, sizeof(notif), 0, sizeof(notif));
 	notif.primary.r.word_id = slot_id;
@@ -135,11 +144,16 @@ static void notify_host_detect(const struct comp_dev *dev, uint32_t slot_id)
 	notif.extension.r.sv_score = (uint16_t)(dev_comp_id(dev) & 0xffff);
 	notif.extension.r.rsvd1 = (uint32_t)(dev_comp_id(dev) >> 16);
 
-	msg = ipc_msg_w_ext_init(NULL, notif.primary.dat, notif.extension.dat, 0);
-	if (!msg)
-		return;
+	if (!cd->detect_msg) {
+		cd->detect_msg = ipc_msg_w_ext_init(NULL, notif.primary.dat,
+						    notif.extension.dat, 0);
+		if (!cd->detect_msg)
+			return;
+	}
+	/* The header carries the slot, update it for each detection */
+	cd->detect_msg->header = notif.primary.dat;
 
-	ipc_msg_send(msg, NULL, true);
+	ipc_msg_send(cd->detect_msg, NULL, true);
 }
 #endif
 
@@ -173,9 +187,9 @@ static void arb_on_detect(void *arg, enum notify_id id, void *data)
 
 #if CONFIG_IPC_MAJOR_4
 	/* Notify host ALSA enum control: 1..N corresponds to Slot 1..N (0 is Listening) */
-	notify_control_change(dev, cd->active_slot_ctl_id, (uint32_t)cd->active_slot + 1);
+	notify_control_change(dev, cd, cd->active_slot_ctl_id, (uint32_t)cd->active_slot + 1);
 	/* Wake a blocking read() on the host WOV capture PCM - see notify_host_detect(). */
-	notify_host_detect(dev, det->slot_id);
+	notify_host_detect(dev, cd, det->slot_id);
 #endif
 
 	/* Broadcast PAUSE to all detectors. The winning slot continues draining
@@ -274,6 +288,12 @@ static void wov_arb_free(struct comp_dev *dev)
 
 	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_DETECT);
 
+#if CONFIG_IPC_MAJOR_4
+	if (cd) {
+		ipc_msg_free(cd->ctl_msg);
+		ipc_msg_free(cd->detect_msg);
+	}
+#endif
 	rfree(cd);
 	comp_free_device(dev);
 
@@ -296,7 +316,7 @@ static int wov_arb_prepare(struct comp_dev *dev)
 	cd->drain_frames_total = 0;
 
 #if CONFIG_IPC_MAJOR_4
-	notify_control_change(dev, cd->active_slot_ctl_id, 0);
+	notify_control_change(dev, cd, cd->active_slot_ctl_id, 0);
 #endif
 
 	if (!dev->frames) {
@@ -388,7 +408,7 @@ static int wov_arb_trigger(struct comp_dev *dev, int cmd)
 			comp_info(dev, "wov_arb: stream stopped, resuming all slots");
 			cd->active_slot = WOV_ARB_NO_ACTIVE;
 #if CONFIG_IPC_MAJOR_4
-			notify_control_change(dev, cd->active_slot_ctl_id, 0);
+			notify_control_change(dev, cd, cd->active_slot_ctl_id, 0);
 #endif
 			struct wov_ctrl_notif c = { .cmd = WOV_ARB_CMD_RESUME };
 			notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
