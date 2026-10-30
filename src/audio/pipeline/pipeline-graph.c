@@ -11,6 +11,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
 #include <sof/schedule/ll_schedule_domain.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/vregion.h>
 #include <rtos/interrupt.h>
 #include <rtos/symbol.h>
@@ -151,8 +152,10 @@ static inline void pipeline_posn_offset_put(uint32_t posn_offset)
 	pipeline_posn_unlock(pipeline_posn, key);
 }
 
-void pipeline_posn_init(struct sof *sof)
+__cold void pipeline_posn_init(struct sof *sof)
 {
+	assert_can_be_cold();
+
 	sof->pipeline_posn = &pipeline_posn_shared;
 #ifdef CONFIG_SOF_USERSPACE_LL
 	pipeline_posn_mutex = k_object_alloc(K_OBJ_MUTEX);
@@ -174,13 +177,15 @@ void pipeline_posn_grant_access(struct k_thread *thread)
 #endif
 
 /* create new pipeline - returns pipeline id or negative error */
-struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_t priority,
-			      uint32_t comp_id, struct create_pipeline_params *pparams)
+__cold struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_t priority,
+				     uint32_t comp_id, struct create_pipeline_params *pparams)
 {
 	struct mod_alloc_ctx *alloc;
 	struct sof_ipc_stream_posn posn;
 	struct pipeline *p;
 	int ret;
+
+	assert_can_be_cold();
 
 	pipe_cl_info("pipeline new pipe_id %d priority %d",
 		     pipeline_id, priority);
@@ -296,12 +301,14 @@ static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
 #define PPL_UNLOCK() irq_local_enable(flags)
 #endif
 
-int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
-		     int dir)
+__cold int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
+			    int dir)
 {
 	struct list_item *comp_list;
 	int ret;
 	PPL_LOCK_DECLARE;
+
+	assert_can_be_cold();
 
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
 		comp_info(comp, "connect buffer %d as sink", buf_get_id(buffer));
@@ -325,10 +332,12 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	return 0;
 }
 
-void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int dir)
+__cold void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int dir)
 {
 	struct list_item *comp_list;
 	PPL_LOCK_DECLARE;
+
+	assert_can_be_cold();
 
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
 		comp_dbg(comp, "disconnect buffer %d as sink", buf_get_id(buffer));
@@ -345,9 +354,11 @@ void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int 
 }
 
 /* pipelines must be inactive */
-int pipeline_free(struct pipeline *p)
+__cold int pipeline_free(struct pipeline *p)
 {
 	struct mod_alloc_ctx *alloc = p->alloc;
+
+	assert_can_be_cold();
 
 	pipe_dbg(p, "entry");
 
