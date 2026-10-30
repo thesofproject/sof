@@ -17,6 +17,7 @@
 #include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <rtos/wait.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
@@ -289,12 +290,14 @@ static int test_keyword_get_threshold(struct comp_dev *dev, int sample_width)
 	}
 }
 
-static int test_keyword_apply_config(struct comp_dev *dev,
+__cold static int test_keyword_apply_config(struct comp_dev *dev,
 				     const struct sof_detect_test_config *cfg)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint16_t sample_width;
 	int ret;
+
+	assert_can_be_cold();
 
 	ret = memcpy_s(&cd->config, sizeof(cd->config), cfg,
 		       sizeof(struct sof_detect_test_config));
@@ -352,11 +355,13 @@ static void test_keyword_set_params(struct comp_dev *dev,
 	params->frame_fmt = valid_fmt;
 }
 
-static int test_keyword_set_config(struct comp_dev *dev, const char *data,
+__cold static int test_keyword_set_config(struct comp_dev *dev, const char *data,
 				   uint32_t data_size)
 {
 	const struct sof_detect_test_config *cfg;
 	size_t cfg_size;
+
+	assert_can_be_cold();
 
 	/* Copy new config */
 	cfg = (const struct sof_detect_test_config *)data;
@@ -373,12 +378,14 @@ static int test_keyword_set_config(struct comp_dev *dev, const char *data,
 	return test_keyword_apply_config(dev, cfg);
 }
 
-static int test_keyword_get_config(struct comp_dev *dev, char *data,
+__cold static int test_keyword_get_config(struct comp_dev *dev, char *data,
 				   uint32_t *data_size)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	size_t cfg_size;
 	int ret;
+
+	assert_can_be_cold();
 
 	comp_info(dev, "entry");
 
@@ -399,7 +406,7 @@ static int test_keyword_get_config(struct comp_dev *dev, char *data,
 	return 0;
 }
 
-static int test_keyword_set_large_config(struct comp_dev *dev,
+__cold static int test_keyword_set_large_config(struct comp_dev *dev,
 					 uint32_t param_id,
 					 bool first_block,
 					 bool last_block,
@@ -408,6 +415,8 @@ static int test_keyword_set_large_config(struct comp_dev *dev,
 {
 	comp_dbg(dev, "entry");
 	struct comp_data *cd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 	switch (param_id) {
 	case IPC4_DETECT_TEST_SET_MODEL_BLOB:
@@ -423,13 +432,15 @@ static int test_keyword_set_large_config(struct comp_dev *dev,
 	}
 }
 
-static int test_keyword_get_large_config(struct comp_dev *dev,
+__cold static int test_keyword_get_large_config(struct comp_dev *dev,
 					 uint32_t param_id,
 					 bool first_block,
 					 bool last_block,
 					 uint32_t *data_offset,
 					 char *data)
 {
+	assert_can_be_cold();
+
 	comp_dbg(dev, "entry");
 
 	switch (param_id) {
@@ -457,11 +468,13 @@ static int test_keyword_get_attribute(struct comp_dev *dev,
 	return 0;
 }
 
-static struct ipc_msg *ipc4_kd_notification_init(uint32_t word_id,
+__cold static struct ipc_msg *ipc4_kd_notification_init(uint32_t word_id,
 						 uint32_t score)
 {
 	struct ipc4_voice_cmd_notification notif;
 	struct ipc_msg *msg;
+
+	assert_can_be_cold();
 
 	memset_s(&notif, sizeof(notif), 0, sizeof(notif));
 
@@ -483,11 +496,13 @@ static struct ipc_msg *ipc4_kd_notification_init(uint32_t word_id,
 }
 
 #else /* CONFIG_IPC_MAJOR_4 */
-static int test_keyword_set_config(struct comp_dev *dev,
+__cold static int test_keyword_set_config(struct comp_dev *dev,
 				   struct sof_ipc_ctrl_data *cdata)
 {
 	struct sof_detect_test_config *cfg;
 	size_t bs;
+
+	assert_can_be_cold();
 
 	/* Copy new config, find size from header */
 	cfg = (struct sof_detect_test_config *)cdata->data->data;
@@ -567,12 +582,14 @@ static int test_keyword_ctrl_set_data(struct comp_dev *dev,
 	return ret;
 }
 
-static int test_keyword_get_config(struct comp_dev *dev,
+__cold static int test_keyword_get_config(struct comp_dev *dev,
 				   struct sof_ipc_ctrl_data *cdata, int size)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	size_t bs;
 	int ret = 0;
+
+	assert_can_be_cold();
 
 	comp_info(dev, "entry");
 
@@ -656,7 +673,7 @@ static int test_keyword_cmd(struct comp_dev *dev, int cmd, void *data,
 #endif /* CONFIG_IPC_MAJOR_4 */
 static int test_keyword_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
 
-static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
+__cold static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 					 const struct comp_ipc_config *config,
 					 const void *spec)
 {
@@ -670,6 +687,8 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 #endif /* CONFIG_IPC_MAJOR_4 */
 	struct comp_data *cd = NULL;
 	int ret = 0;
+
+	assert_can_be_cold();
 
 	comp_cl_info(&comp_keyword, "entry");
 
@@ -778,9 +797,11 @@ fail:
 	return NULL;
 }
 
-static void test_keyword_free(struct comp_dev *dev)
+__cold static void test_keyword_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 	comp_info(dev, "entry");
 
