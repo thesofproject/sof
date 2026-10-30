@@ -84,10 +84,12 @@ static void mic_privacy_event(void *arg, enum notify_id type, void *data)
 	}
 }
 
-static int mic_privacy_configure(struct processing_module *mod, struct copier_data *cd)
+__cold static int mic_privacy_configure(struct processing_module *mod, struct copier_data *cd)
 {
 	struct mic_privacy_data *mic_priv_data;
 	int ret;
+
+	assert_can_be_cold();
 
 	mic_priv_data = mod_zalloc(mod, sizeof(struct mic_privacy_data));
 	if (!mic_priv_data)
@@ -119,9 +121,11 @@ static int mic_privacy_configure(struct processing_module *mod, struct copier_da
 	return ret;
 }
 
-static void mic_privacy_free(struct processing_module *mod)
+__cold static void mic_privacy_free(struct processing_module *mod)
 {
 	struct copier_data *cd = module_get_private_data(mod);
+
+	assert_can_be_cold();
 
 	if (cd->gtw_type == ipc4_gtw_dmic)
 		mic_privacy_enable_dmic_irq(false);

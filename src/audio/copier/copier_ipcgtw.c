@@ -116,8 +116,8 @@ static inline struct sof_sink *ipcgtw_get_sink(struct comp_dev *dev)
 	return mod->num_of_sinks ? mod->sinks[0] : NULL;
 }
 
-int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
-			  void *reply_payload, uint32_t *reply_payload_size)
+__cold int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
+				 void *reply_payload, uint32_t *reply_payload_size)
 {
 	const struct ipc4_ipc_gateway_cmd_data *in;
 	struct ipc4_ipc_gateway_cmd_data_reply *out;
@@ -126,6 +126,8 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 	struct comp_dev *dev;
 	uint32_t data_size;
 	int ret;
+
+	assert_can_be_cold();
 
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 sizeof(struct ipc4_ipc_gateway_cmd_data));
