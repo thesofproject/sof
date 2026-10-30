@@ -8,6 +8,7 @@
 #include <zephyr/init.h>
 
 #if defined(CONFIG_MM_DRV)
+#include <sof/lib/cold.h>
 #include <sof/lib/regions_mm.h>
 
 LOG_MODULE_DECLARE(mem_allocator, CONFIG_SOF_LOG_LEVEL);
@@ -52,11 +53,14 @@ struct vmh_heap {
  * @retval ptr to a new heap if successful.
  * @retval NULL on creation failure.
  */
-struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocating_continuously)
+__cold struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
+				     bool allocating_continuously)
 {
 	const struct sys_mm_drv_region *virtual_memory_regions =
 		sys_mm_drv_query_memory_regions();
 	int i;
+
+	assert_can_be_cold();
 
 	struct vmh_heap *new_heap =
 		rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*new_heap));

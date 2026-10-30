@@ -9,6 +9,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/check.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/regions_mm.h>
 #include <sof/lib/vpage.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
@@ -73,10 +74,12 @@ static struct vpage_context vpage_ctx;
  * @param ptr Pointer to store the address of allocated pages.
  * @retval 0 if successful.
  */
-static int vpages_alloc_and_map(unsigned int pages, void **ptr)
+__cold static int vpages_alloc_and_map(unsigned int pages, void **ptr)
 {
 	void *vaddr;
 	int ret;
+
+	assert_can_be_cold();
 
 	/* check for valid pages and ptr */
 	if (!ptr)
@@ -147,10 +150,12 @@ static int vpages_alloc_and_map(unsigned int pages, void **ptr)
  * @param pages Number of pages (usually 4kB large) to allocate.
  * @retval NULL on allocation failure.
  */
-void *vpage_alloc(unsigned int pages)
+__cold void *vpage_alloc(unsigned int pages)
 {
 	void *ptr = NULL;
 	int ret;
+
+	assert_can_be_cold();
 
 	k_mutex_lock(&vpage_ctx.lock, K_FOREVER);
 	ret = vpages_alloc_and_map(pages, &ptr);
@@ -267,7 +272,7 @@ void vpage_free(void *ptr)
  * @retval 0 if successful.
  * @retval -ENOMEM on creation failure.
  */
-static int vpage_init(void)
+__cold static int vpage_init(void)
 {
 	const struct sys_mm_drv_region *virtual_memory_regions;
 	const struct sys_mm_drv_region *region;
@@ -281,6 +286,8 @@ static int vpage_init(void)
 		CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE;
 	uintptr_t end;
 	size_t remaining_ram;
+
+	assert_can_be_cold();
 
 	k_mutex_init(&vpage_ctx.lock);
 

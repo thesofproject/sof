@@ -14,6 +14,7 @@
 #include <sof/lib/vregion.h>
 #include <rtos/alloc.h>
 #include <sof/common.h>
+#include <sof/lib/cold.h>
 #include <sof/schedule/ll_schedule_domain.h>
 
 LOG_MODULE_REGISTER(vregion, CONFIG_SOF_LOG_LEVEL);
@@ -110,12 +111,14 @@ struct vregion {
  * @param[in] memsize Total size of the virtual region memory.
  * @return struct vregion* Pointer to the new virtual region instance, or NULL on failure.
  */
-struct vregion *vregion_create(size_t memsize)
+__cold struct vregion *vregion_create(size_t memsize)
 {
 	struct vregion *vr;
 	unsigned int pages;
 	size_t total_size;
 	uint8_t *vregion_base;
+
+	assert_can_be_cold();
 
 	if (!memsize) {
 		LOG_ERR("error: invalid vregion memsize %zu", memsize);
