@@ -742,7 +742,7 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 /* Calling both ll_block() and ll_wait_finished_on_core() makes sure LL will not start its
  * next cycle and its current cycle on specified core has finished.
  */
-static int ll_wait_finished_on_core(struct comp_dev *dev)
+__cold static int ll_wait_finished_on_core(struct comp_dev *dev)
 {
 	/* To make sure (blocked) LL has finished its current cycle, it is
 	 * enough to send any blocking IDC to the core. Since IDC task has lower
@@ -752,6 +752,8 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 
 	int ret;
 	struct ipc4_base_module_cfg dummy;
+
+	assert_can_be_cold();
 
 	if (cpu_is_me(dev->ipc_config.core))
 		return 0;
@@ -1549,13 +1551,15 @@ int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint3
  * Therefore, the above ipc4_find_dma_config() is still used as it can skip non-TLV
  * blob data at the beginning of data_buffer.
  */
-int ipc4_find_all_dma_configs_tlvs_only(struct ipc_config_dai *dai,
-					uint8_t *data_buffer, size_t size)
+__cold int ipc4_find_all_dma_configs_tlvs_only(struct ipc_config_dai *dai,
+					       uint8_t *data_buffer, size_t size)
 {
 	uintptr_t end_addr = (uintptr_t)data_buffer + size;
 	struct sof_tlv *tlvs;
 	struct ipc_dma_config *dma_cfg;
 	int count = 0;
+
+	assert_can_be_cold();
 
 	for (tlvs = (struct sof_tlv *)data_buffer;
 	     tlvs && (uintptr_t)tlvs + sizeof(*tlvs) <= end_addr;
@@ -1594,12 +1598,14 @@ int ipc4_find_all_dma_configs_tlvs_only(struct ipc_config_dai *dai,
 	return IPC4_SUCCESS;
 }
 
-int ipc4_find_dma_config_multiple(struct ipc_config_dai *dai, uint8_t *data_buffer,
-				  uint32_t size, uint32_t device_id, int dma_cfg_idx)
+__cold int ipc4_find_dma_config_multiple(struct ipc_config_dai *dai, uint8_t *data_buffer,
+					 uint32_t size, uint32_t device_id, int dma_cfg_idx)
 {
 	uintptr_t end_addr = (uintptr_t)data_buffer + size;
 	struct ipc_dma_config *dma_cfg;
 	struct sof_tlv *tlvs;
+
+	assert_can_be_cold();
 
 	for (tlvs = (struct sof_tlv *)data_buffer; tlvs && (uintptr_t)tlvs < end_addr;
 	     tlvs = tlv_next(tlvs)) {
