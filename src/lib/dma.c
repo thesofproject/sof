@@ -37,13 +37,15 @@ DECLARE_TR_CTX(dma_tr, SOF_UUID(dma_uuid), LOG_LEVEL_INFO);
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 static int dma_init(struct sof_dma *dma);
 
-struct sof_dma *z_impl_sof_dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
+__cold struct sof_dma *z_impl_sof_dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
 	const struct dma_info *info = dma_info_get();
 	int users, ret = 0;
 	int min_users = INT32_MAX;
 	struct sof_dma *d = NULL, *dmin = NULL;
 	k_spinlock_key_t key;
+
+	assert_can_be_cold();
 
 	if (!info->num_dmas) {
 		tr_err(&dma_tr, "dma_get(): No DMACs installed");
@@ -130,9 +132,11 @@ out:
 	return !ret ? dmin : NULL;
 }
 
-void z_impl_sof_dma_put(struct sof_dma *dma)
+__cold void z_impl_sof_dma_put(struct sof_dma *dma)
 {
 	k_spinlock_key_t key;
+
+	assert_can_be_cold();
 
 	key = k_spin_lock(&dma->lock);
 	if (--dma->sref == 0) {
@@ -145,11 +149,13 @@ void z_impl_sof_dma_put(struct sof_dma *dma)
 	k_spin_unlock(&dma->lock, key);
 }
 
-static int dma_init(struct sof_dma *dma)
+__cold static int dma_init(struct sof_dma *dma)
 {
 	struct dma_chan_data *chan;
 	struct k_heap *heap = sof_sys_user_heap_get();
 	int i;
+
+	assert_can_be_cold();
 
 	/* allocate dma channels */
 	dma->chan = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
