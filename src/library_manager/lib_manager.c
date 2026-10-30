@@ -21,6 +21,7 @@
 #include <rtos/spinlock.h>
 #include <rtos/userspace_helper.h>
 #include <rtos/timer.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
 #include <sof/llext_manager.h>
@@ -69,9 +70,11 @@ struct lib_manager_dma_ext {
 static struct ext_library loader_ext_lib;
 
 #if CONFIG_LIBRARY_AUTH_SUPPORT
-static int lib_manager_auth_init(struct auth_api_ctx *auth_ctx, void **auth_buffer)
+__cold static int lib_manager_auth_init(struct auth_api_ctx *auth_ctx, void **auth_buffer)
 {
 	int ret;
+
+	assert_can_be_cold();
 
 	if (auth_api_version().major != AUTH_API_VERSION_MAJOR)
 		return -EINVAL;
@@ -97,10 +100,12 @@ static void lib_manager_auth_deinit(struct auth_api_ctx *auth_ctx, void *auth_bu
 	rfree(auth_buffer);
 }
 
-static int lib_manager_auth_proc(const void *buffer_data, size_t buffer_size,
-				 enum auth_phase phase, struct auth_api_ctx *auth_ctx)
+__cold static int lib_manager_auth_proc(const void *buffer_data, size_t buffer_size,
+					enum auth_phase phase, struct auth_api_ctx *auth_ctx)
 {
 	int ret;
+
+	assert_can_be_cold();
 
 	ret = auth_api_init_auth_proc(auth_ctx, buffer_data, buffer_size, phase);
 
@@ -150,8 +155,9 @@ static int lib_manager_load_data_from_storage(void __sparse_cache *vma, void *s_
 	return sys_mm_drv_update_region_flags((__sparse_force void *)vma, size, flags);
 }
 
-static int lib_manager_load_module(const struct sof_man_fw_desc *const desc,
-				   const uint32_t module_id, const struct sof_man_module *const mod)
+__cold static int lib_manager_load_module(const struct sof_man_fw_desc *const desc,
+					  const uint32_t module_id,
+					  const struct sof_man_module *const mod)
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	const uintptr_t load_offset = POINTER_TO_UINT(ctx->base_addr);
@@ -162,6 +168,8 @@ static int lib_manager_load_module(const struct sof_man_fw_desc *const desc,
 	size_t size;
 	uint32_t flags;
 	int ret, idx;
+
+	assert_can_be_cold();
 
 	/*
 	 * ELF file segment offsets and sizes come from library files, so they
@@ -218,12 +226,14 @@ err:
 	return ret;
 }
 
-static int lib_manager_unload_module(const struct sof_man_module *const mod)
+__cold static int lib_manager_unload_module(const struct sof_man_module *const mod)
 {
 	void __sparse_cache *va_base;
 	size_t size;
 	uint32_t idx;
 	int ret;
+
+	assert_can_be_cold();
 
 	for (idx = 0; idx < ARRAY_SIZE(mod->segment); ++idx) {
 		if (!mod->segment[idx].flags.r.load)
@@ -322,11 +332,13 @@ void lib_manager_get_instance_bss_address(uint32_t instance_id,
 	       (__sparse_force void *)*va_addr);
 }
 
-static int lib_manager_allocate_module_instance(uint32_t instance_id, uint32_t is_pages,
-						const struct sof_man_module *mod)
+__cold static int lib_manager_allocate_module_instance(uint32_t instance_id, uint32_t is_pages,
+						       const struct sof_man_module *mod)
 {
 	size_t bss_size;
 	void __sparse_cache *va_base;
+
+	assert_can_be_cold();
 
 	lib_manager_get_instance_bss_address(instance_id, mod, &va_base, &bss_size);
 
@@ -369,14 +381,16 @@ static int lib_manager_free_module_instance(uint32_t instance_id, const struct s
  *
  * Function is responsible to allocate module in available free memory and assigning proper address.
  */
-static uintptr_t lib_manager_allocate_module(const struct sof_man_fw_desc *const desc,
-					     const struct sof_man_module *mod,
-					     const struct comp_ipc_config *ipc_config,
-					     const void *ipc_specific_config)
+__cold static uintptr_t lib_manager_allocate_module(const struct sof_man_fw_desc *const desc,
+						    const struct sof_man_module *mod,
+						    const struct comp_ipc_config *ipc_config,
+						    const void *ipc_specific_config)
 {
 	const struct ipc4_base_module_cfg *base_cfg = ipc_specific_config;
 	const uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	int ret;
+
+	assert_can_be_cold();
 
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", ipc_config->id);
 
@@ -417,11 +431,13 @@ err:
  *
  * Function is responsible to free module resources in HP memory.
  */
-int z_impl_lib_manager_free_module(const uint32_t component_id)
+__cold int z_impl_lib_manager_free_module(const uint32_t component_id)
 {
 	const struct sof_man_module *mod;
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
 	int ret;
+
+	assert_can_be_cold();
 
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
 
@@ -499,12 +515,15 @@ const struct sof_man_fw_desc *lib_manager_get_library_manifest(int module_id)
 	return (struct sof_man_fw_desc *)(buffptr + SOF_MAN_ELF_TEXT_OFFSET);
 }
 
-static void lib_manager_update_sof_ctx(void *base_addr, uint32_t lib_id)
+__cold static void lib_manager_update_sof_ctx(void *base_addr, uint32_t lib_id)
 {
 	struct ext_library *_ext_lib = ext_lib_get();
 	/* Never freed, will panic if fails */
 	struct lib_manager_mod_ctx *ctx = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 						  sizeof(*ctx));
+
+	assert_can_be_cold();
+
 	if (!ctx) {
 		tr_err(&lib_manager_tr, "allocation failed");
 		sof_panic(SOF_IPC_PANIC_IPC);
@@ -552,21 +571,23 @@ const struct sof_man_module *lib_manager_get_module_manifest(const uint32_t modu
  *
  * \return Error code returned by the system agent, 0 on success.
  */
-static int lib_manager_start_agent(const struct comp_driver *drv,
-				   const struct comp_ipc_config *config,
-				   const struct sof_man_module *mod_manifest,
-				   const struct ipc_config_process *args,
-				   const uintptr_t module_entry_point,
-				   const system_agent_start_fn agent,
-				   const void **agent_interface,
-				   struct userspace_context **userspace,
-				   const struct module_interface **ops)
+__cold static int lib_manager_start_agent(const struct comp_driver *drv,
+					  const struct comp_ipc_config *config,
+					  const struct sof_man_module *mod_manifest,
+					  const struct ipc_config_process *args,
+					  const uintptr_t module_entry_point,
+					  const system_agent_start_fn agent,
+					  const void **agent_interface,
+					  struct userspace_context **userspace,
+					  const struct module_interface **ops)
 {
 	struct system_agent_params agent_params;
 	void __sparse_cache *module_bss;
 	size_t module_bss_size;
 	byte_array_t mod_cfg;
 	int ret = 0;
+
+	assert_can_be_cold();
 
 	mod_cfg.data = (uint8_t *)args->data;
 	/* Intel modules expects DW size here */
@@ -613,14 +634,17 @@ enum buildinfo_mod_type { MOD_TYPE_INVALID, MOD_TYPE_IADK, MOD_TYPE_LMDK, MOD_TY
  *
  * \return The type of the module as an enum value.
  */
-static enum buildinfo_mod_type lib_manager_get_module_type(const struct sof_man_fw_desc *const desc,
-							   const struct sof_man_module *mod)
+__cold static enum buildinfo_mod_type
+lib_manager_get_module_type(const struct sof_man_fw_desc *const desc,
+			    const struct sof_man_module *mod)
 {
 	const struct sof_module_api_build_info *const build_info =
 		(const struct sof_module_api_build_info *)((const char *)desc -
 		SOF_MAN_ELF_TEXT_OFFSET + mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset);
 	const size_t lib_size = (size_t)desc->header.preload_page_count * PAGE_SZ;
 	const uint32_t text_off = mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset;
+
+	assert_can_be_cold();
 
 	/*
 	 * llext modules store build info structure in separate section which is not accessible now.
@@ -675,11 +699,11 @@ static void lib_manager_mod_free_priv(const struct comp_driver *drv,
 	lib_manager_free_module(config->id);
 }
 
-int lib_manager_mod_create_priv(const struct comp_driver *drv,
-				const struct comp_ipc_config *config,
-				const void *spec, void **adapter_priv,
-				struct userspace_context **userspace,
-				const struct module_interface **ops)
+__cold int lib_manager_mod_create_priv(const struct comp_driver *drv,
+				       const struct comp_ipc_config *config,
+				       const void *spec, void **adapter_priv,
+				       struct userspace_context **userspace,
+				       const struct module_interface **ops)
 {
 	const struct sof_man_fw_desc *const desc = lib_manager_get_library_manifest(config->id);
 	const struct ipc_config_process *args = (const struct ipc_config_process *)spec;
@@ -688,6 +712,8 @@ int lib_manager_mod_create_priv(const struct comp_driver *drv,
 	system_agent_start_fn agent;
 	const void **agent_iface;
 	int ret;
+
+	assert_can_be_cold();
 
 #ifdef CONFIG_SOF_USERSPACE_PROXY
 	if (drv->user_heap && config->proc_domain != COMP_PROCESSING_DOMAIN_DP) {
@@ -786,14 +812,16 @@ static int z_vrfy_lib_manager_free_module(const uint32_t component_id)
  *
  * \return: a pointer to newly created module adapter component on success. NULL on error.
  */
-static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
-						  const struct comp_ipc_config *config,
-						  const void *spec)
+__cold static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
+							 const struct comp_ipc_config *config,
+							 const void *spec)
 {
 	struct userspace_context *userspace = NULL;
 	const struct module_interface *ops = NULL;
 	void *adapter_priv = NULL;
 	struct comp_dev *dev;
+
+	assert_can_be_cold();
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP ||
 	    !IS_ENABLED(CONFIG_SOF_USERSPACE_LL)) {
@@ -815,10 +843,12 @@ err:
 	return NULL;
 }
 
-static void lib_manager_module_free(struct comp_dev *dev)
+__cold static void lib_manager_module_free(struct comp_dev *dev)
 {
 	uint32_t component_id = dev->ipc_config.id;
 	int ret;
+
+	assert_can_be_cold();
 
 	/* This call invalidates dev, mod and config pointers! */
 	module_adapter_free(dev);
@@ -862,7 +892,7 @@ static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const st
 	drv->ops.dai_ts_get = module_adapter_ts_get_op;
 }
 
-int lib_manager_register_module(const uint32_t component_id)
+__cold int lib_manager_register_module(const uint32_t component_id)
 {
 	const struct sof_man_module *mod = lib_manager_get_module_manifest(component_id);
 	const struct sof_uuid *uid = (struct sof_uuid *)&mod->uuid;
@@ -870,6 +900,8 @@ int lib_manager_register_module(const uint32_t component_id)
 	struct k_heap *drv_heap = NULL;
 	struct comp_driver *drv = NULL;
 	int ret = -ENOMEM;
+
+	assert_can_be_cold();
 
 	if (!mod) {
 		tr_err(&lib_manager_tr, "Error: Couldn't find loadable module with id %u.",
@@ -927,9 +959,11 @@ cleanup:
 	return ret;
 }
 
-static int lib_manager_dma_buffer_alloc(struct lib_manager_dma_ext *dma_ext,
-					uint32_t size)
+__cold static int lib_manager_dma_buffer_alloc(struct lib_manager_dma_ext *dma_ext,
+					       uint32_t size)
 {
+	assert_can_be_cold();
+
 	/*
 	 * allocate new buffer: this is the actual DMA buffer but we
 	 * traditionally allocate a cached address for it
@@ -951,9 +985,11 @@ static int lib_manager_dma_buffer_alloc(struct lib_manager_dma_ext *dma_ext,
  *
  * \return 0 on success, error code otherwise.
  */
-static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint32_t dma_id)
+__cold static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint32_t dma_id)
 {
 	int chan_index;
+
+	assert_can_be_cold();
 
 	/* Initialize dma_ext with zeros */
 	memset(dma_ext, 0, sizeof(struct lib_manager_dma_ext));
@@ -993,11 +1029,14 @@ static int lib_manager_dma_deinit(struct lib_manager_dma_ext *dma_ext, uint32_t 
 	return 0;
 }
 
-static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, uint32_t size)
+__cold static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext,
+						  uint32_t size)
 {
 	uint64_t timeout = k_ms_to_cyc_ceil64(200);
 	struct dma_status stat;
 	int ret;
+
+	assert_can_be_cold();
 
 	/* Wait till whole data acquired with timeout of 200ms */
 	timeout += sof_cycle_get_64();
@@ -1018,10 +1057,12 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 	return -ETIMEDOUT;
 }
 
-static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext,
-				  void __sparse_cache *dst_addr, uint32_t dst_size)
+__cold static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext,
+					 void __sparse_cache *dst_addr, uint32_t dst_size)
 {
 	uint32_t copied_bytes = 0;
+
+	assert_can_be_cold();
 
 	while (copied_bytes < dst_size) {
 		uint32_t bytes_to_copy;
@@ -1045,8 +1086,8 @@ static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext,
 	return 0;
 }
 
-static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
-							   uint32_t attribs)
+__cold static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
+								  uint32_t attribs)
 {
 	void __sparse_cache *local_add;
 #if CONFIG_L3_HEAP
@@ -1056,6 +1097,9 @@ static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
 #endif
 
 	uint32_t addr_align = PAGE_SZ;
+
+	assert_can_be_cold();
+
 	/* allocate new buffer: cached alias */
 	local_add = (__sparse_force void __sparse_cache *)rballoc_align(flags, size, addr_align);
 
@@ -1067,14 +1111,16 @@ static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
 	return local_add;
 }
 
-static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
-				     const void __sparse_cache *man_buffer,
-				     uint32_t lib_id, struct auth_api_ctx *auth_ctx)
+__cold static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
+					    const void __sparse_cache *man_buffer,
+					    uint32_t lib_id, struct auth_api_ctx *auth_ctx)
 {
 	void __sparse_cache *library_base_address;
 	const struct sof_man_fw_desc *man_desc = (struct sof_man_fw_desc *)
 		((__sparse_force uint8_t *)man_buffer + SOF_MAN_ELF_TEXT_OFFSET);
 	int ret;
+
+	assert_can_be_cold();
 
 	/* Zephyr UINT_MAX is explicitly 32 bits, and so is preload_page_count */
 	if (man_desc->header.preload_page_count >= UINT_MAX / PAGE_SZ) {
@@ -1146,7 +1192,7 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 	return 0;
 }
 
-static int lib_manager_setup(uint32_t dma_id)
+__cold static int lib_manager_setup(uint32_t dma_id)
 {
 	struct ext_library *_ext_lib = ext_lib_get();
 	struct lib_manager_dma_ext *dma_ext;
@@ -1162,6 +1208,8 @@ static int lib_manager_setup(uint32_t dma_id)
 		.head_block = &dma_block_cfg,
 	};
 	int ret;
+
+	assert_can_be_cold();
 
 	if (_ext_lib->runtime_data)
 		return 0;
@@ -1221,12 +1269,14 @@ err_dma_init:
 	return ret;
 }
 
-int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type)
+__cold int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type)
 {
 	void __sparse_cache *man_tmp_buffer;
 	struct lib_manager_dma_ext *dma_ext;
 	struct ext_library *_ext_lib;
 	int ret, ret2;
+
+	assert_can_be_cold();
 
 	if (type == SOF_IPC4_GLB_LOAD_LIBRARY &&
 	    (lib_id == 0 || lib_id >= LIB_MANAGER_MAX_LIBS)) {
