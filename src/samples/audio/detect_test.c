@@ -68,7 +68,7 @@
 #define KD_CHILD_FREQ_MAX  500
 
 #define NOTIFICATION_DEFAULT_WORD_ID 1
-#define NOTIFICATION_DEFAULT_SCORE   0
+#define NOTIFICATION_DEFAULT_SCORE   100
 
 #define KWD_NN_BUFF_ALIGN	64
 
@@ -389,9 +389,6 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 }
 
 #if CONFIG_IPC_MAJOR_4
-#define NOTIFICATION_DEFAULT_WORD_ID 1
-#define NOTIFICATION_DEFAULT_SCORE 100
-
 static void test_keyword_set_params(struct comp_dev *dev,
 				    struct sof_ipc_stream_params *params)
 {

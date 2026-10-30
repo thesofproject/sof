@@ -11,7 +11,7 @@ outputting a single sigmoid wake-word probability per keyword model.
 
 In this architecture, **one unified codebase** supports **three concurrent keyword spotter instances**:
 - **Slot 0** (Pipeline 101): `"strawberry"`
-- **Slot 1** (Pipeline 102): `"banana"`
+- **Slot 1** (Pipeline 102): `"hi intel"`
 - **Slot 2** (Pipeline 103): `"orange"`
 
 ---
@@ -31,18 +31,13 @@ graph TD
     subgraph P105["Pipeline 105 — ECNS DP Processing  (Core 0, DP 20ms)"]
         MO105["mixout 105.1\n(4ch input)"]
         ECNS["ecns.105.1\n(ECNS DP Module, 20ms = 320 frames)\nCh 0,1: Mic | Ch 2,3: Echo Ref"]
-        MIX105_1["mixin 105.1\nPin 0: Ch 0 Mono Clean"]
-        MIX105_2["mixin 105.2\nPin 1: Ch 0,1 Stereo Clean"]
         MO105 --> ECNS
-        ECNS -- "Pin 0 (Mono)" --> MIX105_1
-        ECNS -- "Pin 1 (Stereo)" --> MIX105_2
     end
 
     subgraph P106["Pipeline 106 — KPB History Buffer  (Core 0, DP 20ms)"]
-        MO106["mixout 106.1\n(1ch mono)"]
-        KPB["kpb.106.1\n(2.0s mono history = 64 KB)\n16 kHz · 1ch · S16_LE"]
+        KPB["kpb.106.1\n(2.0s mono history = 64 KB)\n16 kHz · 1ch · S16_LE\nPin 0: sel_sink | Pin 1: host_sink"]
         MIX106["mixin 106.1\n(3-way fanout mixin)"]
-        MO106 --> KPB --> MIX106
+        KPB -- "Pin 0 (sel_sink)" --> MIX106
     end
 
     subgraph P101["Pipeline 101 — Slot 0: 'strawberry'  (Core 0, DP 10ms)"]
@@ -52,10 +47,10 @@ graph TD
         MO101 --> MFCC0 --> MWW0
     end
 
-    subgraph P102["Pipeline 102 — Slot 1: 'banana'  (Core 0, DP 10ms)"]
+    subgraph P102["Pipeline 102 — Slot 1: 'hi intel'  (Core 0, DP 10ms)"]
         MO102["mixout 102.1"]
         MFCC1["mfcc.102.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
-        MWW1["mww.102.1\n(microWakeWord)\nModel: 'banana'"]
+        MWW1["mww.102.1\n(microWakeWord)\nModel: 'hi intel'"]
         MO102 --> MFCC1 --> MWW1
     end
 
@@ -67,27 +62,26 @@ graph TD
     end
 
     subgraph P104["Pipeline 104 — WOV Host PCM Capture  (Core 0, LL 1ms)"]
-        ARB["wov-arbiter.104.1\n(3 input pins, 1 output pin\n1ch mono 16 kHz)"]
+        ARB["wov-arbiter.104.1\n(4 input pins, 1 output pin\nPin 0: Audio | Pins 1-3: Features\n1ch mono 16 kHz S16_LE)"]
         HC11["host-copier.11\n(hw:0,11 · PCM 11)\n1ch · 16 kHz · S16_LE / S32_LE"]
         ARB --> HC11
     end
 
     subgraph P107["Pipeline 107 — ECNS Host PCM Capture  (Core 0, LL 1ms)"]
-        MO107["mixout 107.1\n(2ch stereo)"]
         HC10["host-copier.10\n(hw:0,10 · PCM 10)\n2ch · 16 kHz · S16_LE / S32_LE"]
-        MO107 --> HC10
     end
 
     MIX100 --> MO105
-    MIX105_1 --> MO106
-    MIX105_2 --> MO107
+    ECNS -- "Pin 0 (Mono Clean direct)" --> KPB
+    ECNS -- "Pin 1 (Stereo Clean direct)" --> HC10
     MIX106 --> MO101
     MIX106 --> MO102
     MIX106 --> MO103
 
-    MWW0 --> ARB
-    MWW1 --> ARB
-    MWW2 --> ARB
+    KPB -- "Pin 1 (host_sink / drain audio)" --> ARB
+    MWW0 -->|"Pin 1 (Features)"| ARB
+    MWW1 -->|"Pin 2 (Features)"| ARB
+    MWW2 -->|"Pin 3 (Features)"| ARB
 
     MWW0 -. "Notifier WOV_DETECT (slot=0)" .-> ARB
     MWW1 -. "Notifier WOV_DETECT (slot=1)" .-> ARB
@@ -120,7 +114,7 @@ graph TD
 |---|---|---|---|
 | **Panther Lake (PTL / ACE 3.0)** | [`dmic-wov-multi-ptl-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf) | `sof-ptl-dmic-wov-multi-4ch.tplg` | 5 |
 | **Tiger Lake (TGL / CAVS 2.5)** | [`dmic-wov-multi-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf) | `sof-tgl-dmic-wov-multi-4ch.tplg` | 1 |
-| **Wildcat Lake (WCL / ACE 3.0)** | [`dmic-wov-multi-wcl-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-wcl-4ch-manifest.conf) | `sof-wcl-dmic-wov-multi-4ch.tplg` | 5 |
+| **Wildcat Lake (WCL / ACE 3.0)** | symlink to the PTL topology | `sof-wcl-dmic-wov-multi-4ch.tplg` | 5 |
 
 ---
 
@@ -156,7 +150,7 @@ This guarantees deterministic execution, avoids heap fragmentation, and ensures 
 ### 3. Keyword Model Dispatch
 Default built-in models are bound automatically by slot/pipeline index:
 - **Slot 0** (`pipeline_id == 101`): `mww_model_data_strawberry`
-- **Slot 1** (`pipeline_id == 102`): `mww_model_data_banana`
+- **Slot 1** (`pipeline_id == 102`): `mww_model_data_hi_intel`
 - **Slot 2** (`pipeline_id == 103`): `mww_model_data_orange`
 
 Each instance can also be dynamically customized via SOF IPC4 `LARGE_CONFIG_SET` / bytes control or LLEXT model loading.
@@ -167,7 +161,7 @@ Each instance can also be dynamically customized via SOF IPC4 `LARGE_CONFIG_SET`
 
 The MWW detector participates in SOF's synchronous intra-DSP publish/subscribe notifier bus:
 
-1. **`NOTIFIER_ID_WOV_DETECT`**: Fired by `mww` to `wov_arbiter` on keyword detection (`probability >= MWW_DETECT_THRESHOLD`). Passes payload `{ .slot_id = cd->wov_slot_id }`.
+1. **`NOTIFIER_ID_WOV_DETECT`**: Fired by `mww` to `wov_arbiter` on keyword detection (average probability of the last `MWW_DETECT_AVG_LEN` inferences `>= MWW_DETECT_THRESHOLD`). Passes payload `{ .slot_id = cd->wov_slot_id }`.
 2. **`NOTIFIER_ID_KPB_CLIENT_EVT`**: Fired by `mww` to `kpb` to request immediate draining of the 2.0 s pre-roll history buffer.
 3. **`NOTIFIER_ID_WOV_CTRL`**: Received by `mww` from `wov_arbiter`.
    - `WOV_ARB_CMD_PAUSE`: Pauses inference while another slot's keyword audio is streaming to the host.
@@ -177,11 +171,14 @@ The MWW detector participates in SOF's synchronous intra-DSP publish/subscribe n
 
 ## ALSA Kcontrols & Userspace Verification
 
-### 1. Active Slot Status (`wov_active_slot`)
+### 1. Active Slot Status (`DMIC Phrase Detect ID` / `Jack In Phrase Detect ID`)
 The arbiter exposes a volatile read-only ALSA enum kcontrol:
 ```bash
-amixer -c 0 cget name='wov_active_slot'
-# Values: 0 = Listening, 1 = Slot 1 ("strawberry"), 2 = Slot 2 ("banana"), 3 = Slot 3 ("orange")
+# For DMIC WoV:
+amixer -c 0 cget name='DMIC Phrase Detect ID'
+# For SDW Headset WoV:
+amixer -c 0 cget name='Jack In Phrase Detect ID'
+# Values: 0 = Listening, 1 = Slot 1 ("strawberry"), 2 = Slot 2 ("hi intel"), 3 = Slot 3 ("orange")
 ```
 
 ### 2. Audio Capture Endpoints

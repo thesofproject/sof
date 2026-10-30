@@ -15,6 +15,19 @@ import sys
 import time
 
 
+def find_active_slot_control(card=0):
+    """Find active phrase detect enum control by name."""
+    try:
+        cmd = ["amixer", "-c", str(card), "controls"]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for name in ["DMIC Phrase Detect ID", "Jack In Phrase Detect ID", "wov_active_slot"]:
+            if f"name='{name}'" in res.stdout:
+                return name
+    except Exception:
+        pass
+    return "DMIC Phrase Detect ID"
+
+
 def get_kcontrol(name, card=0):
     """Query an ALSA mixer control value using amixer."""
     cmd = ["amixer", "-c", str(card), "cget", f"name={name}"]
@@ -37,17 +50,20 @@ def set_kcontrol(name, val, card=0):
         raise RuntimeError(f"amixer cset {name} {val} failed: {proc.stderr.strip()}")
 
 
-def run_cycle(cycle_num, target_slot, card=0, device=11, channels=4, rate=16000, duration=3):
+def run_cycle(cycle_num, target_slot, card=0, device=11, channels=4, rate=16000, duration=3, phrase_ctl=None):
     """
     Run a single test cycle:
-      1. Verify wov_active_slot is '0' (Listening) before start.
+      1. Verify phrase control is '0' (Listening) before start.
       2. Start arecord on hw:{card},{device}.
       3. Trigger wov_test_{100 + target_slot}.
-      4. Verify wov_active_slot transitions to target_slot.
+      4. Verify phrase control transitions to target_slot.
       5. Verify test switch auto-resets to 'off'.
       6. Wait for arecord to complete.
-      7. Verify wov_active_slot returns to '0' (Listening).
+      7. Verify phrase control returns to '0' (Listening).
     """
+    if phrase_ctl is None:
+        phrase_ctl = find_active_slot_control(card)
+
     slot_names = {1: "Slot 1 (wov_test_101)", 2: "Slot 2 (wov_test_102)", 3: "Slot 3 (wov_test_103)"}
     sw_name = f"wov_test_{100 + target_slot}"
     out_wav = f"/tmp/wov_slot_test_cyc{cycle_num}_{target_slot}.wav"
@@ -55,7 +71,7 @@ def run_cycle(cycle_num, target_slot, card=0, device=11, channels=4, rate=16000,
     print(f"\n[Cycle {cycle_num:02d}] Testing {slot_names[target_slot]}...")
 
     # Step 1: Initial state
-    initial_slot = get_kcontrol("wov_active_slot", card=card)
+    initial_slot = get_kcontrol(phrase_ctl, card=card)
     if initial_slot != "0":
         print(f"  [WARN] Initial slot was '{initial_slot}', expected '0' (Listening)")
 
@@ -73,7 +89,7 @@ def run_cycle(cycle_num, target_slot, card=0, device=11, channels=4, rate=16000,
     time.sleep(0.2)
 
     # Step 4: Verify active slot
-    active_slot = get_kcontrol("wov_active_slot", card=card)
+    active_slot = get_kcontrol(phrase_ctl, card=card)
     print(f"  Active Slot during trigger : {active_slot} (Expected: {target_slot})")
 
     # Step 5: Verify switch reset
@@ -86,7 +102,7 @@ def run_cycle(cycle_num, target_slot, card=0, device=11, channels=4, rate=16000,
     file_sz = os.path.getsize(out_wav) if os.path.exists(out_wav) else 0
 
     # Step 7: Verify post-stop slot reset
-    post_slot = get_kcontrol("wov_active_slot", card=card)
+    post_slot = get_kcontrol(phrase_ctl, card=card)
     print(f"  Active Slot after stop     : {post_slot} (Expected: 0)")
     print(f"  Captured WAV File          : {out_wav} ({file_sz} bytes, {t_elapsed:.2f}s)")
 
@@ -113,14 +129,16 @@ def main():
     parser.add_argument("--rate", "-r", type=int, default=16000, help="Sampling rate in Hz (default: 16000)")
     parser.add_argument("--duration", "-d", type=int, default=3, help="Duration per cycle in seconds (default: 3)")
     parser.add_argument("--cycles", type=int, default=10, help="Number of test cycles (default: 10)")
+    parser.add_argument("--control", type=str, default=None, help="Phrase detect kcontrol name (default: auto-detect)")
     args = parser.parse_args()
 
+    phrase_ctl = args.control if args.control else find_active_slot_control(args.card)
     total_tests = 0
     passed_tests = 0
 
     print("================================================================")
     print(f"  WOV 3-Slot Automated Trigger & Arbitration {args.cycles}-Cycle Suite")
-    print(f"  Target: hw:{args.card},{args.device} | {args.channels} Channels @ {args.rate} Hz")
+    print(f"  Target: hw:{args.card},{args.device} | Control: {phrase_ctl} | {args.channels} Channels @ {args.rate} Hz")
     print("================================================================")
 
     for cycle in range(1, args.cycles + 1):
@@ -128,7 +146,8 @@ def main():
         slot = ((cycle - 1) % 3) + 1
         total_tests += 1
         if run_cycle(cycle, slot, card=args.card, device=args.device,
-                     channels=args.channels, rate=args.rate, duration=args.duration):
+                     channels=args.channels, rate=args.rate, duration=args.duration,
+                     phrase_ctl=phrase_ctl):
             passed_tests += 1
         time.sleep(0.5)
 

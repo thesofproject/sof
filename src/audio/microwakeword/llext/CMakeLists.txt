@@ -154,7 +154,7 @@ add_library(mww_tflm_lib STATIC
 	${TFLM_PATH}/tensorflow/lite/micro/micro_utils.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter.cc
 	../mww_model_data.cc
-	../mww_model_data_banana.cc
+	../mww_model_data_hi_intel.cc
 	../mww_model_data_orange.cc
 	../mww_model.cc
 )

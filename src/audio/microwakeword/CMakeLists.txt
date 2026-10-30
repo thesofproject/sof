@@ -59,6 +59,14 @@ if(NOT EXISTS "${MWW_TOOLCHAIN_LIBC_ARCHIVE}")
 	endif()
 endif()
 
+if(NOT EXISTS "${MWW_TOOLCHAIN_LIBC_ARCHIVE}" AND NOT "$ENV{XTENSA_SYSTEM}" STREQUAL "")
+       get_filename_component(MWW_XTENSA_CORE_DIR "$ENV{XTENSA_SYSTEM}/.." REALPATH)
+       set(MWW_XTENSA_LIBC_ARCHIVE "${MWW_XTENSA_CORE_DIR}/xtensa-elf/lib/libc.a")
+       if(EXISTS "${MWW_XTENSA_LIBC_ARCHIVE}")
+               set(MWW_TOOLCHAIN_LIBC_ARCHIVE "${MWW_XTENSA_LIBC_ARCHIVE}")
+       endif()
+endif()
+
 set(MWW_TOOLCHAIN_INCLUDE_ROOT "")
 if(EXISTS "${MWW_TOOLCHAIN_LIBC_ARCHIVE}")
 	get_filename_component(MWW_TOOLCHAIN_LIB_DIR "${MWW_TOOLCHAIN_LIBC_ARCHIVE}" DIRECTORY)
@@ -123,22 +131,12 @@ add_library(mww_tflm_lib STATIC
 	${TFLM_PATH}/tensorflow/lite/micro/kernels/reshape_common.cc
 	${TFLM_PATH}/tensorflow/lite/micro/kernels/strided_slice_common.cc
 	${TFLM_PATH}/tensorflow/lite/micro/kernels/dequantize_common.cc
-	# reference kernel implementations for the ops above
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/conv.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/depthwise_conv.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/fully_connected.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/logistic.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/quantize.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/reshape.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/strided_slice.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/dequantize.cc
 	${TFLM_PATH}/tensorflow/lite/micro/mock_micro_graph.cc
 	${TFLM_PATH}/tensorflow/lite/micro/flatbuffer_utils.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter_graph.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_resource_variable.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter_context.cc
 	${TFLM_PATH}/tensorflow/lite/micro/fake_micro_context.cc
-	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/ibuffer_allocator.cc
 	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/persistent_arena_buffer_allocator.cc
 	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/recording_single_arena_buffer_allocator.cc
 	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/non_persistent_arena_buffer_allocator.cc
@@ -164,9 +162,6 @@ add_library(mww_tflm_lib STATIC
 	${TFLM_PATH}/tensorflow/lite/micro/memory_planner/linear_memory_planner.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_utils.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter.cc
-	mww_model_data.cc
-	mww_model_data_banana.cc
-	mww_model_data_orange.cc
 	mww_model.cc
 )
 
@@ -211,9 +206,109 @@ target_compile_options(mww_tflm_lib PRIVATE
 	-fdata-sections
 )
 
+# tflite-micro trees differ here: upstream (the commit pinned by
+# submanifests/tflm.yml) declares IBufferAllocator's methods pure virtual in
+# the header only, while trees carrying the Xtensa ICF vtable-folding fix move them
+# out of line into ibuffer_allocator.cc. Compile the file when it is present so both
+# layouts link.
+if(EXISTS "${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/ibuffer_allocator.cc")
+	target_sources(mww_tflm_lib PRIVATE
+		${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/ibuffer_allocator.cc)
+endif()
+
+if(CONFIG_COMP_MWW_PROFILE)
+	target_compile_definitions(mww_tflm_lib PRIVATE MWW_PROFILE=1)
+endif()
+
+# nnlib uses HiFi intrinsics, which only the Cadence toolchain provides.
+set(MWW_NN_HIFI_LIB "")
+if(CONFIG_COMP_MWW_HIFI_NNLIB AND ZEPHYR_TOOLCHAIN_VARIANT STREQUAL "xt-clang")
+	set(NN_HIFI_PATH ${sof_top_dir}/../nnlib-hifi4/xa_nnlib)
+	set(MWW_XTENSA_KERNELS ${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa)
+
+	target_sources(mww_tflm_lib PRIVATE
+		${MWW_XTENSA_KERNELS}/conv.cc
+		${MWW_XTENSA_KERNELS}/conv_common_xtensa.cc
+		${MWW_XTENSA_KERNELS}/conv_hifi.cc
+		${MWW_XTENSA_KERNELS}/conv_int8_int16.cc
+		${MWW_XTENSA_KERNELS}/conv_int8_reference.cc
+		${MWW_XTENSA_KERNELS}/conv_int16_reference.cc
+		${MWW_XTENSA_KERNELS}/conv_vision.cc
+		${MWW_XTENSA_KERNELS}/depthwise_conv.cc
+		${MWW_XTENSA_KERNELS}/depthwise_conv_hifi.cc
+		${MWW_XTENSA_KERNELS}/depthwise_conv_vision.cc
+		${MWW_XTENSA_KERNELS}/fully_connected.cc
+		${MWW_XTENSA_KERNELS}/fully_connected_common_xtensa.cc
+		${MWW_XTENSA_KERNELS}/fully_connected_int8.cc
+		${MWW_XTENSA_KERNELS}/fully_connected_vision.cc
+		${MWW_XTENSA_KERNELS}/logistic.cc
+		${MWW_XTENSA_KERNELS}/quantize.cc
+		${MWW_XTENSA_KERNELS}/dequantize.cc
+		${MWW_XTENSA_KERNELS}/reshape.cc
+		${MWW_XTENSA_KERNELS}/reshape_vision.cc
+		${MWW_XTENSA_KERNELS}/strided_slice.cc
+	)
+	target_include_directories(mww_tflm_lib PRIVATE
+		${NN_HIFI_PATH}
+		${NN_HIFI_PATH}/include
+	)
+	target_compile_options(mww_tflm_lib PRIVATE
+		-mcoproc
+		-DHIFI4
+		-DNNLIB_V2
+		-DKERNELS_OPTIMIZED_FOR_SPEED
+	)
+
+	# All HiFi4 nnlib sources, the linker drops what the kernels don't use.
+	file(GLOB MWW_NN_HIFI_SOURCES
+		${NN_HIFI_PATH}/algo/common/src/*.c
+		${NN_HIFI_PATH}/algo/kernels/*/hifi4/*.c
+		${NN_HIFI_PATH}/algo/ndsp/hifi4/src/*.c
+	)
+
+	add_library(mww_nn_hifi_lib STATIC ${MWW_NN_HIFI_SOURCES})
+	target_include_directories(mww_nn_hifi_lib PRIVATE
+		${NN_HIFI_PATH}/include
+		${NN_HIFI_PATH}/algo/common/include/
+		${NN_HIFI_PATH}/include/nnlib/
+		${NN_HIFI_PATH}/algo/ndsp/hifi4/include
+	)
+	target_compile_options(mww_nn_hifi_lib PRIVATE
+		-fsigned-char
+		-fno-exceptions
+		-mlongcalls
+		-INLINE:requested
+		-mcoproc
+		-fno-zero-initialized-in-bss
+		-mtext-section-literals
+		-Wsign-compare
+		-m32
+		-DMODEL_INT16
+		-DNNLIB_V2
+		-Dhifi4
+		-DTFLITE_SINGLE_ROUNDING=1
+		# nnlib exports a global gcd() that clashes with SOF's
+		-Dgcd=xa_nn_gcd
+		-ffunction-sections
+		-fdata-sections
+	)
+	set(MWW_NN_HIFI_LIB mww_nn_hifi_lib)
+else()
+	target_sources(mww_tflm_lib PRIVATE
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/conv.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/depthwise_conv.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/fully_connected.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/logistic.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/quantize.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/reshape.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/strided_slice.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/dequantize.cc
+	)
+endif()
+
 add_local_sources(sof mww.c)
 
-zephyr_link_libraries(mww_tflm_lib)
+zephyr_link_libraries(mww_tflm_lib ${MWW_NN_HIFI_LIB})
 
 # Same libc-shim rationale as src/audio/tensorflow/CMakeLists.txt: SOF's
 # default CONFIG_MINIMAL_LIBC is missing abs()/libm symbols TFLM needs in a
@@ -223,35 +318,88 @@ if(NOT CONFIG_COMP_MWW STREQUAL "m")
   if(NOT EXISTS "${MWW_TOOLCHAIN_LIBC_ARCHIVE}")
     message(FATAL_ERROR "Microwakeword libc shim: libc.a not found for ${SOC_TOOLCHAIN_NAME}")
   endif()
-  set(MWW_LIBC_SHIM_MEMBERS
-    libc_stdlib_abs.c.o
-    libm_math_s_floor.c.o
-    libm_math_sf_exp.c.o
-    libm_math_sf_log.c.o
-    libm_math_sf_ceil.c.o
-    libm_math_s_frexp.c.o
-    libm_common_s_round.c.o
-    libm_common_sf_fmax.c.o
-    libm_common_sf_fmin.c.o
-    libm_common_sf_round.c.o
-    libm_common_sf_isnan.c.o
-    libm_common_sf_issignaling.c.o
-    libm_common_math_errf_uflowf.c.o
-    libm_common_math_errf_oflowf.c.o
-    libm_common_math_errf_divzerof.c.o
-    libm_common_math_errf_invalidf.c.o
-  )
+	execute_process(
+		COMMAND ${CMAKE_AR} t ${MWW_TOOLCHAIN_LIBC_ARCHIVE}
+		OUTPUT_VARIABLE MWW_LIBC_ARCHIVE_MEMBERS
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	set(MWW_TOOLCHAIN_LIBM_ARCHIVE "")
+	set(MWW_LIBM_SHIM_MEMBERS "")
+	if(MWW_LIBC_ARCHIVE_MEMBERS MATCHES "(^|\n)lib_a-abs\\.o(\n|$)")
+		set(MWW_LIBC_SHIM_MEMBERS
+			lib_a-abs.o
+			lib_a-errno.o
+			lib_a-impure.o
+			lib_a-s_nan.o
+			lib_a-sf_finite.o
+			lib_a-sf_fpclassify.o
+		)
+		set(MWW_TOOLCHAIN_LIBM_ARCHIVE "${MWW_TOOLCHAIN_LIB_DIR}/libm.a")
+		set(MWW_LIBM_SHIM_MEMBERS
+			lib_a-ef_exp.o
+			lib_a-ef_log.o
+			lib_a-s_ceil.o
+			lib_a-s_floor.o
+			lib_a-s_frexp.o
+			lib_a-s_lib_ver.o
+			lib_a-s_matherr.o
+			lib_a-s_round.o
+			lib_a-s_signbit.o
+			lib_a-sf_fmax.o
+			lib_a-sf_fmin.o
+			lib_a-sf_isnan.o
+			lib_a-sf_round.o
+			lib_a-wf_exp.o
+			lib_a-wf_log.o
+		)
+	else()
+		set(MWW_LIBC_SHIM_MEMBERS
+			libc_stdlib_abs.c.o
+			libm_math_s_floor.c.o
+			libm_math_sf_exp.c.o
+			libm_math_sf_log.c.o
+			libm_math_sf_ceil.c.o
+			libm_math_s_frexp.c.o
+			libm_common_s_round.c.o
+			libm_common_sf_fmax.c.o
+			libm_common_sf_fmin.c.o
+			libm_common_sf_round.c.o
+			libm_common_sf_isnan.c.o
+			libm_common_sf_fpclassify.c.o
+			libm_common_sf_issignaling.c.o
+			libm_common_math_errf_uflowf.c.o
+			libm_common_math_errf_oflowf.c.o
+			libm_common_math_errf_divzerof.c.o
+			libm_common_math_errf_invalidf.c.o
+		)
+	endif()
   set(MWW_LIBC_SHIM_DIR ${CMAKE_CURRENT_BINARY_DIR}/mww_libc_shim)
   set(MWW_LIBC_SHIM_ARCHIVE ${CMAKE_CURRENT_BINARY_DIR}/libmww_libc_shim.a)
   file(MAKE_DIRECTORY ${MWW_LIBC_SHIM_DIR})
-  add_custom_command(
-    OUTPUT ${MWW_LIBC_SHIM_ARCHIVE}
-    COMMAND ${CMAKE_AR} x ${MWW_TOOLCHAIN_LIBC_ARCHIVE} ${MWW_LIBC_SHIM_MEMBERS}
-    COMMAND ${CMAKE_AR} rcs ${MWW_LIBC_SHIM_ARCHIVE} ${MWW_LIBC_SHIM_MEMBERS}
-    WORKING_DIRECTORY ${MWW_LIBC_SHIM_DIR}
-    DEPENDS ${MWW_TOOLCHAIN_LIBC_ARCHIVE}
-    COMMENT "Extracting abs()/libm members TFLM needs from the toolchain libc.a"
-  )
+	if(MWW_LIBM_SHIM_MEMBERS)
+		add_custom_command(
+			OUTPUT ${MWW_LIBC_SHIM_ARCHIVE}
+			COMMAND ${CMAKE_AR} x ${MWW_TOOLCHAIN_LIBC_ARCHIVE} ${MWW_LIBC_SHIM_MEMBERS}
+			COMMAND ${CMAKE_AR} x ${MWW_TOOLCHAIN_LIBM_ARCHIVE} ${MWW_LIBM_SHIM_MEMBERS}
+			COMMAND ${PYTHON_EXECUTABLE} ${sof_top_dir}/scripts/mww_shim_flatten.py
+				${CMAKE_OBJCOPY} ${MWW_LIBC_SHIM_DIR}
+			COMMAND ${CMAKE_AR} rcs ${MWW_LIBC_SHIM_ARCHIVE} ${MWW_LIBC_SHIM_MEMBERS} ${MWW_LIBM_SHIM_MEMBERS}
+			WORKING_DIRECTORY ${MWW_LIBC_SHIM_DIR}
+			DEPENDS ${MWW_TOOLCHAIN_LIBC_ARCHIVE} ${MWW_TOOLCHAIN_LIBM_ARCHIVE}
+			COMMENT "Extracting abs()/libm members TFLM needs from the toolchain archives"
+		)
+	else()
+		add_custom_command(
+			OUTPUT ${MWW_LIBC_SHIM_ARCHIVE}
+			COMMAND ${CMAKE_AR} x ${MWW_TOOLCHAIN_LIBC_ARCHIVE} ${MWW_LIBC_SHIM_MEMBERS}
+			COMMAND ${PYTHON_EXECUTABLE} ${sof_top_dir}/scripts/mww_shim_flatten.py
+				${CMAKE_OBJCOPY} ${MWW_LIBC_SHIM_DIR}
+			COMMAND ${CMAKE_AR} rcs ${MWW_LIBC_SHIM_ARCHIVE} ${MWW_LIBC_SHIM_MEMBERS}
+			WORKING_DIRECTORY ${MWW_LIBC_SHIM_DIR}
+			DEPENDS ${MWW_TOOLCHAIN_LIBC_ARCHIVE}
+			COMMENT "Extracting abs()/libm members TFLM needs from the toolchain libc.a"
+		)
+	endif()
   add_custom_target(mww_libc_shim_gen DEPENDS ${MWW_LIBC_SHIM_ARCHIVE})
   add_library(mww_libc_shim STATIC IMPORTED GLOBAL)
   set_target_properties(mww_libc_shim PROPERTIES IMPORTED_LOCATION ${MWW_LIBC_SHIM_ARCHIVE})
