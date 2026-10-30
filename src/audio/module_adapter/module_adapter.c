@@ -20,9 +20,8 @@
 #include <sof/audio/pipeline.h>
 #include <sof/lib/vregion.h>
 #include <sof/schedule/dp_schedule.h>
-#include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/common.h>
-#include <sof/platform.h>
 #include <sof/ut.h>
 #include <sof/schedule/schedule.h>
 #if CONFIG_IPC_MAJOR_4
@@ -809,8 +808,8 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 
 static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 {
-	struct comp_buffer *sources[PLATFORM_MAX_STREAMS];
-	struct comp_buffer *sinks[PLATFORM_MAX_STREAMS];
+	struct comp_buffer *sources[CONFIG_PLATFORM_MAX_STREAMS];
+	struct comp_buffer *sinks[CONFIG_PLATFORM_MAX_STREAMS];
 	struct comp_buffer *sink;
 	struct comp_buffer *source;
 	struct processing_module *mod = comp_mod(dev);

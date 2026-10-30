@@ -16,7 +16,6 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/common.h>
-#include <sof/platform.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
 #include <sof/lib/uuid.h>
@@ -41,7 +40,7 @@ struct cir_buf_sink;
 #endif
 #define BASE_CFG_QUEUED_ID 0
 /** guard against invalid amount of streams defined */
-STATIC_ASSERT(MUX_MAX_STREAMS < PLATFORM_MAX_STREAMS,
+STATIC_ASSERT(MUX_MAX_STREAMS < CONFIG_PLATFORM_MAX_STREAMS,
 	      unsupported_amount_of_streams_for_mux);
 
 struct mux_copy_elem {

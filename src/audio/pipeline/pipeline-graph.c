@@ -10,7 +10,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
-#include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/lib/vregion.h>
 #include <rtos/interrupt.h>
 #include <rtos/symbol.h>

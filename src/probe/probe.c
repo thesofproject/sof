@@ -26,7 +26,6 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <ipc4/module.h>
 #include <sof/audio/component.h>
-#include <sof/audio/component_ext.h>
 #include <sof/ut.h>
 
 SOF_DEFINE_REG_UUID(probe4);

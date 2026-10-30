@@ -31,9 +31,6 @@ struct timer;
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
 
-/* Platform stream capabilities */
-#define PLATFORM_MAX_STREAMS	16
-
 /* IPC page data copy timeout */
 #define PLATFORM_IPC_DMA_TIMEOUT 2000
 

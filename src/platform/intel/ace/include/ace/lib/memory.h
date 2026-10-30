@@ -18,10 +18,6 @@
 
 #include <zephyr/cache.h>
 
-#define uncache_to_cache(address)       sys_cache_cached_ptr_get(address)
-#define cache_to_uncache(address)       sys_cache_uncached_ptr_get(address)
-#define is_uncached(address)            (!sys_cache_is_ptr_cached(address))
-
 #endif /* __ACE_LIB_MEMORY_H__ */
 
 #else

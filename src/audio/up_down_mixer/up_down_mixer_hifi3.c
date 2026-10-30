@@ -1917,6 +1917,8 @@ void upmix32bit_quatro_to_5_1(struct up_down_mixer_data *cd, const uint8_t * con
 
 #else /* !XCHAL_HAVE_HIFI3 */
 
+#include <rtos/panic.h>
+
 /* TODO: replace with generic ANSI C version */
 
 void upmix32bit_1_to_5_1(struct up_down_mixer_data *cd, const uint8_t * const in_data,

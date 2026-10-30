@@ -7,7 +7,6 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
-#include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/ipc/topology.h>
@@ -15,7 +14,6 @@
 #include <ipc/dai.h>
 #include <ipc4/gateway.h>
 #include <sof/schedule/ll_schedule.h>
-#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
 #include <rtos/alloc.h>
 #include <rtos/task.h>

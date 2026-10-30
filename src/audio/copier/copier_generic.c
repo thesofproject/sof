@@ -5,8 +5,7 @@
 // Author: Andrula Song <xiaoyuan.song@intel.com>
 
 #include <ipc4/base-config.h>
-#include <sof/audio/component_ext.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <module/module/base.h>
 #include <sof/common.h>
 #include <ipc/dai.h>

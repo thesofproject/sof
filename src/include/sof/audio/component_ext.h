@@ -20,7 +20,6 @@
 #include <ipc/topology.h>
 /* TODO: the cross-core helpers below send IDC messages, which is kernel only */
 #include <rtos/idc.h>
-#include <sof/lib/dai.h>
 #include <sof/schedule/schedule.h>
 
 /** \addtogroup component_infra_api
@@ -385,42 +384,6 @@ static inline int comp_reset(struct comp_dev *dev)
 
 	return 0;
 }
-
-#if CONFIG_IPC_MAJOR_3
-/**
- * \brief Configure DAI component.
- * \param[in,out] dev Component device.
- * \param[in] config IPC DAI configuration.
- * \param[in] spec_config Spec-specific configuration data.
- * \return 0 on success, negative error code on failure.
- */
-static inline int comp_dai_config(struct comp_dev *dev, struct ipc_config_dai *config,
-				  const void *spec_config)
-{
-	struct dai_data *dd = comp_get_drvdata(dev);
-
-	if (dev->drv->ops.dai_config)
-		return dev->drv->ops.dai_config(dd, dev, config, spec_config);
-
-	return 0;
-}
-#elif CONFIG_IPC_MAJOR_4
-/**
- * \brief Configure DAI component (IPC4).
- * \param[in,out] dd DAI driver data.
- * \param[in,out] dev Component device.
- * \param[in] config IPC DAI configuration.
- * \param[in] spec_config Spec-specific configuration data.
- * \return 0 on success, negative error code on failure.
- */
-static inline int comp_dai_config(struct dai_data *dd, struct comp_dev *dev,
-				  struct ipc_config_dai *config, const void *spec_config)
-{
-	return dai_config(dd, dev, config, spec_config);
-}
-#else
-#error Unknown IPC major version
-#endif
 
 /**
  * \brief Retrieve stream position from component.

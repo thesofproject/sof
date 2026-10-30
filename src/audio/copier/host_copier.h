@@ -14,7 +14,6 @@
 #ifndef __SOF_HOST_COPIER_H__
 #define __SOF_HOST_COPIER_H__
 
-#include <sof/audio/component_ext.h>
 #include <sof/audio/pcm_converter.h>
 #include <sof/lib/dma.h>
 #include <sof/audio/ipc-config.h>

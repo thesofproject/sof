@@ -4,9 +4,9 @@
  */
 
 #include <zephyr/drivers/uaol.h>
+#include <zephyr/logging/log.h>
 #include <rtos/string.h>
 #include <sof/tlv.h>
-#include <sof/audio/component_ext.h>
 #include <sof/audio/intel_uaol.h>
 
 LOG_MODULE_REGISTER(uaol, CONFIG_SOF_LOG_LEVEL);

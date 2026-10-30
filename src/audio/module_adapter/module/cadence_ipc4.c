@@ -9,7 +9,7 @@
 #include <sof/audio/cadence/mp3_enc/xa_mp3_enc_api.h>
 #include <sof/audio/cadence/aac_dec/xa_aac_dec_api.h>
 #include <sof/ipc/msg.h>
-#include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/ll_schedule.h>
 #include <ipc/compress_params.h>
 #include <ipc4/notification.h>
 #include <rtos/init.h>

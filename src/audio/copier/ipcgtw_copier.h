@@ -14,7 +14,6 @@
 #ifndef __SOF_IPCGTW_COPIER_H__
 #define __SOF_IPCGTW_COPIER_H__
 
-#include <sof/audio/component_ext.h>
 #include <ipc4/gateway.h>
 #include <sof/list.h>
 #include <ipc/stream.h>

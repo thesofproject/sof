@@ -10,10 +10,7 @@
 
 #include <rtos/cache.h>
 
-#define uncache_to_cache(address) address
-#define cache_to_uncache(address) address
 #define cache_to_uncache_init(address) address
-#define is_uncached(address) 0
 
 /* no address translation required */
 #define host_to_local(addr) (addr)

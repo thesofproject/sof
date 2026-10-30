@@ -8,6 +8,7 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/component_ext.h>
+#include <sof/lib/dai.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
@@ -15,13 +16,13 @@
 #include <rtos/interrupt.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/topology.h>
-#include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/ll_schedule.h>
 #include <rtos/interrupt.h>
 #include <rtos/timer.h>
 #include <rtos/cache.h>
 #include <rtos/init.h>
 #include <rtos/userspace_helper.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <rtos/string.h>

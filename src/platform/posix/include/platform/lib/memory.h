@@ -8,9 +8,6 @@
 #include <stdint.h>
 #include <ipc/header.h>
 
-#define uncache_to_cache(addr) (addr)
-#define cache_to_uncache(addr) (addr)
-
 /*
  * Mailbox base macros must yield byte-pointer arithmetic so that the
  * generic mailbox API in `sof/src/include/sof/lib/mailbox.h`
