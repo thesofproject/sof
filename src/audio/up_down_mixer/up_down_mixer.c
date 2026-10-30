@@ -13,6 +13,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/cache.h>
 #include <rtos/init.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -34,14 +35,16 @@ SOF_DEFINE_REG_UUID(up_down_mixer);
 
 int32_t custom_coeffs[UP_DOWN_MIX_COEFFS_LENGTH];
 
-static int set_downmix_coefficients(struct processing_module *mod,
-				    const struct ipc4_audio_format *format,
-				    const enum ipc4_channel_config out_channel_config,
-				    const downmix_coefficients downmix_coefficients)
+__cold static int set_downmix_coefficients(struct processing_module *mod,
+					   const struct ipc4_audio_format *format,
+					   const enum ipc4_channel_config out_channel_config,
+					   const downmix_coefficients downmix_coefficients)
 {
 	struct up_down_mixer_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	int ret;
+
+	assert_can_be_cold();
 
 	if (cd->downmix_coefficients) {
 		ret = memcpy_s(&custom_coeffs, sizeof(custom_coeffs), downmix_coefficients,
@@ -103,9 +106,11 @@ static int set_downmix_coefficients(struct processing_module *mod,
 	return 0;
 }
 
-static up_down_mixer_routine select_mix_out_stereo(struct comp_dev *dev,
-						   const struct ipc4_audio_format *format)
+__cold static up_down_mixer_routine select_mix_out_stereo(struct comp_dev *dev,
+							  const struct ipc4_audio_format *format)
 {
+	assert_can_be_cold();
+
 	if (format->depth == IPC4_DEPTH_16BIT) {
 		switch (format->ch_cfg) {
 		case IPC4_CHANNEL_CONFIG_MONO:
@@ -168,9 +173,11 @@ static up_down_mixer_routine select_mix_out_stereo(struct comp_dev *dev,
 	}
 }
 
-static up_down_mixer_routine select_mix_out_mono(struct comp_dev *dev,
-						 const struct ipc4_audio_format *format)
+__cold static up_down_mixer_routine select_mix_out_mono(struct comp_dev *dev,
+							const struct ipc4_audio_format *format)
 {
+	assert_can_be_cold();
+
 	if (format->depth == IPC4_DEPTH_16BIT) {
 		switch (format->ch_cfg) {
 		case IPC4_CHANNEL_CONFIG_STEREO:
@@ -219,9 +226,11 @@ static up_down_mixer_routine select_mix_out_mono(struct comp_dev *dev,
 	}
 }
 
-static up_down_mixer_routine select_mix_out_5_1(struct comp_dev *dev,
-						const struct ipc4_audio_format *format)
+__cold static up_down_mixer_routine select_mix_out_5_1(struct comp_dev *dev,
+						       const struct ipc4_audio_format *format)
 {
+	assert_can_be_cold();
+
 	if (format->depth == IPC4_DEPTH_16BIT) {
 		switch (format->ch_cfg) {
 		case IPC4_CHANNEL_CONFIG_MONO:
@@ -253,13 +262,15 @@ static up_down_mixer_routine select_mix_out_5_1(struct comp_dev *dev,
 	}
 }
 
-static int init_mix(struct processing_module *mod,
-		    const struct ipc4_audio_format *format,
-		    enum ipc4_channel_config out_channel_config,
-		    const downmix_coefficients downmix_coefficients)
+__cold static int init_mix(struct processing_module *mod,
+			   const struct ipc4_audio_format *format,
+			   enum ipc4_channel_config out_channel_config,
+			   const downmix_coefficients downmix_coefficients)
 {
 	struct up_down_mixer_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+
+	assert_can_be_cold();
 
 	if (!format)
 		return -EINVAL;
@@ -325,9 +336,11 @@ static int init_mix(struct processing_module *mod,
 	return set_downmix_coefficients(mod, format, out_channel_config, downmix_coefficients);
 }
 
-static int up_down_mixer_free(struct processing_module *mod)
+__cold static int up_down_mixer_free(struct processing_module *mod)
 {
 	struct up_down_mixer_data *cd = module_get_private_data(mod);
+
+	assert_can_be_cold();
 
 	if (!cd)
 		return 0;
@@ -339,7 +352,7 @@ static int up_down_mixer_free(struct processing_module *mod)
 	return 0;
 }
 
-static int up_down_mixer_init(struct processing_module *mod)
+__cold static int up_down_mixer_init(struct processing_module *mod)
 {
 	struct module_config *dst = &mod->priv.cfg;
 	const struct ipc4_up_down_mixer_module_cfg *up_down_mixer = dst->init_data;
@@ -347,6 +360,8 @@ static int up_down_mixer_init(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct up_down_mixer_data *cd;
 	int ret;
+
+	assert_can_be_cold();
 
 	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
