@@ -9,6 +9,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/debug/telemetry/telemetry.h>
+#include <sof/lib/cold.h>
 #include <sof/lib_manager.h>
 
 #include <ipc/trace.h>
@@ -82,12 +83,14 @@ struct system_tick_info *telemetry_get_systick_info_ptr(void)
 }
 #endif
 
-int telemetry_init(void)
+__cold int telemetry_init(void)
 {
 	/* systick_init */
 #ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
 	struct adsp_dw_desc slot_desc = { .type = ADSP_DW_SLOT_TELEMETRY, };
 	struct system_tick_info *systick_info;
+
+	assert_can_be_cold();
 
 	if (wnd_data)
 		return 0;
@@ -104,6 +107,8 @@ int telemetry_init(void)
 	struct telemetry_wnd_data *wnd_data = (struct telemetry_wnd_data *)ADSP_DW->slots[slot_num];
 	struct system_tick_info *systick_info =
 			(struct system_tick_info *)wnd_data->system_tick_info;
+
+	assert_can_be_cold();
 
 	window->descs[slot_num].type = ADSP_DW_SLOT_TELEMETRY;
 	window->descs[slot_num].resource_id = 0;

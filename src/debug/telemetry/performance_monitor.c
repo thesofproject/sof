@@ -127,11 +127,14 @@ static bool perf_bitmap_is_bit_clear(struct perf_bitmap * const bitmap, size_t b
 	return !val;
 }
 
-struct perf_data_item_comp *perf_data_getnext(void)
+__cold struct perf_data_item_comp *perf_data_getnext(void)
 {
 	size_t idx;
-	int ret = perf_bitmap_alloc(&performance_data_bitmap, &idx);
+	int ret;
 
+	assert_can_be_cold();
+
+	ret = perf_bitmap_alloc(&performance_data_bitmap, &idx);
 	if (ret < 0)
 		return NULL;
 	/* ref. FW did not set the bits, but here we do it to not have to use
@@ -168,18 +171,22 @@ void perf_data_item_comp_reset(struct perf_data_item_comp *perf)
 	perf->item.avg_kcps = 0;
 }
 
-void perf_data_item_comp_init(struct perf_data_item_comp *perf, uint32_t resource_id,
-			      uint32_t power_mode)
+__cold void perf_data_item_comp_init(struct perf_data_item_comp *perf, uint32_t resource_id,
+				     uint32_t power_mode)
 {
+	assert_can_be_cold();
+
 	perf_data_item_comp_reset(perf);
 	perf->item.resource_id = resource_id;
 	perf->item.is_removed = false;
 	perf->item.power_mode = power_mode;
 }
 
-int free_performance_data(struct perf_data_item_comp *item)
+__cold int free_performance_data(struct perf_data_item_comp *item)
 {
 	int ret;
+
+	assert_can_be_cold();
 
 	if (item) {
 		item->item.is_removed = true;
@@ -205,8 +212,10 @@ void perf_meas_set_state(enum ipc4_perf_measurements_state_set state)
 	perf_measurements_state = state;
 }
 
-int get_performance_data(struct global_perf_data * const global_perf_data)
+__cold int get_performance_data(struct global_perf_data * const global_perf_data)
 {
+	assert_can_be_cold();
+
 	if (!global_perf_data) {
 		tr_err(&ipc_tr, "IPC data is NULL");
 		return -EINVAL;
@@ -255,8 +264,11 @@ int get_performance_data(struct global_perf_data * const global_perf_data)
 	return 0;
 }
 
-int get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data)
+__cold int
+get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data)
 {
+	assert_can_be_cold();
+
 	if (!ext_global_perf_data) {
 		tr_err(&ipc_tr, "IPC data is NULL");
 		return -EINVAL;
@@ -322,8 +334,10 @@ int get_extended_performance_data(struct extended_global_perf_data * const ext_g
 	return 0;
 }
 
-void disable_performance_counters(void)
+__cold void disable_performance_counters(void)
 {
+	assert_can_be_cold();
+
 	for (int idx = 0; idx < perf_bitmap_get_size(&performance_data_bitmap); ++idx) {
 		if (perf_bitmap_is_bit_clear(&performance_data_bitmap, idx))
 			continue;
@@ -332,12 +346,14 @@ void disable_performance_counters(void)
 	}
 }
 
-int enable_performance_counters(void)
+__cold int enable_performance_counters(void)
 {
 	struct sof_man_module *man_module;
 	struct comp_dev *dev;
 	uint32_t comp_id;
 	const struct sof_man_fw_desc *desc;
+
+	assert_can_be_cold();
 
 	if (perf_measurements_state != IPC4_PERF_MEASUREMENTS_DISABLED)
 		return -EINVAL;
@@ -374,8 +390,10 @@ int enable_performance_counters(void)
 	return 0;
 }
 
-int reset_performance_counters(void)
+__cold int reset_performance_counters(void)
 {
+	assert_can_be_cold();
+
 	if (perf_measurements_state == IPC4_PERF_MEASUREMENTS_DISABLED)
 		return -EINVAL;
 
@@ -405,8 +423,10 @@ int reset_performance_counters(void)
 	return 0;
 }
 
-int performance_monitor_init(void)
+__cold int performance_monitor_init(void)
 {
+	assert_can_be_cold();
+
 	/* init global performance measurement */
 	perf_data = (struct perf_data_item_comp *)ADSP_PMW;
 	perf_bitmap_init(&performance_data_bitmap, &performance_data_bit_array,
@@ -476,12 +496,14 @@ out_unlock:
 	return NULL;
 }
 
-int io_perf_monitor_release_slot(struct io_perf_data_item *item)
+__cold int io_perf_monitor_release_slot(struct io_perf_data_item *item)
 {
 	struct io_perf_monitor_ctx *self = &perf_monitor_ctx;
 	int idx;
 	int ret;
 	k_spinlock_key_t key;
+
+	assert_can_be_cold();
 
 	if (!item) {
 		tr_err(&ipc_tr, "perf_data_item is null");
@@ -500,9 +522,11 @@ int io_perf_monitor_release_slot(struct io_perf_data_item *item)
 	return ret;
 }
 
-int
+__cold int
 io_perf_monitor_get_performance_data(struct io_global_perf_data *io_global_perf_data)
 {
+	assert_can_be_cold();
+
 	if (!io_global_perf_data)
 		return 0;
 
@@ -561,11 +585,15 @@ io_perf_monitor_pause(struct io_perf_monitor_ctx *self)
 	return 0;
 }
 
-int io_perf_monitor_set_state(enum ipc4_perf_measurements_state_set state)
+__cold int io_perf_monitor_set_state(enum ipc4_perf_measurements_state_set state)
 {
 	struct io_perf_monitor_ctx *self = &perf_monitor_ctx;
 	int ret = 0;
-	k_spinlock_key_t key = k_spin_lock(&self->lock);
+	k_spinlock_key_t key;
+
+	assert_can_be_cold();
+
+	key = k_spin_lock(&self->lock);
 
 	switch (state) {
 	case IPC4_PERF_MEASUREMENTS_DISABLED:
