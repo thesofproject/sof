@@ -48,7 +48,7 @@ LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				    const struct comp_ipc_config *config, const void *spec)
 {
-	return module_adapter_new_ext(drv, config, spec, NULL, NULL, NULL);
+	return module_adapter_new_ext(drv, config, spec, NULL, NULL);
 }
 
 static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
@@ -237,8 +237,7 @@ static void module_adapter_mem_free(struct processing_module *mod)
 struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 					const struct comp_ipc_config *config,
 					const void *const_spec, void *mod_priv,
-					struct userspace_context *user_ctx,
-					const struct module_interface *ops)
+					struct userspace_context *user_ctx)
 {
 	int ret;
 	struct module_config *dst;

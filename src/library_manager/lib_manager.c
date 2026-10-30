@@ -672,12 +672,12 @@ static void lib_manager_mod_free_priv(const struct comp_driver *drv,
 int lib_manager_mod_create_priv(const struct comp_driver *drv,
 				const struct comp_ipc_config *config,
 				const void *spec, void **adapter_priv,
-				struct userspace_context **userspace,
-				const struct module_interface **ops)
+				struct userspace_context **userspace)
 {
 	const struct sof_man_fw_desc *const desc = lib_manager_get_library_manifest(config->id);
 	const struct ipc_config_process *args = (const struct ipc_config_process *)spec;
 	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(config->id);
+	const struct module_interface *ops = NULL;
 	const struct sof_man_module *mod;
 	system_agent_start_fn agent;
 	const void **agent_iface;
@@ -716,17 +716,17 @@ int lib_manager_mod_create_priv(const struct comp_driver *drv,
 	switch (lib_manager_get_module_type(desc, mod)) {
 	case MOD_TYPE_LLEXT:
 		agent = NULL;
-		*ops = (const struct module_interface *)module_entry_point;
+		ops = (const struct module_interface *)module_entry_point;
 		agent_iface = NULL;
 		break;
 	case MOD_TYPE_LMDK:
 		agent = &native_system_agent_start;
-		agent_iface = (const void **)ops;
+		agent_iface = (const void **)&ops;
 		break;
 #if CONFIG_INTEL_MODULES
 	case MOD_TYPE_IADK:
 		agent = &system_agent_start;
-		*ops = &processing_module_adapter_interface;
+		ops = &processing_module_adapter_interface;
 		agent_iface = (const void **)adapter_priv;
 		break;
 #endif
@@ -739,12 +739,12 @@ int lib_manager_mod_create_priv(const struct comp_driver *drv,
 	if (agent || IS_ENABLED(CONFIG_SOF_USERSPACE_PROXY)) {
 		/* At this point module resources are allocated and it is moved to L2 memory. */
 		ret = lib_manager_start_agent(drv, config, mod, args, module_entry_point, agent,
-					      agent_iface, userspace, ops);
+					      agent_iface, userspace, &ops);
 		if (ret)
 			goto err;
 	}
 
-	ret = comp_set_adapter_ops(drv, *ops);
+	ret = comp_set_adapter_ops(drv, ops);
 	if (ret < 0)
 		goto err;
 
@@ -785,20 +785,19 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 						  const void *spec)
 {
 	struct userspace_context *userspace = NULL;
-	const struct module_interface *ops = NULL;
 	void *adapter_priv = NULL;
 	struct comp_dev *dev;
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP ||
 	    !IS_ENABLED(CONFIG_SOF_USERSPACE_LL)) {
 		int ret = lib_manager_mod_create_priv(drv, config, spec, &adapter_priv,
-						      &userspace, &ops);
+						      &userspace);
 
 		if (ret < 0)
 			return NULL;
 	}
 
-	dev = module_adapter_new_ext(drv, config, spec, adapter_priv, userspace, ops);
+	dev = module_adapter_new_ext(drv, config, spec, adapter_priv, userspace);
 	if (!dev)
 		goto err;
 

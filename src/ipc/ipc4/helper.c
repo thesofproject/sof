@@ -269,9 +269,8 @@ int ipc4_user_module_load(const struct comp_driver *drv,
 #endif
 
 	struct userspace_context *userspace = NULL;
-	const struct module_interface *ops = NULL;
 
-	return lib_manager_mod_create_priv(drv, &ipc_config, &spec, NULL, &userspace, &ops);
+	return lib_manager_mod_create_priv(drv, &ipc_config, &spec, NULL, &userspace);
 }
 
 /**
