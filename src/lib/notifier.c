@@ -173,7 +173,10 @@ void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 				dcache_writeback_region((__sparse_force void __sparse_cache *)
 							notify_data->data, data_size);
 
-				idc_send_msg(&notify_msg, IDC_NON_BLOCKING);
+				/* Wait for completion: back-to-back events to the same core would
+				 * otherwise reuse a queued IDC work item and overwrite notify_data.
+				 */
+				idc_send_msg(&notify_msg, IDC_BLOCKING);
 			}
 		}
 	}
