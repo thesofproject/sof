@@ -15,6 +15,7 @@
 #include <sof/common.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/vregion.h>
 #include <sof/list.h>
 #include <sof/schedule/dp_schedule.h>
@@ -643,9 +644,12 @@ static inline struct list_item *buffer_comp_list(struct comp_buffer *buffer,
  * on an already-linked node creates a self-loop), so callers must propagate
  * the error.
  */
-int buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
+__cold int buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
 {
 	struct list_item *list = buffer_comp_list(buffer, dir);
+
+	assert_can_be_cold();
+
 	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 	if (!list_is_empty(list))
 		return -EALREADY;
@@ -658,9 +662,12 @@ int buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
  * userspace LL builds)! See buffer_attach() above
  * for details
  */
-void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir)
+__cold void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir)
 {
 	struct list_item *buf_list = buffer_comp_list(buffer, dir);
+
+	assert_can_be_cold();
+
 	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 	list_item_del(buf_list);
 }
