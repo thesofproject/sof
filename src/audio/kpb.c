@@ -27,6 +27,7 @@
 #include <rtos/clk.h>
 #include <rtos/init.h>
 #include <rtos/symbol.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -249,10 +250,12 @@ static void kpb_lock_init(struct comp_data *kpb)
  * \param[in] ipc_config - ipc config pointer.
  * \return: none.
  */
-static int kpb_set_verify_ipc_params(struct comp_dev *dev,
+__cold static int kpb_set_verify_ipc_params(struct comp_dev *dev,
 				     const struct ipc4_kpb_module_cfg *ipc_config)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 	kpb->config.channels = ipc_config->base_cfg.audio_fmt.channels_count;
 	kpb->config.sampling_freq =
@@ -348,12 +351,14 @@ static int kpb_get_attribute(struct comp_dev *dev,
  * \param[in] bind_data - bind/unbind data.
  * \return: none.
  */
-static int kpb_bind(struct comp_dev *dev, const struct bind_info *bind_data)
+__cold static int kpb_bind(struct comp_dev *dev, const struct bind_info *bind_data)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	const struct ipc4_module_bind_unbind *bu;
 	int buf_id;
 	int ret = 0;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "entry");
 
@@ -395,11 +400,13 @@ static int kpb_bind(struct comp_dev *dev, const struct bind_info *bind_data)
  * \param[in] data - ipc4 bind/unbind data.
  * \return: none.
  */
-static int kpb_unbind(struct comp_dev *dev, const struct bind_info *unbind_data)
+__cold static int kpb_unbind(struct comp_dev *dev, const struct bind_info *unbind_data)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	const struct ipc4_module_bind_unbind *bu;
 	int buf_id;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "entry");
 
@@ -423,11 +430,13 @@ static int kpb_unbind(struct comp_dev *dev, const struct bind_info *unbind_data)
  * \param[in] ipc_config - ipc config pointer type.
  * \return: none.
  */
-static int kpb_set_verify_ipc_params(struct comp_dev *dev,
+__cold static int kpb_set_verify_ipc_params(struct comp_dev *dev,
 				     const struct ipc_config_process *ipc_config)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	int ret;
+
+	assert_can_be_cold();
 
 	ret = memcpy_s(&kpb->config, sizeof(kpb->config), ipc_config->data,
 		       ipc_config->size);
@@ -509,7 +518,7 @@ void z_vrfy_kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli)
  *
  * \return: a pointer to newly created KPB component.
  */
-static struct comp_dev *kpb_new(const struct comp_driver *drv,
+__cold static struct comp_dev *kpb_new(const struct comp_driver *drv,
 				const struct comp_ipc_config *config,
 				const void *spec)
 {
@@ -530,6 +539,8 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	struct comp_data *kpb;
 	int ret;
+
+	assert_can_be_cold();
 
 	comp_cl_info(&comp_kpb, "entry");
 
@@ -750,9 +761,11 @@ static void kpb_free_history_buffer(struct history_buffer *buff)
  *
  * \return none.
  */
-static void kpb_free(struct comp_dev *dev)
+__cold static void kpb_free(struct comp_dev *dev)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 	comp_info(dev, "entry");
 
@@ -2539,7 +2552,7 @@ static inline void kpb_change_state(struct comp_data *kpb,
 	kpb->state_log = (kpb->state_log << 4) | state;
 }
 
-static int kpb_set_micselect(struct comp_dev *dev, const void *data,
+__cold static int kpb_set_micselect(struct comp_dev *dev, const void *data,
 			     int max_data_size)
 {
 	const struct kpb_micselector_config *mic_sel = data;
@@ -2547,6 +2560,8 @@ static int kpb_set_micselect(struct comp_dev *dev, const void *data,
 	size_t mic_cnt;
 	uint8_t valid_mask;
 	size_t i;
+
+	assert_can_be_cold();
 
 	if (max_data_size < (int)sizeof(*mic_sel)) {
 		comp_err(dev, "micselector payload too small: got %d, need %d",
@@ -2637,7 +2652,7 @@ static inline int alloc_fmt_module_list_item(struct kpb_fmt_dev_list *fmt_device
 	return -ENOMEM;
 }
 
-static int prepare_fmt_modules_list(struct comp_dev *kpb_dev,
+__cold static int prepare_fmt_modules_list(struct comp_dev *kpb_dev,
 				    uint32_t outpin_idx,
 				    const struct kpb_task_params *modules_to_prepare)
 {
@@ -2645,6 +2660,8 @@ static int prepare_fmt_modules_list(struct comp_dev *kpb_dev,
 	struct comp_dev *dev;
 	struct kpb_fmt_dev_list *fmt_device_list =
 		&((struct comp_data *)comp_get_drvdata(kpb_dev))->fmt_device_list;
+
+	assert_can_be_cold();
 
 	if (outpin_idx >= KPB_MAX_SINK_CNT)
 		return -EINVAL;
@@ -2731,9 +2748,11 @@ static int register_modules_list(struct fast_mode_task *fmt,
 	return -EINVAL;
 }
 
-static int configure_fast_mode_task(struct comp_dev *kpb_dev, const struct kpb_task_params *cfg,
-				    size_t pin)
+__cold static int configure_fast_mode_task(struct comp_dev *kpb_dev,
+					   const struct kpb_task_params *cfg, size_t pin)
 {
+	assert_can_be_cold();
+
 	if (pin >= KPB_MAX_SINK_CNT || pin == REALTIME_PIN_ID || !cfg)
 		return -EINVAL;
 
@@ -2760,7 +2779,7 @@ static int configure_fast_mode_task(struct comp_dev *kpb_dev, const struct kpb_t
 }
 #endif
 
-static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
+__cold static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
 				bool first_block,
 				bool last_block,
 				uint32_t data_offset,
@@ -2768,6 +2787,8 @@ static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
 {
 	/* We can use extended param id for both extended and standard param id */
 	union ipc4_extended_param_id extended_param_id;
+
+	assert_can_be_cold();
 
 	comp_info(dev, "entry");
 
