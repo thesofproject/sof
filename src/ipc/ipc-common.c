@@ -233,6 +233,19 @@ out:
 
 #ifdef __ZEPHYR__
 static K_THREAD_STACK_DEFINE(ipc_send_wq_stack, CONFIG_STACK_SIZE_IPC_TX);
+
+/*
+ * Kernel-only: these must not live in struct ipc, which user threads can
+ * write with CONFIG_SOF_USERSPACE_LL. The work queue embeds the k_thread of
+ * a supervisor thread and the work item holds the handler it calls.
+ */
+static struct k_work_q ipc_send_wq;
+static struct k_work_delayable ipc_send_work;
+
+struct k_work_q *ipc_send_wq_get(void)
+{
+	return &ipc_send_wq;
+}
 #endif
 
 static void schedule_ipc_worker(void)
@@ -242,9 +255,7 @@ static void schedule_ipc_worker(void)
 	 * task_main_primary_core()
 	 */
 #ifdef __ZEPHYR__
-	struct ipc *ipc = ipc_get();
-
-	k_work_schedule_for_queue(&ipc->ipc_send_wq, &ipc->z_delayed_work, K_USEC(IPC_PERIOD_USEC));
+	k_work_schedule_for_queue(&ipc_send_wq, &ipc_send_work, K_USEC(IPC_PERIOD_USEC));
 #endif
 }
 
@@ -418,6 +429,17 @@ SOF_DEFINE_REG_UUID(sec_core_init);
 static K_THREAD_STACK_ARRAY_DEFINE(ipc_user_stack, CONFIG_CORE_COUNT,
 				   CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE);
 
+/*
+ * Kernel-only copies of the IPC user thread state. struct ipc_user and the
+ * ipc->ipc_user_pdata pointer are both writable by user threads, so kernel
+ * code must use these instead of reading kernel object pointers from there.
+ */
+static struct ipc_user *ipc_user_kptr;
+static struct k_sem *ipc_user_ksem;
+static struct k_event *ipc_user_kevent[CONFIG_CORE_COUNT];
+static struct k_thread *ipc_user_kthread[CONFIG_CORE_COUNT];
+static bool ipc_user_kinit_needed[CONFIG_CORE_COUNT];
+
 /**
  * @brief Forward an IPC command to the user-space thread.
  *
@@ -433,7 +455,7 @@ static K_THREAD_STACK_ARRAY_DEFINE(ipc_user_stack, CONFIG_CORE_COUNT,
 int ipc_user_forward_cmd(uint32_t primary, uint32_t extension, unsigned int core)
 {
 	struct ipc *ipc = ipc_get();
-	struct ipc_user *pdata = ipc->ipc_user_pdata;
+	struct ipc_user *pdata = ipc_user_kptr;
 	k_spinlock_key_t key;
 	int ret;
 
@@ -453,10 +475,10 @@ int ipc_user_forward_cmd(uint32_t primary, uint32_t extension, unsigned int core
 	k_spin_unlock(&ipc->lock, key);
 
 	/* Wake the user thread */
-	k_event_set(pdata->event[core], IPC_USER_EVENT_CMD);
+	k_event_set(ipc_user_kevent[core], IPC_USER_EVENT_CMD);
 
 	/* Wait for user thread to complete */
-	ret = k_sem_take(pdata->sem, K_MSEC(100));
+	ret = k_sem_take(ipc_user_ksem, K_MSEC(100));
 	if (ret) {
 		LOG_ERR("IPC user: sem error %d\n", ret);
 		/* fall through to complete the cmd */
@@ -522,65 +544,84 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 __cold static int ipc_user_init_thread(struct ipc_user *ipc_user, unsigned int core)
 {
 	char thread_name[] = "ll_user0";
+	struct k_thread *thread;
+	struct k_event *event;
 	int ret;
 
 	assert_can_be_cold();
 
-	/* Allocate kernel objects for the user-space thread */
-	ipc_user->event[core] = k_object_alloc(K_OBJ_EVENT);
-	if (!ipc_user->event[core]) {
+	/*
+	 * Build the objects in locals and publish them to struct ipc_user only
+	 * at the end. When a secondary core is brought up, user threads on
+	 * other cores are already running and can overwrite struct ipc_user,
+	 * so its fields must not be read back here.
+	 */
+	event = k_object_alloc(K_OBJ_EVENT);
+	if (!event) {
 		LOG_ERR("user IPC event alloc failed");
 		return -ENOMEM;
 	}
-	k_event_init(ipc_user->event[core]);
+	k_event_init(event);
 
-	ipc_user->thread[core] = k_object_alloc(K_OBJ_THREAD);
-	if (!ipc_user->thread[core]) {
+	thread = k_object_alloc(K_OBJ_THREAD);
+	if (!thread) {
 		LOG_ERR("user IPC thread alloc failed");
 		ret = -ENOMEM;
 		goto e_event;
 	}
 
-	k_thread_create(ipc_user->thread[core], ipc_user_stack[core],
+	k_thread_create(thread, ipc_user_stack[core],
 			CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE,
 			ipc_user_thread_fn, ipc_user, UINT_TO_POINTER(core), NULL,
 			-1, K_USER, K_FOREVER);
 
-	k_thread_cpu_pin(ipc_user->thread[core], core);
+	k_thread_cpu_pin(thread, core);
 	thread_name[sizeof(thread_name) - 2] = '0' + core;
-	k_thread_name_set(ipc_user->thread[core], thread_name);
+	k_thread_name_set(thread, thread_name);
 
 	/*
 	 * Each userspace IPC thread must be able to wait on its private event
 	 * and signal completion on the primary core semaphore
 	 */
-	k_thread_access_grant(ipc_user->thread[core], ipc_user->sem, ipc_user->event[core]);
-	user_grant_dai_access_all(ipc_user->thread[core]);
-	user_grant_dma_access_all(ipc_user->thread[core]);
-	k_mem_domain_add_thread(zephyr_ll_mem_domain(), ipc_user->thread[core]);
-	user_ll_grant_access(ipc_user->thread[core], core);
-	pipeline_posn_grant_access(ipc_user->thread[core]);
+	k_thread_access_grant(thread, ipc_user_ksem, event);
+	user_grant_dai_access_all(thread);
+	user_grant_dma_access_all(thread);
+	k_mem_domain_add_thread(zephyr_ll_mem_domain(), thread);
+	user_ll_grant_access(thread, core);
+	pipeline_posn_grant_access(thread);
+
+	ipc_user_kevent[core] = event;
+	ipc_user_kthread[core] = thread;
+
+	/* for ipc_user_thread_fn() and ipc_thread_user() in user context */
+	ipc_user->event[core] = event;
+	ipc_user->thread[core] = thread;
 
 	return 0;
 
 e_event:
-	k_object_free(ipc_user->event[core]);
+	k_object_free(event);
 
 	return ret;
 }
 
 __cold int ipc_user_init_secondary(unsigned int core)
 {
-	struct ipc *ipc = ipc_get();
-	struct ipc_user *ipc_user = ipc->ipc_user_pdata;
-	int ret = ipc_user_init_thread(ipc_user, core);
+	struct ipc_user *ipc_user = ipc_user_kptr;
+	struct k_thread *audio_thread;
+	int ret;
+
+	if (core >= CONFIG_CORE_COUNT)
+		return -EINVAL;
+
+	ret = ipc_user_init_thread(ipc_user, core);
 
 	if (ret < 0)
 		return ret;
 
 	assert_can_be_cold();
 
-	k_thread_start(ipc_user->thread[core]);
+	k_thread_start(ipc_user_kthread[core]);
 
 	struct task *task = zephyr_ll_task_alloc();
 
@@ -592,28 +633,52 @@ __cold int ipc_user_init_secondary(unsigned int core)
 	schedule_task_init_ll(task, SOF_UUID(sec_core_init_uuid), SOF_SCHEDULE_LL_TIMER,
 			      0, NULL, NULL, core, 0);
 
-	ipc_user->audio_thread[core] = scheduler_init_context(task);
-	if (!ipc_user->audio_thread[core]) {
+	audio_thread = scheduler_init_context(task);
+	if (!audio_thread) {
 		LOG_ERR("user LL thread init failed");
 		k_panic();
 	}
 
-	k_thread_access_grant(ipc_user->thread[core], ipc_user->audio_thread[core]);
+	k_thread_access_grant(ipc_user_kthread[core], audio_thread);
+	ipc_user->audio_thread[core] = audio_thread;
+
 	return 0;
 }
 
 struct k_thread *ipc_thread_user(unsigned int core)
 {
-	struct ipc *ipc = ipc_get();
-	struct ipc_user *ipc_user = ipc->ipc_user_pdata;
+	if (core >= CONFIG_CORE_COUNT)
+		return NULL;
 
-	return ipc_user->thread[core];
+	/* user threads can not read the kernel-only copy */
+	if (k_is_user_context())
+		return ipc_get()->ipc_user_pdata->thread[core];
+
+	return ipc_user_kthread[core];
+}
+
+struct ipc_user *ipc_user_get(void)
+{
+	return ipc_user_kptr;
+}
+
+void ipc_user_wait_core_init(unsigned int core)
+{
+	if (core >= CONFIG_CORE_COUNT)
+		return;
+
+	if (ipc_user_kinit_needed[core]) {
+		/* wait for IPC thread (ipc_user_thread_fn()) */
+		k_sem_take(ipc_user_ksem, K_FOREVER);
+		ipc_user_kinit_needed[core] = false;
+	}
 }
 
 /* Primary core only */
 __cold static void ipc_user_init(void)
 {
 	struct ipc *ipc = ipc_get();
+	struct k_thread *audio_thread;
 	struct ipc_user *ipc_user = sof_heap_alloc(sof_sys_user_heap_get(),
 						   SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 						   sizeof(*ipc_user), 0);
@@ -628,14 +693,16 @@ __cold static void ipc_user_init(void)
 
 	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
 		if (core != PLATFORM_PRIMARY_CORE_ID)
-			ipc_user->init_needed[core] = true;
+			ipc_user_kinit_needed[core] = true;
 	}
 
-	ipc_user->sem = k_object_alloc(K_OBJ_SEM);
-	if (!ipc_user->sem) {
+	ipc_user_ksem = k_object_alloc(K_OBJ_SEM);
+	if (!ipc_user_ksem) {
 		LOG_ERR("user IPC sem alloc failed");
 		k_panic();
 	}
+	ipc_user_kptr = ipc_user;
+	ipc_user->sem = ipc_user_ksem;
 
 	ret = k_mem_domain_add_partition(zephyr_ll_mem_domain(), &ipc_context_part);
 	if (ret < 0)
@@ -668,7 +735,7 @@ __cold static void ipc_user_init(void)
 	}
 #endif /* CONFIG_COLD_STORE_EXECUTE_DRAM */
 
-	k_sem_init(ipc_user->sem, 0, 1);
+	k_sem_init(ipc_user_ksem, 0, 1);
 
 	ret = ipc_user_init_thread(ipc_user, PLATFORM_PRIMARY_CORE_ID);
 	if (ret < 0) {
@@ -677,7 +744,7 @@ __cold static void ipc_user_init(void)
 	}
 
 	ret = user_access_to_mailbox(zephyr_ll_mem_domain(),
-				     ipc_user->thread[PLATFORM_PRIMARY_CORE_ID]);
+				     ipc_user_kthread[PLATFORM_PRIMARY_CORE_ID]);
 	if (ret < 0) {
 		LOG_ERR("ipc user: mailbox access grant failed: %d", ret);
 		sof_panic(SOF_IPC_PANIC_IPC);
@@ -695,8 +762,8 @@ __cold static void ipc_user_init(void)
 
 	schedule_task_init_ll(task, SOF_UUID(ipc_uuid), SOF_SCHEDULE_LL_TIMER,
 			      0, NULL, NULL, PLATFORM_PRIMARY_CORE_ID, 0);
-	ipc_user->audio_thread[PLATFORM_PRIMARY_CORE_ID] = scheduler_init_context(task);
-	if (!ipc_user->audio_thread[PLATFORM_PRIMARY_CORE_ID]) {
+	audio_thread = scheduler_init_context(task);
+	if (!audio_thread) {
 		LOG_ERR("user LL thread init failed");
 		k_panic();
 	}
@@ -705,13 +772,13 @@ __cold static void ipc_user_init(void)
 	 * Needed so user-space dai_common_new() can call
 	 * k_thread_access_grant(audio_thread, dai_mutex) from user context.
 	 */
-	k_thread_access_grant(ipc_user->thread[PLATFORM_PRIMARY_CORE_ID],
-			      ipc_user->audio_thread[PLATFORM_PRIMARY_CORE_ID]);
+	k_thread_access_grant(ipc_user_kthread[PLATFORM_PRIMARY_CORE_ID], audio_thread);
+	ipc_user->audio_thread[PLATFORM_PRIMARY_CORE_ID] = audio_thread;
 
-	k_thread_start(ipc_user->thread[PLATFORM_PRIMARY_CORE_ID]);
+	k_thread_start(ipc_user_kthread[PLATFORM_PRIMARY_CORE_ID]);
 
 	/* Wait for user thread startup — consumes the initial k_sem_give from thread */
-	k_sem_take(ipc_user->sem, K_FOREVER);
+	k_sem_take(ipc_user_ksem, K_FOREVER);
 }
 #else /* CONFIG_SOF_USERSPACE_LL */
 static void ipc_user_init(void)
@@ -785,11 +852,11 @@ __cold int ipc_init(struct sof *sof)
 #ifdef __ZEPHYR__
 	k_tid_t thread;
 
-	k_work_queue_init(&ipc->ipc_send_wq);
-	k_work_queue_start(&ipc->ipc_send_wq, ipc_send_wq_stack,
+	k_work_queue_init(&ipc_send_wq);
+	k_work_queue_start(&ipc_send_wq, ipc_send_wq_stack,
 			   K_THREAD_STACK_SIZEOF(ipc_send_wq_stack), 1, NULL);
 
-	thread = k_work_queue_thread_get(&ipc->ipc_send_wq);
+	thread = k_work_queue_thread_get(&ipc_send_wq);
 
 	k_thread_suspend(thread);
 
@@ -800,7 +867,7 @@ __cold int ipc_init(struct sof *sof)
 
 	k_thread_resume(thread);
 
-	k_work_init_delayable(&ipc->z_delayed_work, ipc_work_handler);
+	k_work_init_delayable(&ipc_send_work, ipc_work_handler);
 #endif /* __ZEPHYR__ */
 
 	ipc_user_init();

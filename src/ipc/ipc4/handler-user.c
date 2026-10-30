@@ -1610,7 +1610,7 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 				}
 			}
 
-			ipc_get()->ipc_user_pdata->init_drv = drv;
+			ipc_user_get()->init_drv = drv;
 			ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat,
 						   mi->extension.r.core_id);
 #endif /* CONFIG_SOF_USERSPACE_LL */
@@ -1629,8 +1629,7 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat,
 					   ipc4_user_target_core_module(ipc4));
 		if (!ret) {
-			struct ipc *ipc = ipc_get();
-			struct ipc_user *pdata = ipc->ipc_user_pdata;
+			struct ipc_user *pdata = ipc_user_get();
 
 			msg_reply->extension = pdata->reply_ext;
 		}
@@ -1658,8 +1657,7 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 			ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat,
 						   ipc4_user_target_core_module(ipc4));
 			if (!ret) {
-				struct ipc *ipc = ipc_get();
-				struct ipc_user *pdata = ipc->ipc_user_pdata;
+				struct ipc_user *pdata = ipc_user_get();
 
 				msg_reply->extension = pdata->reply_ext;
 				msg_reply->tx_size = pdata->reply_tx_size;
