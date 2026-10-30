@@ -12,6 +12,7 @@
 #include <sof/common.h>
 #include <sof/ipc/msg.h>
 #include <rtos/init.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
@@ -76,13 +77,15 @@ bool mux_mix_check(struct sof_mux_config *cfg)
 	return false;
 }
 
-static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_type type)
+__cold static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_type type)
 {
 	struct module_data *module_data = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	struct module_config *cfg = &module_data->cfg;
 	struct comp_data *cd;
 	int ret;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "mux_init()");
 
@@ -125,16 +128,20 @@ err:
 	return ret;
 }
 
-static int mux_init(struct processing_module *mod)
+__cold static int mux_init(struct processing_module *mod)
 {
+	assert_can_be_cold();
+
 	mod->max_sources = MUX_MAX_STREAMS;
 
 	return mux_demux_common_init(mod, SOF_COMP_MUX);
 }
 
-static int mux_free(struct processing_module *mod)
+__cold static int mux_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
+
+	assert_can_be_cold();
 
 	comp_dbg(mod->dev, "entry");
 
@@ -183,8 +190,10 @@ static void mux_prepare_active_look_up(struct comp_data *cd,
 }
 
 #if !CONFIG_COMP_MUX_MODULE
-static int demux_init(struct processing_module *mod)
+__cold static int demux_init(struct processing_module *mod)
 {
+	assert_can_be_cold();
+
 	mod->max_sinks = MUX_MAX_STREAMS;
 
 	return mux_demux_common_init(mod, SOF_COMP_DEMUX);
@@ -484,24 +493,28 @@ static int mux_prepare(struct processing_module *mod,
 	return 0;
 }
 
-static int mux_get_config(struct processing_module *mod,
-			  uint32_t config_id, uint32_t *data_offset_size,
-			  uint8_t *fragment, size_t fragment_size)
+__cold static int mux_get_config(struct processing_module *mod,
+				 uint32_t config_id, uint32_t *data_offset_size,
+				 uint8_t *fragment, size_t fragment_size)
 {
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 	struct comp_data *cd = module_get_private_data(mod);
+
+	assert_can_be_cold();
 
 	comp_dbg(mod->dev, "entry");
 
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
-static int mux_set_config(struct processing_module *mod, uint32_t config_id,
-			  enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-			  const uint8_t *fragment, size_t fragment_size, uint8_t *response,
-			  size_t response_size)
+__cold static int mux_set_config(struct processing_module *mod, uint32_t config_id,
+				 enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				 const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+				 size_t response_size)
 {
 	struct comp_data *cd = module_get_private_data(mod);
+
+	assert_can_be_cold();
 
 	comp_dbg(mod->dev, "entry");
 
