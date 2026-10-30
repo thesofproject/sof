@@ -30,7 +30,7 @@ foreach(tplg ${TPLGS})
 	  "${CMAKE_CURRENT_SOURCE_DIR}/../${input}" "${output}"
 	  "${CMAKE_CURRENT_SOURCE_DIR}/../" "${defines}")
 
-	add_custom_target(topology2_prod_${output} DEPENDS ${output}.tplg)
+	add_custom_target(topology2_prod_${output} DEPENDS ${tplg2_outputs})
 	add_dependencies(topology2_prod topology2_prod_${output})
 endforeach()
 
@@ -51,6 +51,8 @@ foreach(link ${SYMLINKS})
 	)
 
 	add_custom_target(topology2_prod_${link_name} DEPENDS ${link_name}.tplg)
+	# the alias is only as good as its target, build and validate it too
+	add_dependencies(topology2_prod_${link_name} topology2_prod_${link_target})
 	add_dependencies(topology2_prod topology2_prod_${link_name})
 endforeach()
 

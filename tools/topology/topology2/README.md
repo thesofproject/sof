@@ -143,6 +143,14 @@ To build a specific topology target:
 make sof-lnl-sdw-cs42l43-l0-cs35l56-l12
 ```
 
+Each built binary is checked by the [topology validator](../validator/README.md), which repeats
+the checks the Linux SOF driver does when loading a topology. A validation error fails the
+build of that topology. To check a binary by hand, for example to see warnings too:
+
+```bash
+tools/topology/validator/tplg_validate.py build_tools/topology/topology2/production/sof-mtl-rt711-4ch.tplg
+```
+
 ## Best Practices for Adding New Topology Definitions
 
 ### Topology Structure
