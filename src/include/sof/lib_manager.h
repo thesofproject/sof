@@ -228,8 +228,7 @@ struct userspace_context;
 int lib_manager_mod_create_priv(const struct comp_driver *drv,
 				const struct comp_ipc_config *config,
 				const void *spec, void **adapter_priv,
-				struct userspace_context **userspace,
-				const struct module_interface **ops);
+				struct userspace_context **userspace);
 
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall int lib_manager_free_module(const uint32_t component_id);
