@@ -440,13 +440,16 @@ const struct comp_func_map func_table[] = {
 #endif /* CONFIG_FORMAT_S32LE */
 #else
 #if CONFIG_FORMAT_S16LE
-	{SOF_IPC_FRAME_S16_LE, 0, sel_s16le},
+	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE,
+	 SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, 0, sel_s16le},
 #endif
 #if CONFIG_FORMAT_S24LE
-	{SOF_IPC_FRAME_S24_4LE, 0, sel_s24le},
+	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE,
+	 SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, 0, sel_s24le},
 #endif
 #if CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S32_LE, 0, sel_s32le},
+	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE,
+	 SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, 0, sel_s32le},
 #endif
 #endif
 };
@@ -480,8 +483,13 @@ sel_func sel_get_processing_function(struct processing_module *mod)
 	for (i = 0; i < ARRAY_SIZE(func_table); i++) {
 		if (cd->source_format != func_table[i].source)
 			continue;
+		if (cd->sink_format != func_table[i].sink)
+			continue;
+		if (cd->source_valid_format != func_table[i].source_valid)
+			continue;
+		if (cd->sink_valid_format != func_table[i].sink_valid)
+			continue;
 
-		/* TODO: add additional criteria as needed */
 		return func_table[i].sel_func;
 	}
 

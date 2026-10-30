@@ -129,6 +129,10 @@ struct comp_data {
 	uint32_t sink_period_bytes;	/**< sink number of period bytes */
 	enum sof_ipc_frame source_format;	/**< source frame format */
 	enum sof_ipc_frame sink_format;		/**< sink frame format */
+#if CONFIG_IPC_MAJOR_4
+	enum sof_ipc_frame source_valid_format;	/**< source valid sample format */
+	enum sof_ipc_frame sink_valid_format;	/**< sink valid sample format */
+#endif
 	struct sof_sel_config config;	/**< component configuration data */
 	sel_func sel_func;	/**< channel selector processing function */
 	int num_configs;	/**< Number of coefficients sets in configuration blob. */
@@ -139,6 +143,11 @@ struct comp_data {
 /** \brief Selector processing functions map. */
 struct comp_func_map {
 	uint16_t source;	/**< source frame format */
+#if CONFIG_IPC_MAJOR_4
+	uint16_t sink;		/**< sink frame format */
+	uint16_t source_valid;	/**< source valid sample format */
+	uint16_t sink_valid;	/**< sink valid sample format */
+#endif
 	uint32_t out_channels;	/**< number of output stream channels */
 	sel_func sel_func;	/**< selector processing function */
 };
