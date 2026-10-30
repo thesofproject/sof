@@ -18,6 +18,7 @@
 #include <sof/audio/source_api.h>
 #include <sof/audio/audio_buffer.h>
 #include <sof/audio/pipeline.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/vregion.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
@@ -51,11 +52,13 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	return module_adapter_new_ext(drv, config, spec, NULL, NULL, NULL);
 }
 
-static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
-						  const struct module_ext_init_data *ext_init)
+__cold static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
+							 const struct module_ext_init_data *ext_init)
 {
 	size_t buf_size = CONFIG_SOF_USERSPACE_DP_DEFAULT_HEAP_SIZE;
 	uintptr_t vreg_start;
+
+	assert_can_be_cold();
 
 #if CONFIG_IPC_MAJOR_4
 	if (config->ipc_extended_init && ext_init && ext_init->dp_data &&
@@ -74,7 +77,7 @@ static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *
 	return vregion_create_map(&vreg_start, &buf_size);
 }
 
-static
+__cold static
 struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
 						   const struct comp_ipc_config *config,
 						   const struct module_ext_init_data *ext_init,
@@ -95,6 +98,8 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 	 */
 	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
 		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
+
+	assert_can_be_cold();
 
 	if (use_ppl_alloc) {
 		/* LL modules share the pipeline's alloc context */
@@ -188,11 +193,13 @@ emod:
 	return NULL;
 }
 
-static void module_adapter_mem_free(struct processing_module *mod)
+__cold static void module_adapter_mem_free(struct processing_module *mod)
 {
 	struct mod_alloc_ctx *alloc = mod->priv.resources.alloc;
 	bool ppl_alloc = mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL &&
 			 mod->dev->pipeline && mod->dev->pipeline->alloc == alloc;
+
+	assert_can_be_cold();
 
 	/*
 	 * In principle it shouldn't even be needed to free individual objects
@@ -234,11 +241,11 @@ static void module_adapter_mem_free(struct processing_module *mod)
  *	 the create method.
  * Note 2: ATM runs in privileged / kernel mode for DP modules
  */
-struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
-					const struct comp_ipc_config *config,
-					const void *const_spec, void *mod_priv,
-					struct userspace_context *user_ctx,
-					const struct module_interface *ops)
+__cold struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
+					       const struct comp_ipc_config *config,
+					       const void *const_spec, void *mod_priv,
+					       struct userspace_context *user_ctx,
+					       const struct module_interface *ops)
 {
 	int ret;
 	struct module_config *dst;
@@ -248,6 +255,9 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 #if CONFIG_IPC_MAJOR_4
 	struct module_ext_init_data ext_data = { 0 };
 #endif
+
+	assert_can_be_cold();
+
 	comp_cl_dbg(drv, "start");
 
 	if (!config) {
@@ -1108,10 +1118,12 @@ int module_adapter_reset(struct comp_dev *dev)
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
 
-void module_adapter_free(struct comp_dev *dev)
+__cold void module_adapter_free(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_mod(dev);
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "start");
 

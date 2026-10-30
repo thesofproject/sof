@@ -16,6 +16,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/mailbox.h>
 #include <sof/ut.h>
 #include <sof/schedule/dp_schedule.h>
@@ -28,13 +29,16 @@
 
 LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
-int module_ext_init_decode(const struct comp_driver *drv, struct module_ext_init_data *ext_data,
-			   struct ipc_config_process *spec)
+__cold int module_ext_init_decode(const struct comp_driver *drv,
+				  struct module_ext_init_data *ext_data,
+				  struct ipc_config_process *spec)
 {
 	const struct ipc4_module_init_ext_init *ext_init;
 	const struct ipc4_module_init_ext_object *obj;
 	bool last_object;
 	size_t consumed;
+
+	assert_can_be_cold();
 
 	assert(drv->type == SOF_COMP_MODULE_ADAPTER);
 
@@ -153,14 +157,16 @@ static bool is_probe_module(struct ipc4_base_module_cfg *base_cfg)
  *
  * \return: 0 - no error; < 0, error happened.
  */
-int module_adapter_init_data(struct comp_dev *dev,
-			     struct module_config *dst,
-			     const struct comp_ipc_config *config,
-			     const void *spec)
+__cold int module_adapter_init_data(struct comp_dev *dev,
+				    struct module_config *dst,
+				    const struct comp_ipc_config *config,
+				    const void *spec)
 {
 	const struct ipc4_base_module_extended_cfg *cfg;
 	const struct ipc_config_process *args = spec;
 	size_t cfgsz = args->size;
+
+	assert_can_be_cold();
 
 	assert(dev->drv->type == SOF_COMP_MODULE_ADAPTER);
 	cfg = (const struct ipc4_base_module_extended_cfg *)args->data;
@@ -244,14 +250,16 @@ int module_adapter_set_state(struct processing_module *mod, struct comp_dev *dev
 }
 EXPORT_SYMBOL(module_adapter_set_state);
 
-int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
-			    bool last_block, uint32_t data_offset_size, const char *data)
+__cold int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
+				   bool last_block, uint32_t data_offset_size, const char *data)
 {
 	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 	struct module_data *md = &mod->priv;
 	enum module_cfg_fragment_position pos;
 	size_t fragment_size;
+
+	assert_can_be_cold();
 
 	/* set fragment position */
 	pos = first_last_block_to_frag_pos(first_block, last_block);
@@ -308,13 +316,15 @@ int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 	return 0;
 }
 
-int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
-			    bool last_block, uint32_t *data_offset_size, char *data)
+__cold int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
+				   bool last_block, uint32_t *data_offset_size, char *data)
 {
 	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 	struct module_data *md = &mod->priv;
 	size_t fragment_size;
+
+	assert_can_be_cold();
 
 	/* set fragment size */
 	if (first_block) {
@@ -403,12 +413,14 @@ int module_adapter_set_attribute(struct comp_dev *dev, uint32_t type, void *valu
 	return 0;
 }
 
-static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
+__cold static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct comp_buffer *sink_buffer;
 	struct comp_buffer *source_buffer;
 	int i;
+
+	assert_can_be_cold();
 
 	/* acquire all sink and source buffers, get handlers to sink/source API */
 	i = 0;
@@ -437,13 +449,15 @@ static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 	return false;
 }
 
-static int module_update_source_buffer_params(struct processing_module *mod,
-					      const struct bind_info *bind_data)
+__cold static int module_update_source_buffer_params(struct processing_module *mod,
+						     const struct bind_info *bind_data)
 {
 	struct module_config *dst = &mod->priv.cfg;
 	struct sof_ipc_stream_params params;
 	struct comp_buffer *buffer;
 	int dst_queue_id = bind_data->ipc4_data->extension.r.dst_queue;
+
+	assert_can_be_cold();
 
 	/* only update buffer params for sink components */
 	if (bind_data->bind_type != COMP_BIND_TYPE_SOURCE)
@@ -469,10 +483,12 @@ static int module_update_source_buffer_params(struct processing_module *mod,
 	return 0;
 }
 
-int module_adapter_bind(struct comp_dev *dev, const struct bind_info *bind_data)
+__cold int module_adapter_bind(struct comp_dev *dev, const struct bind_info *bind_data)
 {
 	struct processing_module *mod = comp_mod(dev);
 	int ret;
+
+	assert_can_be_cold();
 
 	ret = module_update_source_buffer_params(mod, bind_data);
 	if (ret < 0)
@@ -487,10 +503,12 @@ int module_adapter_bind(struct comp_dev *dev, const struct bind_info *bind_data)
 	return 0;
 }
 
-int module_adapter_unbind(struct comp_dev *dev, const struct bind_info *unbind_data)
+__cold int module_adapter_unbind(struct comp_dev *dev, const struct bind_info *unbind_data)
 {
 	struct processing_module *mod = comp_mod(dev);
 	int ret;
+
+	assert_can_be_cold();
 
 	ret = module_unbind(mod, unbind_data);
 	if (ret < 0)

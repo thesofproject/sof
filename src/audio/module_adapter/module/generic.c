@@ -17,6 +17,7 @@
 #include <sof/objpool.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/data_blob.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/fast-get.h>
 #include <sof/lib/vregion.h>
 #include <sof/schedule/dp_schedule.h>
@@ -38,13 +39,15 @@ LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
  */
 static K_MUTEX_DEFINE(mod_res_lock);
 
-int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
+__cold int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 {
 	int ret;
 	struct module_config *dst;
 	/* loadable module must use module adapter */
 	struct processing_module *mod = comp_mod(dev);
 	struct module_data *md = &mod->priv;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "entry");
 
@@ -96,11 +99,13 @@ void mod_resource_init(struct processing_module *mod)
 	res->heap_high_water_mark = 0;
 }
 
-int module_init(struct processing_module *mod)
+__cold int module_init(struct processing_module *mod)
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
 	const struct module_interface *const interface = dev->drv->adapter_ops;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "entry");
 
@@ -813,12 +818,14 @@ int module_reset(struct processing_module *mod)
  *
  * This function is called automatically when the module is unloaded.
  */
-void z_impl_mod_free_all(struct processing_module *mod)
+__cold void z_impl_mod_free_all(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
 
 	/* Free all contents found in used containers */
 	struct mod_res_cb_arg cb_arg = {mod, NULL};
+
+	assert_can_be_cold();
 
 	k_mutex_lock(&mod_res_lock, K_FOREVER);
 	objpool_iterate(&res->objpool, mod_res_free, &cb_arg);
@@ -829,11 +836,13 @@ void z_impl_mod_free_all(struct processing_module *mod)
 	mod_resource_init(mod);
 }
 
-int module_free(struct processing_module *mod)
+__cold int module_free(struct processing_module *mod)
 {
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 	struct module_data *md = &mod->priv;
 	int ret = 0;
+
+	assert_can_be_cold();
 
 	if (ops->free) {
 		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL ||
@@ -884,11 +893,11 @@ int module_free(struct processing_module *mod)
  *
  * \return: 0 upon success or error upon failure
  */
-int module_set_configuration(struct processing_module *mod,
-			     uint32_t config_id,
-			     enum module_cfg_fragment_position pos, size_t data_offset_size,
-			     const uint8_t *fragment_in, size_t fragment_size, uint8_t *response,
-			     size_t response_size)
+__cold int module_set_configuration(struct processing_module *mod,
+				    uint32_t config_id,
+				    enum module_cfg_fragment_position pos, size_t data_offset_size,
+				    const uint8_t *fragment_in, size_t fragment_size,
+				    uint8_t *response, size_t response_size)
 {
 #if CONFIG_IPC_MAJOR_3
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment_in;
@@ -901,6 +910,8 @@ int module_set_configuration(struct processing_module *mod,
 	size_t offset = 0;
 	uint8_t *dst;
 	int ret;
+
+	assert_can_be_cold();
 
 	switch (pos) {
 	case MODULE_CFG_FRAGMENT_FIRST:
@@ -984,10 +995,12 @@ int module_set_configuration(struct processing_module *mod,
 }
 EXPORT_SYMBOL(module_set_configuration);
 
-int module_bind(struct processing_module *mod, const struct bind_info *bind_data)
+__cold int module_bind(struct processing_module *mod, const struct bind_info *bind_data)
 {
 	int ret;
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
+
+	assert_can_be_cold();
 
 	switch (bind_data->bind_type) {
 	case COMP_BIND_TYPE_SINK:
@@ -1017,10 +1030,12 @@ int module_bind(struct processing_module *mod, const struct bind_info *bind_data
 	return ret;
 }
 
-int module_unbind(struct processing_module *mod, const struct bind_info *unbind_data)
+__cold int module_unbind(struct processing_module *mod, const struct bind_info *unbind_data)
 {
 	int ret;
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
+
+	assert_can_be_cold();
 
 	switch (unbind_data->bind_type) {
 	case COMP_BIND_TYPE_SINK:
