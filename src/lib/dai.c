@@ -250,12 +250,14 @@ static int sof_dai_type_to_zephyr(uint32_t type)
 	}
 }
 
-const struct device *z_impl_dai_get_device(enum sof_ipc_dai_type type, uint32_t index)
+__cold const struct device *z_impl_dai_get_device(enum sof_ipc_dai_type type, uint32_t index)
 {
 	struct dai_config cfg;
 	int z_type;
 	int dir;
 	int i;
+
+	assert_can_be_cold();
 
 	dir = (type == SOF_DAI_INTEL_DMIC) ? DAI_DIR_RX : DAI_DIR_BOTH;
 
@@ -338,11 +340,13 @@ static void dai_set_device_params(struct dai *d)
 }
 
 /* called from ipc/ipc3/handler.c and some platform.c files */
-struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
+__cold struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 {
 	const struct device *dev;
 	struct dai *d;
 	struct k_heap *heap = NULL;
+
+	assert_can_be_cold();
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 	heap = zephyr_ll_user_heap();
@@ -378,10 +382,12 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 }
 
 /* called from src/ipc/ipc3/handler.c */
-void dai_put(struct dai *dai)
+__cold void dai_put(struct dai *dai)
 {
 	int ret;
 	struct k_heap *heap = NULL;
+
+	assert_can_be_cold();
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 	heap = zephyr_ll_user_heap();
@@ -409,12 +415,14 @@ static inline const struct dai_type_info *dai_find_type(uint32_t type)
 	return NULL;
 }
 
-struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
+__cold struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 {
 	int ret = 0;
 	const struct dai_type_info *dti;
 	struct dai *d;
 	k_spinlock_key_t key;
+
+	assert_can_be_cold();
 
 	dti = dai_find_type(type);
 	if (!dti)
@@ -446,10 +454,12 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 	return NULL;
 }
 
-void dai_put(struct dai *dai)
+__cold void dai_put(struct dai *dai)
 {
 	int ret;
 	k_spinlock_key_t key;
+
+	assert_can_be_cold();
 
 	key = k_spin_lock(&dai->lock);
 	if (--dai->sref == 0) {
