@@ -115,9 +115,8 @@ int module_init(struct processing_module *mod)
 		return -EIO;
 	}
 
-	/* check interface, there must be one and only one of processing procedure */
-	if (!interface->init ||
-	    (!!interface->process + !!interface->process_audio_stream < 1)) {
+	/* check interface, there must be a processing procedure */
+	if (!interface->init || !interface->process) {
 		comp_err(dev, "comp is missing mandatory interfaces");
 		return -EIO;
 	}
@@ -675,48 +674,6 @@ int module_prepare(struct processing_module *mod,
 	return 0;
 }
 
-int module_process_legacy(struct processing_module *mod,
-			  struct input_stream_buffer *input_buffers, int num_input_buffers,
-			  struct output_stream_buffer *output_buffers,
-			  int num_output_buffers)
-{
-	struct comp_dev *dev = mod->dev;
-	const struct module_interface *const ops = dev->drv->adapter_ops;
-	int ret;
-
-	comp_dbg(dev, "entry");
-
-#if CONFIG_IPC_MAJOR_3
-	struct module_data *md = &mod->priv;
-
-	if (md->state != MODULE_IDLE) {
-		comp_err(dev, "wrong state %d", md->state);
-		return -EPERM;
-	}
-
-	/* set state to processing */
-	md->state = MODULE_PROCESSING;
-#endif
-	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod))
-		ret = ops->process_audio_stream(mod, input_buffers, num_input_buffers,
-							     output_buffers, num_output_buffers);
-	else
-		ret = -EOPNOTSUPP;
-
-	if (ret && ret != -ENOSPC && ret != -ENODATA) {
-		comp_err(dev, "error %d", ret);
-		return ret;
-	}
-
-	comp_dbg(dev, "done");
-
-#if CONFIG_IPC_MAJOR_3
-	/* reset state to idle */
-	md->state = MODULE_IDLE;
-#endif
-	return 0;
-}
-
 int module_process_sink_src(struct processing_module *mod,
 			    struct sof_source **sources, int num_of_sources,
 			    struct sof_sink **sinks, int num_of_sinks)
@@ -1049,18 +1006,6 @@ int module_unbind(struct processing_module *mod, const struct bind_info *unbind_
 
 	return ret;
 }
-
-void module_update_buffer_position(struct input_stream_buffer *input_buffers,
-				   struct output_stream_buffer *output_buffers,
-				   uint32_t frames)
-{
-	struct audio_stream *source = input_buffers->data;
-	struct audio_stream *sink = output_buffers->data;
-
-	input_buffers->consumed += audio_stream_frame_bytes(source) * frames;
-	output_buffers->size += audio_stream_frame_bytes(sink) * frames;
-}
-EXPORT_SYMBOL(module_update_buffer_position);
 
 uint32_t module_get_deadline(struct processing_module *mod)
 {

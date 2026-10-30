@@ -63,7 +63,6 @@ static int modules_init(struct processing_module *mod)
 	md->mpd.in_buff_size = src_cfg->ibs;
 	md->mpd.out_buff_size = src_cfg->obs;
 
-	mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
 	return iadk_wrapper_init(module_get_private_data(mod));
 }
 

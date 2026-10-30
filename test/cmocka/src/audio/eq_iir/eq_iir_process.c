@@ -62,6 +62,8 @@ struct test_data {
 	struct test_parameters *params;
 	struct processing_module *mod;
 	bool continue_loop;
+	size_t input_frames;
+	size_t output_bytes;
 };
 
 static int setup_group(void **state)
@@ -195,11 +197,6 @@ static int setup(void **state)
 	prepare_sink(td, mod);
 	prepare_source(td, mod);
 
-	/* allocate intermediate buffers */
-	mod->input_buffers = test_malloc(sizeof(struct input_stream_buffer));
-	mod->input_buffers[0].data = &td->source->stream;
-	mod->output_buffers = test_malloc(sizeof(struct output_stream_buffer));
-	mod->output_buffers[0].data = &td->sink->stream;
 	mod->stream_params = test_malloc(sizeof(struct sof_ipc_stream_params));
 	mod->stream_params->channels = params->channels;
 	mod->period_bytes = get_frame_bytes(params->source_format, params->channels) * 48000 / 1000;
@@ -221,8 +218,6 @@ static int teardown(void **state)
 	struct test_data *td = *state;
 	struct processing_module *mod = comp_mod(td->dev);
 
-	test_free(mod->input_buffers);
-	test_free(mod->output_buffers);
 	test_free(mod->stream_params);
 	mod->stream_params = NULL;
 	test_free(td->params);
@@ -236,7 +231,6 @@ static int teardown(void **state)
 #if CONFIG_FORMAT_S16LE
 static void fill_source_s16(struct test_data *td, int frames_max)
 {
-	struct processing_module *mod = comp_mod(td->dev);
 	struct comp_dev *dev = td->dev;
 	struct comp_buffer *sb;
 	struct audio_stream *ss;
@@ -266,12 +260,11 @@ static void fill_source_s16(struct test_data *td, int frames_max)
 		comp_update_buffer_produce(sb, bytes_total);
 	}
 
-	mod->input_buffers[0].size = samples_processed / audio_stream_get_channels(ss);
+	td->input_frames = samples_processed / audio_stream_get_channels(ss);
 }
 
 static void verify_sink_s16(struct test_data *td)
 {
-	struct processing_module *mod = comp_mod(td->dev);
 	struct comp_dev *dev = td->dev;
 	struct comp_buffer *sb;
 	struct audio_stream *ss;
@@ -284,7 +277,7 @@ static void verify_sink_s16(struct test_data *td)
 
 	sb = comp_dev_get_first_data_consumer(dev);
 	ss = &sb->stream;
-	samples = mod->output_buffers[0].size >> 1;
+	samples = td->output_bytes >> 1;
 	for (i = 0; i < samples; i++) {
 		x = audio_stream_read_frag_s16(ss, i);
 		out = *x;
@@ -299,7 +292,6 @@ static void verify_sink_s16(struct test_data *td)
 #if CONFIG_FORMAT_S24LE
 static void fill_source_s24(struct test_data *td, int frames_max)
 {
-	struct processing_module *mod = comp_mod(td->dev);
 	struct comp_dev *dev = td->dev;
 	struct comp_buffer *sb;
 	struct audio_stream *ss;
@@ -329,12 +321,11 @@ static void fill_source_s24(struct test_data *td, int frames_max)
 		comp_update_buffer_produce(sb, bytes_total);
 	}
 
-	mod->input_buffers[0].size = samples_processed / audio_stream_get_channels(ss);
+	td->input_frames = samples_processed / audio_stream_get_channels(ss);
 }
 
 static void verify_sink_s24(struct test_data *td)
 {
-	struct processing_module *mod = comp_mod(td->dev);
 	struct comp_dev *dev = td->dev;
 	struct comp_buffer *sb;
 	struct audio_stream *ss;
@@ -347,7 +338,7 @@ static void verify_sink_s24(struct test_data *td)
 
 	sb = comp_dev_get_first_data_consumer(dev);
 	ss = &sb->stream;
-	samples = mod->output_buffers[0].size >> 2;
+	samples = td->output_bytes >> 2;
 	for (i = 0; i < samples; i++) {
 		x = audio_stream_read_frag_s32(ss, i);
 		out = (*x << 8) >> 8; /* Make sure there's no 24 bit overflow */
@@ -362,7 +353,6 @@ static void verify_sink_s24(struct test_data *td)
 #if CONFIG_FORMAT_S32LE
 static void fill_source_s32(struct test_data *td, int frames_max)
 {
-	struct processing_module *mod = comp_mod(td->dev);
 	struct comp_dev *dev = td->dev;
 	struct comp_buffer *sb;
 	struct audio_stream *ss;
@@ -392,12 +382,11 @@ static void fill_source_s32(struct test_data *td, int frames_max)
 		comp_update_buffer_produce(sb, bytes_total);
 	}
 
-	mod->input_buffers[0].size = samples_processed / audio_stream_get_channels(ss);
+	td->input_frames = samples_processed / audio_stream_get_channels(ss);
 }
 
 static void verify_sink_s32(struct test_data *td)
 {
-	struct processing_module *mod = comp_mod(td->dev);
 	struct comp_dev *dev = td->dev;
 	struct comp_buffer *sb;
 	struct audio_stream *ss;
@@ -410,7 +399,7 @@ static void verify_sink_s32(struct test_data *td)
 
 	sb = comp_dev_get_first_data_consumer(dev);
 	ss = &sb->stream;
-	samples = mod->output_buffers[0].size >> 2;
+	samples = td->output_bytes >> 2;
 	for (i = 0; i < samples; i++) {
 		x = audio_stream_read_frag_s32(ss, i);
 		out = *x;
@@ -469,14 +458,11 @@ static void test_audio_eq_iir(void **state)
 			break;
 		}
 
-		mod->input_buffers[0].consumed = 0;
-		mod->output_buffers[0].size = 0;
 		sink_avail_before = audio_stream_get_avail_bytes(&sink->stream);
 		ret = module_process_sink_src(mod, sources, 1, sinks, 1);
 		assert_int_equal(ret, 0);
 
-		mod->output_buffers[0].size = audio_stream_get_avail_bytes(&sink->stream) -
-					      sink_avail_before;
+		td->output_bytes = audio_stream_get_avail_bytes(&sink->stream) - sink_avail_before;
 
 		switch (audio_stream_get_frm_fmt(&sink->stream)) {
 		case SOF_IPC_FRAME_S16_LE:
@@ -493,7 +479,7 @@ static void test_audio_eq_iir(void **state)
 			break;
 		}
 
-		comp_update_buffer_consume(sink, mod->output_buffers[0].size);
+		comp_update_buffer_consume(sink, td->output_bytes);
 	}
 }
 

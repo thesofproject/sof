@@ -227,11 +227,6 @@ void module_adapter_reset_data(struct module_config *dst)
 	dst->init_data = NULL;
 }
 
-void module_adapter_check_data(struct processing_module *mod, struct comp_dev *dev,
-			       struct comp_buffer *sink)
-{
-}
-
 void module_adapter_set_params(struct processing_module *mod, struct sof_ipc_stream_params *params)
 {
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
@@ -403,7 +398,7 @@ int module_adapter_set_attribute(struct comp_dev *dev, uint32_t type, void *valu
 	return 0;
 }
 
-static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
+static void module_adapter_update_sinks_sources(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct comp_buffer *sink_buffer;
@@ -426,15 +421,6 @@ static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 	mod->num_of_sources = i;
 
 	comp_dbg(dev, "num_sources=%d num_sinks=%d", mod->num_of_sinks, mod->num_of_sources);
-
-	if (mod->num_of_sinks != 1 || mod->num_of_sources != 1)
-		return true;
-
-	/* re-assign the source/sink modules */
-	mod->sink_comp_buffer = comp_dev_get_first_data_consumer(dev);
-	mod->source_comp_buffer = comp_dev_get_first_data_producer(dev);
-
-	return false;
 }
 
 static int module_update_source_buffer_params(struct processing_module *mod,
@@ -482,7 +468,7 @@ int module_adapter_bind(struct comp_dev *dev, const struct bind_info *bind_data)
 	if (ret < 0)
 		return ret;
 
-	mod->stream_copy_single_to_single = !module_adapter_multi_sink_source_prepare(dev);
+	module_adapter_update_sinks_sources(dev);
 
 	return 0;
 }
@@ -496,7 +482,7 @@ int module_adapter_unbind(struct comp_dev *dev, const struct bind_info *unbind_d
 	if (ret < 0)
 		return ret;
 
-	mod->stream_copy_single_to_single = !module_adapter_multi_sink_source_prepare(dev);
+	module_adapter_update_sinks_sources(dev);
 
 	return 0;
 }

@@ -188,9 +188,6 @@ static int teardown_test_case(void **state)
 	struct test_data *td = *((struct test_data **)state);
 	int i;
 
-	rfree(td->mod->input_buffers);
-	rfree(td->mod->output_buffers);
-
 	free_test_source(td->source);
 
 	for (i = 0; i < MUX_MAX_STREAMS; ++i)
