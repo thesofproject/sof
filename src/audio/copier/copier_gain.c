@@ -118,8 +118,8 @@ enum copier_gain_state copier_gain_eval_state(struct copier_gain_params *gain_pa
 	return state;
 }
 
-int copier_gain_dma_control(union ipc4_connector_node_id node, const char *config_data,
-			    size_t config_size, enum sof_ipc_dai_type dai_type)
+__cold int copier_gain_dma_control(union ipc4_connector_node_id node, const char *config_data,
+				   size_t config_size, enum sof_ipc_dai_type dai_type)
 {
 	struct sof_tlv *tlv = (struct sof_tlv *)config_data;
 	struct ipc *ipc = ipc_get();
@@ -127,6 +127,8 @@ int copier_gain_dma_control(union ipc4_connector_node_id node, const char *confi
 	struct comp_dev *dev;
 	struct list_item *clist;
 	int ret;
+
+	assert_can_be_cold();
 
 	list_for_item(clist, &ipc->comp_list) {
 		struct gain_dma_control_data *gain_data = NULL;
@@ -180,11 +182,13 @@ int copier_gain_dma_control(union ipc4_connector_node_id node, const char *confi
 	return -ENODEV;
 }
 
-int copier_set_gain(struct comp_dev *dev, struct copier_gain_params *gain_params,
-		    struct gain_dma_control_data *gain_data, uint32_t channels)
+__cold int copier_set_gain(struct comp_dev *dev, struct copier_gain_params *gain_params,
+			   struct gain_dma_control_data *gain_data, uint32_t channels)
 {
 	uint16_t static_gain[MAX_GAIN_COEFFS_CNT];
 	int ret;
+
+	assert_can_be_cold();
 
 	if (!gain_data) {
 		comp_err(dev, "Gain data is NULL");
