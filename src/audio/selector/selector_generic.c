@@ -292,6 +292,133 @@ static void sel_s16le(struct processing_module *mod,
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
+/**
+ * \brief Mixing routine with S16_LE to S24_4LE conversion for one frame.
+ * \param[out] dst Sink buffer.
+ * \param[in] dst_channels Number of sink channels.
+ * \param[in] src Source data.
+ * \param[in] src_channels Number of source channels.
+ * \param[in] coeffs_config IPC4 micsel config with Q10 coefficients.
+ */
+static void process_frame_s16le_to_s24le(int32_t *dst, unsigned int dst_channels,
+					 const int16_t *src, unsigned int src_channels,
+					 struct ipc4_selector_coeffs_config *coeffs_config)
+{
+	int64_t accum;
+	unsigned int i, j;
+
+	for (i = 0; i < dst_channels; i++) {
+		accum = 0;
+		for (j = 0; j < src_channels; j++)
+			accum += (int32_t)src[j] * (int32_t)coeffs_config->coeffs[i][j];
+
+		/* Convert Q1.15 * Q6.10 (Q7.25) to Q1.23. */
+		dst[i] = sat_int24((accum + (1 << 1)) >> 2);
+	}
+}
+
+/**
+ * \brief Channel selection with S16_LE to S24_4LE conversion.
+ * \param[in] mod Selector base module device.
+ * \param[in] source Source circular buffer view.
+ * \param[in,out] sink Sink circular buffer view.
+ * \param[in] frames Number of frames to process.
+ */
+static void sel_s16le_to_s24le(struct processing_module *mod,
+			       const struct cir_buf_source *source,
+			       struct cir_buf_sink *sink, size_t frames)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	const unsigned int src_channels = cd->config.in_channels_count;
+	const unsigned int dst_channels = cd->config.out_channels_count;
+	const unsigned int n_chan_source = MIN(SEL_SOURCE_CHANNELS_MAX, src_channels);
+	const unsigned int n_chan_sink = MIN(SEL_SINK_CHANNELS_MAX, dst_channels);
+	const int16_t *src = source->ptr;
+	int32_t *dst = sink->ptr;
+	size_t i, n, processed = 0;
+
+	while (processed < frames) {
+		n = frames - processed;
+		n = MIN(n, cir_buf_samples_without_wrap_s16(src, source->buf_end) / src_channels);
+		n = MIN(n, cir_buf_samples_without_wrap_s32(dst, sink->buf_end) / dst_channels);
+		for (i = 0; i < n; i++) {
+			process_frame_s16le_to_s24le(dst, n_chan_sink, src, n_chan_source,
+						    &cd->coeffs_config);
+			src += src_channels;
+			dst += dst_channels;
+		}
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
+		processed += n;
+	}
+}
+#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
+/**
+ * \brief Mixing routine with S24_4LE to S16_LE conversion for one frame.
+ * \param[out] dst Sink buffer.
+ * \param[in] dst_channels Number of sink channels.
+ * \param[in] src Source data.
+ * \param[in] src_channels Number of source channels.
+ * \param[in] coeffs_config IPC4 micsel config with Q10 coefficients.
+ */
+static void process_frame_s24le_to_s16le(int16_t *dst, unsigned int dst_channels,
+					 const int32_t *src, unsigned int src_channels,
+					 struct ipc4_selector_coeffs_config *coeffs_config)
+{
+	int64_t accum;
+	unsigned int i, j;
+
+	for (i = 0; i < dst_channels; i++) {
+		accum = 0;
+		for (j = 0; j < src_channels; j++)
+			accum += (int64_t)sign_extend_s24(src[j]) *
+				(int32_t)coeffs_config->coeffs[i][j];
+
+		/* Convert Q1.23 * Q6.10 (Q7.33) to Q1.15. */
+		dst[i] = sat_int16(Q_SHIFT_RND(accum, 33, 15));
+	}
+}
+
+/**
+ * \brief Channel selection with S24_4LE to S16_LE conversion.
+ * \param[in] mod Selector base module device.
+ * \param[in] source Source circular buffer view.
+ * \param[in,out] sink Sink circular buffer view.
+ * \param[in] frames Number of frames to process.
+ */
+static void sel_s24le_to_s16le(struct processing_module *mod,
+			       const struct cir_buf_source *source,
+			       struct cir_buf_sink *sink, size_t frames)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	const unsigned int src_channels = cd->config.in_channels_count;
+	const unsigned int dst_channels = cd->config.out_channels_count;
+	const unsigned int n_chan_source = MIN(SEL_SOURCE_CHANNELS_MAX, src_channels);
+	const unsigned int n_chan_sink = MIN(SEL_SINK_CHANNELS_MAX, dst_channels);
+	const int32_t *src = source->ptr;
+	int16_t *dst = sink->ptr;
+	size_t i, n, processed = 0;
+
+	while (processed < frames) {
+		n = frames - processed;
+		n = MIN(n, cir_buf_samples_without_wrap_s32(src, source->buf_end) / src_channels);
+		n = MIN(n, cir_buf_samples_without_wrap_s16(dst, sink->buf_end) / dst_channels);
+		for (i = 0; i < n; i++) {
+			process_frame_s24le_to_s16le(dst, n_chan_sink, src, n_chan_source,
+						    &cd->coeffs_config);
+			src += src_channels;
+			dst += dst_channels;
+		}
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
+		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
+		processed += n;
+	}
+}
+#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE */
+
 #if CONFIG_FORMAT_S24LE
 /**
  * \brief Mixing routine for 24-bit, m channel input x n channel output single frame.
@@ -440,13 +567,22 @@ const struct comp_func_map func_table[] = {
 #endif /* CONFIG_FORMAT_S32LE */
 #else
 #if CONFIG_FORMAT_S16LE
-	{SOF_IPC_FRAME_S16_LE, 0, sel_s16le},
+	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE,
+	 SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, 0, sel_s16le},
 #endif
 #if CONFIG_FORMAT_S24LE
-	{SOF_IPC_FRAME_S24_4LE, 0, sel_s24le},
+	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE,
+	 SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, 0, sel_s24le},
 #endif
 #if CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S32_LE, 0, sel_s32le},
+	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE,
+	 SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, 0, sel_s32le},
+#endif
+#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
+	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE,
+	 SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, 0, sel_s16le_to_s24le},
+	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,
+	 SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE, 0, sel_s24le_to_s16le},
 #endif
 #endif
 };
@@ -480,8 +616,13 @@ sel_func sel_get_processing_function(struct processing_module *mod)
 	for (i = 0; i < ARRAY_SIZE(func_table); i++) {
 		if (cd->source_format != func_table[i].source)
 			continue;
+		if (cd->sink_format != func_table[i].sink)
+			continue;
+		if (cd->source_valid_format != func_table[i].source_valid)
+			continue;
+		if (cd->sink_valid_format != func_table[i].sink_valid)
+			continue;
 
-		/* TODO: add additional criteria as needed */
 		return func_table[i].sel_func;
 	}
 
