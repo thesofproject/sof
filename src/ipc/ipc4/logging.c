@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <sof/boot_test.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/uuid.h>
 #include <sof/lib/cpu.h>
 #include <sof/ipc/common.h>
@@ -121,13 +122,15 @@ static void log_work_handler(struct k_work *work)
 
 static struct k_work_sync ipc4_log_work_sync;
 
-int ipc4_logging_enable_logs(bool first_block,
-			     bool last_block,
-			     uint32_t data_offset_or_size,
-			     const char *data)
+__cold int ipc4_logging_enable_logs(bool first_block,
+				    bool last_block,
+				    uint32_t data_offset_or_size,
+				    const char *data)
 {
 	const struct log_backend *log_backend = log_backend_adsp_mtrace_get();
 	const struct ipc4_log_state_info *log_state;
+
+	assert_can_be_cold();
 
 	if (!(first_block && last_block)) {
 		LOG_ERR("log_state data is expected to be sent as one chunk");
@@ -223,13 +226,15 @@ int ipc4_logging_enable_logs(bool first_block,
 
 #elif CONFIG_LOG_BACKEND_SOF_PROBE
 
-int ipc4_logging_enable_logs(bool first_block,
-			     bool last_block,
-			     uint32_t data_offset_or_size,
-			     const char *data)
+__cold int ipc4_logging_enable_logs(bool first_block,
+				    bool last_block,
+				    uint32_t data_offset_or_size,
+				    const char *data)
 {
 	const struct log_backend *log_backend = log_backend_probe_get();
 	const struct ipc4_log_state_info *log_state;
+
+	assert_can_be_cold();
 
 	if (!(first_block && last_block))
 		return -EINVAL;
