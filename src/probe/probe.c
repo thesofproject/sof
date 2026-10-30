@@ -12,6 +12,7 @@
 #include <user/trace.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/topology.h>
@@ -94,9 +95,11 @@ struct probe_pdata {
  * \param[in] align the buffer.
  * \return 0 on success, error code otherwise.
  */
-static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size,
+__cold static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size,
 				 uint32_t align)
 {
+	assert_can_be_cold();
+
 	/* allocate new buffer */
 	buffer->addr = (uintptr_t)rballoc_align(0 | SOF_MEM_FLAG_DMA,
 						size, align);
@@ -128,13 +131,15 @@ static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size,
  * \param[in] direction of the DMA
  * \return 0 on success, error code otherwise.
  */
-static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
+__cold static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 {
 	uint32_t elem_addr, addr_align;
 	const uint32_t elem_size = sizeof(uint64_t) * DMA_ELEM_SIZE;
 	const uint32_t elem_num = PROBE_BUFFER_LOCAL_SIZE / elem_size;
 	uint32_t channel;
 	int err = 0;
+
+	assert_can_be_cold();
 
 #if CONFIG_IPC_MAJOR_4
 	channel = ((union ipc4_connector_node_id)dma->stream_tag).f.v_index + 1;
@@ -187,13 +192,15 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	return 0;
 }
 #else
-static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
+__cold static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 {
 	uint32_t addr_align;
 	uint32_t channel;
 	struct dma_config dma_cfg;
 	struct dma_block_config dma_block_cfg;
 	int err = 0;
+
+	assert_can_be_cold();
 
 	channel = ((union ipc4_connector_node_id)dma->stream_tag).f.v_index;
 
@@ -252,9 +259,12 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
  *
  * \return 0 on success, error code otherwise.
  */
-static int probe_dma_deinit(struct probe_dma_ext *dma)
+__cold static int probe_dma_deinit(struct probe_dma_ext *dma)
 {
 	int err = 0;
+
+	assert_can_be_cold();
+
 	dma_sg_free(NULL, &dma->config.elem_array);
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	err = dma_stop(dma->dc.dmac->z_dev, dma->dc.chan->index);
@@ -339,7 +349,7 @@ static enum task_state probe_task(void *data)
 }
 
 #if CONFIG_LOG_BACKEND_SOF_PROBE_OUTPUT_AUTO_ENABLE
-static void probe_auto_enable_logs(uint32_t stream_tag)
+__cold static void probe_auto_enable_logs(uint32_t stream_tag)
 {
 	struct probe_point log_point = {
 #if CONFIG_IPC_MAJOR_4
@@ -354,6 +364,8 @@ static void probe_auto_enable_logs(uint32_t stream_tag)
 	};
 	int ret;
 
+	assert_can_be_cold();
+
 	ret = probe_point_add(1, &log_point);
 
 	if (ret)
@@ -361,11 +373,13 @@ static void probe_auto_enable_logs(uint32_t stream_tag)
 }
 #endif
 
-int probe_init(const struct probe_dma *probe_dma)
+__cold int probe_init(const struct probe_dma *probe_dma)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
 	int err;
+
+	assert_can_be_cold();
 
 	tr_dbg(&pr_tr, "entry");
 
@@ -438,11 +452,13 @@ int probe_init(const struct probe_dma *probe_dma)
 	return 0;
 }
 
-int probe_deinit(void)
+__cold int probe_deinit(void)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
 	int err;
+
+	assert_can_be_cold();
 
 	tr_dbg(&pr_tr, "entry");
 
@@ -482,7 +498,7 @@ int probe_deinit(void)
 	return 0;
 }
 
-int probe_dma_add(uint32_t count, const struct probe_dma *probe_dma)
+__cold int probe_dma_add(uint32_t count, const struct probe_dma *probe_dma)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
@@ -490,6 +506,8 @@ int probe_dma_add(uint32_t count, const struct probe_dma *probe_dma)
 	uint32_t stream_tag;
 	uint32_t first_free;
 	int err;
+
+	assert_can_be_cold();
 
 	tr_dbg(&pr_tr, "count = %u", count);
 
@@ -568,12 +586,14 @@ static int is_probe_stream_used(uint32_t stream_tag)
 	return 0;
 }
 
-int probe_dma_remove(uint32_t count, const uint32_t *stream_tag)
+__cold int probe_dma_remove(uint32_t count, const uint32_t *stream_tag)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
 	uint32_t j;
 	int err;
+
+	assert_can_be_cold();
 
 	tr_dbg(&pr_tr, "count = %u", count);
 
@@ -1072,10 +1092,12 @@ err:
  * \brief Callback for buffer free, it will remove probe point.
  * \param[in] arg pointer to buffer_id.
  */
-static void probe_cb_free(void *arg)
+__cold static void probe_cb_free(void *arg)
 {
 	uint32_t buffer_id = *(uint32_t *)arg;
 	int ret;
+
+	assert_can_be_cold();
 
 	tr_dbg(&pr_tr, "buffer_id = %u", buffer_id);
 
@@ -1142,7 +1164,7 @@ static bool verify_purpose(uint32_t purpose)
 #endif
 }
 
-int probe_point_add(uint32_t count, const struct probe_point *probe)
+__cold int probe_point_add(uint32_t count, const struct probe_point *probe)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
@@ -1155,6 +1177,9 @@ int probe_point_add(uint32_t count, const struct probe_point *probe)
 #if CONFIG_IPC_MAJOR_4
 	struct comp_buffer *buf = NULL;
 #endif
+
+	assert_can_be_cold();
+
 	tr_dbg(&pr_tr, "count = %u", count);
 
 	if (!_probe) {
@@ -1329,11 +1354,13 @@ int probe_point_add(uint32_t count, const struct probe_point *probe)
 }
 
 #if CONFIG_IPC_MAJOR_3
-int probe_dma_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
+__cold int probe_dma_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint32_t i = 0;
 	uint32_t j = 0;
+
+	assert_can_be_cold();
 
 	tr_dbg(&pr_tr, "entry");
 
@@ -1367,11 +1394,13 @@ int probe_dma_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 	return 1;
 }
 
-int probe_point_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
+__cold int probe_point_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint32_t i = 0;
 	uint32_t j = 0;
+
+	assert_can_be_cold();
 
 	tr_dbg(&pr_tr, "entry");
 
@@ -1405,7 +1434,7 @@ int probe_point_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 }
 #endif
 
-int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
+__cold int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
 {
 	struct probe_pdata *_probe = probe_get();
 	struct ipc_comp_dev *dev;
@@ -1414,6 +1443,8 @@ int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
 #if CONFIG_IPC_MAJOR_4
 	struct comp_buffer *buf;
 #endif
+
+	assert_can_be_cold();
 
 	tr_dbg(&pr_tr, "count = %u", count);
 
@@ -1476,12 +1507,14 @@ int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
 }
 
 #if CONFIG_IPC_MAJOR_4
-static int probe_mod_init(struct processing_module *mod)
+__cold static int probe_mod_init(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *mod_data = &mod->priv;
 	const struct ipc4_probe_module_cfg *probe_cfg = mod_data->cfg.init_data;
 	int ret;
+
+	assert_can_be_cold();
 
 	comp_info(dev, "entry");
 
@@ -1492,9 +1525,11 @@ static int probe_mod_init(struct processing_module *mod)
 	return 0;
 }
 
-static int probe_free(struct processing_module *mod)
+__cold static int probe_free(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
+
+	assert_can_be_cold();
 
 	comp_info(dev, "entry");
 
@@ -1506,12 +1541,14 @@ static int probe_free(struct processing_module *mod)
 	return 0;
 }
 
-static int probe_set_config(struct processing_module *mod, uint32_t param_id,
+__cold static int probe_set_config(struct processing_module *mod, uint32_t param_id,
 			    enum module_cfg_fragment_position pos, uint32_t data_offset_size,
 			    const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			    size_t response_size)
 {
 	struct comp_dev *dev = mod->dev;
+
+	assert_can_be_cold();
 
 	comp_info(dev, "entry");
 
@@ -1533,7 +1570,7 @@ static int probe_set_config(struct processing_module *mod, uint32_t param_id,
 	}
 }
 
-static int probe_add_point_info_params(struct sof_ipc_probe_info_params *info,
+__cold static int probe_add_point_info_params(struct sof_ipc_probe_info_params *info,
 				       probe_point_id_t id, int index, size_t max_size)
 {
 	struct probe_pdata *_probe = probe_get();
@@ -1542,6 +1579,8 @@ static int probe_add_point_info_params(struct sof_ipc_probe_info_params *info,
 		.purpose = PROBE_PURPOSE_EXTRACTION,
 	};
 	int i;
+
+	assert_can_be_cold();
 
 	if (offsetof(struct sof_ipc_probe_info_params, probe_point[index]) +
 	    sizeof(pp) > max_size) {
@@ -1558,13 +1597,15 @@ static int probe_add_point_info_params(struct sof_ipc_probe_info_params *info,
 	return 0;
 }
 
-static int probe_get_available_points(struct processing_module *mod,
+__cold static int probe_get_available_points(struct processing_module *mod,
 				      struct sof_ipc_probe_info_params *info,
 				      size_t max_size)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 	int i = 0;
+
+	assert_can_be_cold();
 
 	list_for_item(clist, &ipc_get()->comp_list) {
 		struct comp_buffer *buf;
@@ -1596,7 +1637,7 @@ static int probe_get_available_points(struct processing_module *mod,
 	return 0;
 }
 
-static int probe_get_config(struct processing_module *mod,
+__cold static int probe_get_config(struct processing_module *mod,
 			    uint32_t config_id, uint32_t *data_offset_size,
 			    uint8_t *fragment, size_t fragment_size)
 {
@@ -1605,6 +1646,8 @@ static int probe_get_config(struct processing_module *mod,
 	struct probe_pdata *_probe = probe_get();
 	struct comp_dev *dev = mod->dev;
 	int i, j;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "config_id %u", config_id);
 	switch (config_id) {
