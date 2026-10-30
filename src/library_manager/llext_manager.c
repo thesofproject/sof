@@ -18,6 +18,7 @@
 
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
 #include <sof/lib/regions_mm.h>
@@ -97,15 +98,18 @@ static void llext_manager_detached_update_flags(void __sparse_cache *vma,
  * sections that belong to the specified 'region' and are contained in the
  * memory range, then remap the same area according to the 'flags' parameter.
  */
-static int llext_manager_load_data_from_storage(const struct sys_mm_drv_region *virtual_region,
-						struct llext_loader *ldr,
-						const struct llext *ext,
-						enum llext_mem region,
-						void __sparse_cache *vma,
-						size_t size, uint32_t flags)
+__cold static int
+llext_manager_load_data_from_storage(const struct sys_mm_drv_region *virtual_region,
+				     struct llext_loader *ldr,
+				     const struct llext *ext,
+				     enum llext_mem region,
+				     void __sparse_cache *vma,
+				     size_t size, uint32_t flags)
 {
 	unsigned int i;
 	const void *region_addr;
+
+	assert_can_be_cold();
 
 	/* check if there region to be mapped exists */
 	if (size == 0)
@@ -238,7 +242,7 @@ static int llext_manager_rm_mod_domain(struct lib_manager_module *mctx,
 				       struct k_mem_domain *domain);
 #endif
 
-static int llext_manager_load_module(struct lib_manager_module *mctx)
+__cold static int llext_manager_load_module(struct lib_manager_module *mctx)
 {
 	/* Executable code (.text) */
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
@@ -260,6 +264,8 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 		mctx->segment[LIB_MANAGER_BSS].addr;
 	size_t bss_size = mctx->segment[LIB_MANAGER_BSS].size;
 	int ret;
+
+	assert_can_be_cold();
 
 	/* Check, that .bss is within .data */
 	if (bss_size &&
@@ -357,7 +363,7 @@ e_text:
 	return ret;
 }
 
-static int llext_manager_unload_module(struct lib_manager_module *mctx)
+__cold static int llext_manager_unload_module(struct lib_manager_module *mctx)
 {
 	struct llext_loader *ldr = &mctx->ebl->loader;
 	const struct llext *ext = mctx->llext;
@@ -376,6 +382,8 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	void __sparse_cache *va_base_data = (void __sparse_cache *)mctx->writable_merged.addr;
 	size_t data_size = mctx->writable_merged.size;
 	int err = 0, ret;
+
+	assert_can_be_cold();
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 	unsigned int sect_cnt = llext_section_count(ext);
@@ -426,14 +434,16 @@ static bool llext_manager_section_detached(const elf_shdr_t *shdr)
 	return shdr->sh_addr < SOF_MODULE_DRAM_LINK_END;
 }
 
-static int llext_manager_link(const char *name,
-			      struct lib_manager_module *mctx, const void **buildinfo,
-			      const struct sof_man_module_manifest **mod_manifest)
+__cold static int llext_manager_link(const char *name,
+				     struct lib_manager_module *mctx, const void **buildinfo,
+				     const struct sof_man_module_manifest **mod_manifest)
 {
 	struct llext **llext = &mctx->llext;
 	struct llext_loader *ldr = &mctx->ebl->loader;
 	const elf_shdr_t *hdr;
 	int ret;
+
+	assert_can_be_cold();
 
 	if (*llext && !mctx->mapped) {
 		/*
@@ -518,8 +528,8 @@ static int llext_manager_link(const char *name,
 }
 
 /* Count "module files" in the library, allocate and initialize memory for their descriptors */
-static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
-				  const struct sof_man_fw_desc *desc)
+__cold static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
+					 const struct sof_man_fw_desc *desc)
 {
 	struct sof_man_module *mod_array = (struct sof_man_module *)((uint8_t *)desc +
 								     SOF_MAN_MODULE_OFFSET(0));
@@ -531,6 +541,8 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 	/* We'll check overflows below */
 	uintptr_t mod_end_addr = (uintptr_t)(mod_array + desc->header.num_module_entries);
 	uintptr_t img_end_addr = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET + lib_size;
+
+	assert_can_be_cold();
 
 	if (mod_end_addr < (uintptr_t)mod_array || img_end_addr < (uintptr_t)desc ||
 	    mod_end_addr >= img_end_addr) {
@@ -608,15 +620,17 @@ static int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigne
 	return i - 1;
 }
 
-static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw_desc *desc,
-				     struct lib_manager_mod_ctx *ctx, const void **buildinfo,
-				     const struct sof_man_module_manifest **mod_manifest)
+__cold static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw_desc *desc,
+					    struct lib_manager_mod_ctx *ctx, const void **buildinfo,
+					    const struct sof_man_module_manifest **mod_manifest)
 {
 	struct sof_man_module *mod_array = (struct sof_man_module *)((uint8_t *)desc +
 								     SOF_MAN_MODULE_OFFSET(0));
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	size_t mod_offset = mod_array[entry_index].segment[LIB_MANAGER_TEXT].file_offset;
 	int ret;
+
+	assert_can_be_cold();
 
 	tr_dbg(&lib_manager_tr, "mod_id: %u", module_id);
 
@@ -717,10 +731,12 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 	return mod_ctx_idx;
 }
 
-static int llext_lib_find(const struct llext *llext, struct lib_manager_module **dep_ctx)
+__cold static int llext_lib_find(const struct llext *llext, struct lib_manager_module **dep_ctx)
 {
 	struct ext_library *_ext_lib = ext_lib_get();
 	unsigned int i, j;
+
+	assert_can_be_cold();
 
 	if (!llext)
 		return -EINVAL;
@@ -740,8 +756,11 @@ static int llext_lib_find(const struct llext *llext, struct lib_manager_module *
 }
 
 /* n can be -1 */
-static void llext_manager_depend_unlink_rollback(struct lib_manager_module *dep_ctx[], int n)
+__cold static void llext_manager_depend_unlink_rollback(struct lib_manager_module *dep_ctx[],
+							int n)
 {
+	assert_can_be_cold();
+
 	for (; n >= 0; n--)
 		if (!dep_ctx[n])
 			tr_err(&lib_manager_tr, "dependency %d NULL", n);
@@ -749,8 +768,8 @@ static void llext_manager_depend_unlink_rollback(struct lib_manager_module *dep_
 			llext_manager_unload_module(dep_ctx[n]);
 }
 
-uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config,
-					const void *ipc_specific_config)
+__cold uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config,
+					       const void *ipc_specific_config)
 {
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	/* Library manifest */
@@ -758,6 +777,8 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 		lib_manager_get_library_manifest(module_id);
 	/* Library context */
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+
+	assert_can_be_cold();
 
 	if (!ctx || !desc) {
 		tr_err(&lib_manager_tr, "failed to get module descriptor");
@@ -1083,11 +1104,13 @@ int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *do
 }
 #endif /* CONFIG_USERSPACE */
 
-int llext_manager_free_module(const uint32_t component_id)
+__cold int llext_manager_free_module(const uint32_t component_id)
 {
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+
+	assert_can_be_cold();
 
 	if (!ctx->mod) {
 		tr_err(&lib_manager_tr, "NULL module array: ID %#x ctx %p", component_id, ctx);
@@ -1148,9 +1171,11 @@ int llext_manager_free_module(const uint32_t component_id)
 }
 
 /* An auxiliary library has been loaded, need to read in its exported symbols */
-int llext_manager_add_library(uint32_t module_id)
+__cold int llext_manager_add_library(uint32_t module_id)
 {
 	struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(module_id);
+
+	assert_can_be_cold();
 
 	if (ctx->mod) {
 		tr_err(&lib_manager_tr, "module_id: %#x: repeated load!", module_id);
