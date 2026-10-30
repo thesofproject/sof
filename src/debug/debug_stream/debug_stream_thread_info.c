@@ -323,6 +323,37 @@ static void thread_info_get(int core, struct record_buf *bufd)
 	debug_stream_slot_send_record(&hdr->hdr);
 }
 
+/* HACK: test ipc_msg_send syscall from LL */
+#include <sof/ipc/msg.h>
+#include <ipc4/notification.h>
+/* HACK: send PHRASE_DETECTED notification every 1000 LL frames (~1 s) */
+
+static void hack_notify()
+{
+	static struct ipc_msg *hack_msg;
+	static uint32_t hack_call_count;
+	static uint32_t hack_notif_count;
+
+	if (!hack_msg) {
+		union ipc4_notification_header nhdr;
+
+		nhdr.r.notif_type = SOF_IPC4_NOTIFY_PHRASE_DETECTED;
+		nhdr.r.type = SOF_IPC4_GLB_NOTIFICATION;
+		nhdr.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+		nhdr.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+
+		hack_msg = ipc_msg_w_ext_init(nhdr.dat, 0, 0);
+		if (!hack_msg)
+			return;
+	}
+
+	if (++hack_call_count >= 10) {
+		LOG_INF("NOTIFY %u", hack_notif_count++);
+		hack_call_count = 0;
+		ipc_msg_send(hack_msg, NULL, true);
+	}
+}
+
 static void thread_info_run(void *cnum, void *a, void *b)
 {
 	int core = (int) cnum;
@@ -339,6 +370,8 @@ static void thread_info_run(void *cnum, void *a, void *b)
 
 	for (;;) {
 		thread_info_get(core, &bufd);
+		if (core == 0)
+			hack_notify();
 		k_sleep(K_SECONDS(CONFIG_SOF_DEBUG_STREAM_THREAD_INFO_INTERVAL));
 	}
 }
