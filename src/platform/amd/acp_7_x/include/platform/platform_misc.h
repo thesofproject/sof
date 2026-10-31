@@ -626,6 +626,11 @@ struct dmic_context {
 	uint32_t index;
 };
 
+/** Host DMA probe extractor context, stored in acp_dma_dev_data::probe_ctx. */
+struct acp_host_probe_data {
+	uint32_t channel;
+};
+
 struct acp_dma_dev_data {
 	struct dma_context dma_ctx;
 	struct acp_dma_chan_data chan_data[ACP_DMA_CHAN_COUNT];
@@ -633,5 +638,6 @@ struct acp_dma_dev_data {
 	ATOMIC_DEFINE(atomic, ACP_DMA_CHAN_COUNT);
 	struct dma_config  *dma_config;
 	void *dai_index_ptr;
+	void *probe_ctx;
 };
 
