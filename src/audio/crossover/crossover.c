@@ -287,6 +287,8 @@ static int crossover_setup(struct processing_module *mod, unsigned int nch)
 	return ret;
 }
 
+static int crossover_validator(struct comp_dev *dev, void *new_data, uint32_t new_data_size);
+
 /**
  * \brief Creates a Crossover Filter component.
  * \return Pointer to Crossover Filter component device.
@@ -313,6 +315,11 @@ static int crossover_init(struct processing_module *mod)
 		ret = -ENOMEM;
 		goto cd_fail;
 	}
+
+	/* Reject malformed blobs at IPC time so a bad run-time update cannot
+	 * replace the working configuration.
+	 */
+	comp_data_blob_set_validator(cd->model_handler, crossover_validator);
 
 	ret = crossover_output_pin_init(mod);
 	if (ret < 0) {
@@ -347,31 +354,23 @@ static int crossover_free(struct processing_module *mod)
 }
 
 /**
- * \brief Verifies that the config is formatted correctly.
+ * \brief Verifies that the sizes and the sink count of a blob are sane.
  *
- * The function can only be called after the buffers have been initialized.
+ * Only looks at the blob, so unlike crossover_validate_config() this can run
+ * before the buffers have been initialized.
  *
- * \param[in] mod      Processing module owning the configuration. The blob
- *                     under validation is read from the module's private data
- *                     (\c cd->config); callers must store it there beforehand.
+ * \param[in] dev      Component device, used for logging.
+ * \param[in] config   Blob under validation.
  * \param[in] new_size Size in bytes reported by the framework for the blob;
  *                     must match the size field embedded in the blob header.
  * \return 0 on success, negative errno on invalid configuration.
  */
-static int crossover_validate_config(struct processing_module *mod, size_t new_size)
+static int crossover_validate_blob(struct comp_dev *dev, const struct sof_crossover_config *config,
+				   size_t new_size)
 {
-	struct comp_data *cd = module_get_private_data(mod);
-	struct sof_crossover_config *config = cd->config;
-	struct comp_dev *dev = mod->dev;
 	size_t required_size;
-	int32_t num_assigned_sinks;
 	int32_t num_lr4s;
 	uint32_t size;
-
-	if (!config) {
-		comp_err(dev, "NULL config blob");
-		return -EINVAL;
-	}
 
 	/* Reject truncated blobs before touching config->size: the framework-
 	 * reported new_size must cover at least the fixed header.
@@ -404,6 +403,73 @@ static int crossover_validate_config(struct processing_module *mod, size_t new_s
 		comp_err(dev, "size %u too small for num_sinks %u", size, config->num_sinks);
 		return -EINVAL;
 	}
+
+	return 0;
+}
+
+/**
+ * \brief Rejects a blob that the running component could not switch to.
+ *
+ * comp_get_data_blob() frees the blob in use when it hands out a new one, so
+ * crossover_process() has nothing to fall back to once it has fetched a blob.
+ * This runs at IPC time, while the blob in use is still intact.
+ *
+ * \param[in] dev           Component device.
+ * \param[in] new_data      New blob.
+ * \param[in] new_data_size Size in bytes of the new blob.
+ * \return 0 on success, negative errno on invalid configuration.
+ */
+static int crossover_validator(struct comp_dev *dev, void *new_data, uint32_t new_data_size)
+{
+	struct comp_data *cd = module_get_private_data(comp_mod(dev));
+	const struct sof_crossover_config *config = new_data;
+	int ret;
+
+	ret = crossover_validate_blob(dev, config, new_data_size);
+	if (ret < 0)
+		return ret;
+
+	/* num_sinks must not change at runtime: cd->crossover_split was
+	 * selected for the current count, and a smaller value would cause
+	 * the split function to write past the sink array.
+	 */
+	if (cd->crossover_split &&
+	    crossover_find_split_func(config->num_sinks) != cd->crossover_split) {
+		comp_err(dev, "runtime change to num_sinks %u not supported", config->num_sinks);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/**
+ * \brief Verifies that the config is formatted correctly.
+ *
+ * The function can only be called after the buffers have been initialized.
+ *
+ * \param[in] mod      Processing module owning the configuration. The blob
+ *                     under validation is read from the module's private data
+ *                     (\c cd->config); callers must store it there beforehand.
+ * \param[in] new_size Size in bytes reported by the framework for the blob;
+ *                     must match the size field embedded in the blob header.
+ * \return 0 on success, negative errno on invalid configuration.
+ */
+static int crossover_validate_config(struct processing_module *mod, size_t new_size)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct sof_crossover_config *config = cd->config;
+	struct comp_dev *dev = mod->dev;
+	int32_t num_assigned_sinks;
+	int ret;
+
+	if (!config) {
+		comp_err(dev, "NULL config blob");
+		return -EINVAL;
+	}
+
+	ret = crossover_validate_blob(dev, config, new_size);
+	if (ret < 0)
+		return ret;
 
 	/* Align the crossover's sinks, to their respective configuration in
 	 * the config.
@@ -475,34 +541,21 @@ static int crossover_process(struct processing_module *mod,
 	struct sof_source *source = sources[0];
 	unsigned int num_sinks, i;
 	unsigned int num_assigned_sinks = 0;
-	uint32_t prev_num_sinks;
 	size_t frames, cfg_size;
-	struct sof_crossover_config *prev_config;
 	int ret;
 
 	comp_dbg(dev, "entry");
 
-	/* Check for changed configuration */
+	/* Check for changed configuration. The IPC-time validator installed
+	 * in crossover_init() has already rejected any blob that is unsafe to
+	 * process with. The previous blob is freed by comp_get_data_blob(), so
+	 * only the sink assignment can be refused from here on.
+	 */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
-		prev_config = cd->config;
-		prev_num_sinks = prev_config ? prev_config->num_sinks : 0;
-
 		cd->config = comp_get_data_blob(cd->model_handler, &cfg_size, NULL);
 		ret = crossover_validate_config(mod, cfg_size);
 		if (ret < 0)
 			return ret;
-
-		/* num_sinks must not change at runtime: cd->crossover_split was
-		 * selected for the previous count, and a smaller value would
-		 * cause the split function to write past the sink array.
-		 * Reject the blob; the previous config and split stay in use.
-		 */
-		if (prev_num_sinks && cd->config->num_sinks != prev_num_sinks) {
-			comp_err(dev, "runtime num_sinks change %u -> %u not supported",
-				 prev_num_sinks, cd->config->num_sinks);
-			cd->config = prev_config;
-			return -EINVAL;
-		}
 
 		ret = crossover_setup(mod, source_get_channels(source));
 		if (ret < 0) {
