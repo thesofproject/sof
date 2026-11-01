@@ -290,8 +290,12 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 		${SOF_PLATFORM_PATH}/novalake/lib/clk.c
 	)
 
+	# the LLEXT library manager reserves virtual pages for loadable modules
+	if(CONFIG_SOF_VREGIONS OR CONFIG_LIBRARY_MANAGER)
+		zephyr_library_sources(lib/vpage.c)
+	endif()
+
 	zephyr_library_sources_ifdef(CONFIG_SOF_VREGIONS
-		lib/vpage.c
 		lib/vregion.c
 	)
 

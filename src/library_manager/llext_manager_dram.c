@@ -5,6 +5,7 @@
 #include <rtos/alloc.h>
 
 #include <sof/lib_manager.h>
+#include <sof/lib/vpage.h>
 #include <ipc/topology.h>
 
 #include <zephyr/llext/buf_loader.h>
@@ -232,6 +233,18 @@ int llext_manager_restore_from_dram(void)
 				/* Not instantiated - nothing to restore */
 				continue;
 
+			/*
+			 * The virtual page allocator starts out empty on every
+			 * boot, reserve the pages the module is linked at again
+			 */
+			if (mod[k].vma.size &&
+			    vpage_reserve_at((void *)mod[k].vma.addr,
+					     mod[k].vma.size / CONFIG_MM_DRV_PAGE_SIZE) < 0) {
+				tr_err(&lib_manager_tr, "cannot reclaim %#zx bytes at %#lx",
+				       mod[k].vma.size, mod[k].vma.addr);
+				goto nomem;
+			}
+
 			/* Loaders are supplied by the caller */
 			struct llext_buf_loader *bldr = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 								sizeof(*bldr));
@@ -329,8 +342,11 @@ nomem:
 			continue;
 
 		for (k = 0; k < ctx->n_mod; k++) {
-			if (mod[k].llext)
+			if (mod[k].llext) {
 				llext_unload(&mod[k].llext);
+				if (mod[k].vma.size)
+					vpage_release((void *)mod[k].vma.addr);
+			}
 
 			if (mod[k].ebl)
 				rfree(mod[k].ebl);
