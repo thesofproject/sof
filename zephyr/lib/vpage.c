@@ -560,14 +560,21 @@ __cold static int vpage_init(void)
 		CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE;
 	uintptr_t end;
 	size_t remaining_ram;
+	/*
+	 * The LLEXT library manager places relocatable modules in vpages, only
+	 * shared object modules use the library region, so L2 has to be kept
+	 * for it only when modules are built as shared objects.
+	 */
+	const size_t library_l2_size = IS_ENABLED(CONFIG_LLEXT_TYPE_ELF_RELOCATABLE) ?
+		0 : CONFIG_LIBRARY_REGION_SIZE;
 
 	assert_can_be_cold();
 
 	k_mutex_init(&vpage_ctx.lock);
 
-	if (start + CONFIG_LIBRARY_REGION_SIZE + CONFIG_MM_DRV_PAGE_SIZE <= l2_end) {
+	if (start + library_l2_size + CONFIG_MM_DRV_PAGE_SIZE <= l2_end) {
 		/* virtual heap and library regions fit in L2, vpages get the rest */
-		end = l2_end - CONFIG_LIBRARY_REGION_SIZE;
+		end = l2_end - library_l2_size;
 	} else {
 		/*
 		 * Small L2 (e.g. NVL-S): the virtual heap and library regions are only
