@@ -232,11 +232,11 @@ static int vpages_free_and_unmap(uintptr_t *ptr)
 	}
 
 	/* move the last element over the released one, clear the last element */
+	vpage_ctx.num_elems_in_use--;
 	if (vpage_ctx.num_elems_in_use != elem_idx)
 		vpage_ctx.velems[elem_idx] = vpage_ctx.velems[vpage_ctx.num_elems_in_use];
 	vpage_ctx.velems[vpage_ctx.num_elems_in_use].pages = 0;
 	vpage_ctx.velems[vpage_ctx.num_elems_in_use].vpage = 0;
-	vpage_ctx.num_elems_in_use--;
 
 	/* success update the free pages */
 	vpage_ctx.free_pages += pages;
