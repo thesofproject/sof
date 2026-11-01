@@ -1207,7 +1207,7 @@ SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
 
 #endif
 
-#if CONFIG_STATIC_PIPELINE
+#if CONFIG_STATIC_PIPELINE && CONFIG_IPC_MAJOR_4
 #include <sof/audio/pipeline/static_pipeline.h>
 #include <user/selector.h>
 
@@ -1216,7 +1216,6 @@ static struct comp_dev *sel_static_create(const struct comp_driver *drv,
 					  const struct sof_static_comp *cdesc,
 					  uint32_t period_us)
 {
-#if CONFIG_IPC_MAJOR_4
 	/*
 	 * In IPC4 mode, selector module_adapter init expects
 	 * struct sof_selector_avs_ipc4_config containing base_cfg and output_format.
@@ -1236,19 +1235,6 @@ static struct comp_dev *sel_static_create(const struct comp_driver *drv,
 		.data = (const uint8_t *)&sel_cfg,
 	};
 	return drv->ops.create(drv, cfg, &sel_spec);
-#else
-	uint16_t ch = cdesc->caps.max_channels ? cdesc->caps.max_channels : 2;
-	struct sof_sel_config sel_cfg = {
-		.in_channels_count = ch,
-		.out_channels_count = ch,
-		.sel_channel = 0,
-	};
-	struct ipc_config_process sel_spec = {
-		.size = sizeof(sel_cfg),
-		.data = (const uint8_t *)&sel_cfg,
-	};
-	return drv->ops.create(drv, cfg, &sel_spec);
-#endif
 }
 
 static int sel_static_apply_enum(struct comp_dev *dev, uint32_t channel, int32_t val)
@@ -1295,7 +1281,6 @@ static int sel_static_apply_enum(struct comp_dev *dev, uint32_t channel, int32_t
 	/* Apply validated channel selection to runtime configuration */
 	cd->config.sel_channel = (uint32_t)val;
 
-#if CONFIG_IPC_MAJOR_4
 	/*
 	 * In IPC4 mode, routing is controlled by the Q10 coefficient matrix cd->coeffs_config.
 	 * If channel indicates a single output channel (channel < out_channels_count), route
@@ -1342,17 +1327,14 @@ static int sel_static_apply_enum(struct comp_dev *dev, uint32_t channel, int32_t
 	} else {
 		cd->passthrough = false;
 	}
-#endif
 
 	return 0;
 }
 
-#if CONFIG_IPC_MAJOR_4
 static struct sof_static_module_ops sel4_static_ops = {
 	.uuid = &selector4_uuid,
 	.create = sel_static_create,
 	.apply_enum = sel_static_apply_enum,
 };
 DECLARE_STATIC_MODULE_OPS(selector4, &sel4_static_ops);
-#endif
-#endif /* CONFIG_STATIC_PIPELINE */
+#endif /* CONFIG_STATIC_PIPELINE && CONFIG_IPC_MAJOR_4 */

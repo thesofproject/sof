@@ -47,7 +47,7 @@ __cold struct sof_dma *z_impl_sof_dma_get(uint32_t dir, uint32_t cap, uint32_t d
 
 	assert_can_be_cold();
 
-	if (!info->num_dmas) {
+	if (!info || !info->num_dmas) {
 		tr_err(&dma_tr, "dma_get(): No DMACs installed");
 		return NULL;
 	}
@@ -186,7 +186,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	struct dma *d = NULL, *dmin = NULL;
 	k_spinlock_key_t key;
 
-	if (!info->num_dmas) {
+	if (!info || !info->num_dmas) {
 		tr_err(&dma_tr, "dma_get(): No DMACs installed");
 		return NULL;
 	}

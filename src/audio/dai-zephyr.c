@@ -224,6 +224,14 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg.type = DAI_MEDIATEK_AFE;
 		cfg_params = &sof_cfg->afe;
 		break;
+	case SOF_DAI_ESP32_I2S:
+		cfg.type = DAI_ESP32_I2S;
+		cfg_params = NULL;
+		break;
+	case SOF_DAI_ESP32_PDM:
+		cfg.type = DAI_ESP32_PDM;
+		cfg_params = NULL;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -947,6 +955,7 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 		comp_err(dev, "dma_cfg allocation failed");
 		return -ENOMEM;
 	}
+	memset(dma_cfg, 0, sizeof(*dma_cfg));
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		dma_cfg->channel_direction = MEMORY_TO_PERIPHERAL;
@@ -979,6 +988,7 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 		comp_err(dev, "dma_block_config allocation failed");
 		return -ENOMEM;
 	}
+	memset(dma_block_cfg, 0, sizeof(struct dma_block_config) * dma_cfg->block_count);
 
 	dma_cfg->head_block = dma_block_cfg;
 	for (i = 0; i < dma_cfg->block_count; i++) {
@@ -1276,7 +1286,8 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 	}
 
 	/* clear dma buffer to avoid pop noise */
-	buffer_zero(dd->dma_buffer);
+	if (dd->dma_buffer)
+		buffer_zero(dd->dma_buffer);
 
 	/* dma reconfig not required if XRUN handling */
 	if (dd->xrun) {
@@ -1655,8 +1666,13 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 	/* limit bytes per copy to one period for the whole pipeline in order to avoid high load
 	 * spike if FAST_MODE is enabled, then one period limitation is omitted.
 	 */
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_ESP32C6)
+	/* On ESP32, allow bursting up to 4 periods to quickly absorb scheduling jitter and drain DMA backlog */
+	frames = MIN(frames, dev->frames ? (dev->frames * 4) : 192);
+#else
 	if (!(dd[0]->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
 		frames = MIN(frames, dev->frames);
+#endif
 	comp_dbg(dev, "dir: %d copy frames= 0x%x",
 		 dev->direction, frames);
 
@@ -1722,14 +1738,15 @@ static void set_new_local_buffer(struct dai_data *dd, struct comp_dev *dev)
 	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dd->dma_buffer->stream);
 	uint32_t local_fmt;
 
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dd->local_buffer = comp_dev_get_first_data_producer(dev);
-	else
+		local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
+		dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
+	} else {
 		dd->local_buffer = comp_dev_get_first_data_consumer(dev);
-
-	local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
-
-	dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
+		local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
+		dd->process = pcm_get_conversion_function(dma_fmt, local_fmt);
+	}
 
 	if (!dd->process) {
 		comp_err(dev, "converter function NULL: local fmt %d dma fmt %d\n",
@@ -1860,7 +1877,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	 * in order to avoid high load spike
 	 * if FAST_MODE is enabled, then one period limitation is omitted
 	 */
-	if (!dd->fast_mode)
+	if (!dd->fast_mode && dev->direction != SOF_IPC_STREAM_CAPTURE)
 		frames = MIN(frames, dev->frames);
 
 	copy_bytes = frames * audio_stream_frame_bytes(&dd->dma_buffer->stream);
