@@ -195,8 +195,8 @@ __cold static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 {
 	uint32_t addr_align;
 	uint32_t channel;
-	struct dma_config dma_cfg;
-	struct dma_block_config dma_block_cfg;
+	struct dma_config dma_cfg = {0};
+	struct dma_block_config dma_block_cfg = {0};
 	int err = 0;
 
 	assert_can_be_cold();
