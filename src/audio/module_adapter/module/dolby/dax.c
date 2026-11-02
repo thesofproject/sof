@@ -469,6 +469,12 @@ static int update_params_from_buffer(struct processing_module *mod, void *data, 
 	uint32_t param_data_size;
 
 	for (uint32_t i = 0; i < data_size;) {
+		/* Need a whole param header in the remaining bytes to read id/size */
+		if (data_size - i < param_header_size) {
+			comp_err(dev, "param header truncated, pos %u, size %u", i, data_size);
+			return -EINVAL;
+		}
+
 		param = (struct module_param *)(pos);
 		if (param->size < param_header_size ||
 		    param->size > data_size - i ||
