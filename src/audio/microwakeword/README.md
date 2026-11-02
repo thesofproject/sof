@@ -42,21 +42,21 @@ graph TD
 
     subgraph P101["Pipeline 101 — Slot 0: 'strawberry'  (Core 0, DP 10ms)"]
         MO101["mixout 101.1"]
-        MFCC0["mfcc.101.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
+        MFCC0["mfcc.101.1\n(Mel-40 10ms PCAN Compress)\nIBS: 320B | OBS: 64B"]
         MWW0["mww.101.1\n(microWakeWord)\nModel: 'strawberry'"]
         MO101 --> MFCC0 --> MWW0
     end
 
     subgraph P102["Pipeline 102 — Slot 1: 'hi intel'  (Core 0, DP 10ms)"]
         MO102["mixout 102.1"]
-        MFCC1["mfcc.102.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
+        MFCC1["mfcc.102.1\n(Mel-40 10ms PCAN Compress)\nIBS: 320B | OBS: 64B"]
         MWW1["mww.102.1\n(microWakeWord)\nModel: 'hi intel'"]
         MO102 --> MFCC1 --> MWW1
     end
 
     subgraph P103["Pipeline 103 — Slot 2: 'orange'  (Core 0, DP 10ms)"]
         MO103["mixout 103.1"]
-        MFCC2["mfcc.103.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
+        MFCC2["mfcc.103.1\n(Mel-40 10ms PCAN Compress)\nIBS: 320B | OBS: 64B"]
         MWW2["mww.103.1\n(microWakeWord)\nModel: 'orange'"]
         MO103 --> MFCC2 --> MWW2
     end
