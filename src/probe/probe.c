@@ -1249,7 +1249,7 @@ __cold int probe_point_add(uint32_t count, const struct probe_point *probe)
 #elif CONFIG_AMD_ACP_HOST_DMA_PROBE
 			dev = ipc_get_buffer_by_id(ipc_get(), buf_id->full_id);
 #else
-			dev = ipc_get_comp_by_id(ipc_get(), buf_id->full_id);
+			dev = ipc_get_comp_dev(ipc_get(), COMP_TYPE_ANY, buf_id->full_id);
 #endif
 			/* check if buffer exists */
 			if (!dev) {
@@ -1512,7 +1512,7 @@ __cold int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
 #if CONFIG_AMD_ACP_HOST_DMA_PROBE
 				dev = ipc_get_buffer_by_id(ipc_get(), buffer_id[i]);
 #else
-				dev = ipc_get_comp_by_id(ipc_get(), buffer_id[i]);
+				dev = ipc_get_comp_dev(ipc_get(), COMP_TYPE_ANY, buffer_id[i]);
 #endif
 				if (dev) {
 					struct comp_buffer *probe_buf =
