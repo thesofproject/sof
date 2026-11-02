@@ -170,11 +170,16 @@ __cold static int ipc4_comp_new_config(struct comp_ipc_config *ipc_config,
 
 		/* Without cross-core streams a stream is processed entirely on a
 		 * single core, so a module cannot live on another core than its
-		 * pipeline.
+		 * pipeline. With user-space LL, only DP modules can run on another
+		 * core: an LL module would need an own LL task on that core, which
+		 * is set up by the IDC handlers in kernel mode only.
 		 */
-		if (!IS_ENABLED(CONFIG_CROSS_CORE_STREAM) && ppl->core != ipc_config->core) {
+		if (ppl->core != ipc_config->core &&
+		    (!IS_ENABLED(CONFIG_CROSS_CORE_STREAM) ||
+		     (IS_ENABLED(CONFIG_SOF_USERSPACE_LL) &&
+		      ipc_config->proc_domain != COMP_PROCESSING_DOMAIN_DP))) {
 			tr_err(&ipc_tr,
-			       "comp 0x%x: core %u != pipeline %u core %u, cross-core disabled",
+			       "comp 0x%x: core %u != pipeline %u core %u, not supported",
 			       comp_id, (uint32_t)ipc_config->core,
 			       (uint32_t)ipc_config->pipeline_id, (uint32_t)ppl->core);
 			return -EINVAL;
@@ -706,9 +711,10 @@ __cold int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	return IPC4_SUCCESS;
 }
 
-__cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool is_shared,
-						uint32_t buf_size, uint32_t src_queue,
-						uint32_t dst_queue, struct mod_alloc_ctx *alloc)
+__cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool cross_core,
+						bool is_shared, uint32_t buf_size,
+						uint32_t src_queue, uint32_t dst_queue,
+						struct mod_alloc_ctx *alloc)
 {
 	struct sof_ipc_buffer ipc_buf;
 
@@ -724,7 +730,7 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 	 * while a cross-core bind is always processed on the primary core. cpu_get_id()
 	 * is privileged and so avoided here.
 	 */
-	ipc_buf.comp.core = is_shared ? PLATFORM_PRIMARY_CORE_ID : src->ipc_config.core;
+	ipc_buf.comp.core = cross_core ? PLATFORM_PRIMARY_CORE_ID : src->ipc_config.core;
 	assert(IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || ipc_buf.comp.core == cpu_get_id());
 
 	return buffer_new(alloc, &ipc_buf, is_shared);
@@ -938,6 +944,15 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 		alloc = ipc->ll_alloc;
 #endif
 	bool cross_core_bind = source->ipc_config.core != sink->ipc_config.core;
+	/*
+	 * The buffers must be shared, if LL threads of different cores access
+	 * them. Besides the module cores, these include the pipeline cores: the
+	 * LL thread of the pipeline core copies the data between the buffer
+	 * and the queue of a DP module on another core.
+	 */
+	uint32_t cores = BIT(source->ipc_config.core) | BIT(sink->ipc_config.core) |
+			 BIT(comp_ppl_core(source)) | BIT(comp_ppl_core(sink));
+	bool shared_buffer = (cores & (cores - 1)) != 0;
 
 #if !CONFIG_CROSS_CORE_STREAM
 	/* reject early: the remote attribute/bind calls below are privileged */
@@ -1013,8 +1028,8 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 	else
 		buf_size = ibs * 2;
 
-	buffer = ipc4_create_buffer(source, cross_core_bind, buf_size, bu->extension.r.src_queue,
-				    bu->extension.r.dst_queue, alloc);
+	buffer = ipc4_create_buffer(source, cross_core_bind, shared_buffer, buf_size,
+				    bu->extension.r.src_queue, bu->extension.r.dst_queue, alloc);
 	if (!buffer) {
 		tr_err(&ipc_tr, "failed to allocate buffer to bind %#x to %#x", src_id, sink_id);
 		return IPC4_OUT_OF_MEMORY;
