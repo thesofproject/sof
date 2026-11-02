@@ -7,7 +7,6 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/data_blob.h>
-#include <sof/audio/format.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/kpb.h>
 #include <sof/ipc/msg.h>
@@ -80,20 +79,8 @@ void __assert_func(const char *file, int line, const char *func,
 #include <ipc4/ams_helpers.h>
 #endif
 
-#if CONFIG_COMP_MWW_PCAN && !CONFIG_COMP_MFCC_PCAN
-#error "CONFIG_COMP_MWW_PCAN requires CONFIG_COMP_MFCC_PCAN; MFCC must produce int8 PCAN features"
-#endif
-
-#if CONFIG_COMP_MWW_PCAN
-/* 8-bit PCAN features: 24-byte header + 40 mel bins * 1 byte */
+/* int8 Mel features from MFCC (PCAN): 24-byte header + 40 mel bins * 1 byte */
 #define MWW_HOP_BYTES (sizeof(struct mfcc_data_header) + MWW_FEATURE_SIZE * sizeof(int8_t))
-#else
-/* MFCC's non-compress output prepends a struct mfcc_data_header (24 bytes)
- * to each hop, followed by MWW_FEATURE_SIZE int32_t Q9.23 mel-log values.
- * This must match the frame size configured in the mww capture pipeline.
- */
-#define MWW_HOP_BYTES (sizeof(struct mfcc_data_header) + MWW_FEATURE_SIZE * sizeof(int32_t))
-#endif
 
 /* Pre-roll history in ms that KPB drains to host on wake-word trigger. */
 #define MWW_KPB_DRAIN_REQ_MS 2000
@@ -124,26 +111,6 @@ void __assert_func(const char *file, int line, const char *func,
 #else
 #define MWW_FAKE_WAKE_DELAY_MS 5000
 #endif
-
-/* Soft mel-log AGC (units: Q9.23, matches MFCC output). One decade = +10 dB.
- * Target +2.5 dB (+0.25 in Q9.23), floor -20 dB. Attack: instant clamp so peak+gain
- * never exceeds MEL_CLIP_MAX_Q23 (+1.0, +10 dB). Release: dual-rate additive recovery:
- *   - Normal release during silence (VAD == 0): ~0.5 dB/s (100 hops/s).
- *   - Super-slow leak during speech (VAD == 1): ~0.05 dB/s (1/10th speed) to guarantee
- *     the AGC never stays permanently trapped at minimum gain even if VAD gets stuck.
- */
-#define MWW_AGC_GAIN_TARGET_Q23        2097152 /* +2.5 dB (0.25 * 2^23) */
-#define MWW_AGC_GAIN_FLOOR_Q23         -16777216 /* -20 dB, int32(-20 * 0.1 * 2^23) */
-#define MWW_AGC_RELEASE_STEP_Q23       4194 /* 0.5 dB/s, int32((0.5 * 0.1 / 100) * 2^23) */
-#define MWW_AGC_RELEASE_STEP_SPEECH_Q23 419 /* 0.05 dB/s, 1/10th normal release */
-
-/* The range -1.0 to +1.0 of Q9.23 Mel values is scaled to +/-1.0 Q1.7. */
-#define MEL_OFFSET_Q23          0 /* 0 */
-#define MEL_SCALE_Q30           (1 << 30) /* 1.0 in Q30 */
-#define MEL_CLIP_MAX_Q23        (1 << 23) /* +1.0 in Q23 */
-#define MEL_CLIP_MIN_Q23        (-1 << 23) /* -1.0 in Q23 */
-#define MEL_CLIP_MAX_Q7         127
-#define MEL_CLIP_MIN_Q7         -128
 
 SOF_DEFINE_REG_UUID(mww);
 LOG_MODULE_REGISTER(mww, CONFIG_SOF_LOG_LEVEL);
@@ -184,10 +151,6 @@ struct mww_comp_data {
 	uint32_t vad_history;
 	/** Remaining hops of speech activity hold window */
 	uint32_t vad_active_hops;
-#if !CONFIG_COMP_MWW_PCAN
-	/* Persistent AGC gain applied to every Q9.23 mel value */
-	int32_t agc_gain_q23;
-#endif
 
 	/* Hop buffer for assembling contiguous data when circular buffer wraps */
 	uint8_t hop_buf[MWW_HOP_BYTES] __aligned(4);
@@ -528,9 +491,6 @@ __cold static int mww_init(struct processing_module *mod)
 	cd->fake_wake_armed = false;
 
 	cd->drain_req_ms = MWW_KPB_DRAIN_REQ_MS;
-#if !CONFIG_COMP_MWW_PCAN
-	cd->agc_gain_q23 = MWW_AGC_GAIN_TARGET_Q23;
-#endif
 #if CONFIG_COMP_MWW_DEBUG_TRACE
 	cd->dbg_hop_count = 0;
 	cd->dbg_active_hops = 0;
@@ -724,10 +684,7 @@ static int mww_process(struct processing_module *mod,
 		else if (cd->vad_active_hops > 0)
 			cd->vad_active_hops--;
 
-#if CONFIG_COMP_MWW_PCAN
-		/* PCAN mode: MFCC has already normalized and quantized Mel energies
-		 * to int8_t (Q1.7). Copy directly into the feature buffer slice.
-		 */
+		/* MFCC has already normalized and quantized Mel energies to int8_t. */
 		memcpy(slice, hop_src + sizeof(struct mfcc_data_header), MWW_FEATURE_SIZE);
 
 #if CONFIG_COMP_MWW_DEBUG_TRACE
@@ -754,82 +711,12 @@ static int mww_process(struct processing_module *mod,
 			 * long listening period before a keyword.
 			 */
 			if (hdr->vad_flag || f_max > 0 || (cd->dbg_hop_count % 32) == 1) {
-				comp_info(dev, "[MWW DBG hop %u] vad=%d E=%d Ne=%d f_min=%d f_max=%d (pcan)",
+				comp_info(dev, "[MWW DBG hop %u] vad=%d E=%d Ne=%d f_min=%d f_max=%d",
 					  cd->dbg_hop_count, (int)hdr->vad_flag,
 					  (int)hdr->energy, (int)hdr->noise_energy,
 					  f_min, f_max);
 			}
 		}
-#endif
-#else
-		const int32_t *mel = (const int32_t *)(hop_src + sizeof(struct mfcc_data_header));
-
-		/* AGC: attack on this hop's peak (always track energy) */
-		int32_t hop_peak_q23 = mel[0];
-
-		for (i = 1; i < MWW_FEATURE_SIZE; i++) {
-			if (mel[i] > hop_peak_q23)
-				hop_peak_q23 = mel[i];
-		}
-
-		int32_t clip_headroom_q23 = MEL_CLIP_MAX_Q23 - hop_peak_q23;
-
-		if (cd->agc_gain_q23 > clip_headroom_q23)
-			cd->agc_gain_q23 = clip_headroom_q23;
-		if (cd->agc_gain_q23 < MWW_AGC_GAIN_FLOOR_Q23)
-			cd->agc_gain_q23 = MWW_AGC_GAIN_FLOOR_Q23;
-
-		int32_t agc_gain_q23 = cd->agc_gain_q23;
-
-		/* Requantize to int8 (Q1.7 range matching training AGC normalization) */
-		for (i = 0; i < MWW_FEATURE_SIZE; i++) {
-			int32_t mel_c = mel[i] + agc_gain_q23;
-
-			/* Clamp to [-1.0, +1.0] Q9.23 range before Q1.7 conversion */
-			if (mel_c > MEL_CLIP_MAX_Q23)
-				mel_c = MEL_CLIP_MAX_Q23;
-			else if (mel_c < MEL_CLIP_MIN_Q23)
-				mel_c = MEL_CLIP_MIN_Q23;
-
-			/* Rescale with offset and gain */
-			mel_c = Q_MULTSR_32X32((int64_t)(mel_c + MEL_OFFSET_Q23),
-					       MEL_SCALE_Q30, 23, 30, 7);
-			if (mel_c > MEL_CLIP_MAX_Q7)
-				mel_c = MEL_CLIP_MAX_Q7;
-			else if (mel_c < MEL_CLIP_MIN_Q7)
-				mel_c = MEL_CLIP_MIN_Q7;
-
-			slice[i] = (int8_t)mel_c;
-		}
-
-		/* Release: normal recovery during silence, super-slow leak during speech */
-		if (cd->agc_gain_q23 < MWW_AGC_GAIN_TARGET_Q23) {
-			int32_t step = hdr->vad_flag ?
-				MWW_AGC_RELEASE_STEP_SPEECH_Q23 : MWW_AGC_RELEASE_STEP_Q23;
-
-			cd->agc_gain_q23 += step;
-			if (cd->agc_gain_q23 > MWW_AGC_GAIN_TARGET_Q23)
-				cd->agc_gain_q23 = MWW_AGC_GAIN_TARGET_Q23;
-		}
-
-#if CONFIG_COMP_MWW_DEBUG_TRACE
-		{
-			int32_t mel_min = mel[0], mel_max = mel[0];
-			int8_t f_min = slice[0], f_max = slice[0];
-
-			cd->dbg_hop_count++;
-			for (i = 1; i < MWW_FEATURE_SIZE; i++) {
-				if (mel[i] < mel_min) mel_min = mel[i];
-				if (mel[i] > mel_max) mel_max = mel[i];
-				if (slice[i] < f_min) f_min = slice[i];
-				if (slice[i] > f_max) f_max = slice[i];
-			}
-			comp_info(dev, "[MWW DBG hop %u] vad=%d E=%d Ne=%d mel_min=%d mel_max=%d f_min=%d f_max=%d agc_q23=%d",
-				  cd->dbg_hop_count, (int)hdr->vad_flag,
-				  (int)hdr->energy, (int)hdr->noise_energy,
-				  mel_min, mel_max, f_min, f_max, (int)cd->agc_gain_q23);
-		}
-#endif
 #endif
 
 		/* Copy source data to sink so downstream stages keep seeing raw MFCC hops */
@@ -980,9 +867,6 @@ static int mww_reset(struct processing_module *mod)
 	cd->dbg_max_f_max = -128;
 	cd->dbg_max_energy = 0;
 	cd->dbg_peak_prob = 0;
-#endif
-#if !CONFIG_COMP_MWW_PCAN
-	cd->agc_gain_q23 = MWW_AGC_GAIN_TARGET_Q23;
 #endif
 	memset(cd->feature_buf, 0, sizeof(cd->feature_buf));
 	MWW_Reset(&cd->mwc);
