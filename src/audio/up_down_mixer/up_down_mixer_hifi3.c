@@ -28,9 +28,9 @@ void upmix32bit_1_to_5_1(struct up_down_mixer_data *cd, const uint8_t * const in
 	ae_int32 *output_right = (ae_int32 *)(out_data +
 		(get_channel_location(out_channel_map, CHANNEL_RIGHT) << 2));
 	ae_int32 *output_left_surround = (ae_int32 *)(out_data +
-		(get_channel_location(out_channel_map, CHANNEL_LEFT_SURROUND) << 2));
+		(cd->out_left_surround_slot << 2));
 	ae_int32 *output_right_surround = (ae_int32 *)(out_data +
-		(get_channel_location(out_channel_map, CHANNEL_RIGHT_SURROUND) << 2));
+		(cd->out_right_surround_slot << 2));
 	ae_int32 *output_lfe = (ae_int32 *)(out_data +
 		(get_channel_location(out_channel_map, CHANNEL_LFE) << 2));
 
@@ -61,9 +61,9 @@ void upmix16bit_1_to_5_1(struct up_down_mixer_data *cd, const uint8_t * const in
 	ae_int32 *output_right = (ae_int32 *)(out_data +
 		(get_channel_location(out_channel_map, CHANNEL_RIGHT) << 2));
 	ae_int32 *output_left_surround = (ae_int32 *)(out_data +
-		(get_channel_location(out_channel_map, CHANNEL_LEFT_SURROUND) << 2));
+		(cd->out_left_surround_slot << 2));
 	ae_int32 *output_right_surround = (ae_int32 *)(out_data +
-		(get_channel_location(out_channel_map, CHANNEL_RIGHT_SURROUND) << 2));
+		(cd->out_right_surround_slot << 2));
 	ae_int32 *output_lfe = (ae_int32 *)(out_data +
 		(get_channel_location(out_channel_map, CHANNEL_LFE) << 2));
 
@@ -1880,24 +1880,13 @@ void upmix32bit_quatro_to_5_1(struct up_down_mixer_data *cd, const uint8_t * con
 	const uint8_t left_slot = get_channel_location(out_channel_map, CHANNEL_LEFT);
 	const uint8_t center_slot = get_channel_location(out_channel_map, CHANNEL_CENTER);
 	const uint8_t right_slot = get_channel_location(out_channel_map, CHANNEL_RIGHT);
-	uint8_t right_surround_slot = get_channel_location(out_channel_map, CHANNEL_RIGHT_SURROUND);
-	uint8_t left_surround_slot = get_channel_location(out_channel_map, CHANNEL_LEFT_SURROUND);
 	const uint8_t lfe_slot = get_channel_location(out_channel_map, CHANNEL_LFE);
-
-	/* Must support also 5.1 Surround */
-	const bool surround_5_1_channel_map = (left_surround_slot == CHANNEL_INVALID) &&
-		(right_surround_slot == CHANNEL_INVALID);
-
-	if (surround_5_1_channel_map) {
-		left_surround_slot = get_channel_location(cd->in_channel_map, CHANNEL_LEFT_SIDE);
-		right_surround_slot = get_channel_location(cd->in_channel_map, CHANNEL_RIGHT_SIDE);
-	}
 
 	ae_int32 *output_left = (ae_int32 *)(out_data + (left_slot << 2));
 	ae_int32 *output_center = (ae_int32 *)(out_data + (center_slot << 2));
 	ae_int32 *output_right = (ae_int32 *)(out_data + (right_slot << 2));
-	ae_int32 *output_side_left = (ae_int32 *)(out_data + (left_surround_slot << 2));
-	ae_int32 *output_side_right = (ae_int32 *)(out_data + (right_surround_slot << 2));
+	ae_int32 *output_side_left = (ae_int32 *)(out_data + (cd->out_left_surround_slot << 2));
+	ae_int32 *output_side_right = (ae_int32 *)(out_data + (cd->out_right_surround_slot << 2));
 	ae_int32 *output_lfe = (ae_int32 *)(out_data + (lfe_slot << 2));
 
 	ae_int32 *in_left_ptr = (ae_int32 *)in_data;

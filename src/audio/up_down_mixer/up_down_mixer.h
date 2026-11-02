@@ -121,6 +121,15 @@ struct up_down_mixer_data {
 	enum ipc4_channel_config in_channel_config;
 	channel_map out_channel_map;
 
+	/**
+	 * Output slots of the 5.1 surround pair, resolved once at init time.
+	 * A 5.1 Surround map names the side pair instead of the surround pair,
+	 * so these hold whichever of the two the map carries and the mix
+	 * routines read them without looking the channels up again.
+	 */
+	uint8_t out_left_surround_slot;
+	uint8_t out_right_surround_slot;
+
 	/** Function pointer to up/down-mix routine. */
 	up_down_mixer_routine mix_routine;
 
