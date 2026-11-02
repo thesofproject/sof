@@ -8,6 +8,7 @@
  * transfer data from DSP to host using the host HD DMA instance.
  * The test uses the cavstool.py infrastructure to perform host side
  * programming of the HDA DMA, and to verify the transferred data.
+ * Commands to cavstool.py are sent using the Zephyr IPC service.
  *
  * This test is based on the Zephyr kernel tests for Intel HD DMA
  * driver (zephyr/tests/boards/intel_adsp/hda/) written by Tom
@@ -21,7 +22,11 @@
 #include <zephyr/kernel.h>
 #include <zephyr/ztest.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/ipc/ipc_service.h>
+#include <zephyr/ipc/backends/intel_adsp_host_ipc.h>
 #include <sof/lib/dma.h>
+
+#include <cavstool.h>
 
 LOG_MODULE_DECLARE(sof_boot_test, LOG_LEVEL_DBG);
 
@@ -111,13 +116,20 @@ static void intel_hda_dma_user(void *p1, void *p2, void *p3)
 	err = sof_dma_reload(dma, channel, sizeof(data_buf));
 	zassert_equal(err, 0);
 
-	for (int i = 0; stat.pending_length < TEST_BUF_SIZE; i++) {
+	/*
+	 * wait until DMA has drained all reloaded data to host, the
+	 * transfer may already be complete at the first poll
+	 */
+	for (int i = 0; ; i++) {
 		err = sof_dma_get_status(dma, channel, &stat);
 		zassert_equal(err, 0);
 		LOG_INF("sof_dma_get_status %d: pend %u free %u", i,
 			stat.pending_length, stat.free);
 
-		zassert_true(i < 100, "DMA transfer completes in 100usec");
+		if (!stat.pending_length)
+			break;
+
+		zassert_true(i < 100, "DMA transfer did not complete");
 
 		/* let DMA transfer complete */
 		k_sleep(K_USEC(1));
@@ -151,27 +163,64 @@ static void intel_hda_dma_user(void *p1, void *p2, void *p3)
 #define ALIGNMENT DMA_BUF_ADDR_ALIGNMENT(DT_NODELABEL(hda_host_in))
 static __aligned(ALIGNMENT) uint8_t dma_buf[DMA_BUF_SIZE];
 
-#include <intel_adsp_hda.h>
-#include <../../../../zephyr/tests/boards/intel_adsp/hda/src/tests.h>
-
 static int msg_validate_res;
+static K_SEM_DEFINE(ipc_msg_received, 0, 1);
 
-static bool ipc_message(const struct device *dev, void *arg,
-			uint32_t data, uint32_t ext_data)
+static struct ipc_ept host_ipc_ept;
+static struct intel_adsp_ipc_ept_priv_data host_ipc_priv_data;
+
+static void ipc_receive_cb(const void *data, size_t len, void *priv)
 {
-	LOG_DBG("HDA message received, data %u, ext_data %u", data, ext_data);
-	msg_validate_res = ext_data;
-	return true;
+	struct intel_adsp_ipc_ept_priv_data *priv_data = priv;
+	const uint32_t *msg = data;
+
+	LOG_DBG("HDA message received, data %u, ext_data %u", msg[0], msg[1]);
+	msg_validate_res = msg[1];
+
+	/* complete the message immediately from the ISR */
+	priv_data->msg_done = true;
+	k_sem_give(&ipc_msg_received);
+}
+
+static const struct ipc_ept_cfg host_ipc_ept_cfg = {
+	.name = "hda_dma_test",
+	.cb = {
+		.received = ipc_receive_cb,
+	},
+	.priv = &host_ipc_priv_data,
+};
+
+/*
+ * Send a message to host and wait until it has been acknowledged,
+ * i.e. the host IPC channel is free again.
+ */
+static void hda_ipc_msg(uint32_t data, uint32_t ext_data, k_timeout_t timeout)
+{
+	k_timepoint_t end = sys_timepoint_calc(timeout);
+	uint32_t msg[2] = { data, ext_data };
+	int ret;
+
+	ret = ipc_service_send(&host_ipc_ept, msg, sizeof(msg));
+	zassert_equal(ret, 0, "ipc_service_send() failed: %d", ret);
+
+	while (ipc_service_get_tx_buffer_size(&host_ipc_ept) <= 0) {
+		zassert_false(sys_timepoint_expired(end),
+			      "timeout waiting for host ack to IPC %u", data);
+		k_sleep(K_MSEC(1));
+	}
 }
 
 static void intel_hda_dma_kernel(void)
 {
 	const struct device *dma;
+	int ret;
 
 	LOG_INF("run %s with buffer at address %p, size %d",
 		__func__, (void *)dma_buf, DMA_BUF_SIZE);
 
-	intel_adsp_ipc_set_message_handler(INTEL_ADSP_IPC_HOST_DEV, ipc_message, NULL);
+	ret = ipc_service_register_endpoint(INTEL_ADSP_IPC_HOST_DEV, &host_ipc_ept,
+					    &host_ipc_ept_cfg);
+	zassert_equal(ret, 0, "cannot register IPC endpoint: %d", ret);
 
 	k_thread_create(&user_thread, user_stack, USER_STACKSIZE,
 			intel_hda_dma_user, NULL, NULL, NULL,
@@ -183,11 +232,9 @@ static void intel_hda_dma_kernel(void)
 	dma = DEVICE_DT_GET(DT_NODELABEL(hda_host_in));
 	k_thread_access_grant(&user_thread, dma);
 
-	hda_ipc_msg(INTEL_ADSP_IPC_HOST_DEV, IPCCMD_HDA_RESET,
-		    TEST_CHANNEL, IPC_TIMEOUT);
+	hda_ipc_msg(IPCCMD_HDA_RESET, TEST_CHANNEL, IPC_TIMEOUT);
 
-	hda_ipc_msg(INTEL_ADSP_IPC_HOST_DEV, IPCCMD_HDA_CONFIG,
-		    TEST_CHANNEL | (DMA_BUF_SIZE << 8), IPC_TIMEOUT);
+	hda_ipc_msg(IPCCMD_HDA_CONFIG, TEST_CHANNEL | (DMA_BUF_SIZE << 8), IPC_TIMEOUT);
 
 	k_thread_start(&user_thread);
 
@@ -198,17 +245,20 @@ static void intel_hda_dma_kernel(void)
 
 	LOG_INF("user ready, starting HDA test");
 
-	hda_ipc_msg(INTEL_ADSP_IPC_HOST_DEV, IPCCMD_HDA_START, TEST_CHANNEL, IPC_TIMEOUT);
+	hda_ipc_msg(IPCCMD_HDA_START, TEST_CHANNEL, IPC_TIMEOUT);
 
 	k_sem_give(&ipc_sem_wake_user);
 	k_sem_take(&ipc_sem_wake_kernel, K_FOREVER);
 
 	LOG_INF("transfer done, validating results");
 
-	hda_ipc_msg(INTEL_ADSP_IPC_HOST_DEV, IPCCMD_HDA_VALIDATE, TEST_CHANNEL,
-		    IPC_TIMEOUT);
+	msg_validate_res = 0;
+	k_sem_reset(&ipc_msg_received);
+	hda_ipc_msg(IPCCMD_HDA_VALIDATE, TEST_CHANNEL, IPC_TIMEOUT);
 
-	hda_dump_regs(HOST_OUT, HDA_REGBLOCK_SIZE, TEST_CHANNEL, "host reset");
+	/* host replies to validate request with a separate message */
+	ret = k_sem_take(&ipc_msg_received, IPC_TIMEOUT);
+	zassert_equal(ret, 0, "no validation result received from host");
 
 	k_sem_give(&ipc_sem_wake_user);
 	k_sem_take(&ipc_sem_wake_kernel, K_FOREVER);
@@ -216,6 +266,9 @@ static void intel_hda_dma_kernel(void)
 	LOG_INF("test done, terminate user thread");
 
 	k_thread_join(&user_thread, K_FOREVER);
+
+	ret = ipc_service_deregister_endpoint(&host_ipc_ept);
+	zassert_equal(ret, 0, "cannot deregister IPC endpoint: %d", ret);
 
 	zassert_true(msg_validate_res == 1, "DMA transferred data invalid payload");
 }
