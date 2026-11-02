@@ -519,6 +519,11 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	}
 #endif
 
+	if (config->enable_pcan)
+		state->out_mode = MFCC_OUT_MEL8_PCAN;
+	else
+		state->out_mode = state->mel_only ? MFCC_OUT_MEL32 : MFCC_OUT_CEPS;
+
 	comp_dbg(dev, "done");
 	return 0;
 

@@ -543,8 +543,10 @@ static void mfcc_prepare_output(struct mfcc_state *state, int num_ceps)
 	if (num_ceps <= 0)
 		return;
 
+	switch (state->out_mode) {
 #if CONFIG_COMP_MFCC_PCAN
-	if (state->pcan.enable_pcan) {
+	case MFCC_OUT_MEL8_PCAN:
+	{
 		int8_t *out8 = (int8_t *)state->out_stage;
 
 		/* In PCAN mode mel_linear[] is indexed by k < num_ceps.
@@ -566,24 +568,23 @@ static void mfcc_prepare_output(struct mfcc_state *state, int num_ceps)
 
 			out8[k] = (int8_t)val;
 		}
-
-		state->out_data_ptr = state->out_stage;
-		state->out_remain = num_ceps;
-		state->header_pending = true;
-		return;
+		break;
 	}
 #endif
-
-	/* Copy into out_stage so the next STFT hop may freely reuse
-	 * mel_log_32 / cepstral_coef while this frame is still pending.
-	 */
-	if (state->mel_only) {
+	case MFCC_OUT_MEL32:
+		/* Copy into out_stage so the next STFT hop may freely reuse
+		 * mel_log_32 / cepstral_coef while this frame is still pending.
+		 */
 		for (k = 0; k < num_ceps; k++)
 			state->out_stage[k] = state->mel_log_32[k];
-	} else {
+		break;
+	case MFCC_OUT_CEPS:
 		/* Widen int16 Q9.7 cepstral coefficients to int32 Q9.23. */
 		for (k = 0; k < num_ceps; k++)
 			state->out_stage[k] = (int32_t)state->cepstral_coef->data[k] << 16;
+		break;
+	default:
+		return;
 	}
 
 	state->out_data_ptr = state->out_stage;
@@ -624,11 +625,7 @@ static int mfcc_output_compress(struct processing_module *mod, struct mfcc_comp_
 	if (!pending)
 		return 0;
 
-#if CONFIG_COMP_MFCC_PCAN
-	size_t sample_size = state->pcan.enable_pcan ? sizeof(int8_t) : sizeof(int32_t);
-#else
-	size_t sample_size = sizeof(int32_t);
-#endif
+	size_t sample_size = mfcc_out_sample_size(state);
 
 	out_bytes = (state->header_pending ? sizeof(state->header) : 0) +
 		    state->out_remain * sample_size;
@@ -746,13 +743,9 @@ static int mfcc_output_legacy(struct processing_module *mod, struct mfcc_comp_da
 		}
 	}
 
-	/* Write pending feature data (int8 in PCAN mode, int32 otherwise) */
+	/* Write pending feature data (int8 or int32 per output mode) */
 	if (state->out_remain > 0 && avail > 0) {
-#if CONFIG_COMP_MFCC_PCAN
-		size_t sample_size = state->pcan.enable_pcan ? sizeof(int8_t) : sizeof(int32_t);
-#else
-		size_t sample_size = sizeof(int32_t);
-#endif
+		size_t sample_size = mfcc_out_sample_size(state);
 		data_bytes = state->out_remain * sample_size;
 		to_write = MIN(data_bytes, avail);
 		if (sample_size > 1)
