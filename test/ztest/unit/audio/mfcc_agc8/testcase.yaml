@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2026 Intel Corporation. All rights reserved.
+#
+# MFCC soft AGC int8 output (AGC8) unit tests for Ztest framework
+#
+
+tests:
+  sof.unit.audio.mfcc_agc8:
+    tags:
+      - audio
+      - mfcc
+    platform_allow: native_sim
+    integration_platforms:
+      - native_sim
+    harness: ztest
