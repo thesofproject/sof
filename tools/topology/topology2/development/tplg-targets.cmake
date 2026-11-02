@@ -20,7 +20,7 @@ SSP0_MIXER_2LEVEL=1,PLATFORM=tgl"
 
 # Lean SSP0 NoCodec WoV topology for TGL
 "cavs-nocodec-wov\;sof-tgl-nocodec-wov\;PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-tgl-nocodec-wov.bin,PLATFORM=tgl,MWW_PCAN=true"
+NHLT_BIN=nhlt-sof-tgl-nocodec-wov.bin,PLATFORM=tgl"
 
 # multicore disabled due to SOF issue #8942
 "cavs-nocodec\;sof-adl-nocodec\;NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
@@ -70,7 +70,7 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin,SRC_DOMAIN=DP"
 
 # Lean SSP0 NoCodec WoV topology for PTL
 "cavs-nocodec-wov\;sof-ptl-nocodec-wov\;PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-ptl-nocodec-wov.bin,PLATFORM=ptl,MWW_PCAN=true"
+NHLT_BIN=nhlt-sof-ptl-nocodec-wov.bin,PLATFORM=ptl"
 
 # SSP topology for PTL with 96 kHz DMIC
 "cavs-nocodec\;sof-ptl-nocodec-dmic-4ch-96k\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
@@ -561,6 +561,6 @@ COMPRESSED_1=false,COMPRESSED_2=true"
 "cavs-sdw\;sof-ptl-rt713-l3-rt1320-l12-wov\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=2,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
-SDW_DMIC_WOV_SINGLE=true,MWW_PCAN=true"
+SDW_DMIC_WOV_SINGLE=true"
 
 )
