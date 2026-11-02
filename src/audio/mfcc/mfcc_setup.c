@@ -212,6 +212,16 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		return -EINVAL;
 	}
 
+	if (config->enable_pcan && config->enable_agc8) {
+		comp_err(dev, "enable_pcan and enable_agc8 are exclusive");
+		return -EINVAL;
+	}
+
+	if ((config->enable_pcan || config->enable_agc8) && config->num_ceps > 0) {
+		comp_err(dev, "int8 Mel output requires num_ceps 0");
+		return -EINVAL;
+	}
+
 	cd->max_frames = max_frames;
 	state->sample_rate = sample_rate;
 	state->low_freq = config->low_freq;
@@ -519,10 +529,14 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	}
 #endif
 
-	if (config->enable_pcan)
+	if (config->enable_pcan) {
 		state->out_mode = MFCC_OUT_MEL8_PCAN;
-	else
+	} else if (config->enable_agc8) {
+		mfcc_agc8_init(&state->agc8, config);
+		state->out_mode = MFCC_OUT_MEL8_AGC;
+	} else {
 		state->out_mode = state->mel_only ? MFCC_OUT_MEL32 : MFCC_OUT_CEPS;
+	}
 
 	comp_dbg(dev, "done");
 	return 0;

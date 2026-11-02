@@ -57,7 +57,11 @@ struct sof_mfcc_config {
 	uint16_t dtx_trailing_silence_hops; /**< DTX: number of silence hops to send after speech, 0 = send first only */
 	uint16_t dtx_silence_hops_interval; /**< DTX: send silence frame every Nth hop during VAD=0, 0 = disable */
 	uint32_t pcan_smoothing_coef; /**< Q14 smoothing coef for PCAN, e.g. 819 for 0.05 */
-	uint32_t reserved[4];
+	int16_t agc_target; /**< Q8.7 soft AGC gain target, 0 = default 0.25 */
+	int16_t agc_floor; /**< Q8.7 soft AGC minimum gain, 0 = default -2.0 */
+	int16_t agc_release; /**< Q9.23 soft AGC release step per hop, 0 = default 4194 */
+	int16_t agc_release_speech; /**< Q9.23 release step per hop in speech, 0 = default 419 */
+	uint32_t reserved[2];
 	int32_t sample_frequency; /**< Hz. e.g. 16000 */
 	int32_t pmin; /**< Q1.31 linear power, limit minimum Mel energy, e.g. 1e-9 */
 	enum sof_mfcc_mel_log_type mel_log; /**< Use MEL_LOG_IS_LOG, LOG10 or DB*/
@@ -96,7 +100,8 @@ struct sof_mfcc_config {
 	bool update_controls; /**< Update controls with VAD decision */
 	bool compress_output; /**< Use compress PCM output: variable size, no zero padding */
 	bool enable_pcan; /**< Enable PCAN normalization on Mel filterbank energies */
-	bool reserved_bool[3]; /* Reserved for future boolean flags, set to false (0) */
+	bool enable_agc8; /**< Enable soft AGC and int8 Mel output, exclusive with PCAN */
+	bool reserved_bool[2]; /* Reserved for future boolean flags, set to false (0) */
 } __attribute__((packed));
 
 #endif /* __USER_MFCC_H__ */
