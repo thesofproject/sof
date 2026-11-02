@@ -7,9 +7,9 @@
 //
 // Minimal SOF context for standalone ztest applications that link SOF code
 // calling sof_get(), for example src/audio/component.c, but do not link
-// src/init/init.c. The context is created on first use and only its component
-// driver list is initialised, which is what buffer_new() and the component
-// infrastructure need.
+// src/kernel/init/init.c. The context is created on first use and only its
+// component driver list is initialised, which is what buffer_new() and the
+// component infrastructure need.
 
 #include <rtos/sof.h>
 #include <sof/audio/component_ext.h>
