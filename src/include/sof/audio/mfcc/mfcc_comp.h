@@ -42,6 +42,13 @@
 /** \brief Switch control index for VAD notification to user space */
 #define MFCC_CTRL_INDEX_VAD	0
 
+/** \brief Output data type, selected at setup from the configuration blob. */
+enum mfcc_out_mode {
+	MFCC_OUT_CEPS = 0,	/**< Cepstral coefficients, int16 Q9.7 widened to int32 */
+	MFCC_OUT_MEL32,		/**< Mel log spectra, int32 Q9.23 */
+	MFCC_OUT_MEL8_PCAN,	/**< PCAN normalized Mel energies, int8 */
+};
+
 /**
  * \brief Data header prepended to every MFCC output frame.
  *
@@ -124,6 +131,7 @@ struct mfcc_state {
 	int high_freq;
 	int sample_rate;
 	bool mel_only; /**< When true, output Mel spectra instead of cepstral coefficients */
+	enum mfcc_out_mode out_mode; /**< Output data type */
 	bool waiting_fill; /**< booleans */
 	bool prev_samples_valid;
 	bool header_pending; /**< True when data header not yet written for current output */
@@ -156,6 +164,12 @@ struct mfcc_comp_data {
 static inline int mfcc_buffer_samples_without_wrap(struct mfcc_buffer *buffer, int16_t *ptr)
 {
 	return buffer->end_addr - ptr;
+}
+
+/** \brief Size in bytes of one output value for the current output mode. */
+static inline size_t mfcc_out_sample_size(const struct mfcc_state *state)
+{
+	return state->out_mode == MFCC_OUT_MEL8_PCAN ? sizeof(int8_t) : sizeof(int32_t);
 }
 
 static inline int16_t *mfcc_buffer_wrap(struct mfcc_buffer *buffer, int16_t *ptr)
