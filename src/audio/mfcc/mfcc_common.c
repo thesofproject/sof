@@ -571,6 +571,10 @@ static void mfcc_prepare_output(struct mfcc_state *state, int num_ceps)
 		break;
 	}
 #endif
+	case MFCC_OUT_MEL8_AGC:
+		mfcc_agc8_process(&state->agc8, state->mel_log_32, (int8_t *)state->out_stage,
+				  num_ceps, state->header.vad_flag != 0);
+		break;
 	case MFCC_OUT_MEL32:
 		/* Copy into out_stage so the next STFT hop may freely reuse
 		 * mel_log_32 / cepstral_coef while this frame is still pending.

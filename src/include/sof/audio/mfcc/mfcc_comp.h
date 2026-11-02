@@ -16,6 +16,7 @@
 #if CONFIG_COMP_MFCC_PCAN
 #include <sof/math/pcan.h>
 #endif
+#include <sof/audio/mfcc/mfcc_agc8.h>
 #include <sof/audio/mfcc/mfcc_vad.h>
 #include <sof/ipc/msg.h>
 #include <stddef.h>
@@ -47,6 +48,7 @@ enum mfcc_out_mode {
 	MFCC_OUT_CEPS = 0,	/**< Cepstral coefficients, int16 Q9.7 widened to int32 */
 	MFCC_OUT_MEL32,		/**< Mel log spectra, int32 Q9.23 */
 	MFCC_OUT_MEL8_PCAN,	/**< PCAN normalized Mel energies, int8 */
+	MFCC_OUT_MEL8_AGC,	/**< Soft AGC Mel log spectra, int8 Q1.7 */
 };
 
 /**
@@ -113,6 +115,7 @@ struct mfcc_state {
 	struct pcan_state pcan; /**< PCAN state */
 	uint32_t *mel_linear; /**< Linear Mel band magnitudes for PCAN */
 #endif
+	struct mfcc_agc8 agc8; /**< Soft AGC state for int8 Mel output */
 	struct mfcc_cepstral_lifter lifter; /**< Cepstral lifter coefficients */
 	struct mat_matrix_16b *mel_spectra; /**< Pointer to scratch */
 	struct mat_matrix_16b *cepstral_coef; /**< Pointer to scratch */
@@ -169,7 +172,8 @@ static inline int mfcc_buffer_samples_without_wrap(struct mfcc_buffer *buffer, i
 /** \brief Size in bytes of one output value for the current output mode. */
 static inline size_t mfcc_out_sample_size(const struct mfcc_state *state)
 {
-	return state->out_mode == MFCC_OUT_MEL8_PCAN ? sizeof(int8_t) : sizeof(int32_t);
+	return (state->out_mode == MFCC_OUT_MEL8_PCAN || state->out_mode == MFCC_OUT_MEL8_AGC) ?
+		sizeof(int8_t) : sizeof(int32_t);
 }
 
 static inline int16_t *mfcc_buffer_wrap(struct mfcc_buffer *buffer, int16_t *ptr)
