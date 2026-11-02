@@ -10,6 +10,19 @@ The MFCC module converts raw streaming time-domain PCM audio into compact acoust
 
 When enabled, **PCAN** applies per-channel adaptive dynamic gain control and piecewise root dynamic range compression across time to suppress stationary background noise and normalize channel energy before feature quantization.
 
+### Output modes
+
+One build supports all output modes, selected at runtime by the configuration blob:
+
+| Mode | Blob settings | Output per hop |
+|---|---|---|
+| Cepstral coefficients | `num_ceps > 0` | int16 Q9.7 widened to int32 |
+| Mel log spectra | `num_ceps == 0` | int32 Q9.23 |
+| PCAN Mel | `num_ceps == 0`, `enable_pcan` (needs `CONFIG_COMP_MFCC_PCAN`) | int8 |
+| Soft AGC Mel (AGC8) | `num_ceps == 0`, `enable_agc8` | int8 Q1.7 |
+
+AGC8 is a light alternative to PCAN without the per-channel noise estimate and the `tflite-micro` dependency. A single gain is added to all Q9.23 Mel log values of a hop. The gain attacks instantly to keep the hop peak at or below +1.0, and releases towards a target with a slower step when the VAD reports speech. The values are clamped to -1.0 .. +1.0 and converted to int8 Q1.7. The blob fields `agc_target`, `agc_floor` (Q8.7) and `agc_release`, `agc_release_speech` (Q9.23 per hop) set the parameters, zero selects the default.
+
 ---
 
 ## 2. Architecture & Data Flow
@@ -22,6 +35,8 @@ graph LR
   Mel --> PCAN[PCAN Gain Normalization]
   PCAN --> Log[Log Scaling / dB]
   Log --> VAD[VAD / DTX Silence Gating]
+  Log --> AGC8[Soft AGC int8]
+  VAD --> AGC8
   Log --> DCT[DCT: Cepstral Matrix]
   DCT --> Lifter[Cepstral Lifter]
   Lifter --> Out[MFCC Output Features]
