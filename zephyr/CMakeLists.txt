@@ -174,6 +174,13 @@ target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/third_party/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/zephyr/include)
 
+# Code that only runs in kernel mode, from src/kernel. It is built as a
+# library of its own so that it can later be given kernel-only include
+# directories. Created before modules_sof so that modules_sof stays the
+# current library here; src/kernel/CMakeLists.txt switches to this one.
+zephyr_library_named(sof_kernel)
+zephyr_library_link_libraries(SOF)
+
 # SOF module init
 zephyr_library_named(modules_sof)
 
@@ -665,5 +672,6 @@ include(../scripts/cmake/uuid-registry.cmake)
 
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)
+sof_append_relative_path_definitions(sof_kernel)
 
 endif() # CONFIG_SOF_FULL_ZEPHYR_APPLICATION
