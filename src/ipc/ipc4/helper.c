@@ -169,11 +169,16 @@ __cold static int ipc4_comp_new_config(struct comp_ipc_config *ipc_config,
 
 		/* Without cross-core streams a stream is processed entirely on a
 		 * single core, so a module cannot live on another core than its
-		 * pipeline.
+		 * pipeline. With user-space LL, only DP modules can run on another
+		 * core: an LL module would need an own LL task on that core, which
+		 * is set up by the IDC handlers in kernel mode only.
 		 */
-		if (!IS_ENABLED(CONFIG_CROSS_CORE_STREAM) && ppl->core != ipc_config->core) {
+		if (ppl->core != ipc_config->core &&
+		    (!IS_ENABLED(CONFIG_CROSS_CORE_STREAM) ||
+		     (IS_ENABLED(CONFIG_SOF_USERSPACE_LL) &&
+		      ipc_config->proc_domain != COMP_PROCESSING_DOMAIN_DP))) {
 			tr_err(&ipc_tr,
-			       "comp 0x%x: core %u != pipeline %u core %u, cross-core disabled",
+			       "comp 0x%x: core %u != pipeline %u core %u, not supported",
 			       comp_id, (uint32_t)ipc_config->core,
 			       (uint32_t)ipc_config->pipeline_id, (uint32_t)ppl->core);
 			return -EINVAL;
