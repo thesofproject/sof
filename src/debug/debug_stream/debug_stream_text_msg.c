@@ -10,6 +10,7 @@
 #include <sof/common.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/arch/exception.h>
+#include <zephyr/llext/symbol.h>
 
 #include <user/debug_stream_text_msg.h>
 
