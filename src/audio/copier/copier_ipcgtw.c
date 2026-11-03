@@ -173,8 +173,8 @@ __cold int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 
 	case IPC4_IPCGWCMD_SET_DATA:
 		if (sink) {
-			data_size = MIN(cmd->extension.r.data_size,
-					sink_get_free_size(sink));
+			data_size = MIN(cmd->extension.r.data_size, SOF_IPC_MSG_MAX_SIZE - 4);
+			data_size = MIN(data_size, sink_get_free_size(sink));
 			dcache_invalidate_region((__sparse_force void __sparse_cache *)
 						 MAILBOX_HOSTBOX_BASE,
 						 data_size +
