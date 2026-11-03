@@ -127,7 +127,7 @@ static struct zephyr_idc_msg idc_work[CONFIG_CORE_COUNT * 2];
 /* Protect the above array */
 static K_MUTEX_DEFINE(idc_mutex);
 
-int idc_send_msg(struct idc_msg *msg, uint32_t mode)
+static int idc_send_msg_kernel(struct idc_msg *msg, uint32_t mode)
 {
 	struct idc *idc = *idc_get();
 	struct idc_payload *payload = idc_payload_get(idc, msg->core);
@@ -198,6 +198,21 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	}
 
 	return ret;
+}
+
+int idc_send_msg(struct idc_msg *msg, uint32_t mode)
+{
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * IDC uses kernel objects and data. User-space threads instead pass
+	 * the message to the user-space IPC thread of the target core. Such
+	 * messages are always processed synchronously.
+	 */
+	if (k_is_user_context())
+		return ipc_user_xcore_send(msg);
+#endif
+
+	return idc_send_msg_kernel(msg, mode);
 }
 
 __cold void idc_init_thread(void)
