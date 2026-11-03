@@ -124,7 +124,7 @@ syscall by subsystem:
 | Library manager | `lib_manager_free_module` | `sof/lib_manager.h` | scattered: `kernel/library_manager/lib_manager.c` |
 | Scheduling | `zephyr_ll_task_sem_alloc`, `zephyr_ll_task_sem_free`, `scheduler_dp_internal_free`, `scheduler_dp_ll_tick` | `sof/schedule/ll_schedule_domain.h`, `sof/schedule/dp_schedule.h` | scattered: `kernel/schedule/zephyr_ll-kernel.c`, `kernel/schedule/zephyr_dp_schedule*-kernel.c` |
 | Debug | `debug_stream_slot_send_record` | `user/debug_stream_slot.h` | `kernel/debug/debug_stream/debug_stream_slot.c` |
-| KPB | `kpb_notifier_init` | `sof/audio/kpb.h` | scattered: `audio/kpb.c` |
+| KPB | `kpb_notifier_schedule` | `sof/audio/kpb.h` | `zephyr/syscall/kpb.c` / `audio/kpb.c` |
 
 ### Allowed callers
 
@@ -137,7 +137,7 @@ from user-writable data such as `ipc_user->thread[]`.
 
 | Allowed callers | Syscalls |
 |-----------------|----------|
-| Any user thread, including DP module threads | `cpu_get_id`, all module management syscalls (`mod_*`), `ipc_msg_send`, `ipc_msg_list_remove`, `send_resource_notif` |
+| Any user thread, including DP module threads | `cpu_get_id`, all module management syscalls (`mod_*`), `ipc_msg_send`, `ipc_msg_list_remove`, `send_resource_notif`, `kpb_notifier_schedule` |
 | IPC user thread only | `ipc_compound_pre_start`, `ipc_compound_post_start`, `ipc_wait_for_compound_msg`, `lib_manager_free_module` |
 | LL user thread only | `scheduler_dp_ll_tick` |
 | LL or IPC user thread | all other SOF syscalls |

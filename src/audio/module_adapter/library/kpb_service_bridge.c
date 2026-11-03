@@ -7,16 +7,21 @@
  * do not provide extern "C" blocks; C++ is used as a wrapper.
  */
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sof/audio/component.h>
 #include <sof/audio/kpb.h>
 #include <sof/audio/module_adapter/library/kpb_service.h>
+#if !CONFIG_KPB_CLI_Q
 #include <sof/lib/notifier.h>
+#endif
 
 struct kpb_service_client {
+#if !CONFIG_KPB_CLI_Q
 	struct kpb_event_data event;
+#endif
 	struct kpb_client client;
 	size_t current_history_depth;
 	size_t max_history_depth;
@@ -37,15 +42,37 @@ static bool kpb_service_client_is_valid(const struct kpb_service_client *client)
 	return false;
 }
 
-static void kpb_service_send_event(struct kpb_service_client *client,
-				   enum kpb_event event_id)
+#if CONFIG_KPB_CLI_Q
+static AdspErrorCode kpb_service_send_event(struct kpb_service_client *client,
+					    enum kpb_event event_id)
+{
+	/* KPB draining does not depend on registration, so only draining is queued */
+	if (event_id != KPB_EVENT_BEGIN_DRAINING)
+		return ADSP_NO_ERROR;
+
+	switch (kpb_notifier_schedule(client->client.id, client->client.drain_req)) {
+	case 0:
+		return ADSP_NO_ERROR;
+	case -ENODEV:
+		return ADSP_SERVICE_UNAVAILABLE;
+	case -ENOMSG:
+		return ADSP_BUSY_RESOURCE;
+	default:
+		return ADSP_INVALID_PARAMETERS;
+	}
+}
+#else
+static AdspErrorCode kpb_service_send_event(struct kpb_service_client *client,
+					    enum kpb_event event_id)
 {
 	client->event.event_id = event_id;
 	client->event.client_data = &client->client;
 
 	notifier_event(client, NOTIFIER_ID_KPB_CLIENT_EVT, NOTIFIER_TARGET_CORE_ALL_MASK,
 		       &client->event, sizeof(client->event));
+	return ADSP_NO_ERROR;
 }
+#endif
 
 AdspErrorCode kpb_service_register_client(size_t current_history_depth,
 					  size_t max_history_depth, uint32_t output_pin,
@@ -86,8 +113,7 @@ AdspErrorCode kpb_service_signal_detection(struct kpb_service_client *client,
 
 	client->client.drain_req = MIN(client->current_history_depth + phrase_length,
 				       client->max_history_depth);
-	kpb_service_send_event(client, KPB_EVENT_BEGIN_DRAINING);
-	return ADSP_NO_ERROR;
+	return kpb_service_send_event(client, KPB_EVENT_BEGIN_DRAINING);
 }
 
 AdspErrorCode kpb_service_unregister_client(struct kpb_service_client *client)
