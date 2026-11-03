@@ -30,7 +30,8 @@ memory-partition markers and Kconfig hierarchy are documented in
 moving code, follow it:
 
 * **Place code in the right tier.** OS/HAL/boot/inter-core → a kernel-only directory
-  (`arch/`, `drivers/`, `idc/`, `init/`, `platform/`, `probe/`, `logging/`, `trace/`); audio
+  (`kernel/`, which is built into the `sof_kernel` library, and the directories not yet
+  moved there: `arch/`, `drivers/`, `platform/`, `probe/`, `logging/`, `trace/`); audio
   application logic → `audio/`; reusable pure code → a shared-library directory (`lib/`,
   `math/`, `module/`) kept free of privileged operations. Each top-level directory's
   `README.md` states its tier in a "Runs in:" banner — keep it accurate.
