@@ -14,22 +14,9 @@
 /* ln(2) in Q5.27:  round(ln(2) * 2^27) */
 #define PCAN_LN2_Q27		93032640
 
-/* Convert PCAN config floats to fixed-point (init-time only). */
-static inline int32_t pcan_strength_q15(float strength)
-{
-	return (int32_t)(strength * 32768.0f + 0.5f);
-}
-
-static inline int32_t pcan_offset_q7(float offset)
-{
-	return (int32_t)(offset * 128.0f + 0.5f);
-}
-
-int16_t pcan_gain_lookup_function(float strength, float offset, int32_t gain_bits,
+int16_t pcan_gain_lookup_function(int32_t strength_q15, int32_t offset_q7, int32_t gain_bits,
 				  int32_t input_bits, uint32_t x)
 {
-	const int32_t strength_q15 = pcan_strength_q15(strength);
-	const int32_t offset_q7 = pcan_offset_q7(offset);
 	uint64_t u64;
 	uint32_t u32;
 	uint32_t ln_u_q27;
@@ -100,7 +87,7 @@ int16_t pcan_gain_lookup_function(float strength, float offset, int32_t gain_bit
 	return (int16_t)gain;
 }
 
-int pcan_compute_lut(float strength, float offset, int32_t gain_bits,
+int pcan_compute_lut(int32_t strength, int32_t offset, int32_t gain_bits,
 		     int32_t input_bits, int16_t *gain_lut)
 {
 	int interval;

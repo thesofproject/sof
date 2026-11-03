@@ -48,13 +48,13 @@ ZTEST(pcan_suite, test_pcan_lut_generation)
 	int ret;
 	int i;
 
-	ret = pcan_compute_lut(0.95f, 80.0f, 21, 10, lut);
+	ret = pcan_compute_lut(31130, 10240, 21, 10, lut);
 	zassert_equal(ret, 0);
 
 	for (i = 0; i < PCAN_TEST_LUT1_SIZE; i++)
 		zassert_int_near(lut[i], ref_pcan_lut1[i], PCAN_TEST_LUT_TOL);
 
-	ret = pcan_compute_lut(0.8f, 50.0f, 18, 12, lut);
+	ret = pcan_compute_lut(26214, 6400, 18, 12, lut);
 	zassert_equal(ret, 0);
 
 	for (i = 0; i < PCAN_TEST_LUT2_SIZE; i++)
@@ -68,7 +68,7 @@ ZTEST(pcan_suite, test_pcan_wide_dynamic_function)
 	int ret;
 	int i;
 
-	ret = pcan_compute_lut(0.95f, 80.0f, 21, 10, lut);
+	ret = pcan_compute_lut(31130, 10240, 21, 10, lut);
 	zassert_equal(ret, 0);
 
 	for (i = 0; i < PCAN_TEST_WDF_NUM_POINTS; i++) {
@@ -97,8 +97,8 @@ ZTEST(pcan_suite, test_pcan_streaming)
 	int f;
 	int c;
 
-	cfg.strength = 0.95f;
-	cfg.offset = 80.0f;
+	cfg.strength = 31130; /* 0.95 in Q1.15 */
+	cfg.offset = 10240; /* 80.0 in Q8.7 */
 	cfg.gain_bits = 21;
 	cfg.smoothing_coef = PCAN_STREAM_SMOOTHING_COEF;
 	cfg.smoothing_bits = PCAN_STREAM_SMOOTHING_BITS;
@@ -140,7 +140,7 @@ ZTEST(pcan_suite, test_pcan_corner_cases)
 	int ret;
 	int i;
 
-	ret = pcan_compute_lut(0.95f, 80.0f, 21, 10, lut);
+	ret = pcan_compute_lut(31130, 10240, 21, 10, lut);
 	zassert_equal(ret, 0);
 
 	for (i = 0; i < PCAN_CORNERS_NUM_POINTS; i++) {
@@ -152,8 +152,8 @@ ZTEST(pcan_suite, test_pcan_corner_cases)
 	}
 
 	/* gain_bits too small -> negative snr_shift */
-	bad_cfg.strength = 0.95f;
-	bad_cfg.offset = 80.0f;
+	bad_cfg.strength = 31130; /* 0.95 in Q1.15 */
+	bad_cfg.offset = 10240; /* 80.0 in Q8.7 */
 	bad_cfg.gain_bits = 5;
 	bad_cfg.smoothing_coef = 819;
 	bad_cfg.smoothing_bits = 10;

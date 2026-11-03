@@ -481,10 +481,9 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		uint32_t *pcan_noise;
 		int16_t *pcan_lut;
 
-		pcfg.strength = (config->pcan_strength > 0) ?
-			((float)config->pcan_strength / 32768.0f) : 0.95f;
-		pcfg.offset = (config->pcan_offset > 0) ?
-			((float)config->pcan_offset / 128.0f) : 80.0f;
+		/* Q1.15 and Q8.7, defaults 0.95 and 80.0 */
+		pcfg.strength = (config->pcan_strength > 0) ? config->pcan_strength : 31130;
+		pcfg.offset = (config->pcan_offset > 0) ? config->pcan_offset : 10240;
 		pcfg.gain_bits = (config->pcan_gain_bits > 0) ?
 			config->pcan_gain_bits : 21;
 		pcfg.smoothing_coef = (config->pcan_smoothing_coef > 0) ?
