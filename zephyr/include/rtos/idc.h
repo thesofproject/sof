@@ -149,10 +149,14 @@
 /** \brief IDC free function flags */
 #define IDC_FREE_IRQ_ONLY	BIT(0)	/**< disable only irqs */
 
-/** \brief IDC message payload. */
+/**
+ * \brief IDC message payload.
+ *
+ * Placed in coherent (SHARED_DATA) memory and shared across cores.
+ */
 struct idc_payload {
 	uint8_t data[IDC_MAX_PAYLOAD_SIZE];
-};
+} __aligned(DCACHE_LINE_SIZE);
 
 /** \brief IDC message. */
 struct idc_msg {
