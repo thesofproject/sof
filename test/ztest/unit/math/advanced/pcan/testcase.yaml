@@ -7,7 +7,9 @@
 
 tests:
   sof.unit.math.advanced.pcan:
-    tags: math advanced pcan mfcc microwakeword
+    tags:
+      - math
+      - pcan
     platform_allow: native_sim
     integration_platforms:
       - native_sim
