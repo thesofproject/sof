@@ -244,7 +244,7 @@ default ID ranges for the same endpoint types.
 | Bluetooth | 2 or 20 | `BT_PCM_ID` |
 | USB Audio Offload (UAOL0) | 21 | `UAOL_PCM_ID` |
 | USB Audio Offload (UAOL1) | 22 | `UAOL_PCM1_ID` |
-| Deepbuffer UAOL0 | 23 | `DEEP_BUFFER_PCM_ID` |
+| Deepbuffer UAOL0 | 23 | `UAOL_DB_PCM_ID` |
 | Deepbuffer UAOL1 | 24 | `UAOL_DB1_PCM_ID` |
 | Deep Buffer (Jack) | 31 | `DEEP_BUFFER_PCM_ID` |
 | Deep Buffer (Speaker) | 35 | `DEEP_BUFFER_PCM_ID_2` |
@@ -307,7 +307,7 @@ is at N1 (50/51, 60/61, 70/71, 80/81).
 | PCH DMIC0 Host / DAI | 100 / 101 | `DMIC0_HOST_PIPELINE_ID` / `DMIC0_DAI_PIPELINE_ID` |
 | UAOL0 Playback Host / DAI | 210 / 211 | `UAOL_PB_HOST_PIPELINE_ID` / `UAOL_PB_DAI_PIPELINE_ID` |
 | UAOL0 Capture Host / DAI | 212 / 213 | `UAOL_CP_HOST_PIPELINE_ID` / `UAOL_CP_DAI_PIPELINE_ID` |
-| UAOL0 Deepbuffer | 214 | `DEEP_BUFFER_PIPELINE_ID` |
+| UAOL0 Deepbuffer | 214 | `UAOL_DB_PIPELINE_ID` |
 | UAOL1 Playback Host / DAI | 215 / 216 | `UAOL_PB1_HOST_PIPELINE_ID` / `UAOL_PB1_DAI_PIPELINE_ID` |
 | UAOL1 Capture Host / DAI | 217 / 218 | `UAOL_CP1_HOST_PIPELINE_ID` / `UAOL_CP1_DAI_PIPELINE_ID` |
 | UAOL1 Deepbuffer | 219 | `UAOL_DB1_PIPELINE_ID` |
