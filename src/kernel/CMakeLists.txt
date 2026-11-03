@@ -10,4 +10,5 @@ if(zephyr)
 	set(ZEPHYR_CURRENT_LIBRARY sof_kernel)
 endif()
 
+add_subdirectory(idc)
 add_subdirectory(init)
