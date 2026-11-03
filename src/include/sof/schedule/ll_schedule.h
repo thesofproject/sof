@@ -58,6 +58,24 @@ void user_ll_lock_sched(int core);
  */
 void user_ll_unlock_sched(int core);
 
+/**
+ * @brief Release all holds of the calling thread on a per-core user
+ * Low-Latency scheduling lock.
+ *
+ * Must be paired with user_ll_relock_sched().
+ * @param[in] core Target core ID.
+ * @return Number of holds released, 0 if the calling thread doesn't hold
+ *	   the lock.
+ */
+unsigned int user_ll_unlock_sched_all(int core);
+
+/**
+ * @brief Re-take holds released by user_ll_unlock_sched_all().
+ * @param[in] core Target core ID.
+ * @param[in] depth Value returned by user_ll_unlock_sched_all().
+ */
+void user_ll_relock_sched(int core, unsigned int depth);
+
 #ifdef CONFIG_ASSERT
 /**
  * @brief Assert that the calling context holds the user Low-Latency lock for a core.
