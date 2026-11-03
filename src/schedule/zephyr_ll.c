@@ -64,16 +64,15 @@ static APP_SYSUSER_BSS struct k_mutex *zephyr_ll_locks[CONFIG_CORE_COUNT];
 static struct k_mutex *zephyr_ll_klocks[CONFIG_CORE_COUNT];
 
 /*
- * Shadow ownership tracking for the per-core LL mutex, used only to
- * power user_ll_assert_locked(). The kernel k_mutex object is not
- * readable from user-space threads, so its owner cannot be inspected
- * directly; instead record the owner and recursion depth here, in a
- * user-accessible partition. Updated on every lock/unlock of the LL
- * mutex, by both the LL thread (zephyr_ll_lock()) and IPC handlers
- * (user_ll_lock_sched()). Only ever mutated by the current lock holder
- * while the lock is held, so no extra synchronization is required.
+ * Shadow ownership tracking for the per-core LL mutex, used by
+ * user_ll_assert_locked() and user_ll_unlock_sched_all(). The kernel
+ * k_mutex object is not readable from user-space threads, so its owner
+ * cannot be inspected directly; instead record the owner and recursion
+ * depth here, in a user-accessible partition. Updated on every lock/unlock
+ * of the LL mutex, by both the LL thread (zephyr_ll_lock()) and IPC
+ * handlers (user_ll_lock_sched()). Only ever mutated by the current lock
+ * holder while the lock is held, so no extra synchronization is required.
  */
-#ifdef CONFIG_ASSERT
 static APP_SYSUSER_BSS k_tid_t zephyr_ll_lock_owner[CONFIG_CORE_COUNT];
 static APP_SYSUSER_BSS uint32_t zephyr_ll_lock_depth[CONFIG_CORE_COUNT];
 
@@ -90,14 +89,12 @@ static inline void zephyr_ll_lock_releasing(int core)
 		zephyr_ll_lock_owner[core] = NULL;
 }
 
+#ifdef CONFIG_ASSERT
 void user_ll_assert_locked(int core)
 {
 	assert(core < CONFIG_CORE_COUNT &&
 	       zephyr_ll_lock_owner[core] == k_current_get());
 }
-#else /* CONFIG_ASSERT */
-static inline void zephyr_ll_lock_acquired(int core) { (void)core; }
-static inline void zephyr_ll_lock_releasing(int core) { (void)core; }
 #endif /* CONFIG_ASSERT */
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
@@ -813,6 +810,28 @@ void user_ll_unlock_sched(int core)
 	zephyr_ll_lock_releasing(core);
 	int __maybe_unused ret = k_mutex_unlock(zephyr_ll_locks[core]);
 	assert(!ret);
+}
+
+unsigned int user_ll_unlock_sched_all(int core)
+{
+	unsigned int depth, i;
+
+	assert(core >= 0 && core < CONFIG_CORE_COUNT);
+
+	if (zephyr_ll_lock_owner[core] != k_current_get())
+		return 0;
+
+	depth = zephyr_ll_lock_depth[core];
+	for (i = 0; i < depth; i++)
+		user_ll_unlock_sched(core);
+
+	return depth;
+}
+
+void user_ll_relock_sched(int core, unsigned int depth)
+{
+	while (depth--)
+		user_ll_lock_sched(core);
 }
 
 #endif /* CONFIG_SOF_USERSPACE_LL */

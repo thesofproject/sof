@@ -32,6 +32,9 @@
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/module.h>
+#endif
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -423,6 +426,15 @@ void ipc_schedule_process(struct ipc *ipc)
 
 #define IPC_USER_EVENT_CMD      BIT(0)
 #define IPC_USER_EVENT_STOP     BIT(1)
+#define IPC_USER_EVENT_XCORE    BIT(2)
+
+BUILD_ASSERT(IPC_USER_XCORE_PAYLOAD_SIZE >= IDC_MAX_PAYLOAD_SIZE,
+	     "cross-core request payload smaller than IDC payload");
+#if CONFIG_IPC_MAJOR_4
+BUILD_ASSERT(sizeof(((struct ipc_user_xcore *)0)->ipc4_bind_data) ==
+	     sizeof(struct ipc4_module_bind_unbind),
+	     "cross-core request bind data size mismatch");
+#endif
 
 SOF_DEFINE_REG_UUID(sec_core_init);
 
@@ -438,7 +450,12 @@ static struct ipc_user *ipc_user_kptr;
 static struct k_sem *ipc_user_ksem;
 static struct k_event *ipc_user_kevent[CONFIG_CORE_COUNT];
 static struct k_thread *ipc_user_kthread[CONFIG_CORE_COUNT];
+static struct k_thread *ipc_user_kaudio_thread[CONFIG_CORE_COUNT];
 static bool ipc_user_kinit_needed[CONFIG_CORE_COUNT];
+
+/* Cross-core request slot semaphores, static so they're never freed */
+static struct k_sem ipc_user_xcore_lock[CONFIG_CORE_COUNT];
+static struct k_sem ipc_user_xcore_done[CONFIG_CORE_COUNT];
 
 /**
  * @brief Forward an IPC command to the user-space thread.
@@ -474,8 +491,11 @@ int ipc_user_forward_cmd(uint32_t primary, uint32_t extension, unsigned int core
 	ipc->task_mask |= IPC_TASK_IN_THREAD;
 	k_spin_unlock(&ipc->lock, key);
 
-	/* Wake the user thread */
-	k_event_set(ipc_user_kevent[core], IPC_USER_EVENT_CMD);
+	/*
+	 * Wake the user thread. Post, not set: a cross-core request
+	 * (IPC_USER_EVENT_XCORE) may be pending on the same event.
+	 */
+	k_event_post(ipc_user_kevent[core], IPC_USER_EVENT_CMD);
 
 	/* Wait for user thread to complete */
 	ret = k_sem_take(ipc_user_ksem, K_MSEC(100));
@@ -491,6 +511,86 @@ int ipc_user_forward_cmd(uint32_t primary, uint32_t extension, unsigned int core
 	k_spin_unlock(&ipc->lock, key);
 
 	return !ret ? pdata->result : ret;
+}
+
+/**
+ * @brief Pass an IDC message to the user-space IPC thread of another core.
+ *
+ * Called from user-space threads (IPC or LL) instead of idc_send_msg(),
+ * which is kernel-only. Blocks until the target core has processed the
+ * message and returns its result.
+ *
+ * @param msg IDC message
+ * @return Result from the target core, or negative error code
+ */
+int ipc_user_xcore_send(const struct idc_msg *msg)
+{
+	struct ipc_user *ipc_user = ipc_get()->ipc_user_pdata;
+	struct ipc_user_xcore *xc;
+	unsigned int ll_depth = 0;
+	int ll_core;
+	int ret;
+
+	if (msg->core >= CONFIG_CORE_COUNT || msg->size > sizeof(xc->payload) ||
+	    !ipc_user->event[msg->core])
+		return -EINVAL;
+
+	xc = &ipc_user->xcore[msg->core];
+
+	/*
+	 * An LL thread holds the LL scheduler lock of its core for the whole
+	 * LL cycle, e.g. when it triggers or resets a remote module. Release
+	 * it while waiting: the target IPC thread may need it (e.g. for a
+	 * bind, locking both cores), or need the LL lock of its own core,
+	 * whose LL thread may in turn wait for a request to this core.
+	 */
+	for (ll_core = 0; ll_core < CONFIG_CORE_COUNT; ll_core++) {
+		if (ipc_user->audio_thread[ll_core] == k_current_get()) {
+			ll_depth = user_ll_unlock_sched_all(ll_core);
+			break;
+		}
+	}
+
+	k_sem_take(xc->lock, K_FOREVER);
+
+	xc->header = msg->header;
+	xc->extension = msg->extension;
+	if (msg->size) {
+		ret = memcpy_s(xc->payload, sizeof(xc->payload), msg->payload, msg->size);
+		if (ret < 0)
+			goto out;
+	}
+
+#if CONFIG_IPC_MAJOR_4
+	/*
+	 * The bind / unbind message usually is on the sender's stack, which
+	 * the target thread can't access. Pass a copy of it.
+	 */
+	if (iTS(msg->header) == iTS(IDC_MSG_BIND) || iTS(msg->header) == iTS(IDC_MSG_UNBIND)) {
+		struct bind_info *bind_data = (struct bind_info *)xc->payload;
+
+		if (bind_data->ipc4_data) {
+			ret = memcpy_s(xc->ipc4_bind_data, sizeof(xc->ipc4_bind_data),
+				       bind_data->ipc4_data, sizeof(*bind_data->ipc4_data));
+			if (ret < 0)
+				goto out;
+			bind_data->ipc4_data =
+				(const struct ipc4_module_bind_unbind *)xc->ipc4_bind_data;
+		}
+	}
+#endif
+
+	/* post, not set: don't clear a pending IPC_USER_EVENT_CMD */
+	k_event_post(ipc_user->event[msg->core], IPC_USER_EVENT_XCORE);
+	k_sem_take(xc->done, K_FOREVER);
+	ret = xc->result;
+out:
+	k_sem_give(xc->lock);
+
+	if (ll_depth)
+		user_ll_relock_sched(ll_core, ll_depth);
+
+	return ret;
 }
 
 /**
@@ -524,10 +624,23 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 
 	for (;;) {
 		uint32_t mask = k_event_wait_safe(ipc_user->event[core],
-						  IPC_USER_EVENT_CMD | IPC_USER_EVENT_STOP,
+						  IPC_USER_EVENT_CMD | IPC_USER_EVENT_STOP |
+						  IPC_USER_EVENT_XCORE,
 						  false, K_FOREVER);
 
 		LOG_DBG("IPC user wake, mask %u", mask);
+
+		if (mask & IPC_USER_EVENT_XCORE) {
+			struct ipc_user_xcore *xc = &ipc_user->xcore[core];
+			const struct idc_msg msg = {
+				.header = xc->header,
+				.extension = xc->extension,
+				.core = core,
+			};
+
+			xc->result = idc_cmd_user(&msg, xc->payload);
+			k_sem_give(xc->done);
+		}
 
 		if (mask & IPC_USER_EVENT_CMD) {
 			ipc_user->result = ipc_user_thread_dispatch(ipc_user);
@@ -605,6 +718,55 @@ e_event:
 	return ret;
 }
 
+/*
+ * Grant the threads of the newly initialized core and of the other already
+ * initialized cores access to each other's cross-core request slots and LL
+ * scheduler locks. Uses only the kernel-only copies of the thread state.
+ */
+__cold static void ipc_user_xcore_grant(unsigned int core)
+{
+	struct k_thread *new_threads[] = {
+		ipc_user_kthread[core], ipc_user_kaudio_thread[core],
+	};
+	unsigned int c, i;
+
+	assert_can_be_cold();
+
+	for (c = 0; c < CONFIG_CORE_COUNT; c++) {
+		struct k_thread *threads[] = {
+			ipc_user_kthread[c], ipc_user_kaudio_thread[c],
+		};
+
+		/*
+		 * Grant the slot semaphores of all cores. Note: braces needed,
+		 * k_thread_access_grant() expands to multiple statements.
+		 */
+		for (i = 0; i < ARRAY_SIZE(new_threads); i++) {
+			if (new_threads[i]) {
+				k_thread_access_grant(new_threads[i], &ipc_user_xcore_lock[c],
+						      &ipc_user_xcore_done[c]);
+			}
+		}
+
+		if (!ipc_user_kthread[c])
+			continue;
+
+		for (i = 0; i < ARRAY_SIZE(threads); i++) {
+			if (!threads[i])
+				continue;
+			k_thread_access_grant(threads[i], ipc_user_kevent[core]);
+			user_ll_grant_access(threads[i], core);
+		}
+
+		for (i = 0; i < ARRAY_SIZE(new_threads); i++) {
+			if (!new_threads[i])
+				continue;
+			k_thread_access_grant(new_threads[i], ipc_user_kevent[c]);
+			user_ll_grant_access(new_threads[i], c);
+		}
+	}
+}
+
 __cold int ipc_user_init_secondary(unsigned int core)
 {
 	struct ipc_user *ipc_user = ipc_user_kptr;
@@ -640,7 +802,9 @@ __cold int ipc_user_init_secondary(unsigned int core)
 	}
 
 	k_thread_access_grant(ipc_user_kthread[core], audio_thread);
+	ipc_user_kaudio_thread[core] = audio_thread;
 	ipc_user->audio_thread[core] = audio_thread;
+	ipc_user_xcore_grant(core);
 
 	return 0;
 }
@@ -740,6 +904,15 @@ __cold static void ipc_user_init(void)
 
 	k_sem_init(ipc_user_ksem, 0, 1);
 
+	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
+		struct ipc_user_xcore *xc = &ipc_user->xcore[core];
+
+		xc->lock = &ipc_user_xcore_lock[core];
+		xc->done = &ipc_user_xcore_done[core];
+		k_sem_init(xc->lock, 1, 1);
+		k_sem_init(xc->done, 0, 1);
+	}
+
 	ret = ipc_user_init_thread(ipc_user, PLATFORM_PRIMARY_CORE_ID);
 	if (ret < 0) {
 		LOG_ERR("user IPC thread initialization failed");
@@ -776,7 +949,9 @@ __cold static void ipc_user_init(void)
 	 * k_thread_access_grant(audio_thread, dai_mutex) from user context.
 	 */
 	k_thread_access_grant(ipc_user_kthread[PLATFORM_PRIMARY_CORE_ID], audio_thread);
+	ipc_user_kaudio_thread[PLATFORM_PRIMARY_CORE_ID] = audio_thread;
 	ipc_user->audio_thread[PLATFORM_PRIMARY_CORE_ID] = audio_thread;
+	ipc_user_xcore_grant(PLATFORM_PRIMARY_CORE_ID);
 
 	k_thread_start(ipc_user_kthread[PLATFORM_PRIMARY_CORE_ID]);
 

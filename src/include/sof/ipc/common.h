@@ -62,6 +62,31 @@ extern struct tr_ctx ipc_tr;
 #define IPC_DSP_CORE_COUNT 1
 #endif
 
+/** @brief Maximum payload size of a cross-core request between user threads */
+#define IPC_USER_XCORE_PAYLOAD_SIZE	128
+
+/**
+ * @brief Cross-core request slot of a user-space IPC thread.
+ *
+ * User-space threads can't use IDC. Instead, they pass IDC messages for
+ * another core to the user-space IPC thread of that core via this slot.
+ */
+struct ipc_user_xcore {
+	/** @brief Serializes senders to this core */
+	struct k_sem *lock;
+	/** @brief Signalled by the target core when the request is done */
+	struct k_sem *done;
+	/** @brief IDC message header and extension */
+	uint32_t header;
+	uint32_t extension;
+	/** @brief Result from the target core */
+	int result;
+	/** @brief Copy of IPC4 bind / unbind message, referenced by the payload */
+	uint32_t ipc4_bind_data[2];
+	/** @brief Copy of the IDC message payload */
+	uint8_t payload[IPC_USER_XCORE_PAYLOAD_SIZE] __aligned(8);
+};
+
 struct ipc_user {
 	struct k_thread *thread[IPC_DSP_CORE_COUNT];
 	struct k_sem *sem;
@@ -96,6 +121,8 @@ struct ipc_user {
 	 * Size verified by BUILD_ASSERT in handler-user.c.
 	 */
 	uint8_t init_drv_data[160] __aligned(4);
+	/** @brief Cross-core request slots, one per target core */
+	struct ipc_user_xcore xcore[IPC_DSP_CORE_COUNT];
 };
 
 struct ipc {
