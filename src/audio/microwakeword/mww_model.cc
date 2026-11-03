@@ -335,8 +335,11 @@ int MWW_InitOps(struct mww_classify *mwc)
 		return -EINVAL;
 	}
 
-	mwc->input_scale = inst->input->params.scale;
-	mwc->input_zero_point = inst->input->params.zero_point;
+	/* LOGISTIC output scale is fixed to 1/256, so raw - zero_point is Q0.8 */
+	if (inst->output->params.zero_point != (inst->output->type == kTfLiteInt8 ? -128 : 0)) {
+		mwc->error = "output tensor is not a logistic probability";
+		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -347,9 +350,6 @@ int MWW_ProcessClassify(struct mww_classify *mwc)
 		return -EINVAL;
 
 	struct mww_instance *inst = static_cast<struct mww_instance *>(mwc->instance);
-
-	float output_scale = inst->output->params.scale;
-	int output_zero_point = inst->output->params.zero_point;
 
 	std::copy_n(mwc->audio_features, kFeatureElementCount,
 		    tflite::GetTensorData<int8_t>(inst->input));
@@ -362,22 +362,12 @@ int MWW_ProcessClassify(struct mww_classify *mwc)
 	g_profilers[inst->slot_id]->InvokeDone();
 #endif
 
-	float raw_val;
-	if (inst->output->type == kTfLiteInt8) {
-		int8_t val = tflite::GetTensorData<int8_t>(inst->output)[0];
-		raw_val = static_cast<float>(val);
-		mwc->raw_output = val;
-	} else {
-		uint8_t val = tflite::GetTensorData<uint8_t>(inst->output)[0];
-		raw_val = static_cast<float>(val);
-		mwc->raw_output = val;
-	}
+	if (inst->output->type == kTfLiteInt8)
+		mwc->raw_output = tflite::GetTensorData<int8_t>(inst->output)[0];
+	else
+		mwc->raw_output = tflite::GetTensorData<uint8_t>(inst->output)[0];
 
-	mwc->probability = (raw_val - output_zero_point) * output_scale;
-	if (mwc->probability < 0.0f)
-		mwc->probability = 0.0f;
-	else if (mwc->probability > 1.0f)
-		mwc->probability = 1.0f;
+	mwc->prob_q8 = mwc->raw_output - inst->output->params.zero_point;
 
 	return 0;
 }

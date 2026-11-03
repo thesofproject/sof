@@ -28,10 +28,8 @@ struct mww_classify {
 	int8_t *audio_features;
 	size_t audio_data_size;
 	const char *error;
-	float probability;	/**< dequantized wake-word probability, 0..1 */
-	int32_t raw_output;	/**< raw int8/uint8 output tensor value */
-	float input_scale;
-	int input_zero_point;
+	int32_t prob_q8;	/**< wake-word probability in Q0.8, 0..255 */
+	int32_t raw_output;     /**< raw int8/uint8 output tensor value */
 };
 
 /* Export of C++ APIs into C namespace for linkage */

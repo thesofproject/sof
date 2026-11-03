@@ -91,7 +91,7 @@ void __assert_func(const char *file, int line, const char *func,
 /* Detect when the average probability of the last MWW_DETECT_AVG_LEN inferences
  * reaches the threshold; single inferences fluctuate strongly during a keyword.
  */
-#define MWW_DETECT_THRESHOLD 0.50f
+#define MWW_DETECT_THRESHOLD_Q8 128 /* 0.5 */
 #define MWW_DETECT_AVG_LEN 4
 
 /* Number of startup inferences to warm up the temporal ring buffers before enabling triggers (~1 sec). */
@@ -163,12 +163,12 @@ struct mww_comp_data {
 	int32_t dbg_peak_prob;
 #endif
 
-	/* Probabilities of the last MWW_DETECT_AVG_LEN inferences, circular */
-	float prob_hist[MWW_DETECT_AVG_LEN];
+	/* Probabilities (Q0.8) of the last MWW_DETECT_AVG_LEN inferences, circular */
+	int32_t prob_hist[MWW_DETECT_AVG_LEN];
 	uint32_t prob_hist_idx;
 
 	/* Live scoring tracking (twice a second = 50 hops @ 10ms) */
-	float window_peak_prob;
+	int32_t window_peak_prob;
 	uint8_t current_score_idx;
 	uint8_t last_notified_score_idx;
 	uint16_t score_hop_counter;
@@ -499,7 +499,7 @@ __cold static int mww_init(struct processing_module *mod)
 	cd->dbg_peak_prob = 0;
 #endif
 	mod->max_sinks = 0;
-	cd->window_peak_prob = 0.0f;
+	cd->window_peak_prob = 0;
 	cd->current_score_idx = 0;
 	cd->last_notified_score_idx = 0;
 	cd->score_hop_counter = 0;
@@ -627,7 +627,7 @@ static int mww_process(struct processing_module *mod,
 	}
 
 	if (cd->paused) {
-		cd->window_peak_prob = 0.0f;
+		cd->window_peak_prob = 0;
 		cd->score_hop_counter = 0;
 		if (cd->current_score_idx != 0) {
 			cd->current_score_idx = 0;
@@ -765,7 +765,7 @@ static int mww_process(struct processing_module *mod,
 			}
 
 #if CONFIG_COMP_MWW_DEBUG_TRACE
-			int prob_pct = (int)(cd->mwc.probability * 100.0f);
+			int prob_pct = (cd->mwc.prob_q8 * 100) >> 8;
 
 			if (prob_pct > cd->dbg_peak_prob)
 				cd->dbg_peak_prob = prob_pct;
@@ -786,28 +786,27 @@ static int mww_process(struct processing_module *mod,
 			}
 #endif
 
-			float prob_avg = 0.0f;
+			int32_t prob_sum = 0;
 
 			if (!cd->vad_active_hops) {
-				cd->prob_hist[cd->prob_hist_idx] = 0.0f;
+				cd->prob_hist[cd->prob_hist_idx] = 0;
 				cd->prob_hist_idx = (cd->prob_hist_idx + 1) % MWW_DETECT_AVG_LEN;
-				if (cd->mwc.probability >= MWW_DETECT_THRESHOLD)
+				if (cd->mwc.prob_q8 >= MWW_DETECT_THRESHOLD_Q8)
 					cd->vad_gated_inferences++;
 			} else {
-				if (cd->mwc.probability > cd->window_peak_prob)
-					cd->window_peak_prob = cd->mwc.probability;
+				if (cd->mwc.prob_q8 > cd->window_peak_prob)
+					cd->window_peak_prob = cd->mwc.prob_q8;
 
-				cd->prob_hist[cd->prob_hist_idx] = cd->mwc.probability;
+				cd->prob_hist[cd->prob_hist_idx] = cd->mwc.prob_q8;
 				cd->prob_hist_idx = (cd->prob_hist_idx + 1) % MWW_DETECT_AVG_LEN;
 				for (i = 0; i < MWW_DETECT_AVG_LEN; i++)
-					prob_avg += cd->prob_hist[i];
-				prob_avg /= MWW_DETECT_AVG_LEN;
+					prob_sum += cd->prob_hist[i];
 
 				if (cd->total_inferences > MWW_WARMUP_INFERENCES &&
-				    prob_avg >= MWW_DETECT_THRESHOLD) {
+				    prob_sum >= MWW_DETECT_THRESHOLD_Q8 * MWW_DETECT_AVG_LEN) {
 					cd->detections++;
 					comp_info(dev, "MWW keyword detected: avg probability=%d pct (slot %u, total=%u)",
-						  (int)(prob_avg * 100.0f),
+						  (prob_sum * 100) / (256 * MWW_DETECT_AVG_LEN),
 						  cd->wov_slot_id, cd->detections);
 					cd->kpb_trigger_events++;
 					struct wov_detect_notif payload = { .slot_id = cd->wov_slot_id };
@@ -825,11 +824,11 @@ static int mww_process(struct processing_module *mod,
 		cd->score_hop_counter++;
 		if (cd->score_hop_counter >= MWW_SCORE_UPDATE_HOPS) {
 			cd->score_hop_counter = 0;
-			uint32_t s_idx = (uint32_t)(cd->window_peak_prob * 10.0f + 0.5f);
+			uint32_t s_idx = (cd->window_peak_prob * 10 + 128) >> 8;
 			if (s_idx > 10)
 				s_idx = 10;
 			cd->current_score_idx = (uint8_t)s_idx;
-			cd->window_peak_prob = 0.0f;
+			cd->window_peak_prob = 0;
 
 #if CONFIG_IPC_MAJOR_4
 			if (!cd->in_d0ix && (cd->current_score_idx != cd->last_notified_score_idx || cd->current_score_idx > 0)) {
@@ -857,7 +856,7 @@ static int mww_reset(struct processing_module *mod)
 	memset(cd->prob_hist, 0, sizeof(cd->prob_hist));
 	cd->total_inferences = 0;
 	cd->score_hop_counter = 0;
-	cd->window_peak_prob = 0.0f;
+	cd->window_peak_prob = 0;
 	cd->current_score_idx = 0;
 	cd->last_notified_score_idx = 0;
 	cd->in_d0ix = false;
