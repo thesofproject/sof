@@ -113,8 +113,6 @@ enum kpb_client_state {
 };
 
 struct kpb_client {
-	struct comp_dev *dev;
-	struct k_queue *queue;
 	uint8_t id; /**< id associated with output sink */
 	uint32_t drain_req; /**< normalized value of buffered bytes */
 	enum kpb_client_state state; /**< current state of a client */
@@ -256,13 +254,24 @@ struct kpb_fmt_dev_list {
 };
 
 #if CONFIG_KPB_CLI_Q
-void kpb_notifier_schedule(struct kpb_client *cli);
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 #include <sof/compiler_attributes.h>
-__syscall void kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli);
+/**
+ * \brief Request draining of the KPB history buffer via the client queue.
+ *
+ * Callable from user space. The request is handled asynchronously by the
+ * KPB client queue thread.
+ *
+ * \param[in] id Client ID, i.e. the KPB output pin.
+ * \param[in] drain_req Requested draining length in milliseconds.
+ * \return 0 on success, -EINVAL on invalid arguments, -ENODEV if no KPB
+ *	   instance exists, -ENOMSG if the queue is full.
+ */
+__syscall int kpb_notifier_schedule(uint32_t id, uint32_t drain_req);
 #include <zephyr/syscalls/kpb.h>
 #else
-#define kpb_notifier_init z_impl_kpb_notifier_init
+int z_impl_kpb_notifier_schedule(uint32_t id, uint32_t drain_req);
+#define kpb_notifier_schedule z_impl_kpb_notifier_schedule
 #endif
 #endif
 
