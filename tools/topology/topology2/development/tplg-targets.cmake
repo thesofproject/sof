@@ -333,6 +333,9 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-ns2.bin"
 # snd_sof.tplg_filename=sof-hda-generic-uaol.tplg
 "development/sof-hda-generic-uaol\;sof-hda-generic-uaol\;HDA_CONFIG=mix,HDA_MIC_ENHANCED_CAPTURE=true,\
 EFX_HDA_MIC_TDFB_PARAMS=line2_pass,EFX_HDA_MIC_DRC_PARAMS=passthrough"
+# The same for a machine without an HDA codec, HDMI only, load it with
+# snd_sof.tplg_filename=sof-hda-generic-idisp-uaol.tplg
+"development/sof-hda-generic-uaol\;sof-hda-generic-idisp-uaol\;"
 
 # SSP test topology for Data Processing SRC on MTL
 "cavs-nocodec\;sof-mtl-nocodec-dp-test\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
