@@ -44,8 +44,8 @@
  * \brief SOF PCAN configuration structure.
  */
 struct pcan_config {
-	float strength;			/**< Exponent alpha (e.g. 0.95) */
-	float offset;			/**< Additive offset delta (e.g. 80.0) */
+	int32_t strength;		/**< Exponent alpha in Q1.15 (e.g. 31130 for 0.95) */
+	int32_t offset;			/**< Additive offset delta in Q8.7 (e.g. 10240 for 80.0) */
 	int32_t gain_bits;		/**< Gain bit shift (e.g. 21) */
 	uint16_t smoothing_coef;	/**< IIR smoothing coefficient in Q14 (e.g. 819 for 0.05) */
 	uint16_t smoothing_bits;	/**< Bit shift for noise estimate (e.g. 10) */
@@ -88,14 +88,20 @@ static inline uint32_t pcan_shrink(uint32_t x)
 
 /**
  * \brief Compute single point in continuous PCAN gain curve.
+ *
+ * \param strength Exponent alpha in Q1.15.
+ * \param offset Additive offset delta in Q8.7.
  */
-int16_t pcan_gain_lookup_function(float strength, float offset, int32_t gain_bits,
+int16_t pcan_gain_lookup_function(int32_t strength, int32_t offset, int32_t gain_bits,
 				  int32_t input_bits, uint32_t x);
 
 /**
  * \brief Fill 125-entry gain lookup table for WideDynamicFunction.
+ *
+ * \param strength Exponent alpha in Q1.15.
+ * \param offset Additive offset delta in Q8.7.
  */
-int pcan_compute_lut(float strength, float offset, int32_t gain_bits,
+int pcan_compute_lut(int32_t strength, int32_t offset, int32_t gain_bits,
 		     int32_t input_bits, int16_t *gain_lut);
 
 /**
