@@ -229,6 +229,8 @@ void zephyr_ll_user_resources_init(void);
 
 /**
  * @brief Grant thread access to per-core Low-Latency mutexes.
+ *
+ * Kernel context only.
  * @param[in,out] thread Target thread.
  * @param[in] core Target core ID.
  */

@@ -57,6 +57,13 @@ struct zephyr_ll_pdata {
 static APP_SYSUSER_BSS struct k_mutex *zephyr_ll_locks[CONFIG_CORE_COUNT];
 
 /*
+ * Kernel-only copy of zephyr_ll_locks[]. That array is writable by user
+ * threads, so kernel code granting access to the locks must use this copy,
+ * otherwise a user thread could make it grant access to any kernel object.
+ */
+static struct k_mutex *zephyr_ll_klocks[CONFIG_CORE_COUNT];
+
+/*
  * Shadow ownership tracking for the per-core LL mutex, used only to
  * power user_ll_assert_locked(). The kernel k_mutex object is not
  * readable from user-space threads, so its owner cannot be inspected
@@ -703,6 +710,7 @@ static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 
 #if CONFIG_SOF_USERSPACE_LL
 	zephyr_ll_locks[sch->core] = NULL;
+	zephyr_ll_klocks[sch->core] = NULL;
 	k_object_free(sch->lock);
 #endif
 
@@ -776,9 +784,9 @@ struct task *zephyr_ll_task_alloc(void)
 
 void user_ll_grant_access(struct k_thread *thread, int core)
 {
-	assert(core < CONFIG_CORE_COUNT && zephyr_ll_locks[core] != NULL);
+	assert(core < CONFIG_CORE_COUNT && zephyr_ll_klocks[core] != NULL);
 
-	k_thread_access_grant(thread, zephyr_ll_locks[core]);
+	k_thread_access_grant(thread, zephyr_ll_klocks[core]);
 }
 
 /**
@@ -908,6 +916,7 @@ __cold int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 	}
 	assert(core < CONFIG_CORE_COUNT && zephyr_ll_locks[core] == NULL);
 	zephyr_ll_locks[core] = sch->lock;
+	zephyr_ll_klocks[core] = sch->lock;
 	k_mutex_init(sch->lock);
 
 	tr_dbg(&ll_tr, "ll-scheduler init done, sch %p sch->lock %p", sch, sch->lock);
