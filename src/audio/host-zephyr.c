@@ -249,9 +249,31 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 #endif
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		uint32_t copy_bytes = bytes;
+
+		/*
+		 * During a compress drain (expect_eos), host_get_copy_bytes_normal()
+		 * rounds the final DMA chunk up to hd->dma_copy_align so the DMA
+		 * reload remains aligned. Clamp copy_bytes to the actual committed
+		 * payload remainder (aligned to sample width) so stale HDA bytes past
+		 * drain_bytes are not published to the decoder, and discard the
+		 * trailing DMA alignment padding from the source DMA buffer.
+		 */
+		if (dev->expect_eos && hd->drain_bytes &&
+		    hd->total_data_processed < hd->drain_bytes) {
+			uint64_t remaining = hd->drain_bytes - hd->total_data_processed;
+
+			remaining = ALIGN_UP(remaining, (uint64_t)hd->config.src_width);
+			if (remaining < (uint64_t)copy_bytes)
+				copy_bytes = (uint32_t)remaining;
+		}
+
 		source = hd->dma_buffer;
 		sink = hd->local_buffer;
-		ret = dma_buffer_copy_from(source, sink, hd->process, bytes, DUMMY_CHMAP);
+		ret = dma_buffer_copy_from(source, sink, hd->process, copy_bytes, DUMMY_CHMAP);
+		if (ret >= 0 && bytes > copy_bytes)
+			audio_stream_consume(&source->stream, bytes - copy_bytes);
+		bytes = copy_bytes;
 	} else {
 		source = hd->local_buffer;
 		sink = hd->dma_buffer;
@@ -499,8 +521,10 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK && dev->expect_eos && hd->drain_bytes) {
 		if (hd->total_data_processed < hd->drain_bytes) {
 			uint64_t remaining = hd->drain_bytes - hd->total_data_processed;
+			uint64_t align = MAX((uint64_t)dma_sample_bytes,
+					     (uint64_t)hd->dma_copy_align);
 
-			remaining = ALIGN_UP(remaining, (uint64_t)dma_sample_bytes);
+			remaining = ALIGN_UP(remaining, align);
 			if (remaining < (uint64_t)dma_copy_bytes)
 				dma_copy_bytes = (uint32_t)remaining;
 		}
