@@ -50,11 +50,14 @@ config FAST_GET
 
 config SOF_OS_LINUX_COMPAT_PRIORITY
 	bool "Prioritize backwards compatibility for old Linux kernels"
+	default y
 	help
 	  Build option to maintain maximal backwards compatibility with old
 	  versions of Linux SOF driver. When this is not set, firmware may
 	  require newer version of host, and/or use features that are not
-	  available in stable Linux kernel trees.
+	  available in stable Linux kernel trees. This is enabled by default
+	  as the default SOF build targets the Linux SOF driver, it is
+	  disabled by app/internal_ci_overlay.conf.
 
 rsource "Kconfig.xtos"
 
