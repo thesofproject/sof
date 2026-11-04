@@ -225,10 +225,7 @@ int MWW_SetModel(struct mww_classify *mwc, const unsigned char *model_tflite, si
 	inst->slot_id = slot;
 	mwc->instance = inst;
 
-	if (!model_tflite || model_size == 0)
-		model_tflite = MWW_GetDefaultModel(slot, &model_size);
-
-	if (!model_tflite) {
+	if (!model_tflite || model_size == 0) {
 		mwc->error = "no model provided";
 		return -EINVAL;
 	}
