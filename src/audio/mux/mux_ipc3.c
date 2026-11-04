@@ -37,6 +37,7 @@ static int mux_set_values(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct sof_mux_config *cfg = &cd->config;
+	unsigned int routes = 0;
 	unsigned int i;
 	unsigned int j;
 
@@ -67,12 +68,22 @@ static int mux_set_values(struct processing_module *mod)
 				comp_err(dev, "mux component is not able to mix channels");
 				return -EINVAL;
 			}
+			/* at most one bit set, so a non-zero mask is one route */
+			if (cfg->streams[i].mask[j])
+				routes++;
 		}
 	}
 
 	if (cd->comp_type == SOF_COMP_MUX) {
 		if (mux_mix_check(cfg)) {
 			comp_err(dev, "mux component is not able to mix channels");
+			return -EINVAL;
+		}
+
+		/* all mux routes go to the single lookup[0] table */
+		if (routes > CONFIG_PLATFORM_MAX_CHANNELS) {
+			comp_err(dev, "%u routes exceed maximum = "
+				 STRINGIFY(CONFIG_PLATFORM_MAX_CHANNELS), routes);
 			return -EINVAL;
 		}
 	}
