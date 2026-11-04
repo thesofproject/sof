@@ -285,9 +285,17 @@ config FORMAT_S32LE
 	help
 	  Support 32 bit processing data format with sign and in little endian format
 
+config SOF_HAS_FLOAT_HW
+	bool
+	default y if CPU_HAS_FPU || (XTENSA && !SOC_XTENSA_DC233C && !SOC_CAVSV15)
+	help
+	  Selected when the processor hardware has a floating-point unit (scalar
+	  FPU or vector FPU).
+
 config FORMAT_FLOAT
 	bool "Support float"
-	default y
+	default y if SOF_HAS_FLOAT_HW
+	depends on SOF_HAS_FLOAT_HW
 	help
 	  Support floating point processing data format
 
@@ -359,7 +367,8 @@ config PCM_CONVERTER_FORMAT_S16_4LE
 
 config PCM_CONVERTER_FORMAT_FLOAT
 	bool "Support float"
-	default y
+	default y if FORMAT_FLOAT
+	depends on FORMAT_FLOAT
 	help
 	  Support floating point processing data format
 
