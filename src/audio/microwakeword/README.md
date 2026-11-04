@@ -157,13 +157,24 @@ Alternatively, a single built-in model can be forced via Kconfig (`CONFIG_COMP_M
 
 Each instance can also be dynamically customized via SOF IPC4 `LARGE_CONFIG_SET` / bytes control or LLEXT model loading.
 
+### 4. Model Blob Format
+The built-in models and the bytes control use the same model blob: `struct sof_mww_model_hdr` from [user/mww.h](../../include/user/mww.h) followed by the TFLite flatbuffer. In the bytes control the blob follows the standard `struct sof_abi_hdr`. The 64-byte header carries:
+- magic `MWWM`, version and header size, so that fields can be added later,
+- the model size and its CRC32, checked before the model is used, and the needed tensor arena size (0 if unknown),
+- the keyword name, for information,
+- the feature type (PCAN or AGC8 int8 Mel), Mel band count, hop length and hops per inference; the firmware rejects models whose feature geometry it does not support,
+- the trigger threshold (Q0.8) and the number of averaged probabilities, so each model carries its own trigger tuning,
+- reserved words.
+
+A bare TFLite flatbuffer without the header is still accepted and uses the default trigger settings `MWW_DETECT_THRESHOLD_Q8` and `MWW_DETECT_AVG_LEN`.
+
 ---
 
 ## Notifier Inter-Module Signaling Contract
 
 The MWW detector participates in SOF's synchronous intra-DSP publish/subscribe notifier bus:
 
-1. **`NOTIFIER_ID_WOV_DETECT`**: Fired by `mww` to `wov_arbiter` on keyword detection (average probability of the last `MWW_DETECT_AVG_LEN` inferences `>= MWW_DETECT_THRESHOLD`). Passes payload `{ .slot_id = cd->wov_slot_id }`.
+1. **`NOTIFIER_ID_WOV_DETECT`**: Fired by `mww` to `wov_arbiter` on keyword detection (average probability of the last `avg_len` inferences `>= threshold_q8`, from the model header). Passes payload `{ .slot_id = cd->wov_slot_id }`.
 2. **`NOTIFIER_ID_KPB_CLIENT_EVT`**: Fired by `mww` to `kpb` to request immediate draining of the 2.0 s pre-roll history buffer.
 3. **`NOTIFIER_ID_WOV_CTRL`**: Received by `mww` from `wov_arbiter`.
    - `WOV_ARB_CMD_PAUSE`: Pauses inference while another slot's keyword audio is streaming to the host.

@@ -39,6 +39,7 @@
 #include <kernel/header.h>
 
 #include <sof/audio/mfcc/mfcc_comp.h>
+#include <user/mww.h>
 #include "mww_model.h"
 
 #include <stdarg.h>
@@ -90,9 +91,14 @@ void __assert_func(const char *file, int line, const char *func,
 
 /* Detect when the average probability of the last MWW_DETECT_AVG_LEN inferences
  * reaches the threshold; single inferences fluctuate strongly during a keyword.
+ * These are the defaults for models without struct sof_mww_model_hdr.
  */
 #define MWW_DETECT_THRESHOLD_Q8 128 /* 0.5 */
 #define MWW_DETECT_AVG_LEN 4
+#define MWW_DETECT_AVG_MAX 16
+
+/* The tune scripts write a 64-byte header, which keeps the model 16-byte aligned */
+STATIC_ASSERT(sizeof(struct sof_mww_model_hdr) == 64, mww_model_hdr_size);
 
 /* Number of startup inferences to warm up the temporal ring buffers before enabling triggers (~1 sec). */
 #define MWW_WARMUP_INFERENCES 33
@@ -163,9 +169,11 @@ struct mww_comp_data {
 	int32_t dbg_peak_prob;
 #endif
 
-	/* Probabilities (Q0.8) of the last MWW_DETECT_AVG_LEN inferences, circular */
-	int32_t prob_hist[MWW_DETECT_AVG_LEN];
+	/* Probabilities (Q0.8) of the last detect_avg_len inferences, circular */
+	int32_t prob_hist[MWW_DETECT_AVG_MAX];
 	uint32_t prob_hist_idx;
+	int32_t detect_threshold_q8;
+	int32_t detect_avg_len;
 
 	/* Live scoring tracking (twice a second = 50 hops @ 10ms) */
 	int32_t window_peak_prob;
@@ -503,10 +511,90 @@ __cold static int mww_init(struct processing_module *mod)
 	cd->current_score_idx = 0;
 	cd->last_notified_score_idx = 0;
 	cd->score_hop_counter = 0;
+	cd->detect_threshold_q8 = MWW_DETECT_THRESHOLD_Q8;
+	cd->detect_avg_len = MWW_DETECT_AVG_LEN;
 #if CONFIG_AMS
 	cd->kpd_uuid_id = AMS_INVALID_MSG_TYPE;
 #endif
 
+	return 0;
+}
+
+/**
+ * \brief Validate a model blob and apply its trigger settings.
+ *
+ * The blob is struct sof_mww_model_hdr followed by the TFLite flatbuffer,
+ * or a bare TFLite flatbuffer that uses the default trigger settings.
+ *
+ * \param[in] mod Module.
+ * \param[in] blob Model blob.
+ * \param[in] size Blob size in bytes.
+ * \param[out] model TFLite flatbuffer in the blob.
+ * \param[out] model_size TFLite flatbuffer size in bytes.
+ * \return 0 on success, -EINVAL for an invalid or incompatible blob.
+ */
+static int mww_parse_model(struct processing_module *mod, const uint8_t *blob, size_t size,
+			   const uint8_t **model, size_t *model_size)
+{
+	struct mww_comp_data *cd = module_get_private_data(mod);
+	const struct sof_mww_model_hdr *hdr = (const struct sof_mww_model_hdr *)blob;
+	struct comp_dev *dev = mod->dev;
+
+	cd->detect_threshold_q8 = MWW_DETECT_THRESHOLD_Q8;
+	cd->detect_avg_len = MWW_DETECT_AVG_LEN;
+
+	/* TFLite file identifier is at offset 4 of the flatbuffer */
+	if (size >= 8 && !memcmp(blob + 4, "TFL3", 4)) {
+		comp_info(dev, "bare TFLite model, size %zu", size);
+		*model = blob;
+		*model_size = size;
+		return 0;
+	}
+
+	if (size < sizeof(*hdr) || hdr->magic != SOF_MWW_MODEL_MAGIC ||
+	    hdr->version != SOF_MWW_MODEL_VERSION) {
+		comp_err(dev, "unknown model blob format, size %zu", size);
+		return -EINVAL;
+	}
+
+	if (hdr->hdr_size < sizeof(*hdr) || hdr->hdr_size > size ||
+	    hdr->model_size > size - hdr->hdr_size) {
+		comp_err(dev, "model header size %u or model size %u exceeds blob size %zu",
+			 hdr->hdr_size, hdr->model_size, size);
+		return -EINVAL;
+	}
+
+	if (hdr->num_mels != MWW_FEATURE_SIZE || hdr->hop_ms != MWW_MFCC_HOP_MS ||
+	    hdr->slice_hops != MWW_FEATURE_SLICE_COUNT) {
+		comp_err(dev, "model features %u mels, %u ms hop, %u hops are not supported",
+			 hdr->num_mels, hdr->hop_ms, hdr->slice_hops);
+		return -EINVAL;
+	}
+
+	if (hdr->threshold_q8 < 1 || hdr->threshold_q8 > 255 ||
+	    hdr->avg_len < 1 || hdr->avg_len > MWW_DETECT_AVG_MAX) {
+		comp_err(dev, "invalid trigger threshold %d or average length %u",
+			 hdr->threshold_q8, hdr->avg_len);
+		return -EINVAL;
+	}
+
+	if (hdr->arena_size > MWW_ArenaCapacity(&cd->mwc)) {
+		comp_err(dev, "model needs %u bytes of arena, have %zu",
+			 hdr->arena_size, MWW_ArenaCapacity(&cd->mwc));
+		return -EINVAL;
+	}
+
+	if (crc32(0, blob + hdr->hdr_size, hdr->model_size) != hdr->model_crc32) {
+		comp_err(dev, "model CRC32 mismatch");
+		return -EINVAL;
+	}
+
+	cd->detect_threshold_q8 = hdr->threshold_q8;
+	cd->detect_avg_len = hdr->avg_len;
+	*model = blob + hdr->hdr_size;
+	*model_size = hdr->model_size;
+	comp_info(dev, "model size %u, feature type %u, threshold %d/256, average of %u",
+		  hdr->model_size, hdr->feature_type, hdr->threshold_q8, hdr->avg_len);
 	return 0;
 }
 
@@ -524,8 +612,10 @@ static int mww_prepare(struct processing_module *mod,
 	dev->period = MWW_MFCC_HOP_MS * 1000;
 
 	if (!cd->initialized) {
-		const unsigned char *model_ptr = NULL;
+		const uint8_t *model_ptr = NULL;
+		const uint8_t *tflite;
 		size_t blob_size = 0;
+		size_t tflite_size;
 
 		model_ptr = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
 		if (model_ptr && blob_size > 0) {
@@ -548,11 +638,18 @@ static int mww_prepare(struct processing_module *mod,
 			}
 			comp_info(dev, "MWW: loaded model from control blob, size=%zu", blob_size);
 		} else {
-			model_ptr = NULL;
-			blob_size = 0;
+			model_ptr = MWW_GetDefaultModel(cd->mwc.slot_id, &blob_size);
+			if (!model_ptr) {
+				comp_err(dev, "no built-in model");
+				return -EINVAL;
+			}
 		}
 
-		ret = MWW_SetModel(&cd->mwc, model_ptr, blob_size);
+		ret = mww_parse_model(mod, model_ptr, blob_size, &tflite, &tflite_size);
+		if (ret < 0)
+			return ret;
+
+		ret = MWW_SetModel(&cd->mwc, tflite, tflite_size);
 		if (ret < 0) {
 			comp_err(dev, "MWW_SetModel failed: %d (%s)", ret, cd->mwc.error);
 			return ret;
@@ -794,23 +891,23 @@ static int mww_process(struct processing_module *mod,
 
 			if (!cd->vad_active_hops) {
 				cd->prob_hist[cd->prob_hist_idx] = 0;
-				cd->prob_hist_idx = (cd->prob_hist_idx + 1) % MWW_DETECT_AVG_LEN;
-				if (cd->mwc.prob_q8 >= MWW_DETECT_THRESHOLD_Q8)
+				cd->prob_hist_idx = (cd->prob_hist_idx + 1) % cd->detect_avg_len;
+				if (cd->mwc.prob_q8 >= cd->detect_threshold_q8)
 					cd->vad_gated_inferences++;
 			} else {
 				if (cd->mwc.prob_q8 > cd->window_peak_prob)
 					cd->window_peak_prob = cd->mwc.prob_q8;
 
 				cd->prob_hist[cd->prob_hist_idx] = cd->mwc.prob_q8;
-				cd->prob_hist_idx = (cd->prob_hist_idx + 1) % MWW_DETECT_AVG_LEN;
-				for (i = 0; i < MWW_DETECT_AVG_LEN; i++)
+				cd->prob_hist_idx = (cd->prob_hist_idx + 1) % cd->detect_avg_len;
+				for (i = 0; i < cd->detect_avg_len; i++)
 					prob_sum += cd->prob_hist[i];
 
 				if (cd->total_inferences > MWW_WARMUP_INFERENCES &&
-				    prob_sum >= MWW_DETECT_THRESHOLD_Q8 * MWW_DETECT_AVG_LEN) {
+				    prob_sum >= cd->detect_threshold_q8 * cd->detect_avg_len) {
 					cd->detections++;
 					comp_info(dev, "MWW keyword detected: avg probability=%d pct (slot %u, total=%u)",
-						  (prob_sum * 100) / (256 * MWW_DETECT_AVG_LEN),
+						  (prob_sum * 100) / (256 * cd->detect_avg_len),
 						  cd->wov_slot_id, cd->detections);
 					cd->kpb_trigger_events++;
 					struct wov_detect_notif payload = { .slot_id = cd->wov_slot_id };
