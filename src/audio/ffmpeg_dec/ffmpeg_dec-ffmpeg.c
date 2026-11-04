@@ -131,11 +131,9 @@ static int ffmpeg_dec_ff_init(struct processing_module *mod)
 		return -ENOMEM;
 
 	id = ffmpeg_dec_av_codec_id(cd->codec);
-#if defined(CONFIG_FFMPEG_DEC_AAC)
-	if (cd->codec == FFMPEG_DEC_CODEC_AAC)
-		ff->codec = avcodec_find_decoder_by_name("aac_fixed");
+	if (cd->codec_ops && cd->codec_ops->decoder_name)
+		ff->codec = avcodec_find_decoder_by_name(cd->codec_ops->decoder_name);
 	if (!ff->codec)
-#endif
 		ff->codec = avcodec_find_decoder(id);
 	if (!ff->codec) {
 		comp_err(dev, "no libavcodec decoder for codec %d", cd->codec);
@@ -178,19 +176,10 @@ static int ffmpeg_dec_ff_configure(struct processing_module *mod)
 
 	ffmpeg_dec_libc_bind(mod);
 
-	/* Filter extradata by codec:
-	 *  - FLAC needs the 34-byte STREAMINFO.
-	 *  - Opus needs "OpusHead" (RFC 7845) or NULL (falls back to built-in stereo default).
-	 *    If the topology carries a FLAC header, ignore it so Opus uses its default.
-	 */
-	if (cd->codec == FFMPEG_DEC_CODEC_OPUS && cd->extradata && cd->extradata_size) {
-		if (cd->extradata_size < 8 || memcmp(cd->extradata, "OpusHead", 8) != 0) {
-			comp_info(dev, "ignoring non-Opus extradata from topology");
-			cd->extradata_size = 0;
-		}
-	}
+	if (cd->codec_ops && cd->codec_ops->prepare_extradata)
+		cd->codec_ops->prepare_extradata(mod);
 
-	if (cd->extradata && cd->extradata_size) {
+	if (cd->extradata_size) {
 		av_freep(&ff->avctx->extradata);
 		ff->avctx->extradata =
 			av_mallocz(cd->extradata_size + AV_INPUT_BUFFER_PADDING_SIZE);
