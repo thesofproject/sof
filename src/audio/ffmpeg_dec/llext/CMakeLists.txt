@@ -5,6 +5,10 @@ if(CONFIG_COMP_FFMPEG_DEC_STUB)
 	# Dependency-free build: SOF glue + passthrough stub backend, no libavcodec.
 	sof_llext_build("ffmpeg_dec"
 		SOURCES ../ffmpeg_dec.c
+			../ffmpeg_dec-flac.c
+			../ffmpeg_dec-mp3.c
+			../ffmpeg_dec-aac.c
+			../ffmpeg_dec-opus.c
 			../ffmpeg_dec-stub.c
 		LIB openmodules
 	)
@@ -22,6 +26,18 @@ else()
 		../ffmpeg_dec-convert.c
 		../ffmpeg_dec-shims.c
 		../ffmpeg_dec-alloc.c)
+	if(CONFIG_FFMPEG_DEC_FLAC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-flac.c)
+	endif()
+	if(CONFIG_FFMPEG_DEC_MP3)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-mp3.c)
+	endif()
+	if(CONFIG_FFMPEG_DEC_AAC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-aac.c)
+	endif()
+	if(CONFIG_FFMPEG_DEC_OPUS)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-opus.c)
+	endif()
 	# fastmathf provides the single-precision libm the codecs need AND sofm_log2f
 	# used by the shims' log10(); always built for the real (non-stub) backend.
 	list(APPEND ffmpeg_dec_srcs ../fastmathf.c)

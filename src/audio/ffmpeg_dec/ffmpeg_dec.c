@@ -11,6 +11,7 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/sink_api.h>
+#include <sof/audio/sink_source_utils.h>
 #include <sof/audio/source_api.h>
 #include <rtos/init.h>
 #include <rtos/string.h>
@@ -88,7 +89,6 @@ int ffmpeg_dec_store_extradata(struct processing_module *mod,
 {
 	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	uint8_t *buf;
 
 	if (!size)
 		return 0;
@@ -98,23 +98,49 @@ int ffmpeg_dec_store_extradata(struct processing_module *mod,
 		return -EINVAL;
 	}
 
-	/* Replace any previously stored setup header. */
-	if (cd->extradata) {
-		mod_free(mod, cd->extradata);
-		cd->extradata = NULL;
-		cd->extradata_size = 0;
-	}
-
-	buf = mod_alloc(mod, size);
-	if (!buf)
-		return -ENOMEM;
-
-	memcpy_s(buf, size, data, size);
-	cd->extradata = buf;
+	memcpy_s(cd->extradata, sizeof(cd->extradata), data, size);
 	cd->extradata_size = size;
 	comp_info(dev, "stored %zu bytes of codec extradata", size);
 	return 0;
 }
+
+static const struct ffmpeg_dec_codec_ops * const ffmpeg_dec_codecs[] = {
+#if defined(CONFIG_FFMPEG_DEC_FLAC) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_flac_ops,
+#endif
+#if defined(CONFIG_FFMPEG_DEC_MP3) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_mp3_ops,
+#endif
+#if defined(CONFIG_FFMPEG_DEC_AAC) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_aac_ops,
+#endif
+#if defined(CONFIG_FFMPEG_DEC_OPUS) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_opus_ops,
+#endif
+};
+
+static const struct ffmpeg_dec_codec_ops *ffmpeg_dec_find_codec_ops(enum ffmpeg_dec_codec id)
+{
+	for (size_t i = 0; i < ARRAY_SIZE(ffmpeg_dec_codecs); i++) {
+		if (ffmpeg_dec_codecs[i]->id == id)
+			return ffmpeg_dec_codecs[i];
+	}
+	return NULL;
+}
+
+#if CONFIG_IPC_MAJOR_4
+static const struct ffmpeg_dec_codec_ops *ffmpeg_dec_find_codec_ops_by_snd_id(uint32_t snd_id)
+{
+	if (snd_id == SND_AUDIOCODEC_BESPOKE)
+		snd_id = SND_AUDIOCODEC_OPUS_RAW;
+
+	for (size_t i = 0; i < ARRAY_SIZE(ffmpeg_dec_codecs); i++) {
+		if (ffmpeg_dec_codecs[i]->snd_codec_id == snd_id)
+			return ffmpeg_dec_codecs[i];
+	}
+	return NULL;
+}
+#endif
 
 /*
  * Largest number of PCM samples-per-channel one decoded frame of @cd can
@@ -123,21 +149,10 @@ int ffmpeg_dec_store_extradata(struct processing_module *mod,
  */
 static uint32_t ffmpeg_dec_max_frame_samples(const struct ffmpeg_dec_comp_data *cd)
 {
-	switch (cd->codec) {
-	case FFMPEG_DEC_CODEC_FLAC:
-		if (cd->extradata && cd->extradata_size >= 4) {
-			const uint8_t *ed = cd->extradata;
-			uint32_t max_bs = ((uint32_t)ed[2] << 8) | (uint32_t)ed[3];
+	if (cd->codec_ops && cd->codec_ops->max_frame_samples)
+		return cd->codec_ops->max_frame_samples(cd);
 
-			if (max_bs > 0)
-				return max_bs;
-		}
-		return 8192;	/* standard max FLAC block (subset) */
-	case FFMPEG_DEC_CODEC_AAC:	return 2048;	/* HE-AAC (SBR) */
-	case FFMPEG_DEC_CODEC_OPUS:	return 5760;	/* 120 ms @ 48k */
-	case FFMPEG_DEC_CODEC_MP3:	return 1152;	/* MPEG-1 layer 3 */
-	default:			return 2048;
-	}
+	return 2048;
 }
 
 /**
@@ -166,34 +181,26 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 	md->private = cd;
 	cd->backend = &ffmpeg_dec_backend;
 	cd->codec = FFMPEG_DEC_DEFAULT_CODEC;
+	cd->codec_ops = ffmpeg_dec_find_codec_ops(cd->codec);
 
 #if CONFIG_IPC_MAJOR_4
 	if (mod->priv.cfg.ext_data &&
 	    mod->priv.cfg.ext_data->module_data &&
 	    mod->priv.cfg.ext_data->module_data_size >= sizeof(struct snd_codec)) {
 		const struct snd_codec *codec_params = mod->priv.cfg.ext_data->module_data;
+		const struct ffmpeg_dec_codec_ops *ops;
 
-		switch (codec_params->id) {
-		case SND_AUDIOCODEC_FLAC:
-			cd->codec = FFMPEG_DEC_CODEC_FLAC;
-			break;
-		case SND_AUDIOCODEC_MP3:
-			cd->codec = FFMPEG_DEC_CODEC_MP3;
-			break;
-		case SND_AUDIOCODEC_AAC:
-			cd->codec = FFMPEG_DEC_CODEC_AAC;
-			break;
-		case SND_AUDIOCODEC_OPUS_RAW:
-		case SND_AUDIOCODEC_BESPOKE:
-			cd->codec = FFMPEG_DEC_CODEC_OPUS;
-			break;
-		default:
-			comp_warn(dev, "unsupported snd_codec id 0x%x, using default %d",
-				  codec_params->id, cd->codec);
-			break;
+		ops = ffmpeg_dec_find_codec_ops_by_snd_id(codec_params->id);
+		if (!ops) {
+			comp_err(dev, "unsupported or disabled snd_codec id 0x%x",
+				 codec_params->id);
+			mod_free(mod, cd);
+			return -ENOTSUP;
 		}
-		comp_info(dev, "codec selected from IPC: %d (snd_codec id 0x%x)",
-			  cd->codec, codec_params->id);
+		cd->codec_ops = ops;
+		cd->codec = ops->id;
+		comp_info(dev, "codec selected from IPC: %s (%d, snd_codec id 0x%x)",
+			  cd->codec_ops->name, cd->codec, codec_params->id);
 	}
 #endif
 
@@ -294,15 +301,13 @@ static int ffmpeg_dec_prepare(struct processing_module *mod,
 		  cd->out_frame_bytes);
 
 	/*
-	 * NB: the backend decoder is NOT opened here. prepare() is dispatched to
-	 * this component's core over IDC and runs on that core's single IDC worker
-	 * thread; the codec open (avcodec_open2) builds large trig tables and can
-	 * take hundreds of ms (~580 ms measured for mp3). Doing that here would
-	 * monopolise the IDC worker, so a cross-core prepare/trigger on the
-	 * initiator core stalls or times out (-EAGAIN) and crashes on teardown.
-	 * Defer the open to the first process() call, which runs on the module's
-	 * own DP thread (deep 64 KiB stack, off the IDC critical path). See the
-	 * lazy-open block in ffmpeg_dec_process().
+	 * NB: the backend decoder is NOT opened here. prepare() runs synchronously
+	 * on the core's IPC/IDC worker thread (with a limited stack) during
+	 * SET_PIPELINE_STATE, and before any stream data has arrived. Opening the
+	 * codec (avcodec_open2) needs stream-embedded setup headers (e.g. FLAC
+	 * STREAMINFO extracted by skip_container()) as well as the module's deep
+	 * DP thread stack and table-initialization budget. Defer the open to
+	 * ffmpeg_dec_process() on the module's own DP thread.
 	 */
 
 	/*
@@ -320,8 +325,9 @@ static int ffmpeg_dec_prepare(struct processing_module *mod,
 	}
 	{
 		size_t max_samples = ffmpeg_dec_max_frame_samples(cd);
-		size_t max_frame_bytes = max_samples * (cd->out_channels ? cd->out_channels : 2) *
-					 (cd->out_frame_bytes ? cd->out_frame_bytes : 4);
+		size_t frame_bytes = cd->out_frame_bytes ? cd->out_frame_bytes :
+				     (size_t)(cd->out_channels ? cd->out_channels : 2) * 4;
+		size_t max_frame_bytes = max_samples * frame_bytes;
 		size_t pcm_buf_needed = ffmpeg_dec_max(FFMPEG_DEC_PCM_BUF_SIZE, max_frame_bytes);
 
 		if (!cd->pcm_buf || cd->pcm_buf_size < pcm_buf_needed) {
@@ -348,9 +354,9 @@ static int ffmpeg_dec_prepare(struct processing_module *mod,
 /* Copy @bytes out of a circular source buffer (starting at @src) into the
  * linear @dst, wrapping at the buffer end if necessary.
  */
-static void ffmpeg_dec_copy_from_circular(void *dst, const void *src,
-					  const void *buf_start, size_t buf_size,
-					  size_t bytes)
+void ffmpeg_dec_copy_from_circular(void *dst, const void *src,
+				   const void *buf_start, size_t buf_size,
+				   size_t bytes)
 {
 	size_t to_end = (size_t)((const uint8_t *)buf_start + buf_size -
 				 (const uint8_t *)src);
@@ -407,117 +413,34 @@ static void ffmpeg_dec_drain_pcm(struct ffmpeg_dec_comp_data *cd,
 }
 
 /*
- * Consume and discard a container header from the source so the decoder is fed a
- * bare frame elementary stream. Handles two prefixes:
- *   - "fLaC" : FLAC magic + metadata blocks (STREAMINFO reaches the decoder
- *     separately as extradata, so the whole header is skipped here).
- *   - "ID3"  : an ID3v2 tag prepended to an MP3 elementary stream. The mpegaudio
- *     parser syncs on the 0xFFEx frame header and would mis-parse the tag, so the
- *     syncsafe-encoded tag length is skipped.
- *
- * cplay/tinycompress hand the firmware the whole *file*, but libavcodec's raw
- * parsers sync on the frame marker and error ("Error buffering data") if fed the
- * container/tag prefix.
- *
- * The header is far smaller than in_buf_size and the entire clip is already
- * resident in the source ring, so a single pass suffices. Returns 0 once skipped
- * (or when there is no container marker), -ENODATA while the full header is not yet
- * buffered, or a negative errno on a malformed/oversized header.
+ * Peek at the start of the stream and skip a leading ID3v2 tag if present.
+ * Returns:
+ *   1 if an ID3v2 tag was completely skipped (caller should re-check),
+ *   0 if the stream does not start with an ID3v2 tag (cd->in_buf holds the
+ *     peeked header bytes),
+ *  -ENODATA while waiting for enough bytes to inspect or finish skipping.
  */
-static int ffmpeg_dec_skip_container(struct processing_module *mod,
-				     struct comp_dev *dev, struct sof_source *src)
+int ffmpeg_dec_skip_id3v2(struct processing_module *mod, struct sof_source *src)
 {
 	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	const void *sp, *sstart;
 	size_t sbytes, avail, req;
 	int ret;
 
-	/* Step 1: Drain any pending skip bytes from a previous tag/block */
+	/* Drain any pending skip bytes from a previous chunk */
 	if (cd->skip_bytes > 0) {
 		avail = source_get_data_available(src);
 		if (!avail)
 			return -ENODATA;
 		size_t to_skip = ffmpeg_dec_min(avail, cd->skip_bytes);
 
-		source_release_data(src, to_skip);
+		source_drop_data(src, to_skip);
 		cd->skip_bytes -= to_skip;
 		if (cd->skip_bytes > 0)
 			return -ENODATA;
-
-		if (cd->flac_parsing_meta && cd->flac_last_block) {
-			cd->flac_parsing_meta = false;
-			return 0; /* All FLAC metadata completed! */
-		}
 	}
 
-	/* Step 2: Handle ongoing FLAC metadata block parsing across chunks */
-	while (cd->flac_parsing_meta) {
-		uint8_t hdr_bytes[4];
-		uint8_t hdr;
-		uint32_t len;
-		bool is_last;
-
-		avail = source_get_data_available(src);
-		if (avail < 4)
-			return -ENODATA;
-
-		ret = source_get_data(src, 4, &sp, &sstart, &sbytes);
-		if (ret)
-			return ret;
-		ffmpeg_dec_copy_from_circular(hdr_bytes, sp, sstart, sbytes, 4);
-		source_release_data(src, 0);
-
-		hdr = hdr_bytes[0];
-		len = ((uint32_t)hdr_bytes[1] << 16) |
-		      ((uint32_t)hdr_bytes[2] << 8) |
-		      (uint32_t)hdr_bytes[3];
-		is_last = (hdr & 0x80) != 0;
-
-		/* If this is the STREAMINFO block (type 0) */
-		if ((hdr & 0x7F) == 0 && len == 34) {
-			if (avail < 38)
-				return -ENODATA;
-
-			req = 38;
-			ret = source_get_data(src, req, &sp, &sstart, &sbytes);
-			if (ret)
-				return ret;
-			ffmpeg_dec_copy_from_circular(cd->in_buf, sp, sstart, sbytes, req);
-			source_release_data(src, 0);
-
-			/* Dynamically store the 34-byte STREAMINFO extradata (bytes 4..37) */
-			if (!cd->extradata) {
-				ffmpeg_dec_store_extradata(mod, &cd->in_buf[4], 34);
-				comp_info(dev, "dynamically extracted 34-byte FLAC STREAMINFO");
-			}
-			source_release_data(src, 38);
-			if (is_last) {
-				cd->flac_parsing_meta = false;
-				return 0;
-			}
-			continue;
-		}
-
-		/* Other metadata block (PADDING, PICTURE, VORBIS_COMMENT, etc.): skip 4 + len */
-		uint32_t block_total = 4 + len;
-
-		if (avail >= block_total) {
-			source_release_data(src, block_total);
-			if (is_last) {
-				cd->flac_parsing_meta = false;
-				return 0;
-			}
-			continue;
-		}
-
-		/* Block exceeds available data in this period: skip available and track remainder */
-		source_release_data(src, avail);
-		cd->skip_bytes = block_total - avail;
-		cd->flac_last_block = is_last;
-		return -ENODATA;
-	}
-
-	/* Step 3: Check for ID3v2 or fLaC header */
 	avail = source_get_data_available(src);
 	if (avail < 4)
 		return -ENODATA;
@@ -529,7 +452,7 @@ static int ffmpeg_dec_skip_container(struct processing_module *mod,
 	ffmpeg_dec_copy_from_circular(cd->in_buf, sp, sstart, sbytes, req);
 	source_release_data(src, 0);
 
-	/* ID3v2 tag (MP3 and some FLAC): 10-byte header */
+	/* ID3v2 tag: 10-byte header with 28-bit syncsafe length */
 	if (memcmp(cd->in_buf, "ID3", 3) == 0) {
 		uint32_t tag;
 		size_t total_tag;
@@ -545,25 +468,15 @@ static int ffmpeg_dec_skip_container(struct processing_module *mod,
 		comp_info(dev, "ID3v2 tag detected: %zu bytes", total_tag);
 
 		if (avail >= total_tag) {
-			source_release_data(src, total_tag);
-			/* ID3v2 tag completely skipped; re-run container check */
-			return ffmpeg_dec_skip_container(mod, dev, src);
+			source_drop_data(src, total_tag);
+			return 1;
 		}
 
-		source_release_data(src, avail);
+		source_drop_data(src, avail);
 		cd->skip_bytes = total_tag - avail;
 		return -ENODATA;
 	}
 
-	/* FLAC container marker */
-	if (memcmp(cd->in_buf, "fLaC", 4) == 0) {
-		comp_info(dev, "FLAC marker detected, consuming container header");
-		source_release_data(src, 4);
-		cd->flac_parsing_meta = true;
-		return ffmpeg_dec_skip_container(mod, dev, src);
-	}
-
-	/* No container marker: raw elementary stream */
 	return 0;
 }
 
@@ -630,14 +543,32 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 	bool host_eos = src_state == AUDIOBUF_STATE_END_OF_STREAM ||
 			src_state == AUDIOBUF_STATE_END_OF_STREAM_FLUSH;
 
+	/* Drain leftover PCM from a previous decode before consuming more input. */
+	if (cd->pcm_avail) {
+		ffmpeg_dec_drain_pcm(cd, sink);
+		return 0;
+	}
+
+	/* One-time: strip the container header so the parser sees frames. */
+	if (!cd->hdr_done) {
+		if (cd->codec_ops && cd->codec_ops->skip_container) {
+			ret = cd->codec_ops->skip_container(mod, src);
+			if (ret < 0)
+				return ret;	/* -ENODATA: wait for the rest of the header */
+			cd->hdr_done = true;
+			return 0;		/* decode frames on subsequent cycles */
+		}
+		cd->hdr_done = true;
+	}
+
 	/*
-	 * Lazy backend open, one-time, on the DP thread. prepare() deliberately
-	 * skips avcodec_open2 because it runs on the core's single IDC worker where
-	 * a ~580 ms mp3 table build would stall/timeout a cross-core prepare or
-	 * trigger. Here we are on the module's own DP thread with a deep stack, so
-	 * the open is off the IDC critical path. reset() flushes but keeps the
-	 * decoder open (configured stays true), so this runs only on the first
-	 * process() after a fresh prepare().
+	 * Lazy backend open, one-time, on the DP thread. Run after container
+	 * stripping so stream-embedded setup headers (e.g. FLAC STREAMINFO) are
+	 * extracted before avcodec_open2(), and on the module's own DP thread
+	 * (with its dedicated decoder stack) rather than blocking the synchronous
+	 * SET_PIPELINE_STATE IPC/IDC worker during prepare(). reset() flushes but
+	 * keeps the decoder open (configured stays true), so this runs only on the
+	 * first process() after a fresh prepare().
 	 */
 	if (!cd->configured) {
 		if (cd->backend->configure) {
@@ -649,21 +580,6 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 		}
 		cd->configured = true;
 		return 0;	/* decode on the next cycle */
-	}
-
-	/* Drain leftover PCM from a previous decode before consuming more input. */
-	if (cd->pcm_avail) {
-		ffmpeg_dec_drain_pcm(cd, sink);
-		return 0;
-	}
-
-	/* One-time: strip the container header so the parser sees frames. */
-	if (!cd->hdr_done) {
-		ret = ffmpeg_dec_skip_container(mod, dev, src);
-		if (ret < 0)
-			return ret;	/* -ENODATA: wait for the rest of the header */
-		cd->hdr_done = true;
-		return 0;		/* decode frames on subsequent cycles */
 	}
 
 	avail = source_get_data_available(src);
@@ -894,15 +810,13 @@ __cold static int ffmpeg_dec_free(struct processing_module *mod)
 
 #if CONFIG_IPC_MAJOR_4
 	if (cd->eos_msg)
-		ipc_msg_free(cd->eos_msg);
+		mod_ipc_msg_free(mod, cd->eos_msg);
 #endif
 
 	if (cd->pcm_buf)
 		mod_free(mod, cd->pcm_buf);
 	if (cd->in_buf)
 		mod_free(mod, cd->in_buf);
-	if (cd->extradata)
-		mod_free(mod, cd->extradata);
 
 	mod_free(mod, cd);
 	return 0;

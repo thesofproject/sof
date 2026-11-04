@@ -67,6 +67,34 @@ enum ffmpeg_dec_codec {
 
 struct ffmpeg_dec_comp_data;
 struct ipc_msg;
+struct sof_source;
+
+/**
+ * struct ffmpeg_dec_codec_ops - Per-codec stream and configuration operations.
+ * @id:                SOF internal codec enum (enum ffmpeg_dec_codec).
+ * @snd_codec_id:      ALSA compress SND_AUDIOCODEC_* identifier.
+ * @name:              Human-readable codec name (e.g. "flac", "mp3", "aac", "opus").
+ * @decoder_name:      Optional explicit libavcodec decoder name (e.g. "aac_fixed"), or NULL.
+ * @max_frame_samples: Return maximum PCM samples per channel per decoded frame.
+ * @skip_container:    Optional one-time stream container/header parser called before
+ *                     decoder open; returns 0 when ready to decode frames, -ENODATA
+ *                     when more input bytes are needed, or negative errno on error.
+ * @prepare_extradata: Optional hook to validate/filter cd->extradata before avcodec_open2().
+ */
+struct ffmpeg_dec_codec_ops {
+	enum ffmpeg_dec_codec id;
+	uint32_t snd_codec_id;
+	const char *name;
+	const char *decoder_name;
+	uint32_t (*max_frame_samples)(const struct ffmpeg_dec_comp_data *cd);
+	int (*skip_container)(struct processing_module *mod, struct sof_source *src);
+	void (*prepare_extradata)(struct processing_module *mod);
+};
+
+extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_flac_ops;
+extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_mp3_ops;
+extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_aac_ops;
+extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_opus_ops;
 
 /**
  * struct ffmpeg_dec_backend - decode backend operations.
@@ -106,9 +134,10 @@ struct ffmpeg_dec_backend {
  * struct ffmpeg_dec_comp_data - ffmpeg_dec module private data.
  * @backend:         Selected decode backend ops.
  * @backend_data:    Backend-private decoder state.
+ * @codec_ops:       Per-codec operations for the selected codec.
  * @codec:           Codec id for this instance.
- * @extradata:       Codec setup header (e.g. FLAC STREAMINFO), NULL if none.
- * @extradata_size:  Size of @extradata in bytes.
+ * @extradata:       Codec setup header (e.g. FLAC STREAMINFO).
+ * @extradata_size:  Size of @extradata in bytes (0 if none).
  * @out_rate:        Decoded PCM sample rate (Hz), from the sink stream params.
  * @out_channels:    Decoded PCM channel count.
  * @out_frame_fmt:   Decoded PCM sample format (enum sof_ipc_frame).
@@ -124,8 +153,9 @@ struct ffmpeg_dec_backend {
 struct ffmpeg_dec_comp_data {
 	const struct ffmpeg_dec_backend *backend;
 	void *backend_data;
+	const struct ffmpeg_dec_codec_ops *codec_ops;
 	enum ffmpeg_dec_codec codec;
-	uint8_t *extradata;
+	uint8_t extradata[FFMPEG_DEC_MAX_EXTRADATA];
 	size_t extradata_size;
 	uint32_t out_rate;
 	uint32_t out_channels;
@@ -166,6 +196,12 @@ void ffmpeg_dec_signal_eos(struct processing_module *mod, struct sof_sink *sink)
  * (ffmpeg_dec-stub.c or ffmpeg_dec-ffmpeg.c).
  */
 extern const struct ffmpeg_dec_backend ffmpeg_dec_backend;
+
+void ffmpeg_dec_copy_from_circular(void *dst, const void *src,
+				   const void *buf_start, size_t buf_size,
+				   size_t bytes);
+
+int ffmpeg_dec_skip_id3v2(struct processing_module *mod, struct sof_source *src);
 
 /**
  * ffmpeg_dec_store_extradata() - Copy a codec setup header into private data.
