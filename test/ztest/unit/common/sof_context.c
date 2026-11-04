@@ -7,16 +7,17 @@
 //
 // Minimal SOF context for standalone ztest applications that link SOF code
 // calling sof_get(), for example src/audio/component.c, but do not link
-// src/kernel/init/init.c. The context is created on first use and only its
-// component driver list is initialised, which is what buffer_new() and the
-// component infrastructure need.
+// src/init/init.c. The context is created on first use and its component driver
+// and IPC component lists are initialised.
 
 #include <rtos/sof.h>
 #include <sof/audio/component_ext.h>
+#include <sof/ipc/common.h>
 
 #include <stdbool.h>
 
 static struct sof sof_context;
+static struct ipc ipc_context;
 static bool sof_context_initialized;
 
 /**
@@ -27,6 +28,8 @@ struct sof *sof_get(void)
 {
 	if (!sof_context_initialized) {
 		sys_comp_init(&sof_context);
+		list_init(&ipc_context.comp_list);
+		sof_context.ipc = &ipc_context;
 		sof_context_initialized = true;
 	}
 

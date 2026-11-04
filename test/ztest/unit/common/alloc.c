@@ -57,3 +57,11 @@ struct k_heap *__wrap_sof_sys_heap_get(void)
 {
 	return NULL;
 }
+
+/**
+ * @brief Return the absent user heap for standalone tests.
+ */
+struct k_heap *__wrap_sof_sys_user_heap_get(void)
+{
+	return NULL;
+}
