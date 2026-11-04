@@ -534,10 +534,14 @@ static int mww_prepare(struct processing_module *mod,
 				const struct sof_abi_hdr *hdr = (const struct sof_abi_hdr *)model_ptr;
 
 				if (hdr->magic == SOF_IPC4_ABI_MAGIC || hdr->magic == SOF_ABI_MAGIC) {
-					size_t payload_len = hdr->size ? hdr->size : (blob_size - sizeof(struct sof_abi_hdr));
+					size_t max_len = blob_size - sizeof(struct sof_abi_hdr);
+					size_t payload_len = hdr->size ? hdr->size : max_len;
 
-					comp_info(dev, "MWW: stripping ABI header (magic=0x%08x payload=%zu), total=%zu",
-						  hdr->magic, payload_len, blob_size);
+					if (payload_len > max_len) {
+						comp_err(dev, "ABI header size %zu exceeds blob payload %zu",
+							 payload_len, max_len);
+						return -EINVAL;
+					}
 					model_ptr += sizeof(struct sof_abi_hdr);
 					blob_size = payload_len;
 				}
