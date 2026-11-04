@@ -535,7 +535,8 @@ int src_params_general(struct processing_module *mod,
 		/* free any existing delay lines */
 		mod_free(mod, cd->delay_lines);
 
-		cd->delay_lines = mod_alloc(mod, delay_lines_size);
+		/* Align delay lines for SIMD circular buffer accesses */
+		cd->delay_lines = mod_alloc_align(mod, delay_lines_size, SOF_FRAME_BYTE_ALIGN);
 		if (!cd->delay_lines) {
 			comp_err(dev, "failed to alloc cd->delay_lines, delay_lines_size = %zu",
 				 delay_lines_size);
