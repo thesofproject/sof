@@ -74,8 +74,8 @@ its subdirectories span all tiers.
 
 | Tier | Meaning | Directories |
 |------|---------|-------------|
-| **Kernel-only** | OS integration, HAL, boot, inter-core. Never executes in a user thread. Must not be reached directly from user code — only via a syscall. | `kernel/` (`kernel/idc/`, `kernel/init/`), `arch/`, `drivers/`, `platform/`, `probe/` *, `logging/` *, `trace/` * |
-| **Boundary / bridge** | Owns the syscalls and the thread / memory-domain setup. Split internally: some translation units run kernel-side, some user-side (e.g. `handler-kernel.c` vs `handler-user.c`, `zephyr_ll.c` vs `zephyr_ll_user.c`). | `schedule/`, `ipc/`, `library_manager/` *, `debug/debug_stream/` *, and (in the Zephyr integration tree) `zephyr/syscall/` |
+| **Kernel-only** | OS integration, HAL, boot, inter-core. Never executes in a user thread. Must not be reached directly from user code — only via a syscall. | `kernel/` (`kernel/idc/`, `kernel/init/`, `kernel/library_manager/`), `arch/`, `drivers/`, `platform/`, `probe/` *, `logging/` *, `trace/` * |
+| **Boundary / bridge** | Owns the syscalls and the thread / memory-domain setup. Split internally: some translation units run kernel-side, some user-side (e.g. `handler-kernel.c` vs `handler-user.c`, `zephyr_ll.c` vs `zephyr_ll_user.c`). | `schedule/`, `ipc/`, `debug/debug_stream/` *, and (in the Zephyr integration tree) `zephyr/syscall/` |
 | **Application** | Audio pipeline / component logic that runs in user threads under userspace configs. | `audio/` |
 | **Shared library** | Context-agnostic code linked into whichever context calls it. Must stay "user-safe": no privileged operations (no direct MMIO, no spinlocks held across syscalls, no raw kernel object access) so it is safe when pulled into a user build. | `math/`, `module/` |
 | **Mixed** | A directory whose files span more than one tier; see its own README for per-file classification. | `lib/` |
@@ -123,7 +123,7 @@ syscall by subsystem:
 | DAI | `dai_get_device` | `sof/lib/dai-zephyr.h` | `zephyr/syscall/dai.c` / `lib/dai.c` |
 | CPU | `cpu_get_id` | `sof/lib/cpu.h` | `zephyr/syscall/cpu.c` / `zephyr/lib/cpu.c` |
 | Module management | `mod_balloc_align`, `mod_alloc_ext`, `mod_free`, `mod_free_all`, `mod_data_blob_handler_new`, `mod_fast_get` | `sof/audio/module_adapter/module/generic.h` | scattered: `audio/module_adapter/module/generic.c` |
-| Library manager | `lib_manager_free_module` | `sof/lib_manager.h` | scattered: `library_manager/lib_manager.c` |
+| Library manager | `lib_manager_free_module` | `sof/lib_manager.h` | scattered: `kernel/library_manager/lib_manager.c` |
 | Scheduling | `zephyr_ll_task_sem_alloc`, `zephyr_ll_task_sem_free`, `scheduler_dp_internal_free`, `scheduler_dp_ll_tick` | `sof/schedule/ll_schedule_domain.h`, `sof/schedule/dp_schedule.h` | scattered: `schedule/zephyr_ll.c`, `schedule/zephyr_dp_schedule*.c` |
 | Debug | `debug_stream_slot_send_record` | `user/debug_stream_slot.h` | scattered: `debug/debug_stream/debug_stream_slot.c` |
 
