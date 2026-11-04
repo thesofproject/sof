@@ -13,7 +13,7 @@
 // cannot practically exceed ~512 KiB. AAC-LC needs a single ~541 KiB allocation
 // (libavutil av_tx float MDCT tables) that does not fit, giving -ENOMEM.
 //
-// Under CONFIG_SOF_USERSPACE_APPLICATION=y (e.g. PTL built with os_linux_overlay.conf /
+// Under CONFIG_SOF_USERSPACE_APPLICATION=y (e.g. the default PTL build, which uses
 // ll_userspace_overlay.conf, where DP audio pipelines run in user-space threads),
 // module_adapter_mem_alloc() creates a dedicated per-instance user-space vregion
 // sized from the topology's heap_bytes. In that configuration (whether built as =m
