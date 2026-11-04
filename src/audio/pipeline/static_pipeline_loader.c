@@ -15,6 +15,10 @@
  */
 
 #include <sof/audio/pipeline/static_pipeline.h>
+#include <sof/audio/pipeline/sof_static_pipeline.h>
+#if defined(CONFIG_COMP_BT_AUDIO)
+#include <sof/audio/bt_service.h>
+#endif
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/buffer.h>
@@ -210,11 +214,33 @@ static int send_comp_config(struct comp_dev *dev, const void *abi_blob, size_t a
 		return -EINVAL;
 	}
 
+#if CONFIG_IPC_MAJOR_4
 	/* Pass raw configuration payload directly following ABI header to module adapter */
 	const uint8_t *raw_data = (const uint8_t *)abi_blob + sizeof(struct sof_abi_hdr);
 	int ret = mod->dev->drv->adapter_ops->set_configuration(mod, 0, MODULE_CFG_FRAGMENT_SINGLE,
 								hdr->size, raw_data,
 								hdr->size, NULL, 0);
+#else
+	size_t cdata_size = sizeof(struct sof_ipc_ctrl_data) + sizeof(struct sof_abi_hdr) + hdr->size;
+	struct sof_ipc_ctrl_data *cdata = rzalloc(SOF_MEM_FLAG_USER, cdata_size);
+	if (!cdata) {
+		LOG_ERR("Failed to allocate ctrl_data size %zu", cdata_size);
+		return -ENOMEM;
+	}
+
+	cdata->cmd = SOF_CTRL_CMD_BINARY;
+	cdata->num_elems = hdr->size;
+	cdata->data[0].magic = hdr->magic;
+	cdata->data[0].type = hdr->type;
+	cdata->data[0].size = hdr->size;
+	cdata->data[0].abi = hdr->abi;
+	memcpy_s(cdata->data[0].data, hdr->size, (const uint8_t *)abi_blob + sizeof(struct sof_abi_hdr), hdr->size);
+
+	int ret = mod->dev->drv->adapter_ops->set_configuration(mod, 0, MODULE_CFG_FRAGMENT_SINGLE,
+								hdr->size, (const uint8_t *)cdata,
+								hdr->size, NULL, 0);
+	rfree(cdata);
+#endif
 
 	/* Log configuration status for diagnostics */
 	if (ret < 0)
@@ -447,7 +473,22 @@ static struct comp_dev *sof_static_init_dai_comp(const struct sof_static_comp *c
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	if (dd) {
+#if CONFIG_IPC_MAJOR_4
 		int ret_dai = comp_dai_config(dd, dev, &dai_cfg, &copier_cfg);
+#else
+		struct sof_ipc_dai_config spec_cfg = {
+			.type = cdesc->ep.dai.dai_type,
+			.dai_index = cdesc->ep.dai.dai_index,
+			.format = cdesc->ep.dai.format,
+			.flags = SOF_DAI_CONFIG_FLAGS_HW_PARAMS,
+		};
+		int ret_set = dai_set_config(dd->dai, &dai_cfg, &spec_cfg, sizeof(spec_cfg));
+		if (ret_set < 0) {
+			LOG_ERR("dai_set_config failed %d for comp %u", ret_set, cdesc->id);
+			return NULL;
+		}
+		int ret_dai = comp_dai_config(dev, &dai_cfg, &spec_cfg);
+#endif
 		if (ret_dai < 0) {
 			LOG_ERR("comp_dai_config failed %d for comp %u", ret_dai, cdesc->id);
 			return NULL;
@@ -876,8 +917,10 @@ static int sof_static_topology_prepare_comps(const struct sof_static_topology *t
 		if (!dev)
 			continue;
 
-		/* Only prepare components currently in READY state */
+		/* Only prepare components currently in READY state that are connected to buffers */
 		if (dev->state == COMP_STATE_READY) {
+			if (list_is_empty(&dev->bsource_list) && list_is_empty(&dev->bsink_list))
+				continue;
 			const struct sof_static_comp *cdesc = &topo->comps[i];
 			const struct sof_static_pipeline_desc *pdesc =
 				sof_static_find_pipeline_desc(topo, cdesc->pipeline_id);
@@ -1109,6 +1152,9 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 		goto err_unwind;
 	}
 
+	/* Publish topology as active so controls can access topology metadata */
+	s_active_topo = topo;
+
 	/* Stage 7: Initialize kcontrols with default values */
 	ret = sof_static_topology_init_controls(topo);
 	if (ret < 0) {
@@ -1116,14 +1162,12 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 		goto err_unwind;
 	}
 
-	/* Publish topology as active only after all construction stages succeed */
-	s_active_topo = topo;
-
 	LOG_INF("Static audio topology initialized successfully (%zu pipelines, %zu comps, %zu buffers, %zu controls)",
 		topo->num_pipelines, topo->num_comps, topo->num_buffers, topo->num_controls);
 	return 0;
 
 err_unwind:
+	s_active_topo = NULL;
 	sof_static_topology_unwind();
 	return ret;
 }
@@ -1217,6 +1261,40 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 	if (!ctl) {
 		LOG_ERR("sof_static_kcontrol_set: control ID %u not found", ctrl_id);
 		return -ENOENT;
+	}
+
+	if (ctl->id == 7 || (ctl->name && !strcmp(ctl->name, "DMIC Injector Switch"))) {
+		s_control_vals[ctl_idx] = val;
+		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
+		return sof_static_pipeline_set_dmic_injector(val != 0);
+	}
+
+	if (ctl->id == 8 || (ctl->name && !strcmp(ctl->name, "BT Audio Stream Switch"))) {
+		s_control_vals[ctl_idx] = val;
+		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
+		return sof_static_pipeline_set_bt_stream(val != 0);
+	}
+
+	if (ctl->id == 9 || (ctl->name && !strcmp(ctl->name, "BT Stream Volume"))) {
+		s_control_vals[ctl_idx] = val;
+		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
+		return 0;
+	}
+
+	if (ctl->id == 10 || (ctl->name && !strcmp(ctl->name, "Audio Endpoint Route"))) {
+		s_control_vals[ctl_idx] = val;
+		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
+		return sof_static_pipeline_set_route((enum sof_audio_route)val);
+	}
+
+	if (ctl->id == 14 || (ctl->name && !strcmp(ctl->name, "BT Audio Format"))) {
+		s_control_vals[ctl_idx] = val;
+		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
+#if defined(CONFIG_COMP_BT_AUDIO)
+		return bt_service_set_format((enum bt_audio_format)val);
+#else
+		return 0;
+#endif
 	}
 
 	/*

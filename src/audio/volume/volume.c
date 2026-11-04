@@ -909,6 +909,7 @@ static struct comp_dev *vol_static_create(const struct comp_driver *drv,
 					  const struct sof_static_comp *cdesc,
 					  uint32_t period_us)
 {
+#if CONFIG_IPC_MAJOR_4
 	struct static_ipc4_vol_init_cfg vol_cfg;
 
 	memset(&vol_cfg, 0, sizeof(vol_cfg));
@@ -923,6 +924,20 @@ static struct comp_dev *vol_static_create(const struct comp_driver *drv,
 		.data = (const uint8_t *)&vol_cfg,
 	};
 	return drv->ops.create(drv, cfg, &spec);
+#else
+	static const struct ipc_config_volume vol_cfg = {
+		.channels = 2,
+		.min_value = 0,
+		.max_value = 0x7fffffff,
+		.ramp = 0,
+		.initial_ramp = 0,
+	};
+	struct ipc_config_process spec = {
+		.size = sizeof(vol_cfg),
+		.data = (const uint8_t *)&vol_cfg,
+	};
+	return drv->ops.create(drv, cfg, &spec);
+#endif
 }
 
 static int vol_static_apply_volume(struct comp_dev *dev, uint32_t channels, int32_t val)

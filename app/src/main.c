@@ -8,6 +8,11 @@
 #include <sof/boot_test.h>
 #include <zephyr/logging/log.h>
 
+#if defined(CONFIG_PLATFORM_ESP32C6)
+#include <rtos/sof.h>
+#include <sof/audio/pipeline/sof_static_pipeline.h>
+#endif
+
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 /* define qemu boot tests if any qemu target is defined, add targets to end */
@@ -40,6 +45,12 @@ static int sof_app_main(void)
 	}
 
 	LOG_INF("SOF initialized");
+
+#if defined(CONFIG_PLATFORM_ESP32C6)
+	/* Initialize static audio pipelines */
+	sof_static_pipelines_init(sof_get());
+	LOG_INF("ESP32-C6 SOF static pipelines started (I2S loopback ready)");
+#endif
 
 #ifdef CONFIG_ARCH_POSIX_LIBFUZZER
 	/* Workaround for an apparent timing bug in libfuzzer+asan.
