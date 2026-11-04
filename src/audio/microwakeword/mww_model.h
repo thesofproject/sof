@@ -38,9 +38,7 @@ extern "C"
 {
 #endif
 
-	/* 1st - pass in tflite flatbuffer formatted model. If model is NULL,
-	 * default model corresponding to mwc->slot_id is used.
-	 */
+	/* 1st - pass in the bare tflite flatbuffer of the model */
 	int MWW_SetModel(struct mww_classify *mwc, const unsigned char *model, size_t model_size);
 
 	/* 2nd - register the kernels and init TF micro for inference */
