@@ -3,3 +3,5 @@
 # Code that only runs in kernel mode, see scripts/kernel_user_partition.txt.
 
 rsource "idc/Kconfig"
+
+rsource "library_manager/Kconfig"

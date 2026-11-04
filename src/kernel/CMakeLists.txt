@@ -12,3 +12,4 @@ endif()
 
 add_subdirectory(idc)
 add_subdirectory(init)
+add_subdirectory(library_manager)
