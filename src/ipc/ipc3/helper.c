@@ -10,7 +10,9 @@
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <rtos/idc.h>
+#include <rtos/spinlock.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>
@@ -433,7 +435,11 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	ipc_pipe->id = pipe_desc->comp_id;
 
 	/* add new pipeline to the list */
+	k_spinlock_key_t key = k_spin_lock(&ipc->lock);
+
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
+	k_spin_unlock(&ipc->lock, key);
+	telemetry_notify_pipeline_change();
 
 	return 0;
 }
@@ -443,6 +449,8 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	struct ipc_comp_dev *ipc_pipe;
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
+	struct pipeline *pipe;
+	k_spinlock_key_t key;
 	int ret;
 
 	/* check whether pipeline exists */
@@ -467,22 +475,27 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	 * (or in fuzz/error paths) the dangling pointer would be a
 	 * use-after-free on any subsequent IPC referencing that component.
 	 */
+	pipe = ipc_pipe->pipeline;
+	key = k_spin_lock(&ipc->lock);
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type == COMP_TYPE_COMPONENT &&
-		    icd->cd && icd->cd->pipeline == ipc_pipe->pipeline)
+		    icd->cd && icd->cd->pipeline == pipe)
 			icd->cd->pipeline = NULL;
-	}
-
-	/* free buffer and remove from list */
-	ret = pipeline_free(ipc_pipe->pipeline);
-	if (ret < 0) {
-		tr_err(&ipc_tr, "pipeline_free() failed");
-		return ret;
 	}
 	ipc_pipe->pipeline = NULL;
 	list_item_del(&ipc_pipe->list);
+	k_spin_unlock(&ipc->lock, key);
+
+	/* free buffer and remove from list */
+	ret = pipeline_free(pipe);
+	if (ret < 0) {
+		tr_err(&ipc_tr, "pipeline_free() failed");
+		rfree(ipc_pipe);
+		return ret;
+	}
 	rfree(ipc_pipe);
+	telemetry_notify_pipeline_change();
 
 	return 0;
 }
@@ -520,7 +533,10 @@ int ipc_buffer_new(struct ipc *ipc, const struct sof_ipc_buffer *desc)
 	ibd->id = desc->comp.id;
 
 	/* add new buffer to the list */
+	k_spinlock_key_t key = k_spin_lock(&ipc->lock);
+
 	list_item_append(&ibd->list, &ipc->comp_list);
+	k_spin_unlock(&ipc->lock, key);
 
 	return ret;
 }
@@ -608,8 +624,14 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 		pipeline_disconnect(source, ibd->cb, PPL_CONN_DIR_COMP_TO_BUFFER);
 
 	/* free buffer and remove from list */
-	buffer_free(ibd->cb);
+	struct comp_buffer *cb = ibd->cb;
+	k_spinlock_key_t key = k_spin_lock(&ipc->lock);
+
+	ibd->cb = NULL;
 	list_item_del(&ibd->list);
+	k_spin_unlock(&ipc->lock, key);
+
+	buffer_free(cb);
 	rfree(ibd);
 
 	return 0;
@@ -722,7 +744,11 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 	icd->id = comp->id;
 
 	/* add new component to the list */
+	k_spinlock_key_t key = k_spin_lock(&ipc->lock);
+
 	list_item_append(&icd->list, &ipc->comp_list);
+	k_spin_unlock(&ipc->lock, key);
+	telemetry_notify_pipeline_change();
 
 	return 0;
 }

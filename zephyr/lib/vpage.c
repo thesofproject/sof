@@ -12,6 +12,7 @@
 #include <sof/lib/cold.h>
 #include <sof/lib/regions_mm.h>
 #include <sof/lib/vpage.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
 
 LOG_MODULE_REGISTER(vpage, CONFIG_SOF_LOG_LEVEL);
@@ -63,6 +64,43 @@ struct vpage_context {
 
 /* uncache persistent across all cores */
 static struct vpage_context vpage_ctx;
+#ifdef CONFIG_SOF_TELEMETRY_VREGION
+static struct k_spinlock vpage_tel_lock;
+static struct sof_tel_vregion_section vpage_tel_snap;
+static uint16_t vpage_min_free_pages = UINT16_MAX;
+static uint32_t vpage_alloc_fail_count;
+
+/* Must be called with vpage_ctx.lock held (or during init) */
+static void vpage_tel_sync_locked(void)
+{
+	k_spinlock_key_t key = k_spin_lock(&vpage_tel_lock);
+
+	if (vpage_ctx.virtual_region) {
+		vpage_tel_snap.total_pages = (uint16_t)vpage_ctx.total_pages;
+		vpage_tel_snap.free_pages = (uint16_t)vpage_ctx.free_pages;
+		vpage_tel_snap.min_free_pages = (vpage_min_free_pages == UINT16_MAX) ?
+						(uint16_t)vpage_ctx.free_pages :
+						vpage_min_free_pages;
+		vpage_tel_snap.num_elems_in_use = (uint16_t)vpage_ctx.num_elems_in_use;
+		vpage_tel_snap.alloc_fail_count = vpage_alloc_fail_count;
+		vpage_tel_snap.region_base_va =
+			(uint32_t)POINTER_TO_UINT(vpage_ctx.virtual_region->addr);
+
+		for (int i = 0; i < SOF_TEL_MAX_VPAGE_ELEMS; i++) {
+			if (i < VPAGE_MAX_ALLOCS) {
+				vpage_tel_snap.velems[i].pages = vpage_ctx.velems[i].pages;
+				vpage_tel_snap.velems[i].vpage = vpage_ctx.velems[i].vpage;
+			} else {
+				vpage_tel_snap.velems[i].pages = 0;
+				vpage_tel_snap.velems[i].vpage = 0;
+			}
+		}
+	}
+	k_spin_unlock(&vpage_tel_lock, key);
+}
+#else
+static inline void vpage_tel_sync_locked(void) {}
+#endif
 
 /**
  * @brief Allocate and map virtual memory pages
@@ -159,6 +197,13 @@ __cold void *vpage_alloc(unsigned int pages)
 
 	k_mutex_lock(&vpage_ctx.lock, K_FOREVER);
 	ret = vpages_alloc_and_map(pages, &ptr);
+#ifdef CONFIG_SOF_TELEMETRY_VREGION
+	if (ret < 0)
+		vpage_alloc_fail_count++;
+	else if (vpage_ctx.free_pages < vpage_min_free_pages)
+		vpage_min_free_pages = (uint16_t)vpage_ctx.free_pages;
+	vpage_tel_sync_locked();
+#endif
 	k_mutex_unlock(&vpage_ctx.lock);
 	if (ret < 0)
 		LOG_ERR("vpage_alloc failed %d for %d pages, total %d free %d",
@@ -166,6 +211,7 @@ __cold void *vpage_alloc(unsigned int pages)
 	else
 		LOG_INF("vpage_alloc ptr %p pages %u free %u/%u", ptr, pages, vpage_ctx.free_pages,
 			vpage_ctx.total_pages);
+	telemetry_notify_vregion_change();
 	return ptr;
 }
 
@@ -256,12 +302,36 @@ void vpage_free(void *ptr)
 
 	k_mutex_lock(&vpage_ctx.lock, K_FOREVER);
 	ret = vpages_free_and_unmap((uintptr_t *)ptr);
+	if (!ret)
+		vpage_tel_sync_locked();
 	k_mutex_unlock(&vpage_ctx.lock);
 
-	if (!ret)
+	if (!ret) {
 		LOG_INF("vptr %p free/total pages %d/%d", ptr, vpage_ctx.free_pages,
 			vpage_ctx.total_pages);
+		telemetry_notify_vregion_change();
+	}
 }
+
+#ifdef CONFIG_SOF_TELEMETRY_VREGION
+void telemetry_collect_vpage_stats(struct sof_tel_vregion_section *vsec)
+{
+	k_spinlock_key_t key;
+
+	if (!vsec)
+		return;
+
+	key = k_spin_lock(&vpage_tel_lock);
+	vsec->total_pages = vpage_tel_snap.total_pages;
+	vsec->free_pages = vpage_tel_snap.free_pages;
+	vsec->min_free_pages = vpage_tel_snap.min_free_pages;
+	vsec->num_elems_in_use = vpage_tel_snap.num_elems_in_use;
+	vsec->alloc_fail_count = vpage_tel_snap.alloc_fail_count;
+	vsec->region_base_va = vpage_tel_snap.region_base_va;
+	memcpy(vsec->velems, vpage_tel_snap.velems, sizeof(vsec->velems));
+	k_spin_unlock(&vpage_tel_lock, key);
+}
+#endif
 
 /**
  * @brief Initialize virtual page allocator
@@ -361,6 +431,7 @@ __cold static int vpage_init(void)
 	vpage_ctx.bitmap.num_bundles = bitmap_num_bundles;
 	vpage_ctx.bitmap.bundles = bundles;
 	vpage_ctx.vpage_blocks.bitmap = &vpage_ctx.bitmap;
+	vpage_tel_sync_locked();
 
 	LOG_INF("region %p size %#zx pages %u",
 		(void *)vpage_ctx.virtual_region->addr,

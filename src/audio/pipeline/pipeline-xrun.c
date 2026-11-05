@@ -7,6 +7,8 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/pipeline.h>
+#include <sof/debug/telemetry/performance_monitor.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <sof/ipc/msg.h>
 #include <sof/list.h>
 #include <sof/lib/mailbox.h>
@@ -162,6 +164,9 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	/* only send when we are running */
 	if (dev->state != COMP_STATE_ACTIVE)
 		return;
+
+	telemetry_notify_pipeline_xrun(p, bytes);
+	perf_data_inc_xrun(dev);
 
 	/* notify all pipeline comps we are in XRUN, and stop copying */
 	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_XRUN);

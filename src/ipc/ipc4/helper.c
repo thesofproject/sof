@@ -12,6 +12,7 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <module/module/base.h>
 #include <sof/common.h>
 #include <rtos/interrupt.h>
@@ -523,7 +524,11 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 	ipc_pipe->pipeline->attributes = pipe_desc->extension.r.attributes;
 
 	/* add new pipeline to the list */
+	k_spinlock_key_t key = k_spin_lock(&ipc->lock);
+
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
+	k_spin_unlock(&ipc->lock, key);
+	telemetry_notify_pipeline_change();
 
 	return IPC4_SUCCESS;
 }
@@ -678,16 +683,26 @@ __cold int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 		return ret;
 	}
 
-	/* free buffer, delete all tasks and remove from list */
-	ret = pipeline_free(ipc_pipe->pipeline);
-	if (ret < 0) {
-		tr_err(&ipc_tr, "pipeline_free() failed");
-		return IPC4_INVALID_RESOURCE_STATE;
-	}
+	/* Unlink from ipc->comp_list before freeing pipeline so concurrent
+	 * readers never observe a freed pipeline pointer.
+	 */
+	struct pipeline *pipe = ipc_pipe->pipeline;
+	k_spinlock_key_t key = k_spin_lock(&ipc->lock);
 
 	ipc_pipe->pipeline = NULL;
 	list_item_del(&ipc_pipe->list);
+	k_spin_unlock(&ipc->lock, key);
+
+	/* free buffer, delete all tasks and free pipeline */
+	ret = pipeline_free(pipe);
+	if (ret < 0) {
+		tr_err(&ipc_tr, "pipeline_free() failed");
+		sof_heap_free(sof_sys_user_heap_get(), ipc_pipe);
+		return IPC4_INVALID_RESOURCE_STATE;
+	}
+
 	sof_heap_free(sof_sys_user_heap_get(), ipc_pipe);
+	telemetry_notify_pipeline_change();
 
 	return IPC4_SUCCESS;
 }
@@ -1238,14 +1253,20 @@ __cold int ipc4_chain_dma_state(struct comp_dev *dev, const struct ipc4_chain_dm
 		if (ret < 0)
 			return ret;
 
+		k_spinlock_key_t key = k_spin_lock(&ipc->lock);
+
 		list_for_item_safe(clist, _tmp, &ipc->comp_list) {
 			icd = container_of(clist, struct ipc_comp_dev, list);
 			if (icd->cd != dev)
 				continue;
+			icd->cd = NULL;
 			list_item_del(&icd->list);
+			k_spin_unlock(&ipc->lock, key);
 			sof_heap_free(sof_sys_user_heap_get(), icd);
-			break;
+			goto out_free_dev;
 		}
+		k_spin_unlock(&ipc->lock, key);
+out_free_dev:
 		comp_free(dev);
 	}
 	return ret;
@@ -1546,7 +1567,11 @@ __cold int ipc4_add_comp_dev(struct comp_dev *dev)
 
 	tr_dbg(&ipc_tr, "add comp 0x%x", icd->id);
 	/* add new component to the list */
+	k_spinlock_key_t key = k_spin_lock(&ipc->lock);
+
 	list_item_append(&icd->list, &ipc->comp_list);
+	k_spin_unlock(&ipc->lock, key);
+	telemetry_notify_pipeline_change();
 
 	return IPC4_SUCCESS;
 };
