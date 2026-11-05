@@ -221,6 +221,16 @@ __cold int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 			comp_make_shared(comp);
 	}
 
+	/*
+	 * A component on another core than its pipeline (e.g. a DP module)
+	 * must be shared too, so that its operations, called on the pipeline
+	 * core, are passed to its own core. The buffer check above misses it,
+	 * if the component is on the primary core, which owns all cross-core
+	 * buffers.
+	 */
+	if (comp_ppl_core(comp) != comp_core && !comp->is_shared)
+		comp_make_shared(comp);
+
 	return pipeline_connect(comp, buffer, dir);
 }
 

@@ -285,9 +285,12 @@ static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
  * lock via user_ll_lock_sched()/ll_block() while modifying pipeline
  * connections, which provides mutual exclusion with the LL thread. No
  * additional lock is taken here; instead assert that the lock is held.
+ * That's the lock of the pipeline core, whose LL thread walks the buffer
+ * lists of the pipeline modules. Not of the buffer core: cross-core
+ * buffers belong to the primary core.
  */
 #define PPL_LOCK_DECLARE
-#define PPL_LOCK(x) user_ll_assert_locked(x)
+#define PPL_LOCK(comp) user_ll_assert_locked(comp_ppl_core(comp))
 #define PPL_UNLOCK()
 #else
 /*
@@ -314,7 +317,7 @@ __cold int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	else
 		comp_info(comp, "connect buffer %d as source", buf_get_id(buffer));
 
-	PPL_LOCK(buffer->core);
+	PPL_LOCK(comp);
 
 	comp_list = comp_buffer_list(comp, dir);
 	ret = buffer_attach(buffer, comp_list, dir);
@@ -343,7 +346,7 @@ __cold void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffe
 	else
 		comp_dbg(comp, "disconnect buffer %d as source", buf_get_id(buffer));
 
-	PPL_LOCK(buffer->core);
+	PPL_LOCK(comp);
 
 	comp_list = comp_buffer_list(comp, dir);
 	buffer_detach(buffer, comp_list, dir);

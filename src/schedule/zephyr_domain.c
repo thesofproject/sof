@@ -63,7 +63,7 @@ struct zephyr_domain {
 #endif
 	struct zephyr_domain_thread domain_thread[CONFIG_CORE_COUNT];
 	struct ll_schedule_domain *ll_domain;
-#if CONFIG_CROSS_CORE_STREAM
+#if CONFIG_CROSS_CORE_STREAM && !CONFIG_SOF_USERSPACE_LL
 	atomic_t block;
 	struct k_mutex block_mutex;
 	struct k_condvar block_condvar;
@@ -106,7 +106,7 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 		cycles0 = k_cycle_get_32();
 #endif
 
-#if CONFIG_CROSS_CORE_STREAM
+#if CONFIG_CROSS_CORE_STREAM && !CONFIG_SOF_USERSPACE_LL
 		/*
 		 * If zephyr_domain->block is set -- block LL scheduler from starting its
 		 * next cycle.
@@ -124,7 +124,7 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 					       &zephyr_domain->block_mutex, K_FOREVER);
 			k_mutex_unlock(&zephyr_domain->block_mutex);
 		}
-#endif /* CONFIG_CROSS_CORE_STREAM */
+#endif /* CONFIG_CROSS_CORE_STREAM && !CONFIG_SOF_USERSPACE_LL */
 
 		if (dt->handler)
 			dt->handler(dt->arg);
@@ -539,7 +539,7 @@ struct k_thread *zephyr_ll_domain_thread(void)
 
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
-#if CONFIG_CROSS_CORE_STREAM
+#if CONFIG_CROSS_CORE_STREAM && !CONFIG_SOF_USERSPACE_LL
 static void zephyr_domain_block(struct ll_schedule_domain *domain)
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
@@ -562,7 +562,7 @@ static void zephyr_domain_unblock(struct ll_schedule_domain *domain)
 	k_condvar_broadcast(&zephyr_domain->block_condvar);
 	k_mutex_unlock(&zephyr_domain->block_mutex);
 }
-#endif /* CONFIG_CROSS_CORE_STREAM */
+#endif /* CONFIG_CROSS_CORE_STREAM && !CONFIG_SOF_USERSPACE_LL */
 
 APP_TASK_DATA static const struct ll_schedule_domain_ops zephyr_domain_ops = {
 #ifdef CONFIG_SOF_USERSPACE_LL
@@ -574,7 +574,7 @@ APP_TASK_DATA static const struct ll_schedule_domain_ops zephyr_domain_ops = {
 	.domain_register	= zephyr_domain_register,
 	.domain_unregister	= zephyr_domain_unregister,
 #endif
-#if CONFIG_CROSS_CORE_STREAM
+#if CONFIG_CROSS_CORE_STREAM && !CONFIG_SOF_USERSPACE_LL
 	.domain_block		= zephyr_domain_block,
 	.domain_unblock		= zephyr_domain_unblock,
 #endif
@@ -625,7 +625,7 @@ struct ll_schedule_domain *zephyr_domain_init(int clk)
 	zephyr_domain->timer = &zephyr_domain->timer_obj;
 #endif
 
-#if CONFIG_CROSS_CORE_STREAM
+#if CONFIG_CROSS_CORE_STREAM && !CONFIG_SOF_USERSPACE_LL
 	atomic_set(&zephyr_domain->block, 0);
 	k_mutex_init(&zephyr_domain->block_mutex);
 	k_condvar_init(&zephyr_domain->block_condvar);
