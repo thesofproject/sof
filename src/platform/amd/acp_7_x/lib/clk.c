@@ -424,7 +424,7 @@ void acp_clk_d0_sequence(uint32_t clock_freq)
 	/* Run ACP off the undivided ACLK enable acp_clkmux_sel(ACP_CLK_DIV_BY_1);*/
 	/* Only now program the DFS divider: the slice is off bypass */
 	change_clock_notify(clock_freq);
-	/* S5_REFCLK back on the 24 MHz reference with the postdiv reset to enable it acp_s5_refclk_config(0, ACP_CLK_BYPASS_SEL_REFCLK_24MHZ, 0);*/
+	acp_s5_refclk_config(0, ACP_CLK_BYPASS_SEL_REFCLK_24MHZ, 0);
 	/* restore io clk acp_io_clk_sel_restore();*/
 }
 
