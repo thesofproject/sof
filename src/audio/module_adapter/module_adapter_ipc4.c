@@ -471,9 +471,28 @@ __cold static int module_update_source_buffer_params(struct processing_module *m
 __cold int module_adapter_bind(struct comp_dev *dev, const struct bind_info *bind_data)
 {
 	struct processing_module *mod = comp_mod(dev);
+	struct comp_buffer *buffer;
+	unsigned int count = 0;
 	int ret;
 
 	assert_can_be_cold();
+
+	/*
+	 * The buffer is already connected here and every connected buffer
+	 * takes a slot in mod->sinks[] or mod->sources[].
+	 */
+	if (bind_data->bind_type == COMP_BIND_TYPE_SINK) {
+		comp_dev_for_each_consumer(dev, buffer)
+			count++;
+	} else {
+		comp_dev_for_each_producer(dev, buffer)
+			count++;
+	}
+
+	if (count > CONFIG_MODULE_MAX_CONNECTIONS) {
+		comp_err(dev, "%u connections exceed max %d", count, CONFIG_MODULE_MAX_CONNECTIONS);
+		return -EINVAL;
+	}
 
 	ret = module_update_source_buffer_params(mod, bind_data);
 	if (ret < 0)
