@@ -74,7 +74,7 @@ its subdirectories span all tiers.
 
 | Tier | Meaning | Directories |
 |------|---------|-------------|
-| **Kernel-only** | OS integration, HAL, boot, inter-core. Never executes in a user thread. Must not be reached directly from user code — only via a syscall. | `kernel/` (see [its README](../../../kernel/README.md)), `arch/`, `drivers/`, `platform/`, `probe/` *, `trace/` * |
+| **Kernel-only** | OS integration, HAL, boot, inter-core. Never executes in a user thread. Must not be reached directly from user code — only via a syscall. | `kernel/` (see [its README](../../../kernel/README.md)), `arch/`, `drivers/`, `platform/`, `trace/` * |
 | **Boundary / bridge** | Owns the syscalls and the thread / memory-domain setup. Split internally: some translation units run kernel-side, some user-side (e.g. `handler-kernel.c` vs `handler-user.c`, `zephyr_ll.c` vs `zephyr_ll_user.c`). | `schedule/`, `ipc/`, `debug/debug_stream/` *, and (in the Zephyr integration tree) `zephyr/syscall/` |
 | **Application** | Audio pipeline / component logic that runs in user threads under userspace configs. | `audio/` |
 | **Shared library** | Context-agnostic code linked into whichever context calls it. Must stay "user-safe": no privileged operations (no direct MMIO, no spinlocks held across syscalls, no raw kernel object access) so it is safe when pulled into a user build. | `math/`, `module/` |

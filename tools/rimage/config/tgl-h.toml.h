@@ -37,7 +37,7 @@
 #endif
 
 #ifdef CONFIG_PROBE
-#include <probe/probe.toml>
+#include <kernel/probe/probe.toml>
 #endif
 
 #if defined(CONFIG_COMP_SRC) || defined(LLEXT_FORCE_ALL_MODULAR)
