@@ -415,13 +415,21 @@ __cold void copier_dai_free(struct processing_module *mod)
 	assert_can_be_cold();
 
 	for (int i = 0; i < cd->endpoint_num; i++) {
-		dai_common_free(cd->dd[i]);
-		mod_free(mod, cd->dd[i]->gain_data);
-		mod_free(mod, cd->dd[i]);
+		if (cd->dd[i]) {
+			if (cd->dd[i]->gain_data) {
+				mod_free(mod, cd->dd[i]->gain_data);
+				cd->dd[i]->gain_data = NULL;
+			}
+			dai_common_free(cd->dd[i]);
+			mod_free(mod, cd->dd[i]);
+			cd->dd[i] = NULL;
+		}
 	}
 	/* only dai have multi endpoint case */
-	if (cd->multi_endpoint_buffer)
+	if (cd->multi_endpoint_buffer) {
 		buffer_free(cd->multi_endpoint_buffer);
+		cd->multi_endpoint_buffer = NULL;
+	}
 }
 
 int copier_dai_prepare(struct comp_dev *dev, struct copier_data *cd)

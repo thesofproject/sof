@@ -86,7 +86,6 @@ static inline void ring_buffer_writeback_shared(struct ring_buffer *ring_buffer,
 	dcache_writeback_region(ptr, size);
 }
 
-
 /**
  * @brief remove the queue from the list, free memory
  */
@@ -101,6 +100,19 @@ static void ring_buffer_free(struct sof_audio_buffer *audio_buffer)
 
 	sof_ctx_free(alloc, (__sparse_force void *)ring_buffer->_data_buffer);
 	sof_ctx_free(alloc, ring_buffer);
+
+#ifdef CONFIG_DP_TO_DP_BIND
+	/*
+	 * When CONFIG_DP_TO_DP_BIND is enabled, ipc_comp_connect() takes an extra vregion
+	 * reference for each ring_buffer created from a module vregion. Drop that
+	 * reference here and free the allocation context only when the vregion refcount
+	 * reaches zero.
+	 */
+	if (alloc && alloc->vreg) {
+		if (!vregion_put(alloc->vreg))
+			sof_heap_free(alloc->heap, alloc);
+	}
+#endif
 }
 
 static void ring_buffer_reset(struct sof_audio_buffer *audio_buffer)

@@ -133,6 +133,9 @@ void z_impl_sof_dma_put(struct sof_dma *dma)
 {
 	k_spinlock_key_t key;
 
+	if (!dma)
+		return;
+
 	key = k_spin_lock(&dma->lock);
 	if (--dma->sref == 0) {
 		sof_heap_free(dma->heap, dma->chan);
