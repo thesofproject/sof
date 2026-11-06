@@ -17,7 +17,6 @@ if(zephyr)
 	add_subdirectory(debug)
 	add_subdirectory(idc)
 	add_subdirectory(init)
-	add_subdirectory(lib)
 	add_subdirectory(library_manager)
 	add_subdirectory(logging)
 	add_subdirectory(probe)
@@ -26,3 +25,4 @@ endif()
 
 # Built for Zephyr and for the host
 add_subdirectory(ipc)
+add_subdirectory(lib)

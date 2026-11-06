@@ -1,5 +1,14 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
+if(CONFIG_LIBRARY)
+  add_local_sources(sof agent.c)
+  return()
+endif()
+
+if(CONFIG_HAVE_AGENT)
+  add_local_sources(sof agent.c)
+endif()
+
 if(CONFIG_AMS)
   add_local_sources(sof ams.c)
 endif()
