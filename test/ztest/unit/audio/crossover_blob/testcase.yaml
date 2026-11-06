@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+common:
+  tags:
+    - SOF
+    - unit_test
+    - audio
+    - crossover
+  integration_platforms:
+    - native_sim
+  arch_exclude: xtensa
+
+tests:
+  sof.unit.audio.crossover_blob:
+    platform_allow:
+      - native_sim
