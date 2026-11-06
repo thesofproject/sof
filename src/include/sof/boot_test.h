@@ -39,6 +39,18 @@ struct k_thread;
 void sof_run_boot_tests(void);
 
 /**
+ * ZTEST_SUITE() predicate for standalone test suites that run themselves
+ * from a SYS_INIT hook with ztest_run_test_suite(). That call does not
+ * check the predicate, but ztest_run_all() in sof_run_boot_tests() does,
+ * so the suite is not run a second time.
+ */
+static inline bool sof_boot_test_standalone_predicate(const void *state)
+{
+	(void)state;
+	return false;
+}
+
+/**
  * Mark a boot-test thread as expected to trigger a fatal error.
  *
  * @param thread Thread that is allowed to fault once, or NULL to clear.

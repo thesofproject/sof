@@ -88,7 +88,7 @@ ZTEST(userspace_mailbox, mailbox_test)
 	ztest_test_pass();
 }
 
-ZTEST_SUITE(userspace_mailbox, NULL, NULL, NULL, NULL, NULL);
+ZTEST_SUITE(userspace_mailbox, sof_boot_test_standalone_predicate, NULL, NULL, NULL, NULL);
 
 /**
  * SOF main has booted up and IPC handling is stopped.

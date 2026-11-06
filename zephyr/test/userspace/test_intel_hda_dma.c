@@ -280,7 +280,7 @@ ZTEST(userspace_intel_hda_dma, dma_mem_to_host)
 	ztest_test_pass();
 }
 
-ZTEST_SUITE(userspace_intel_hda_dma, NULL, NULL, NULL, NULL, NULL);
+ZTEST_SUITE(userspace_intel_hda_dma, sof_boot_test_standalone_predicate, NULL, NULL, NULL, NULL);
 
 /**
  * SOF main has booted up and IPC handling is stopped.

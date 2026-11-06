@@ -333,7 +333,7 @@ ZTEST(userspace_intel_dai_ssp, dai_ssp_loopback_setup)
 	ztest_test_pass();
 }
 
-ZTEST_SUITE(userspace_intel_dai_ssp, NULL, NULL, NULL, NULL, NULL);
+ZTEST_SUITE(userspace_intel_dai_ssp, sof_boot_test_standalone_predicate, NULL, NULL, NULL, NULL);
 
 /**
  * SOF main has booted up and IPC handling is stopped.

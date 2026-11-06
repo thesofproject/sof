@@ -130,7 +130,7 @@ ZTEST(userspace_ll, pipeline_check)
 	pipeline_check();
 }
 
-ZTEST_SUITE(userspace_ll, NULL, NULL, NULL, NULL, NULL);
+ZTEST_SUITE(userspace_ll, sof_boot_test_standalone_predicate, NULL, NULL, NULL, NULL);
 
 /**
  * SOF main has booted up and IPC handling is stopped.
