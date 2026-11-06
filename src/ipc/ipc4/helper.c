@@ -1058,10 +1058,17 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 	return IPC4_SUCCESS;
 
 e_sink_bind:
-	/* sink bind was already called */
+	/*
+	 * The source is already bound. Disconnect first, as
+	 * ipc4_comp_disconnect() does, so its unbind does not keep the
+	 * buffer in the source's sinks[].
+	 */
+	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
+	pipeline_disconnect(source, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 	bind_data.bind_type = COMP_BIND_TYPE_SINK;
 	bind_data.sink = audio_buffer_get_sink(&buffer->audio_buffer);
 	comp_unbind(source, &bind_data);
+	goto free;
 e_src_bind:
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 e_sink_connect:
