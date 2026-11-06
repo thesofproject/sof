@@ -1,8 +1,8 @@
 # SOF Scheduling Architecture
 
 > **Runs in:** Boundary / bridge — this directory owns the LL/DP schedulers and their thread +
-> memory-domain setup. `zephyr_ll.c` and `zephyr_domain.c` are kernel-side; `zephyr_ll_user.c`
-> sets up the LL user memory domain (kernel-executed) and supports the LL user thread.
+> memory-domain setup. `zephyr_ll.c` and `zephyr_domain.c` are kernel-side; the LL user memory
+> domain and heap are set up by `src/kernel/schedule/zephyr_ll_user.c`.
 > `zephyr_dp_schedule_thread.c` is boundary code that can create and manage both kernel and
 > `K_USER` DP threads depending on configuration; `zephyr_dp_schedule_application.c` is the
 > DP application-mode path. This directory hosts the `zephyr_ll_task_sem_*` and
