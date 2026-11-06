@@ -1,8 +1,9 @@
 # IPC4 Architecture
 
-> **Runs in:** Boundary / bridge — `handler-kernel.c` runs in the kernel dispatcher;
-> `handler-user.c` and `notification-user.c` run in the user thread that services modules. The
-> `z_vrfy_`/`z_impl_` pairs for the compound-message and reply syscalls live here. See
+> **Runs in:** Boundary / bridge — `handler-user.c` and `notification-user.c` run in the user
+> thread that services modules. Their kernel counterparts, `handler-kernel.c` (the kernel
+> dispatcher) and `notification.c`, are in `src/kernel/ipc/ipc4`, together with the
+> `z_vrfy_`/`z_impl_` pairs for the compound-message, reply and notification syscalls. See
 > [User/kernel split](../../include/sof/userspace/README.md).
 
 This directory holds the handlers and topology parsing logic for Inter-Processor Communication Version 4. IPC4 introduces a significantly denser, compound-command structure heavily based around the concept of "pipelines" and dynamic "modules" rather than static DSP stream roles.

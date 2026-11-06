@@ -3,10 +3,7 @@
 # Files common to Zephyr and XTOS
 add_local_sources(sof
 	handler-user.c
-	handler-kernel.c
 	helper.c
-	logging.c
-	notification.c
 	notification-user.c
 )
 

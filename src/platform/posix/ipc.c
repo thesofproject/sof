@@ -352,7 +352,7 @@ static void fuzz_isr(const void *arg)
 // The harness also mirrors the framed message into MAILBOX_HOSTBOX so
 // that handlers reading payload directly from the hostbox region
 // (large_config_set/get, set_dx, set_pipeline_state, vendor_config and
-// friends in ipc4/handler-user.c and ipc4/handler-kernel.c) observe
+// friends in ipc4/handler-user.c and kernel/ipc/ipc4/handler-kernel.c) observe
 // the fuzz bytes rather than stale or zero-filled memory.
 //
 // The two IPC majors split header and payload differently:
