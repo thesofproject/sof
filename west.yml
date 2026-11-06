@@ -69,6 +69,22 @@ manifest:
       path: modules/audio/ffmpeg
       revision: 08ab4baa3400d55be75be1280f6119e210ce354e
 
+    # libshine: fixed-point MP3 encoder used by ffmpeg_dec (FFMPEG_ENC_MP3;
+    # FFmpeg has no native MP3 encoder). Cross-built by ffmpeg.cmake.
+    # SOF fork branch sof-hifi (precomputed init tables + Xtensa HiFi multipliers).
+    - name: shine
+      repo-path: shine
+      path: modules/audio/shine
+      revision: ab594a06915cfd10349765f73435592e65cbf746
+
+    # vo-aacenc: VisualOn fixed-point AAC-LC encoder used by ffmpeg_dec
+    # (FFMPEG_ENC_AAC). Cross-built by ffmpeg.cmake.
+    # SOF fork branch sof-hifi (Xtensa mulsh/nsa/clamps fixed-point optimizations).
+    - name: vo-aacenc
+      repo-path: vo-aacenc
+      path: modules/audio/vo-aacenc
+      revision: c823d30ac87a09ab22903b716b22c87de5bfdf9b
+
     - name: zephyr
       repo-path: zephyr
       revision: 76f604468505b30dfafa2c5a80d8b1c665ed6633
