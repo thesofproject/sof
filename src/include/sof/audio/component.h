@@ -940,9 +940,11 @@ static inline struct processing_module *comp_mod(const struct comp_dev *dev)
 
 /* declared modules */
 void sys_comp_dai_init(void);
+void sys_comp_ecns_init(void);
 void sys_comp_host_init(void);
 void sys_comp_kpb_init(void);
 void sys_comp_selector_init(void);
+void sys_comp_wov_arbiter_init(void);
 
 /* Start of modules in alphabetical order */
 void sys_comp_module_aria_interface_init(void);

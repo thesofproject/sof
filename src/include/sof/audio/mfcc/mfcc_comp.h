@@ -13,6 +13,10 @@
 #include <sof/math/auditory.h>
 #include <sof/math/dct.h>
 #include <sof/math/fft.h>
+#if CONFIG_COMP_MFCC_PCAN
+#include <sof/math/pcan.h>
+#endif
+#include <sof/audio/mfcc/mfcc_agc8.h>
 #include <sof/audio/mfcc/mfcc_vad.h>
 #include <sof/ipc/msg.h>
 #include <stddef.h>
@@ -38,6 +42,14 @@
 
 /** \brief Switch control index for VAD notification to user space */
 #define MFCC_CTRL_INDEX_VAD	0
+
+/** \brief Output data type, selected at setup from the configuration blob. */
+enum mfcc_out_mode {
+	MFCC_OUT_CEPS = 0,	/**< Cepstral coefficients, int16 Q9.7 widened to int32 */
+	MFCC_OUT_MEL32,		/**< Mel log spectra, int32 Q9.23 */
+	MFCC_OUT_MEL8_PCAN,	/**< PCAN normalized Mel energies, int8 */
+	MFCC_OUT_MEL8_AGC,	/**< Soft AGC Mel log spectra, int8 Q1.7 */
+};
 
 /**
  * \brief Data header prepended to every MFCC output frame.
@@ -99,6 +111,11 @@ struct mfcc_state {
 	struct mfcc_fft fft; /**< FFT related */
 	struct dct_plan_16 dct; /**< DCT related */
 	struct psy_mel_filterbank melfb; /**< Mel filter bank */
+#if CONFIG_COMP_MFCC_PCAN
+	struct pcan_state pcan; /**< PCAN state */
+	uint32_t *mel_linear; /**< Linear Mel band magnitudes for PCAN */
+#endif
+	struct mfcc_agc8 agc8; /**< Soft AGC state for int8 Mel output */
 	struct mfcc_cepstral_lifter lifter; /**< Cepstral lifter coefficients */
 	struct mat_matrix_16b *mel_spectra; /**< Pointer to scratch */
 	struct mat_matrix_16b *cepstral_coef; /**< Pointer to scratch */
@@ -117,13 +134,14 @@ struct mfcc_state {
 	int high_freq;
 	int sample_rate;
 	bool mel_only; /**< When true, output Mel spectra instead of cepstral coefficients */
+	enum mfcc_out_mode out_mode; /**< Output data type */
 	bool waiting_fill; /**< booleans */
 	bool prev_samples_valid;
 	bool header_pending; /**< True when data header not yet written for current output */
 	struct mfcc_data_header header; /**< Data header for current output frame */
 	size_t sample_buffers_size; /**< bytes */
-	int32_t *out_data_ptr; /**< Read pointer into staging data for multi-period output */
-	int out_remain; /**< Remaining int32_t samples to write to sink from staging */
+	void *out_data_ptr; /**< Read pointer into staging data for multi-period output */
+	int out_remain; /**< Remaining samples to write to sink from staging */
 	int32_t *out_stage; /**< Dedicated staging buffer for pending output, decoupled from STFT scratch */
 	int out_stage_size; /**< Capacity of out_stage in int32_t samples */
 	uint32_t hop_count; /**< FFT hop counter, increments every processed hop */
@@ -149,6 +167,13 @@ struct mfcc_comp_data {
 static inline int mfcc_buffer_samples_without_wrap(struct mfcc_buffer *buffer, int16_t *ptr)
 {
 	return buffer->end_addr - ptr;
+}
+
+/** \brief Size in bytes of one output value for the current output mode. */
+static inline size_t mfcc_out_sample_size(const struct mfcc_state *state)
+{
+	return (state->out_mode == MFCC_OUT_MEL8_PCAN || state->out_mode == MFCC_OUT_MEL8_AGC) ?
+		sizeof(int8_t) : sizeof(int32_t);
 }
 
 static inline int16_t *mfcc_buffer_wrap(struct mfcc_buffer *buffer, int16_t *ptr)

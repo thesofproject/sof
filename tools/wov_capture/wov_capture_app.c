@@ -9,6 +9,7 @@
 // Features:
 //   - Zero-dependency compilation (standard GCC + linux/sound/asound.h)
 //   - Standard RIFF WAVE file output with correct headers
+//   - Waits for PCM readiness on keyword-gated capture devices
 //   - Multi-channel real-time energy & RMS statistics calculation
 //   - Multi-cycle capture loop for repeatability and driver stability testing
 //   - Graceful signal handling (SIGINT/SIGTERM cleanly finalizes WAV headers)
@@ -22,6 +23,7 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <math.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -454,6 +456,28 @@ static int run_capture_cycle(const struct app_config *cfg, int cycle_idx, char *
 	}
 
 	while (!g_stop && total_frames_captured < target_frames) {
+		struct pollfd pfd = { .fd = fd, .events = POLLIN };
+
+		ret = poll(&pfd, 1, 200);
+		if (ret < 0) {
+			if (errno == EINTR && g_stop) {
+				ret = 0;
+				break;
+			}
+			ret = -errno;
+			log_err("PCM poll failed: %s", strerror(-ret));
+			break;
+		}
+		if (ret == 0)
+			continue;
+		if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+			ret = -EIO;
+			log_err("PCM poll returned error events: %#x", pfd.revents);
+			break;
+		}
+		if (!(pfd.revents & POLLIN))
+			continue;
+
 		unsigned int frames_to_read = actual_period_frames;
 		if (target_frames != UINT64_MAX && (total_frames_captured + frames_to_read) > target_frames)
 			frames_to_read = target_frames - total_frames_captured;
@@ -471,11 +495,21 @@ static int run_capture_cycle(const struct app_config *cfg, int cycle_idx, char *
 				ioctl(fd, SNDRV_PCM_IOCTL_START);
 				continue;
 			}
-			log_err("READI_FRAMES error: %s (errno %d)", strerror(errno), errno);
+			if (errno == EINTR && g_stop) {
+				ret = 0;
+				break;
+			}
+			ret = -errno;
+			log_err("READI_FRAMES error: %s (errno %d)", strerror(-ret), -ret);
 			break;
 		}
 
 		snd_pcm_sframes_t frames_read = xferi.result;
+		if (frames_read < 0) {
+			ret = (int)frames_read;
+			log_err("PCM transfer failed: %s", strerror(-ret));
+			break;
+		}
 		if (frames_read > 0) {
 			size_t bytes = frames_read * frame_bytes;
 			fwrite(period_buf, 1, bytes, wav_fp);
@@ -502,7 +536,7 @@ static int run_capture_cycle(const struct app_config *cfg, int cycle_idx, char *
 	print_channel_stats(stats, cfg->channels, cfg->format);
 	free(stats);
 
-	return 0;
+	return ret < 0 ? ret : 0;
 }
 
 /* -------------------------------------------------------------------------
@@ -514,10 +548,10 @@ static void print_usage(const char *prog)
 		"Usage: %s [options]\n\n"
 		"WOV Regular PCM Capture Tool for SOF IPC4 Audio Pipelines.\n\n"
 		"Options:\n"
-		"  -c CARD      Sound card number (default: %u)\n"
+		"  -D CARD      Sound card number (default: %u)\n"
 		"  -d DEV       PCM device number (default: %u)\n"
 		"  -r RATE      Sample rate in Hz (default: %u)\n"
-		"  -C CHANS     Number of channels (default: %u)\n"
+		"  -c CHANS     Number of channels (default: %u)\n"
 		"  -f FORMAT    Sample format: S16_LE (default) or S32_LE\n"
 		"  -t DURATION  Capture duration in seconds (default: %.1f, 0 = unlimited)\n"
 		"  -n CYCLES    Number of capture cycles (default: %d, 0 = unlimited)\n"
@@ -527,13 +561,14 @@ static void print_usage(const char *prog)
 		"  -v           Verbose output (print extra debug info)\n"
 		"  -h           Show this help message\n\n"
 		"Examples:\n"
-		"  %s -c 0 -d 11 -r 16000 -C 2 -t 3.0 -o /tmp\n"
-		"  %s -c 0 -d 11 -n 5 -t 2.0 -w 1.0\n"
+		"  %s -D 0 -d 12 -r 16000 -c 1 -f S16_LE -t 3.0 -o /data/local/tmp\n"
+		"  %s -D 0 -d 11 -r 16000 -c 2 -t 3.0 -o /tmp\n"
+		"  %s -D 0 -d 11 -n 5 -t 2.0 -w 1.0\n"
 		"  %s -F /tmp/test_dmic_16k.wav -t 5.0\n",
 		prog,
 		DEFAULT_CARD, DEFAULT_DEVICE, DEFAULT_RATE, DEFAULT_CHANNELS,
 		DEFAULT_DURATION_S, DEFAULT_CYCLES, DEFAULT_OUT_DIR,
-		prog, prog, prog);
+		prog, prog, prog, prog);
 }
 
 int main(int argc, char **argv)
@@ -555,10 +590,10 @@ int main(int argc, char **argv)
 	};
 
 	static struct option long_opts[] = {
-		{"card",      required_argument, 0, 'c'},
+		{"card",      required_argument, 0, 'D'},
 		{"device",    required_argument, 0, 'd'},
 		{"rate",      required_argument, 0, 'r'},
-		{"channels",  required_argument, 0, 'C'},
+		{"channels",  required_argument, 0, 'c'},
 		{"format",    required_argument, 0, 'f'},
 		{"duration",  required_argument, 0, 't'},
 		{"cycles",    required_argument, 0, 'n'},
@@ -571,12 +606,12 @@ int main(int argc, char **argv)
 	};
 
 	int opt;
-	while ((opt = getopt_long(argc, argv, "c:d:r:C:f:t:n:w:o:F:vh", long_opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "D:d:r:c:f:t:n:w:o:F:vh", long_opts, NULL)) != -1) {
 		switch (opt) {
-		case 'c': cfg.card = atoi(optarg); break;
+		case 'D': cfg.card = atoi(optarg); break;
 		case 'd': cfg.device = atoi(optarg); break;
 		case 'r': cfg.rate = atoi(optarg); break;
-		case 'C': cfg.channels = atoi(optarg); break;
+		case 'c': cfg.channels = atoi(optarg); break;
 		case 'f':
 			if (strcasecmp(optarg, "S16_LE") == 0 || strcasecmp(optarg, "S16") == 0)
 				cfg.format = SNDRV_PCM_FORMAT_S16_LE;

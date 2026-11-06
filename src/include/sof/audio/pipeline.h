@@ -391,6 +391,7 @@ int pipeline_comp_dp_task_init(struct comp_dev *comp);
  * \param[in] start Pipeline start time in microseconds.
  */
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start);
+void pipeline_schedule_cancel(struct pipeline *p);
 
 /**
  * \brief Trigger pipeline's scheduling component.

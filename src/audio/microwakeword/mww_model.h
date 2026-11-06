@@ -28,10 +28,8 @@ struct mww_classify {
 	int8_t *audio_features;
 	size_t audio_data_size;
 	const char *error;
-	float probability;	/**< dequantized wake-word probability, 0..1 */
-	int32_t raw_output;	/**< raw int8/uint8 output tensor value */
-	float input_scale;
-	int input_zero_point;
+	int32_t prob_q8;	/**< wake-word probability in Q0.8, 0..255 */
+	int32_t raw_output;     /**< raw int8/uint8 output tensor value */
 };
 
 /* Export of C++ APIs into C namespace for linkage */
@@ -40,9 +38,7 @@ extern "C"
 {
 #endif
 
-	/* 1st - pass in tflite flatbuffer formatted model. If model is NULL,
-	 * default model corresponding to mwc->slot_id is used.
-	 */
+	/* 1st - pass in the bare tflite flatbuffer of the model */
 	int MWW_SetModel(struct mww_classify *mwc, const unsigned char *model, size_t model_size);
 
 	/* 2nd - register the kernels and init TF micro for inference */
@@ -66,6 +62,18 @@ extern "C"
 	size_t MWW_ArenaCapacity(struct mww_classify *mwc);
 
 	const unsigned char *MWW_GetDefaultModel(uint8_t slot_id, size_t *size);
+
+	/**
+	 * \brief Get per-operator profile of the steady-state inferences.
+	 * \param[in] mwc Classifier context.
+	 * \param[in] idx Operator index in invoke order.
+	 * \param[out] tag Operator name.
+	 * \param[out] avg_cycles Average CCOUNT cycles per inference.
+	 * \return Number of profiled inferences, 0 if idx is out of range or
+	 *	   profiling is not built in.
+	 */
+	uint32_t MWW_ProfileGet(struct mww_classify *mwc, int idx, const char **tag,
+				uint32_t *avg_cycles);
 
 #ifdef __cplusplus
 }

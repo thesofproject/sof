@@ -18,9 +18,16 @@ This directory contains offline scripts to train, quantize, verify, and export s
 3. **Model Training & Export:**
    - [sof_mww_dataset.py](sof_mww_dataset.py): Parses testbench `.raw` feature files, applies soft mel-log AGC ($0\text{ dB}$ target, $0.5\text{ dB/s}$ release recovery), and builds training slices.
    - [sof_mww_train.py](sof_mww_train.py): Trains a streaming Keras model, quantizes to `int8` with TFLite Micro resource variables, packages behind SOF IPC4 ABI headers, and emits:
-     - `mww_model_data.{cc,h}`: Drop-in static C array.
+         - `mww_model_data_<name>.h`: Built-in model header selected by Kconfig.
      - `<name>.conf`: ALSA Topology v2 configuration blob for `Object.Base.data`.
      - `<name>.txt`: Runtime `sof-ctl` binary control file.
+     - `sof_mww_train_pipeline.sh --hard-negative-keyword <phrase>`: Synthesizes
+         Piper TTS competing wake phrases into `unknown/` as hard negatives before
+         feature extraction. Set `PIPER_VOICE` and optionally
+         `HARD_NEGATIVE_SAMPLES` (default: 200 per phrase).
+
+         For a `Hi Intel` model, useful phrases include `hey siri`, `hey google`,
+         `ok google`, `alexa`, `hey copilot`, and `hey jarvis`.
 
 4. **Off-Device Verification & Automation:**
    - [sof_mww_verify.py](sof_mww_verify.py): Feeds 3-hop streaming slices through the quantized TFLite model to verify detection rates and false alarm rates.
@@ -139,7 +146,7 @@ source ~/venvs/mww-train/bin/activate
     ~/wov/wavs ~/wov/feats ~/wov/model
 ```
 
-Both phrase directories are pooled as the positive target class ($y = 1$). The streaming verification report provides individual detection recall for each phrase, and the single exported `mww_model_data.cc` triggers when either phrase is spoken.
+Both phrase directories are pooled as the positive target class ($y = 1$). The streaming verification report provides individual detection recall for each phrase, and the exported `mww_model_data_<name>.h` model triggers when either phrase is spoken.
 
 ---
 

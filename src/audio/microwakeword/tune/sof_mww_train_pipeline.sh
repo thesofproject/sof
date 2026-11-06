@@ -11,7 +11,7 @@
 #   3. Extract 10ms mel40 features via sof_mfcc_extract_features.sh -> <feat_root>/.
 #   4. Train streaming MWW model, int8-quantize, and emit:
 #      - <out_dir>/<name>_quantized_model.tflite
-#      - <out_dir>/mww_model_data.{cc,h} (drop-in C array)
+#      - <out_dir>/mww_model_data_<name>.h (built-in model header)
 #      - <out_dir>/<name>.conf (Topology2 data blob)
 #      - <out_dir>/<name>.txt (sof-ctl IPC4 text blob)
 #   5. Run off-device verification with sof_mww_verify.py.
@@ -24,6 +24,7 @@ set -e
 usage() {
 	cat >&2 <<EOF
 Usage: $0 [--keyword <label> ...] [--keyword-dir [<label>:]<src_dir> ...] \
+		  [--hard-negative-keyword <text> ...] \
           [--name <base>] [--format S16|S24|S32] [--tplg <path>] \
           <wav_root> <feat_root> <out_dir>
 
@@ -33,6 +34,9 @@ Usage: $0 [--keyword <label> ...] [--keyword-dir [<label>:]<src_dir> ...] \
                        The keyword class will be automatically prepared and
                        augmented (RIR, noise, tempo/pitch, gain jitter) into
                        <wav_root>/<label>.
+	--hard-negative-keyword TEXT
+											 Piper TTS phrase to append to unknown/ as a hard negative.
+											 Repeat for each competing wake phrase.
   --name BASE          Base name for the output model files (default: derived from
                        keyword labels).
   --format FMT         Testbench sample container format (S16, S24, S32). Default S32.
@@ -55,12 +59,16 @@ Env:
   GAIN_AUG_MIN     Min gain jitter in dB during training (default -8.0).
   GAIN_AUG_MAX     Max gain jitter in dB during training (default 3.0).
   GAIN_AUG         Passed to negative class preparation (default 0).
+	HARD_NEGATIVE_SAMPLES
+									 Piper-generated samples per hard-negative phrase (default 200).
+	PIPER_VOICE      Piper voice (.onnx) used for hard-negative synthesis.
 EOF
 	exit 1
 }
 
 KEYWORDS=()
 KEYWORD_DIRS=()
+HARD_NEGATIVE_KEYWORDS=()
 NAME=""
 FORMAT=""
 CUSTOM_TPLG=""
@@ -74,6 +82,9 @@ while [[ $# -gt 0 ]]; do
 		-s|--src-dir|--keyword-dir)
 			[[ $# -ge 2 ]] || usage
 			KEYWORD_DIRS+=("$2"); shift 2 ;;
+		--hard-negative-keyword)
+			[[ $# -ge 2 ]] || usage
+			HARD_NEGATIVE_KEYWORDS+=("$2"); shift 2 ;;
 		-n|--name)
 			[[ $# -ge 2 ]] || usage
 			NAME="$2"; shift 2 ;;
@@ -165,6 +176,25 @@ else
 	echo "=== Step 1/4: Skipping silence/unknown prep (SKIP_PREP set) ==="
 fi
 
+if [[ ${#HARD_NEGATIVE_KEYWORDS[@]} -gt 0 ]]; then
+	: "${HARD_NEGATIVE_SAMPLES:=200}"
+	HARD_NEG_ROOT=$(mktemp -d)
+	trap 'rm -rf "$HARD_NEG_ROOT"' EXIT
+	mkdir -p "$WAV_ROOT/unknown"
+	echo "=== Adding Piper hard-negative wake phrases to unknown/ ==="
+	for index in "${!HARD_NEGATIVE_KEYWORDS[@]}"; do
+		phrase="${HARD_NEGATIVE_KEYWORDS[$index]}"
+		label=$(echo "$phrase" | tr ' A-Z' '_a-z')
+		MAX_SAMPLES="$HARD_NEGATIVE_SAMPLES" \
+			"$SCRIPT_DIR/sof_mww_generate_keyword_dataset_piper_tts.sh" \
+			--keyword "$phrase" "$HARD_NEG_ROOT"
+		for wav in "$HARD_NEG_ROOT/$label"/*.wav; do
+			[[ -f "$wav" ]] || continue
+			mv "$wav" "$WAV_ROOT/unknown/hard_negative_${index}_$(basename "$wav")"
+		done
+	done
+fi
+
 # Step 2: Testbench feature extraction
 if [[ -z "$SKIP_FEATURES" ]]; then
 	echo "=== Step 2/4: Extracting 10ms mel40 features with testbench ==="
@@ -208,8 +238,7 @@ python3 "$SCRIPT_DIR/sof_mww_verify.py" \
 echo "================================================================="
 echo "MWW model training complete. Artifacts saved in $OUT_DIR:"
 echo "  - $OUT_DIR/${NAME}_quantized_model.tflite"
-echo "  - $OUT_DIR/mww_model_data.cc (static C array)"
-echo "  - $OUT_DIR/mww_model_data.h"
+echo "  - $OUT_DIR/mww_model_data_${NAME}.h (built-in model header)"
 echo "  - $OUT_DIR/${NAME}.conf (Topology2 data blob)"
 echo "  - $OUT_DIR/${NAME}.txt (sof-ctl IPC4 text blob)"
 echo "================================================================="
