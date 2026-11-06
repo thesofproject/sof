@@ -133,6 +133,18 @@ static void get_codec_info(struct sof_tlv **tuple)
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_PLAYBACK);
 #endif
+#if defined(CONFIG_FFMPEG_ENC_MP3) && !defined(CONFIG_CADENCE_CODEC_MP3_ENC)
+	/* MP3 encode (compress capture) via ffmpeg_dec (libshine), guarded so it is
+	 * not advertised twice when the Cadence MP3 encoder is also present.
+	 */
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_CAPTURE);
+#endif
+#if defined(CONFIG_FFMPEG_ENC_AAC)
+	/* AAC-LC encode (compress capture) via ffmpeg_dec (vo-aacenc). */
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_AAC, SOF_IPC_STREAM_CAPTURE);
+#endif
 #ifdef CONFIG_FFMPEG_DEC_OPUS
 	/* Opus decode is provided by the ffmpeg_dec (libavcodec) module.
 	 * Advertise OPUS_RAW and BESPOKE.
