@@ -19,12 +19,6 @@ if(zephyr) ###  Zephyr ###
 # dma-copy only used for dma-trace
 zephyr_library_sources_ifdef(CONFIG_TRACE dma-copy.c)
 
-if (CONFIG_SOC_SERIES_INTEL_CAVS_V25 OR CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
-	zephyr_library_sources(
-		ipc-zephyr.c
-	)
-endif()
-
 else() ###  Not Zephyr ###
 
 if (CONFIG_TRACE)
