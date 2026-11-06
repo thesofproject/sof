@@ -8,7 +8,6 @@ endif()
 add_local_sources(sof
 	ipc-common.c
 	ipc-helper.c
-	notification_pool.c
 )
 
 is_zephyr(zephyr)
