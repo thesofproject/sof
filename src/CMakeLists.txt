@@ -12,7 +12,6 @@ if(CONFIG_SAMPLES)
 	add_subdirectory(samples)
 endif()
 
-add_subdirectory(drivers)
 add_subdirectory(kernel)
 
 if (CONFIG_TRACE)

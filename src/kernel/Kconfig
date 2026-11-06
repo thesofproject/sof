@@ -4,6 +4,8 @@
 
 rsource "debug/telemetry/Kconfig"
 
+rsource "drivers/Kconfig"
+
 rsource "idc/Kconfig"
 
 rsource "library_manager/Kconfig"

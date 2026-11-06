@@ -19,7 +19,7 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 /*
  * Size in bytes of the DSP-side buffer that receives the compressed host page
  * table. DSP targets define PLATFORM_PAGE_TABLE_SIZE; the host/library builds
- * (e.g. testbench, fuzzer) allocate it as HOST_PAGE_SIZE in drivers/host/ipc.c
+ * (e.g. testbench, fuzzer) allocate it as HOST_PAGE_SIZE in kernel/drivers/host/ipc.c
  * and do not define PLATFORM_PAGE_TABLE_SIZE, so fall back to that.
  */
 #ifndef PLATFORM_PAGE_TABLE_SIZE
