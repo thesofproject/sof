@@ -28,7 +28,7 @@
 #include <ipc4/base_fw.h>
 #include <ipc4/alh.h>
 #include <rimage/sof/user/manifest.h>
-#include "copier/copier_gain.h"
+#include "../../audio/copier/copier_gain.h"
 
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
 #include <sof/audio/mic_privacy_manager.h>
