@@ -7,7 +7,7 @@
 #define CPU_LPRO_FREQ_IDX 0
 #define CPU_LOWEST_FREQ_IDX CPU_LPRO_FREQ_IDX
 
-/* This is not a platform function, it's defined in src/lib/clk.c.
+/* This is not a platform function, it's defined in src/kernel/lib/clk.c.
  * But the declaration has historically been in the platform layer, so
  * it's repeated here.
  */
