@@ -13,6 +13,7 @@
 #include <sof/audio/module_adapter/library/userspace_proxy.h>
 #include <sof/audio/module_adapter/library/userspace_proxy_user.h>
 #include <sof/common.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <sof/list.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/dp_schedule.h>
@@ -82,6 +83,15 @@ static void scheduler_dp_recalculate_thread(struct scheduler_dp_data *dp_sch, bo
 			/* get module deadline in us*/
 			uint32_t deadline = module_get_deadline(mod);
 
+			if (!trigger_task && is_ll_post_run && !mod->dp_startup_delay &&
+			    pdata->deadline_clock_ticks &&
+			    (deadline == 0 ||
+			     (int32_t)(dp_sch->last_ll_tick_timestamp -
+				       pdata->deadline_clock_ticks) > 0)) {
+				telemetry_notify_dp_deadline_miss(curr_task->core);
+				pdata->deadline_clock_ticks = 0;
+			}
+
 			/* if a deadline cannot be calculated, use a fixed value relative to its
 			 * first start
 			 */
@@ -97,6 +107,8 @@ static void scheduler_dp_recalculate_thread(struct scheduler_dp_data *dp_sch, bo
 
 				/* add to "NOW", overflows are OK  */
 				deadline = dp_sch->last_ll_tick_timestamp + deadline;
+				if (trigger_task)
+					pdata->deadline_clock_ticks = deadline ? deadline : 1U;
 
 				/* set in Zephyr. Note that it may be in past, it does not matter,
 				 * Zephyr still will schedule the thread with earlier deadline
@@ -156,6 +168,14 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
 			 * if not, set the state returned by run procedure
 			 */
 			if (task->state == SOF_TASK_STATE_RUNNING) {
+				if (!(task->flags & K_USER) &&
+				    !task_pdata->mod->dp_startup_delay &&
+				    task_pdata->deadline_clock_ticks &&
+				    (int32_t)(k_cycle_get_32() -
+					      task_pdata->deadline_clock_ticks) > 0) {
+					telemetry_notify_dp_deadline_miss(task->core);
+				}
+				task_pdata->deadline_clock_ticks = 0;
 				task->state = state;
 				switch (state) {
 				case SOF_TASK_STATE_RESCHEDULE:

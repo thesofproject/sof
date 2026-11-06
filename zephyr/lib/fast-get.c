@@ -9,6 +9,7 @@
 #include <errno.h>
 
 #include <sof/audio/component.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <sof/lib/fast-get.h>
 #include <sof/lib/vregion.h>
 #include <sof/objpool.h>
@@ -36,6 +37,12 @@ struct sof_fast_get_data {
 static struct sof_fast_get_data fast_get_data = {
 	.pool.list = LIST_INIT(fast_get_data.pool.list),
 };
+
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+static uint32_t fast_get_total_calls;
+static uint16_t fast_get_fail_count;
+static uint32_t fast_get_peak_bytes;
+#endif
 
 LOG_MODULE_REGISTER(fast_get, CONFIG_SOF_LOG_LEVEL);
 
@@ -271,12 +278,57 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 	entry->sram_ptr = ret;
 	entry->refcount = 1;
 out:
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+	fast_get_total_calls++;
+	if (!ret)
+		fast_get_fail_count++;
+#endif
 	k_spin_unlock(&data->lock, key);
 	LOG_DBG("get %p, %p, size %u, refcnt %u", dram_ptr, ret, size, entry ? entry->refcount : 0);
 
 	return ret;
 }
 EXPORT_SYMBOL(fast_get);
+
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+struct fast_get_tel_acc {
+	uint16_t active_entries;
+	uint32_t total_bytes;
+};
+
+static bool fast_get_tel_cb(void *data, void *arg)
+{
+	struct sof_fast_get_entry *entry = data;
+	struct fast_get_tel_acc *acc = arg;
+
+	if (entry->sram_ptr && entry->refcount > 0) {
+		acc->active_entries++;
+		acc->total_bytes += (uint32_t)entry->size;
+	}
+	return false;
+}
+
+void telemetry_collect_fast_get_stats(struct sof_tel_fast_get_info *fg)
+{
+	struct fast_get_tel_acc acc = { 0 };
+	k_spinlock_key_t key;
+
+	if (!fg)
+		return;
+
+	key = k_spin_lock(&fast_get_data.lock);
+	objpool_iterate(&fast_get_data.pool, fast_get_tel_cb, &acc);
+	if (acc.total_bytes > fast_get_peak_bytes)
+		fast_get_peak_bytes = acc.total_bytes;
+
+	fg->active_entries = acc.active_entries;
+	fg->fail_count = fast_get_fail_count;
+	fg->total_sram_bytes = acc.total_bytes;
+	fg->peak_sram_bytes = fast_get_peak_bytes;
+	fg->total_get_calls = fast_get_total_calls;
+	k_spin_unlock(&fast_get_data.lock, key);
+}
+#endif
 
 static bool fast_put_find_entry(void *data, void *arg)
 {

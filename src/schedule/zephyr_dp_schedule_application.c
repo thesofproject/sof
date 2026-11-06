@@ -11,6 +11,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
 #include <sof/common.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <sof/ipc/common.h>
 #include <sof/lib/mailbox.h>
 #include <sof/list.h>
@@ -408,6 +409,15 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 			/* get module deadline in us */
 			uint32_t deadline = module_get_deadline(mod);
 
+			if (!trigger_task && !mod->dp_startup_delay &&
+			    pdata->deadline_clock_ticks &&
+			    (deadline == 0 ||
+			     (int32_t)(dp_sch->last_ll_tick_timestamp -
+				       pdata->deadline_clock_ticks) > 0)) {
+				telemetry_notify_dp_deadline_miss(curr_task->core);
+				pdata->deadline_clock_ticks = 0;
+			}
+
 			/* if a deadline cannot be calculated, use a fixed value relative to its
 			 * first start
 			 */
@@ -423,6 +433,8 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 
 				/* add to "NOW", overflows are OK  */
 				deadline = dp_sch->last_ll_tick_timestamp + deadline;
+				if (trigger_task)
+					pdata->deadline_clock_ticks = deadline ? deadline : 1U;
 
 				/* set in Zephyr. Note that it may be in past, it does not matter,
 				 * Zephyr still will schedule the thread with earlier deadline
