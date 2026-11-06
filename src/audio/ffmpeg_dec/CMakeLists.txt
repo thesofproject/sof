@@ -24,6 +24,15 @@ else()
   else()
     add_local_sources(sof ffmpeg_dec-ffmpeg.c)
     add_local_sources(sof ffmpeg_dec-convert.c)
+    if(CONFIG_FFMPEG_ENC)
+      add_local_sources(sof ffmpeg-encode.c)
+    endif()
+    if(CONFIG_FFMPEG_ENC_MP3)
+      add_local_sources(sof ffmpeg-enc-mp3.c)
+    endif()
+    if(CONFIG_FFMPEG_ENC_AAC)
+      add_local_sources(sof ffmpeg-enc-aac.c)
+    endif()
     # Scalar soft-float for the SOF glue that touches float. core-isa.h reports
     # XCHAL_HAVE_FP=1 so LLVM would lower the FLT/FLTP -> Q1.31 sample conversion
     # in ffmpeg_dec_emit_frame() to hardware FP0 ops (lsi/mul.s/trunc.s), which
@@ -39,6 +48,15 @@ else()
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-ffmpeg.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-convert.c)
+    if(CONFIG_FFMPEG_ENC)
+      list(APPEND _ffmpeg_dec_sources ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg-encode.c)
+    endif()
+    if(CONFIG_FFMPEG_ENC_MP3)
+      list(APPEND _ffmpeg_dec_sources ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg-enc-mp3.c)
+    endif()
+    if(CONFIG_FFMPEG_ENC_AAC)
+      list(APPEND _ffmpeg_dec_sources ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg-enc-aac.c)
+    endif()
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         set_source_files_properties(
             ${_ffmpeg_dec_sources}
@@ -86,6 +104,21 @@ else()
       # calls libm at runtime, but the references still resolve to real kernels
       # now, and lossy decoders (AAC/Opus/Vorbis) need them to decode correctly.
       target_link_libraries(SOF INTERFACE avcodec swresample avutil)
+      # Encode mode: libshine MP3 encoder archive (built by ffmpeg.cmake
+      # section 3b when FFMPEG_ENC_MP3 is set). Linked AFTER avcodec,
+      # which references its shine_* symbols.
+      if(CONFIG_FFMPEG_ENC_MP3)
+        target_link_directories(SOF INTERFACE ${SHINE_INSTALL}/lib)
+        target_link_libraries(SOF INTERFACE shine)
+        add_dependencies(modules_sof shine_ext)
+      endif()
+      if(CONFIG_FFMPEG_ENC_AAC)
+        target_link_directories(SOF INTERFACE ${VO_AACENC_INSTALL}/lib)
+        target_link_libraries(SOF INTERFACE vo-aacenc)
+        target_include_directories(SOF INTERFACE ${VO_AACENC_INSTALL}/include)
+        zephyr_include_directories(${VO_AACENC_INSTALL}/include)
+        add_dependencies(modules_sof vo_aacenc_ext)
+      endif()
       # libm (newlib double math) LAST so libav*/libshine references
       # (modf/cos/sin/log/sqrt/exp2) resolve against it.
       target_link_libraries(SOF INTERFACE ${FFMPEG_TARGET_LIBM})

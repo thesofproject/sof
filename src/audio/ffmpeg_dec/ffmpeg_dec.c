@@ -104,6 +104,117 @@ int ffmpeg_dec_store_extradata(struct processing_module *mod,
 	return 0;
 }
 
+static inline size_t ffmpeg_dec_min(size_t a, size_t b)
+{
+	return a < b ? a : b;
+}
+
+/* Copy @bytes out of a circular source buffer (starting at @src) into the
+ * linear @dst, wrapping at the buffer end if necessary.
+ */
+void ffmpeg_dec_copy_from_circular(void *dst, const void *src,
+				   const void *buf_start, size_t buf_size,
+				   size_t bytes)
+{
+	size_t to_end = (size_t)((const uint8_t *)buf_start + buf_size -
+				 (const uint8_t *)src);
+
+	if (to_end >= bytes) {
+		memcpy_s(dst, bytes, src, bytes);
+		return;
+	}
+	memcpy_s(dst, to_end, src, to_end);
+	memcpy_s((uint8_t *)dst + to_end, bytes - to_end,
+		 buf_start, bytes - to_end);
+}
+
+/* Copy @bytes from the linear @src into a circular sink buffer (starting at
+ * @dst), wrapping at the buffer end if necessary.
+ */
+void ffmpeg_dec_copy_to_circular(void *dst, void *buf_start,
+				 size_t buf_size, const void *src,
+				 size_t bytes)
+{
+	size_t to_end = (size_t)((uint8_t *)buf_start + buf_size -
+				 (uint8_t *)dst);
+
+	if (to_end >= bytes) {
+		memcpy_s(dst, bytes, src, bytes);
+		return;
+	}
+	memcpy_s(dst, to_end, src, to_end);
+	memcpy_s(buf_start, bytes - to_end,
+		 (const uint8_t *)src + to_end, bytes - to_end);
+}
+
+/*
+ * Peek at the start of the stream and skip a leading ID3v2 tag if present.
+ * Returns:
+ *   1 if an ID3v2 tag was completely skipped (caller should re-check),
+ *   0 if the stream does not start with an ID3v2 tag (cd->in_buf holds the
+ *     peeked header bytes),
+ *  -ENODATA while waiting for enough bytes to inspect or finish skipping.
+ */
+int ffmpeg_dec_skip_id3v2(struct processing_module *mod, struct sof_source *src)
+{
+	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	const void *sp, *sstart;
+	size_t sbytes, avail, req;
+	int ret;
+
+	/* Drain any pending skip bytes from a previous chunk */
+	if (cd->skip_bytes > 0) {
+		avail = source_get_data_available(src);
+		if (!avail)
+			return -ENODATA;
+		size_t to_skip = ffmpeg_dec_min(avail, cd->skip_bytes);
+
+		source_drop_data(src, to_skip);
+		cd->skip_bytes -= to_skip;
+		if (cd->skip_bytes > 0)
+			return -ENODATA;
+	}
+
+	avail = source_get_data_available(src);
+	if (avail < 4)
+		return -ENODATA;
+
+	req = ffmpeg_dec_min(avail, cd->in_buf_size);
+	ret = source_get_data(src, req, &sp, &sstart, &sbytes);
+	if (ret)
+		return ret;
+	ffmpeg_dec_copy_from_circular(cd->in_buf, sp, sstart, sbytes, req);
+	source_release_data(src, 0);
+
+	/* ID3v2 tag: 10-byte header with 28-bit syncsafe length */
+	if (memcmp(cd->in_buf, "ID3", 3) == 0) {
+		uint32_t tag;
+		size_t total_tag;
+
+		if (req < 10)
+			return -ENODATA;
+
+		tag = ((uint32_t)(cd->in_buf[6] & 0x7f) << 21) |
+		      ((uint32_t)(cd->in_buf[7] & 0x7f) << 14) |
+		      ((uint32_t)(cd->in_buf[8] & 0x7f) << 7) |
+		      (uint32_t)(cd->in_buf[9] & 0x7f);
+		total_tag = 10 + tag + ((cd->in_buf[5] & 0x10) ? 10 : 0);
+		comp_info(dev, "ID3v2 tag detected: %zu bytes", total_tag);
+
+		if (avail >= total_tag) {
+			source_drop_data(src, total_tag);
+			return 1;
+		}
+
+		source_drop_data(src, avail);
+		cd->skip_bytes = total_tag - avail;
+		return -ENODATA;
+	}
+
+	return 0;
+}
+
 static const struct ffmpeg_dec_codec_ops * const ffmpeg_dec_codecs[] = {
 #if defined(CONFIG_FFMPEG_DEC_FLAC) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
 	&ffmpeg_dec_flac_ops,
@@ -159,8 +270,9 @@ static uint32_t ffmpeg_dec_max_frame_samples(const struct ffmpeg_dec_comp_data *
  * ffmpeg_dec_init() - Initialize the ffmpeg_dec component.
  * @mod: Pointer to module data.
  *
- * Allocates private data and hands off to the selected decode backend for its
- * one-time initialization. __cold marks this non-critical path for slower DRAM.
+ * Allocates private data and hands off to the selected decode or encode backend
+ * for its one-time initialization. __cold marks this non-critical path for
+ * slower DRAM.
  *
  * Return: Zero if success, otherwise error code.
  */
@@ -173,6 +285,34 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 	int ret;
 
 	comp_info(dev, "entry");
+
+#if CONFIG_IPC_MAJOR_4
+	if (mod->priv.cfg.ext_data &&
+	    mod->priv.cfg.ext_data->module_data &&
+	    mod->priv.cfg.ext_data->module_data_size >= sizeof(struct snd_codec)) {
+		const uint8_t *init_bytes = mod->priv.cfg.ext_data->module_data;
+		uint32_t direction = SOF_IPC_STREAM_PLAYBACK;
+
+		if (mod->priv.cfg.ext_data->module_data_size >=
+		    sizeof(struct snd_codec) + sizeof(uint32_t)) {
+			memcpy(&direction, init_bytes + sizeof(struct snd_codec),
+			       sizeof(direction));
+		}
+
+		if (direction == SOF_IPC_STREAM_CAPTURE) {
+#if defined(CONFIG_FFMPEG_ENC)
+			return ffmpeg_enc_mod_init(mod);
+#else
+			comp_err(dev, "capture (encode) requested but no encoders enabled");
+			return -ENOTSUP;
+#endif
+		}
+		if (direction != SOF_IPC_STREAM_PLAYBACK) {
+			comp_err(dev, "invalid compress stream direction %u", direction);
+			return -EINVAL;
+		}
+	}
+#endif
 
 	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
@@ -201,6 +341,14 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 		cd->codec = ops->id;
 		comp_info(dev, "codec selected from IPC: %s (%d, snd_codec id 0x%x)",
 			  cd->codec_ops->name, cd->codec, codec_params->id);
+	}
+#endif
+
+#if !defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	if (!cd->codec_ops) {
+		comp_err(dev, "no decoder enabled for playback");
+		mod_free(mod, cd);
+		return -ENOTSUP;
 	}
 #endif
 
@@ -250,11 +398,6 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 	return 0;
 }
 
-static inline size_t ffmpeg_dec_min(size_t a, size_t b)
-{
-	return a < b ? a : b;
-}
-
 static inline size_t ffmpeg_dec_max(size_t a, size_t b)
 {
 	return a > b ? a : b;
@@ -279,6 +422,12 @@ static int ffmpeg_dec_prepare(struct processing_module *mod,
 	struct sof_sink *sink;
 
 	comp_dbg(dev, "entry");
+
+#if defined(CONFIG_FFMPEG_ENC)
+	if (cd && cd->is_encoder)
+		return ffmpeg_enc_mod_prepare(mod, sources, num_of_sources,
+					      sinks, num_of_sinks);
+#endif
 
 	/*
 	 * The PCM format the decoder must produce is that of the sink.
@@ -351,44 +500,6 @@ static int ffmpeg_dec_prepare(struct processing_module *mod,
 	return 0;
 }
 
-/* Copy @bytes out of a circular source buffer (starting at @src) into the
- * linear @dst, wrapping at the buffer end if necessary.
- */
-void ffmpeg_dec_copy_from_circular(void *dst, const void *src,
-				   const void *buf_start, size_t buf_size,
-				   size_t bytes)
-{
-	size_t to_end = (size_t)((const uint8_t *)buf_start + buf_size -
-				 (const uint8_t *)src);
-
-	if (to_end >= bytes) {
-		memcpy_s(dst, bytes, src, bytes);
-		return;
-	}
-	memcpy_s(dst, to_end, src, to_end);
-	memcpy_s((uint8_t *)dst + to_end, bytes - to_end,
-		 buf_start, bytes - to_end);
-}
-
-/* Copy @bytes from the linear @src into a circular sink buffer (starting at
- * @dst), wrapping at the buffer end if necessary.
- */
-static void ffmpeg_dec_copy_to_circular(void *dst, void *buf_start,
-					size_t buf_size, const void *src,
-					size_t bytes)
-{
-	size_t to_end = (size_t)((uint8_t *)buf_start + buf_size -
-				 (uint8_t *)dst);
-
-	if (to_end >= bytes) {
-		memcpy_s(dst, bytes, src, bytes);
-		return;
-	}
-	memcpy_s(dst, to_end, src, to_end);
-	memcpy_s(buf_start, bytes - to_end,
-		 (const uint8_t *)src + to_end, bytes - to_end);
-}
-
 /* Drain as much staged PCM as the sink can currently accept. */
 static void ffmpeg_dec_drain_pcm(struct ffmpeg_dec_comp_data *cd,
 				 struct sof_sink *sink)
@@ -412,74 +523,6 @@ static void ffmpeg_dec_drain_pcm(struct ffmpeg_dec_comp_data *cd,
 	cd->pcm_avail -= n;
 }
 
-/*
- * Peek at the start of the stream and skip a leading ID3v2 tag if present.
- * Returns:
- *   1 if an ID3v2 tag was completely skipped (caller should re-check),
- *   0 if the stream does not start with an ID3v2 tag (cd->in_buf holds the
- *     peeked header bytes),
- *  -ENODATA while waiting for enough bytes to inspect or finish skipping.
- */
-int ffmpeg_dec_skip_id3v2(struct processing_module *mod, struct sof_source *src)
-{
-	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-	const void *sp, *sstart;
-	size_t sbytes, avail, req;
-	int ret;
-
-	/* Drain any pending skip bytes from a previous chunk */
-	if (cd->skip_bytes > 0) {
-		avail = source_get_data_available(src);
-		if (!avail)
-			return -ENODATA;
-		size_t to_skip = ffmpeg_dec_min(avail, cd->skip_bytes);
-
-		source_drop_data(src, to_skip);
-		cd->skip_bytes -= to_skip;
-		if (cd->skip_bytes > 0)
-			return -ENODATA;
-	}
-
-	avail = source_get_data_available(src);
-	if (avail < 4)
-		return -ENODATA;
-
-	req = ffmpeg_dec_min(avail, cd->in_buf_size);
-	ret = source_get_data(src, req, &sp, &sstart, &sbytes);
-	if (ret)
-		return ret;
-	ffmpeg_dec_copy_from_circular(cd->in_buf, sp, sstart, sbytes, req);
-	source_release_data(src, 0);
-
-	/* ID3v2 tag: 10-byte header with 28-bit syncsafe length */
-	if (memcmp(cd->in_buf, "ID3", 3) == 0) {
-		uint32_t tag;
-		size_t total_tag;
-
-		if (req < 10)
-			return -ENODATA;
-
-		tag = ((uint32_t)(cd->in_buf[6] & 0x7f) << 21) |
-		      ((uint32_t)(cd->in_buf[7] & 0x7f) << 14) |
-		      ((uint32_t)(cd->in_buf[8] & 0x7f) << 7) |
-		      (uint32_t)(cd->in_buf[9] & 0x7f);
-		total_tag = 10 + tag + ((cd->in_buf[5] & 0x10) ? 10 : 0);
-		comp_info(dev, "ID3v2 tag detected: %zu bytes", total_tag);
-
-		if (avail >= total_tag) {
-			source_drop_data(src, total_tag);
-			return 1;
-		}
-
-		source_drop_data(src, avail);
-		cd->skip_bytes = total_tag - avail;
-		return -ENODATA;
-	}
-
-	return 0;
-}
-
 /**
  * ffmpeg_dec_is_ready_to_process() - Gate the DP process() call.
  *
@@ -493,6 +536,12 @@ static bool ffmpeg_dec_is_ready_to_process(struct processing_module *mod,
 					   int num_of_sinks)
 {
 	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
+
+#if defined(CONFIG_FFMPEG_ENC)
+	if (cd && cd->is_encoder)
+		return ffmpeg_enc_is_ready_to_process(mod, sources, num_of_sources,
+						      sinks, num_of_sinks);
+#endif
 
 	if (num_of_sources < 1 || num_of_sinks < 1)
 		return false;
@@ -533,6 +582,12 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 	size_t sbytes, avail, req;
 	size_t consumed = 0, produced = 0;
 	int ret;
+
+#if defined(CONFIG_FFMPEG_ENC)
+	if (cd && cd->is_encoder)
+		return ffmpeg_enc_mod_process(mod, sources, num_of_sources,
+					      sinks, num_of_sinks);
+#endif
 
 	if (num_of_sources < 1 || num_of_sinks < 1)
 		return -EINVAL;
@@ -773,6 +828,11 @@ static int ffmpeg_dec_reset(struct processing_module *mod)
 
 	comp_dbg(mod->dev, "entry");
 
+#if defined(CONFIG_FFMPEG_ENC)
+	if (cd && cd->is_encoder)
+		return ffmpeg_enc_mod_reset(mod);
+#endif
+
 	/* Discard any PCM staged mid-stream; the pipeline is restarting. */
 	cd->pcm_avail = 0;
 	cd->pcm_rd = 0;
@@ -804,6 +864,11 @@ __cold static int ffmpeg_dec_free(struct processing_module *mod)
 
 	assert_can_be_cold();
 	comp_dbg(mod->dev, "entry");
+
+#if defined(CONFIG_FFMPEG_ENC)
+	if (cd && cd->is_encoder)
+		return ffmpeg_enc_mod_free(mod);
+#endif
 
 	if (cd->backend->free)
 		cd->backend->free(mod);

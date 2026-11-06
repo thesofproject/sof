@@ -51,6 +51,32 @@ config FFMPEG_DEC_MP3
 	  MPEG-1/2 Layer III decoder. Enables --enable-decoder=mp3 and the
 	  mpegaudio parser in the libavcodec build. Uses the float math layer.
 
+comment "FFmpeg encoders to build (footprint scales with selection)"
+
+config FFMPEG_ENC_MP3
+	bool "MP3 encoder (libshine, fixed-point)"
+	help
+	  MPEG-1 Layer III encoder via libshine, a small fixed-point encoder
+	  (west-pinned; FFmpeg has no native MP3 encoder). Cross-builds libshine
+	  and enables --enable-libshine --enable-encoder=libshine. Fixed-point, so
+	  no float math dependency. Selected at runtime for compress capture streams
+	  requesting SND_AUDIOCODEC_MP3.
+
+config FFMPEG_ENC_AAC
+	bool "AAC-LC encoder (vo-aacenc, fixed-point)"
+	help
+	  MPEG-4 AAC Low Complexity encoder via vo-aacenc, a lightweight 32-bit
+	  fixed-point integer encoder (west-pinned). Pure integer fixed-point, no
+	  float math dependency. Output is a standard ADTS AAC elementary stream.
+	  Selected at runtime for compress capture streams requesting
+	  SND_AUDIOCODEC_AAC.
+
+# Selected automatically when any encoder is enabled. Gates compilation of the
+# runtime encode path (ffmpeg-encode.c).
+config FFMPEG_ENC
+	bool
+	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC
+
 # Selected automatically when a decoder that needs IEEE float math is
 # built. Gates compilation of the fast single-precision libm (fastmathf.c).
 config FFMPEG_DEC_FLOAT_MATH
