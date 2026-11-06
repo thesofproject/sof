@@ -68,8 +68,8 @@ EOFHELP
 
 # To test this test, make the following change locally:
 : <<EOF_TEST_PATCH
---- a/src/ipc/ipc3/handler.c
-+++ b/src/ipc/ipc3/handler.c
+--- a/src/kernel/ipc/ipc3/handler.c
++++ b/src/kernel/ipc/ipc3/handler.c
 @@ -1609,6 +1609,8 @@ void ipc_boot_complete_msg(struct ipc_cmd_hdr *header, uint32_t data)
 
  void ipc_cmd(struct ipc_cmd_hdr *_hdr)

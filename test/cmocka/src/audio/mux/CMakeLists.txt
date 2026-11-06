@@ -23,7 +23,7 @@ add_library(
 	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
 	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
-	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/lib/objpool.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c

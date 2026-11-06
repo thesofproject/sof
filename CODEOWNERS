@@ -60,6 +60,7 @@ src/drivers/mediatek/**		@yaochunhung @kuanhsuncheng
 # other libs
 src/math/*				@singalsu
 src/ipc/*				@bardliao @tmleman @pblaszko
+src/kernel/ipc/**			@bardliao @tmleman @pblaszko
 # src/lib/*				TODO
 src/schedule				@pblaszko @marcinszkudlinski @dbaluta @LaurentiuM1234
 
