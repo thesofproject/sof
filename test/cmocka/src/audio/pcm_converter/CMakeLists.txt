@@ -16,7 +16,7 @@ if(CONFIG_FORMAT_FLOAT)
 		${PROJECT_SOURCE_DIR}/src/audio/data_blob.c
 		${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
 		${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
-		${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+		${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc3/helper.c
 		${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 		${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 		${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c

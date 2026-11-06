@@ -31,7 +31,7 @@ add_library(audio_for_volume STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/audio_stream.c
 	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
 	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
-	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/lib/objpool.c

@@ -74,7 +74,7 @@ its subdirectories span all tiers.
 
 | Tier | Meaning | Directories |
 |------|---------|-------------|
-| **Kernel-only** | OS integration, HAL, boot, inter-core. Never executes in a user thread. Must not be reached directly from user code — only via a syscall. | `kernel/` (see [its README](../../../kernel/README.md)), `arch/`, `drivers/`, `platform/`, `trace/` * |
+| **Kernel-only** | OS integration, HAL, boot, inter-core. Never executes in a user thread. Must not be reached directly from user code — only via a syscall. | `kernel/` (see [its README](../../../kernel/README.md)), `arch/`, `platform/`, `trace/` * |
 | **Boundary / bridge** | Owns the syscalls and the thread / memory-domain setup. Split internally: some translation units run kernel-side, some user-side (e.g. `handler-kernel.c` vs `handler-user.c`). | `schedule/`, `ipc/`, `debug/debug_stream/` *, and (in the Zephyr integration tree) `zephyr/syscall/` |
 | **Application** | Audio pipeline / component logic that runs in user threads under userspace configs. | `audio/` |
 | **Shared library** | Context-agnostic code linked into whichever context calls it. Must stay "user-safe": no privileged operations (no direct MMIO, no spinlocks held across syscalls, no raw kernel object access) so it is safe when pulled into a user build. | `math/`, `module/` |
@@ -116,7 +116,7 @@ syscall by subsystem:
 
 | Subsystem | Syscalls | Declared in | Validator (`z_vrfy_`) / logic (`z_impl_`) |
 |-----------|----------|-------------|-------------------------------------------|
-| IPC | `ipc_msg_send`, `ipc_msg_list_remove`, `ipc_msg_reply`, `ipc_compound_pre_start`, `ipc_compound_post_start`, `ipc_wait_for_compound_msg`, `send_resource_notif` | `sof/ipc/msg.h`, `sof/ipc/ipc_reply.h`, `ipc4/handler.h`, `ipc4/notification.h` | scattered: `ipc/ipc-common.c`, `ipc/ipc3/helper.c`, `ipc/ipc4/handler-kernel.c`, `ipc/ipc4/notification.c` |
+| IPC | `ipc_msg_send`, `ipc_msg_list_remove`, `ipc_msg_reply`, `ipc_compound_pre_start`, `ipc_compound_post_start`, `ipc_wait_for_compound_msg`, `send_resource_notif` | `sof/ipc/msg.h`, `sof/ipc/ipc_reply.h`, `ipc4/handler.h`, `ipc4/notification.h` | scattered: `ipc/ipc-common.c`, `kernel/ipc/ipc3/helper.c`, `kernel/ipc/ipc4/handler-kernel.c`, `kernel/ipc/ipc4/notification.c` |
 | Heap alloc | `sof_heap_alloc`, `sof_heap_free` | `rtos/alloc.h` | `zephyr/syscall/alloc.c` / `zephyr/lib/alloc.c` |
 | Virtual regions | `vregion_create_map`, `vregion_set_interim`, `vregion_get`, `vregion_put`, `vregion_alloc_align`, `vregion_alloc_coherent_align`, `vregion_free` | `sof/lib/vregion.h` | `zephyr/syscall/vregion.c` / `zephyr/lib/vregion.c` |
 | DMA | `sof_dma_get`, `sof_dma_put`, `sof_dma_get_attribute`, `sof_dma_request_channel`, `sof_dma_release_channel`, `sof_dma_config`, `sof_dma_start`, `sof_dma_stop`, `sof_dma_get_status`, `sof_dma_reload`, `sof_dma_suspend`, `sof_dma_resume` | `sof/lib/sof_dma.h` | `zephyr/syscall/sof_dma.c` / `lib/dma.c` (get/put); remaining 10 are `static inline z_impl_*` in `sof/lib/sof_dma.h` |

@@ -141,7 +141,7 @@ static int dai_trigger_op(struct dai *dai, int cmd, int direction)
 	return dai_trigger(dev, direction, zephyr_cmd);
 }
 
-/* called from src/ipc/ipc3/handler.c and src/ipc/ipc4/dai.c */
+/* called from src/kernel/ipc/ipc3/handler.c and src/ipc/ipc4/dai.c */
 __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 			  const void *spec_config, size_t size)
 {
@@ -275,7 +275,7 @@ int dai_get_properties_safe(struct dai *dai, int direction,
 	return ret;
 }
 
-/* called from ipc/ipc3/dai.c */
+/* called from kernel/ipc/ipc3/dai.c */
 int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
 	struct dai_properties props;
@@ -288,7 +288,7 @@ int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 	return props.dma_hs_id;
 }
 
-/* called from ipc/ipc3/dai.c and ipc/ipc4/dai.c */
+/* called from kernel/ipc/ipc3/dai.c and ipc/ipc4/dai.c */
 int dai_get_fifo_depth(struct dai *dai, int direction)
 {
 	struct dai_properties props;

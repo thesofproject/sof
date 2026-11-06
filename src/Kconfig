@@ -4,8 +4,6 @@ rsource "arch/Kconfig"
 
 rsource "platform/Kconfig"
 
-rsource "drivers/Kconfig"
-
 rsource "audio/Kconfig"
 
 rsource "trace/Kconfig"

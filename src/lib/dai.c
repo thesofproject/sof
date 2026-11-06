@@ -339,7 +339,7 @@ static void dai_set_device_params(struct dai *d)
 	}
 }
 
-/* called from ipc/ipc3/handler.c and some platform.c files */
+/* called from kernel/ipc/ipc3/handler.c and some platform.c files */
 __cold struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 {
 	const struct device *dev;
@@ -381,7 +381,7 @@ __cold struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 	return d;
 }
 
-/* called from src/ipc/ipc3/handler.c */
+/* called from src/kernel/ipc/ipc3/handler.c */
 __cold void dai_put(struct dai *dai)
 {
 	int ret;

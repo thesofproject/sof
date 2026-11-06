@@ -157,7 +157,7 @@ cmake_path(SET sof_top_dir NORMALIZE "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(SOF_SRC_PATH "${sof_top_dir}/src")
 
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
-set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
+set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/kernel/drivers")
 set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
 
 set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
@@ -479,7 +479,7 @@ if (CONFIG_SOC_ACP_6_0)
 
 	# SOF core infrastructure - runs on top of Zephyr
 	zephyr_library_sources(
-		${SOF_SRC_PATH}/drivers/interrupt.c
+		${SOF_DRIVERS_PATH}/interrupt.c
 	)
 
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/rembrandt/include)
@@ -524,23 +524,23 @@ if (CONFIG_SOC_FAMILY_MTK)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/mtk/platform.c
 		${SOF_PLATFORM_PATH}/mtk/dai.c
-		${SOF_SRC_PATH}/drivers/mediatek/afe/afe-drv.c
+		${SOF_DRIVERS_PATH}/mediatek/afe/afe-drv.c
 	)
 
 	if (CONFIG_ZEPHYR_NATIVE_DRIVERS)
 		# Native Zephyr DMA/DAI path
 		zephyr_library_sources(
 			lib/dma.c
-			${SOF_SRC_PATH}/drivers/mediatek/afe/zephyr_mtk_afe_memif.c
-			${SOF_SRC_PATH}/drivers/mediatek/afe/zephyr_mtk_host_dma.c
-			${SOF_SRC_PATH}/drivers/mediatek/afe/zephyr_mtk_dai.c
+			${SOF_DRIVERS_PATH}/mediatek/afe/zephyr_mtk_afe_memif.c
+			${SOF_DRIVERS_PATH}/mediatek/afe/zephyr_mtk_host_dma.c
+			${SOF_DRIVERS_PATH}/mediatek/afe/zephyr_mtk_dai.c
 		)
 	else()
 		# Legacy DMA path
 		zephyr_library_sources(
 			${SOF_DRIVERS_PATH}/generic/dummy-dma.c
-			${SOF_SRC_PATH}/drivers/mediatek/afe/afe-memif.c
-			${SOF_SRC_PATH}/drivers/mediatek/afe/afe-dai.c
+			${SOF_DRIVERS_PATH}/mediatek/afe/afe-memif.c
+			${SOF_DRIVERS_PATH}/mediatek/afe/afe-dai.c
 		)
 	endif()
 endif()

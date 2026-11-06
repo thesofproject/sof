@@ -1,16 +1,13 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-if (CONFIG_IPC_MAJOR_3)
-	add_subdirectory(ipc3)
-elseif (CONFIG_IPC_MAJOR_4)
-        add_subdirectory(ipc4)
+if (CONFIG_IPC_MAJOR_4)
+	add_subdirectory(ipc4)
 endif()
 
 # Common to Zephyr and XTOS
 add_local_sources(sof
 	ipc-common.c
 	ipc-helper.c
-	notification_pool.c
 )
 
 is_zephyr(zephyr)
