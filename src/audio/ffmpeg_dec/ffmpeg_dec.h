@@ -53,7 +53,7 @@ enum ffmpeg_dec_codec {
 /* Default codec for a new instance, picked from the Kconfig selection until the
  * codec is carried per-instance from topology/IPC config. First enabled wins.
  */
-#if defined(CONFIG_FFMPEG_DEC_FLAC)
+#if defined(CONFIG_FFMPEG_DEC_FLAC) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
 #define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_FLAC
 #elif defined(CONFIG_FFMPEG_DEC_AAC)
 #define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_AAC
@@ -66,8 +66,102 @@ enum ffmpeg_dec_codec {
 #endif
 
 struct ffmpeg_dec_comp_data;
+struct ffmpeg_enc_data;
 struct ipc_msg;
+struct snd_codec;
 struct sof_source;
+struct sof_sink;
+
+/* Module-interface entry points for encode mode (CONFIG_FFMPEG_ENC):
+ * PCM in -> compressed elementary stream out (ffmpeg-encode.c),
+ * selected at runtime when the compress stream direction is capture.
+ */
+int ffmpeg_enc_mod_init(struct processing_module *mod);
+int ffmpeg_enc_mod_prepare(struct processing_module *mod,
+			   struct sof_source **sources, int num_of_sources,
+			   struct sof_sink **sinks, int num_of_sinks);
+int ffmpeg_enc_mod_process(struct processing_module *mod,
+			   struct sof_source **sources, int num_of_sources,
+			   struct sof_sink **sinks, int num_of_sinks);
+bool ffmpeg_enc_is_ready_to_process(struct processing_module *mod,
+				    struct sof_source **sources, int num_of_sources,
+				    struct sof_sink **sinks, int num_of_sinks);
+int ffmpeg_enc_mod_reset(struct processing_module *mod);
+int ffmpeg_enc_mod_free(struct processing_module *mod);
+
+/**
+ * struct ffmpeg_enc_codec_ops - Per-codec encoder operations.
+ * @id:              SOF internal codec enum (enum ffmpeg_dec_codec).
+ * @snd_codec_id:    ALSA compress SND_AUDIOCODEC_* identifier.
+ * @name:            Human-readable codec name (e.g. "mp3", "aac").
+ * @validate_params: Optional hook to validate IPC4 struct snd_codec parameters.
+ * @init:            Allocate and initialize codec-private encoder state in e->codec_priv.
+ * @configure:       Open/configure encoder for cd->out_rate, cd->out_channels, e->bit_rate
+ *                   and set e->nb (samples per channel per frame).
+ * @encode_frame:    Encode one full frame of e->nb samples from e->pcm_in into e->out_stage.
+ * @reset:           Optional hook to reset encoder state across stream resets.
+ * @free:            Tear down and free e->codec_priv.
+ */
+struct ffmpeg_enc_codec_ops {
+	enum ffmpeg_dec_codec id;
+	uint32_t snd_codec_id;
+	const char *name;
+	int (*validate_params)(struct processing_module *mod,
+			       const struct snd_codec *codec_params);
+	int (*init)(struct processing_module *mod, struct ffmpeg_enc_data *e);
+	int (*configure)(struct processing_module *mod, struct ffmpeg_enc_data *e);
+	int (*encode_frame)(struct processing_module *mod, struct ffmpeg_enc_data *e);
+	void (*reset)(struct processing_module *mod, struct ffmpeg_enc_data *e);
+	void (*free)(struct processing_module *mod, struct ffmpeg_enc_data *e);
+};
+
+/**
+ * struct ffmpeg_enc_data - Common encoder state across all encode codecs.
+ * @codec_ops:    Selected per-codec encoder operations.
+ * @codec_priv:   Codec-private encoder state allocated by @codec_ops->init().
+ * @bit_rate:     Target encoder bit rate in bps.
+ * @req_rate:     Requested sample rate from IPC struct snd_codec (0 if unspecified).
+ * @req_channels: Requested channel count from IPC struct snd_codec (0 if unspecified).
+ * @req_ch_mode:  Requested channel mode from IPC struct snd_codec (0 if unspecified).
+ * @src_fmt:      SOF input sample format (enum sof_ipc_frame).
+ * @frame_bytes:  SOF input frame size in bytes (all channels).
+ * @nb:           Encoder frame size in samples per channel.
+ * @need:         Source PCM bytes for one encoder frame (nb * frame_bytes).
+ * @pcm_in:       Linear interleaved input PCM buffer for one encoder frame.
+ * @pcm_fill:     Bytes accumulated in @pcm_in so far (< @need).
+ * @out_stage:    Linear compressed output staging buffer.
+ * @out_cap:      Capacity of @out_stage in bytes.
+ * @out_avail:    Staged compressed bytes not yet drained to sink.
+ * @out_rd:       Read offset of next byte to drain from @out_stage.
+ */
+struct ffmpeg_enc_data {
+	const struct ffmpeg_enc_codec_ops *codec_ops;
+	void *codec_priv;
+	uint32_t bit_rate;
+	uint32_t req_rate;
+	uint32_t req_channels;
+	uint32_t req_ch_mode;
+	int src_fmt;
+	int frame_bytes;
+	int nb;
+	size_t need;
+	uint8_t *pcm_in;
+	size_t pcm_fill;
+	uint8_t *out_stage;
+	size_t out_cap;
+	size_t out_avail;
+	size_t out_rd;
+};
+
+extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_mp3_ops;
+extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_aac_ops;
+
+void ffmpeg_enc_pcm_to_s16_interleaved(const uint8_t *pcm_in, int16_t *dst,
+				       size_t total_samples, int src_fmt);
+void ffmpeg_enc_pcm_to_s16_planar(const uint8_t *pcm_in, uint8_t * const *planes,
+				  int nb_samples, int ch, int src_fmt);
+void ffmpeg_enc_stage_packet(struct processing_module *mod, struct ffmpeg_enc_data *e,
+			     const uint8_t *data, size_t len);
 
 /**
  * struct ffmpeg_dec_codec_ops - Per-codec stream and configuration operations.
@@ -161,6 +255,7 @@ struct ffmpeg_dec_comp_data {
 	uint32_t out_channels;
 	int out_frame_fmt;
 	uint32_t out_frame_bytes;
+	bool is_encoder;
 	bool configured;
 	uint8_t *in_buf;
 	size_t in_buf_size;
@@ -200,6 +295,10 @@ extern const struct ffmpeg_dec_backend ffmpeg_dec_backend;
 void ffmpeg_dec_copy_from_circular(void *dst, const void *src,
 				   const void *buf_start, size_t buf_size,
 				   size_t bytes);
+
+void ffmpeg_dec_copy_to_circular(void *dst, void *buf_start,
+				 size_t buf_size, const void *src,
+				 size_t bytes);
 
 int ffmpeg_dec_skip_id3v2(struct processing_module *mod, struct sof_source *src);
 

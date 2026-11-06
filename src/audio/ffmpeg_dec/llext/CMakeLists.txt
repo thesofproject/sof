@@ -55,16 +55,18 @@ else()
 		set(ffmpeg_dec_libs avfilter ${ffmpeg_dec_libs})
 	endif()
 
-	# Encode mode: PCM->compressed backend + libshine (linked AFTER libavcodec,
-	# which references it), from its own cross-build install dir.
-	if(CONFIG_FFMPEG_DEC_ENCODE_MODE)
-		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-encode.c)
+	# Encode support: PCM->compressed backend + libshine / vo-aacenc archives
+	# (linked AFTER libavcodec, which references libshine).
+	if(CONFIG_FFMPEG_ENC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-encode.c)
 	endif()
 	if(CONFIG_FFMPEG_ENC_MP3)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-mp3.c)
 		list(APPEND ffmpeg_dec_libs shine)
 		list(APPEND ffmpeg_dec_libpaths "${SHINE_INSTALL}/lib")
 	endif()
 	if(CONFIG_FFMPEG_ENC_AAC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-aac.c)
 		list(APPEND ffmpeg_dec_libs vo-aacenc)
 		list(APPEND ffmpeg_dec_libpaths "${VO_AACENC_INSTALL}/lib")
 	endif()
@@ -91,8 +93,8 @@ else()
 	)
 
 	# The archives must be built before the module compiles/links against them.
-	add_dependencies(ffmpeg_dec_llext_lib ffmpeg_ext newlib_m)
-	add_dependencies(ffmpeg_dec ffmpeg_ext newlib_m)
+	add_dependencies(ffmpeg_dec_llext_lib ffmpeg_ext newlib_m ${_ff_shine_dep} ${_ff_vo_aacenc_dep})
+	add_dependencies(ffmpeg_dec ffmpeg_ext newlib_m ${_ff_shine_dep} ${_ff_vo_aacenc_dep})
 
 	# Cold split: place the (renamed) FFmpeg .cold code so the loader relocates
 	# it to DRAM. See ffmpeg_cold.ld for why INSERT AFTER .bss.
