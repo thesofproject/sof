@@ -1,7 +1,8 @@
 # Module Adapter Architecture
 
 > **Runs in:** Boundary / bridge — the module adapter is the container that runs audio modules
-> in **user** threads (DP threads, or the userspace proxy in `library/userspace_proxy.c`) while
+> in **user** threads (DP threads, or the userspace proxy in `library/userspace_proxy_user.c`,
+> whose kernel half is `src/kernel/audio/module_adapter/library/userspace_proxy.c`) while
 > being driven from the **kernel** pipeline. It hosts the `mod_*` allocation syscalls and sets
 > up per-module memory domains and object grants. See
 > [User/kernel split](../../include/sof/userspace/README.md).
