@@ -22,6 +22,7 @@
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
 #include <sof/lib/regions_mm.h>
+#include <sof/lib/vpage.h>
 #include <sof/llext_manager.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
@@ -299,20 +300,29 @@ __cold static int llext_manager_load_module(struct lib_manager_module *mctx)
 	struct llext_loader *ldr = &mctx->ebl->loader;
 	const struct llext *ext = mctx->llext;
 
-	/* find dedicated virtual memory zone */
-	const struct sys_mm_drv_region *virtual_memory_regions = sys_mm_drv_query_memory_regions();
 	const struct sys_mm_drv_region *virtual_region;
 
-	if (!virtual_memory_regions)
-		return -EFAULT;
+	if (mctx->vma.size) {
+		/* relocated to pages, reserved from the virtual page allocator */
+		virtual_region = vpage_get_region();
+		if (!virtual_region)
+			return -EFAULT;
+	} else {
+		/* find dedicated virtual memory zone */
+		const struct sys_mm_drv_region *virtual_memory_regions =
+			sys_mm_drv_query_memory_regions();
 
-	SYS_MM_DRV_MEMORY_REGION_FOREACH(virtual_memory_regions, virtual_region) {
-		if (virtual_region->attr == VIRTUAL_REGION_LLEXT_LIBRARIES_ATTR)
-			break;
+		if (!virtual_memory_regions)
+			return -EFAULT;
+
+		SYS_MM_DRV_MEMORY_REGION_FOREACH(virtual_memory_regions, virtual_region) {
+			if (virtual_region->attr == VIRTUAL_REGION_LLEXT_LIBRARIES_ATTR)
+				break;
+		}
+
+		if (!virtual_region->size)
+			return -EFAULT;
 	}
-
-	if (!virtual_region->size)
-		return -EFAULT;
 
 	/* Copy Code */
 	ret = llext_manager_load_data_from_storage(virtual_region, ldr, ext, LLEXT_MEM_TEXT,
@@ -434,6 +444,120 @@ static bool llext_manager_section_detached(const elf_shdr_t *shdr)
 	return shdr->sh_addr < SOF_MODULE_DRAM_LINK_END;
 }
 
+/*
+ * Relocatable (ET_REL) modules are linked at placeholder addresses. Reserve
+ * virtual pages for all sections, that will be copied to SRAM, and move them
+ * there, keeping their relative placement, so that llext_load() relocates the
+ * module to run at those addresses. Detached sections stay in DRAM and keep
+ * their addresses. Shared object (ET_DYN) modules can only run at addresses,
+ * fixed at build time, they stay in the dedicated virtual memory region.
+ */
+__cold static int llext_manager_place(struct lib_manager_module *mctx)
+{
+	static const uint8_t elf_magic[] = {0x7f, 'E', 'L', 'F'};
+	uint8_t *elf = (uint8_t *)mctx->ebl->buf;
+	size_t len = mctx->ebl->len;
+	const elf_ehdr_t *ehdr = (const elf_ehdr_t *)elf;
+	uintptr_t start = UINTPTR_MAX, end = 0, base;
+	size_t align = PAGE_SZ, size;
+	unsigned int i, shnum;
+	elf_shdr_t *shdr;
+	void *vma;
+
+	assert_can_be_cold();
+
+	/* llext_load() validates the image, only check what is used here */
+	if (len < sizeof(*ehdr) || memcmp(ehdr->e_ident, elf_magic, sizeof(elf_magic)))
+		return -ENOEXEC;
+
+	/*
+	 * Fall back to the addresses from the build for shared object modules
+	 * and without a virtual page region. Build-time addresses will go away,
+	 * all addresses will be assigned when modules are linked.
+	 */
+	if (ehdr->e_type != ET_REL) {
+		tr_warn(&lib_manager_tr, "not a relocatable module, using build-time addresses");
+		return 0;
+	}
+
+	if (!vpage_get_region()) {
+		tr_warn(&lib_manager_tr, "no virtual page region, using build-time addresses");
+		return 0;
+	}
+
+	/*
+	 * The section header table must be within the image and must not
+	 * overlap the ELF header: section addresses are rewritten below. Read
+	 * the number of sections only once for the same reason.
+	 */
+	shnum = ehdr->e_shnum;
+	if (ehdr->e_shentsize != sizeof(*shdr) || ehdr->e_shoff < sizeof(*ehdr) ||
+	    ehdr->e_shoff > len || shnum > (len - ehdr->e_shoff) / sizeof(*shdr) ||
+	    !IS_ALIGNED(elf + ehdr->e_shoff, sizeof(uint32_t))) {
+		tr_err(&lib_manager_tr, "invalid section header table");
+		return -ENOEXEC;
+	}
+
+	shdr = (elf_shdr_t *)(elf + ehdr->e_shoff);
+
+	/* Find the address range and the largest alignment of SRAM sections */
+	for (i = 0; i < shnum; i++) {
+		if (!(shdr[i].sh_flags & SHF_ALLOC) || !shdr[i].sh_size ||
+		    llext_manager_section_detached(shdr + i))
+			continue;
+
+		if (shdr[i].sh_addr + shdr[i].sh_size < shdr[i].sh_addr ||
+		    !is_power_of_two(shdr[i].sh_addralign ? : 1)) {
+			tr_err(&lib_manager_tr, "invalid section %u", i);
+			return -ENOEXEC;
+		}
+
+		start = MIN(start, shdr[i].sh_addr);
+		end = MAX(end, shdr[i].sh_addr + shdr[i].sh_size);
+		align = MAX(align, shdr[i].sh_addralign);
+	}
+
+	/* Nothing to copy to SRAM, nothing to move */
+	if (!end)
+		return 0;
+
+	/*
+	 * Moving by a multiple of the largest section alignment, at least a
+	 * page, preserves the alignment of all sections. If that alignment is
+	 * larger than a page, reserve extra pages to find an aligned start.
+	 */
+	start = ALIGN_DOWN(start, align);
+	size = ALIGN_UP(end - start, PAGE_SZ) + align - PAGE_SZ;
+
+	vma = vpage_reserve(size / PAGE_SZ);
+	if (!vma) {
+		tr_err(&lib_manager_tr, "cannot reserve %#zx bytes of virtual memory", size);
+		return -ENOMEM;
+	}
+
+	base = ALIGN_UP((uintptr_t)vma, align);
+
+	/* Move all SRAM sections by the same offset, llext_load() relocates them */
+	for (i = 0; i < shnum; i++) {
+		if (!(shdr[i].sh_flags & SHF_ALLOC) || !shdr[i].sh_size ||
+		    llext_manager_section_detached(shdr + i))
+			continue;
+
+		shdr[i].sh_addr += base - start;
+	}
+
+	/* The ELF image is kept in DRAM over DSP power cycles */
+	sys_cache_data_flush_range(shdr, shnum * sizeof(*shdr));
+
+	/* Released only if linking fails, restored with the module after D3 */
+	mctx->vma.addr = (uintptr_t)vma;
+	mctx->vma.size = size;
+
+	tr_dbg(&lib_manager_tr, "placed %#lx-%#lx at %#lx", start, end, base);
+
+	return 0;
+}
+
 __cold static int llext_manager_link(const char *name,
 				     struct lib_manager_module *mctx, const void **buildinfo,
 				     const struct sof_man_module_manifest **mod_manifest)
@@ -468,8 +592,23 @@ __cold static int llext_manager_link(const char *name,
 			.section_detached = llext_manager_section_detached,
 			.keep_section_info = true,
 		};
+		bool placed = false;
 
+		if (!*llext) {
+			ret = llext_manager_place(mctx);
+			if (ret < 0)
+				return ret;
+
+			placed = mctx->vma.size;
+		}
+
+		/* a positive value is the use count of an already loaded extension */
 		ret = llext_load(ldr, name, llext, &ldr_parm);
+		if (ret < 0 && placed) {
+			vpage_release((void *)mctx->vma.addr);
+			mctx->vma.addr = 0;
+			mctx->vma.size = 0;
+		}
 		if (ret)
 			return ret;
 	}
@@ -583,6 +722,8 @@ __cold static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 			ctx->mod[n_mod].llext = NULL;
 			ctx->mod[n_mod].ebl = NULL;
 			ctx->mod[n_mod].n_dependent = 0;
+			ctx->mod[n_mod].vma.addr = 0;
+			ctx->mod[n_mod].vma.size = 0;
 			ctx->mod[n_mod].start_idx = i;
 			if (n_mod)
 				ctx->mod[n_mod - 1].n_mod = i - ctx->mod[n_mod - 1].start_idx;

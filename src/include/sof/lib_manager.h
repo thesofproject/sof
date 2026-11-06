@@ -119,6 +119,7 @@ struct lib_manager_module {
 	bool domain_dp;
 	struct lib_manager_segment_desc segment[LIB_MANAGER_N_SEGMENTS];
 	struct lib_manager_segment_desc writable_merged;
+	struct lib_manager_segment_desc vma; /* Reserved virtual pages for ET_REL modules */
 };
 
 struct lib_manager_mod_ctx {
