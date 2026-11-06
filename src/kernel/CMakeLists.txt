@@ -24,5 +24,6 @@ if(zephyr)
 endif()
 
 # Built for Zephyr and for the host
+add_subdirectory(drivers)
 add_subdirectory(ipc)
 add_subdirectory(lib)

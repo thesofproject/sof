@@ -53,9 +53,9 @@ src/platform/mtk/**			@yaochunhung @kuanhsuncheng
 
 # drivers
 src/drivers/intel/dmic.c		@singalsu
-src/drivers/imx/**			@dbaluta
-src/drivers/amd/*			@bhiregoudar @sunilkumardommati
-src/drivers/mediatek/**		@yaochunhung @kuanhsuncheng
+src/kernel/drivers/imx/**		@dbaluta
+src/kernel/drivers/amd/*		@bhiregoudar @sunilkumardommati
+src/kernel/drivers/mediatek/**		@yaochunhung @kuanhsuncheng
 
 # other libs
 src/math/*				@singalsu
