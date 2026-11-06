@@ -7,7 +7,7 @@ cmocka_test(mixer
 	${PROJECT_SOURCE_DIR}/src/audio/mixer/mixer.c
 	${PROJECT_SOURCE_DIR}/src/audio/mixer/mixer_generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/mixer/mixer_hifi3.c
-	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/lib/objpool.c

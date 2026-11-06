@@ -4,7 +4,7 @@ cmocka_test(pipeline_new
 	pipeline_new.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 	${PROJECT_SOURCE_DIR}/src/audio/component.c
-	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
@@ -29,7 +29,7 @@ cmocka_test(pipeline_connect_upstream
 	pipeline_connection_mocks.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 	${PROJECT_SOURCE_DIR}/src/audio/component.c
-	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
@@ -54,7 +54,7 @@ cmocka_test(pipeline_free
 	pipeline_connection_mocks.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 	${PROJECT_SOURCE_DIR}/src/audio/component.c
-	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
