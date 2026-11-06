@@ -863,6 +863,7 @@ e_tmem:
 
 #ifdef CONFIG_USERSPACE
 #include <zephyr/internal/syscall_handler.h>
+#include <sof/userspace/syscall_caller.h>
 
 /*
  * mod_free() follows the module's resource and allocator pointers in
@@ -898,6 +899,8 @@ static void scheduler_dp_mod_vrfy(struct processing_module *mod)
 void z_vrfy_scheduler_dp_internal_free(struct task *task)
 {
 	struct scheduler_dp_task_kobj kobj;
+
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
 
 	/*
 	 * Do not read task->priv_data: the kernel objects come from the

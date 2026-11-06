@@ -5,6 +5,7 @@
 #include <sof/lib/vregion.h>
 #include <zephyr/kernel.h>
 #include <zephyr/internal/syscall_handler.h>
+#include <sof/userspace/syscall_caller.h>
 
 /*
  * Every validator pins the vregion with vregion_verify_pin() for the
@@ -17,6 +18,8 @@
 static inline void *z_vrfy_vregion_alloc_align(struct vregion *vr, size_t size, size_t alignment)
 {
 	void *ptr = NULL;
+
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
 
 	if (vregion_verify_pin(vr)) {
 		ptr = z_impl_vregion_alloc_align(vr, size, alignment);
@@ -32,6 +35,8 @@ static inline void *z_vrfy_vregion_alloc_coherent_align(struct vregion *vr,
 {
 	void *ptr = NULL;
 
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	if (vregion_verify_pin(vr)) {
 		ptr = z_impl_vregion_alloc_coherent_align(vr, size, alignment);
 		vregion_unpin(vr);
@@ -43,6 +48,8 @@ static inline void *z_vrfy_vregion_alloc_coherent_align(struct vregion *vr,
 
 static inline void z_vrfy_vregion_free(struct vregion *vr, void *ptr)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	if (vregion_verify_pin(vr)) {
 		z_impl_vregion_free(vr, ptr);
 		vregion_unpin(vr);
@@ -53,6 +60,8 @@ static inline void z_vrfy_vregion_free(struct vregion *vr, void *ptr)
 struct vregion *z_vrfy_vregion_get(struct vregion *vr)
 {
 	bool ok;
+
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
 
 	if (!vregion_verify_pin(vr))
 		return NULL;
@@ -67,6 +76,8 @@ struct vregion *z_vrfy_vregion_get(struct vregion *vr)
 struct vregion *z_vrfy_vregion_put(struct vregion *vr)
 {
 	int ret;
+
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
 
 	if (!vregion_verify_pin(vr))
 		return NULL;
@@ -84,6 +95,8 @@ struct vregion *z_vrfy_vregion_put(struct vregion *vr)
 
 struct vregion *z_vrfy_vregion_create_map(uintptr_t *vreg_start, size_t *vreg_size)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(vreg_start, sizeof(*vreg_start)));
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(vreg_size, sizeof(*vreg_size)));
 	return z_impl_vregion_create_map(vreg_start, vreg_size);
@@ -92,6 +105,8 @@ struct vregion *z_vrfy_vregion_create_map(uintptr_t *vreg_start, size_t *vreg_si
 
 void z_vrfy_vregion_set_interim(struct vregion *vr)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	if (vregion_verify_pin(vr)) {
 		z_impl_vregion_set_interim(vr);
 		vregion_unpin(vr);

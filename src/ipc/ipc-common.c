@@ -47,6 +47,7 @@
 #endif
 
 #include <sof/debug/telemetry/performance_monitor.h>
+#include <sof/userspace/syscall_caller.h>
 
 LOG_MODULE_REGISTER(ipc, CONFIG_SOF_LOG_LEVEL);
 
@@ -330,6 +331,7 @@ EXPORT_SYMBOL(ipc_msg_send);
 #ifdef CONFIG_USERSPACE
 void z_vrfy_ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 {
+	/* No caller check: DP modules send notifications, see mod_ipc_msg_init() */
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(msg, sizeof(*msg)));
 
 	K_OOPS(K_SYSCALL_VERIFY(msg->tx_size <= SOF_IPC_MSG_MAX_SIZE));
@@ -363,6 +365,7 @@ void z_impl_ipc_msg_list_remove(struct ipc_msg *msg)
 #ifdef CONFIG_USERSPACE
 void z_vrfy_ipc_msg_list_remove(struct ipc_msg *msg)
 {
+	/* No caller check: called by mod_ipc_msg_free() in DP module threads */
 	struct ipc *ipc = ipc_get();
 	struct list_item *mlist, *_mlist;
 	bool found = false;
@@ -592,6 +595,7 @@ __cold static int ipc_user_init_thread(struct ipc_user *ipc_user, unsigned int c
 
 	ipc_user_kevent[core] = event;
 	ipc_user_kthread[core] = thread;
+	sof_sysuser_thread_set(SOF_SYSUSER_IPC, core, thread);
 
 	/* for ipc_user_thread_fn() and ipc_thread_user() in user context */
 	ipc_user->event[core] = event;

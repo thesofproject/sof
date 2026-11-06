@@ -5,10 +5,13 @@
 #include <sof/lib/dai.h>
 #include <zephyr/kernel.h>
 #include <zephyr/internal/syscall_handler.h>
+#include <sof/userspace/syscall_caller.h>
 
 static inline const struct device *z_vrfy_dai_get_device(enum sof_ipc_dai_type type,
 							 uint32_t index)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	const struct device *dev = z_impl_dai_get_device(type, index);
 
 	if (dev && !k_object_is_valid(dev, K_OBJ_DRIVER_DAI))

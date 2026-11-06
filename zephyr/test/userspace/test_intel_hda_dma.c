@@ -18,6 +18,7 @@
  */
 
 #include <sof/boot_test.h>
+#include <sof/userspace/syscall_caller.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/ztest.h>
@@ -236,6 +237,11 @@ static void intel_hda_dma_kernel(void)
 
 	hda_ipc_msg(IPCCMD_HDA_CONFIG, TEST_CHANNEL | (DMA_BUF_SIZE << 8), IPC_TIMEOUT);
 
+	/*
+	 * DMA syscalls are restricted to the SOF infrastructure threads. IPC
+	 * is disabled in standalone boot tests, so borrow the IPC role.
+	 */
+	sof_sysuser_thread_set(SOF_SYSUSER_IPC, PLATFORM_PRIMARY_CORE_ID, &user_thread);
 	k_thread_start(&user_thread);
 
 	LOG_INF("user started, waiting for it to be ready");
@@ -266,6 +272,7 @@ static void intel_hda_dma_kernel(void)
 	LOG_INF("test done, terminate user thread");
 
 	k_thread_join(&user_thread, K_FOREVER);
+	sof_sysuser_thread_set(SOF_SYSUSER_IPC, PLATFORM_PRIMARY_CORE_ID, NULL);
 
 	ret = ipc_service_deregister_endpoint(&host_ipc_ept);
 	zassert_equal(ret, 0, "cannot deregister IPC endpoint: %d", ret);

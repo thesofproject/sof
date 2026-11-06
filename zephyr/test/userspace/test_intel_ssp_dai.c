@@ -19,6 +19,7 @@
  */
 
 #include <sof/boot_test.h>
+#include <sof/userspace/syscall_caller.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/ztest.h>
@@ -304,6 +305,11 @@ static void intel_ssp_dai_kernel(void)
 	k_thread_access_grant(&user_thread, dma_in);
 	k_thread_access_grant(&user_thread, dai_dev);
 
+	/*
+	 * DMA syscalls are restricted to the SOF infrastructure threads. IPC
+	 * is disabled in standalone boot tests, so borrow the IPC role.
+	 */
+	sof_sysuser_thread_set(SOF_SYSUSER_IPC, PLATFORM_PRIMARY_CORE_ID, &user_thread);
 	k_thread_start(&user_thread);
 
 	LOG_INF("user started, waiting for it to be ready");
@@ -324,6 +330,7 @@ static void intel_ssp_dai_kernel(void)
 	LOG_INF("test done, terminate user thread");
 
 	k_thread_join(&user_thread, K_FOREVER);
+	sof_sysuser_thread_set(SOF_SYSUSER_IPC, PLATFORM_PRIMARY_CORE_ID, NULL);
 }
 
 ZTEST(userspace_intel_dai_ssp, dai_ssp_loopback_setup)

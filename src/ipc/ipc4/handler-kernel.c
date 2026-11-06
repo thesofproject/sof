@@ -43,6 +43,7 @@
 #ifdef __ZEPHYR__
 #include <zephyr/kernel.h>
 #include <zephyr/internal/syscall_handler.h>
+#include <sof/userspace/syscall_caller.h>
 #endif
 
 #include <errno.h>
@@ -152,6 +153,8 @@ void z_impl_ipc_compound_pre_start(int msg_id)
  */
 void z_vrfy_ipc_compound_pre_start(int msg_id)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_IPC);
+
 	z_impl_ipc_compound_pre_start(msg_id);
 }
 #include <zephyr/syscalls/ipc_compound_pre_start_mrsh.c>
@@ -183,6 +186,8 @@ void z_impl_ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
  */
 void z_vrfy_ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_IPC);
+
 	z_impl_ipc_compound_post_start(msg_id, ret, delayed);
 }
 #include <zephyr/syscalls/ipc_compound_post_start_mrsh.c>
@@ -243,6 +248,8 @@ int z_impl_ipc_wait_for_compound_msg(void)
  */
 int z_vrfy_ipc_wait_for_compound_msg(void)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_IPC);
+
 	return z_impl_ipc_wait_for_compound_msg();
 }
 #include <zephyr/syscalls/ipc_wait_for_compound_msg_mrsh.c>
@@ -588,6 +595,8 @@ void z_impl_ipc_msg_reply(struct sof_ipc_reply *reply)
 #ifdef CONFIG_USERSPACE
 void z_vrfy_ipc_msg_reply(struct sof_ipc_reply *reply)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	K_OOPS(K_SYSCALL_MEMORY_READ(reply, sizeof(*reply)));
 	z_impl_ipc_msg_reply(reply);
 }

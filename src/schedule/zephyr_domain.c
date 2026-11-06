@@ -16,6 +16,7 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
+#include <sof/userspace/syscall_caller.h>
 #include <rtos/task.h>
 #include <ipc/topology.h>
 #include <limits.h>
@@ -337,22 +338,28 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 
 	thread_name[sizeof(thread_name) - 2] = '0' + core;
 
-	/* Allocate thread structure dynamically */
-	dt->ll_thread = k_object_alloc(K_OBJ_THREAD);
-	if (!dt->ll_thread) {
+	/*
+	 * Allocate thread structure dynamically. Keep the handle in a local:
+	 * the domain is user-writable, so dt->ll_thread must not be read back
+	 * for the kernel-only tables below.
+	 */
+	thread = k_object_alloc(K_OBJ_THREAD);
+	if (!thread) {
 		tr_err(&ll_tr, "Failed to allocate thread object for core %d", core);
 		k_object_free(dt->sem);
 		dt->sem = NULL;
 		return -ENOMEM;
 	}
 
-	thread = k_thread_create(dt->ll_thread, ll_sched_stack[core], ZEPHYR_LL_STACK_SIZE,
-				 zephyr_domain_thread_fn, zephyr_domain,
-				 INT_TO_POINTER(core), NULL, CONFIG_LL_THREAD_PRIORITY,
-				 K_USER, K_FOREVER);
+	k_thread_create(thread, ll_sched_stack[core], ZEPHYR_LL_STACK_SIZE,
+			zephyr_domain_thread_fn, zephyr_domain,
+			INT_TO_POINTER(core), NULL, CONFIG_LL_THREAD_PRIORITY,
+			K_USER, K_FOREVER);
 
 	/* record in the kernel-only table for syscall-context lookups */
-	ll_thread_tid[core] = dt->ll_thread;
+	ll_thread_tid[core] = thread;
+	sof_sysuser_thread_set(SOF_SYSUSER_LL, core, thread);
+	dt->ll_thread = thread;
 
 #ifdef CONFIG_SCHED_CPU_MASK
 	k_thread_cpu_pin(thread, core);
@@ -486,10 +493,11 @@ static void zephyr_domain_thread_free(struct ll_schedule_domain *domain,
 	k_mutex_unlock(domain->lock);
 
 	if (dt->ll_thread) {
+		sof_sysuser_thread_set(SOF_SYSUSER_LL, core, NULL);
+		ll_thread_tid[core] = NULL;
 		k_thread_abort(dt->ll_thread);
 		k_object_free(dt->ll_thread);
 		dt->ll_thread = NULL;
-		ll_thread_tid[core] = NULL;
 	}
 
 	if (dt->sem) {

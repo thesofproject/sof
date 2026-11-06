@@ -5,6 +5,7 @@
 #include <sof/lib/dma.h>
 #include <zephyr/kernel.h>
 #include <zephyr/internal/syscall_handler.h>
+#include <sof/userspace/syscall_caller.h>
 #include <zephyr/sys/math_extras.h>
 
 #ifdef CONFIG_SOF_USERSPACE_INTERFACE_DMA
@@ -53,6 +54,8 @@ static const struct device *sof_dma_chan_vrfy(struct sof_dma *dma, uint32_t chan
 static inline struct sof_dma *z_vrfy_sof_dma_get(uint32_t dir, uint32_t cap,
 						 uint32_t dev, uint32_t flags)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	struct sof_dma *dma = z_impl_sof_dma_get(dir, cap, dev, flags);
 
 	/*
@@ -80,6 +83,8 @@ static inline struct sof_dma *z_vrfy_sof_dma_get(uint32_t dir, uint32_t cap,
 
 static inline void z_vrfy_sof_dma_put(struct sof_dma *dma)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	sof_dma_vrfy(dma);
 
 	z_impl_sof_dma_put(dma);
@@ -88,6 +93,8 @@ static inline void z_vrfy_sof_dma_put(struct sof_dma *dma)
 
 static inline int z_vrfy_sof_dma_get_attribute(struct sof_dma *dma, uint32_t type, uint32_t *value)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	const struct device *z_dev = sof_dma_vrfy(dma)->z_dev;
 
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(value, sizeof(*value)));
@@ -98,6 +105,8 @@ static inline int z_vrfy_sof_dma_get_attribute(struct sof_dma *dma, uint32_t typ
 
 static inline int z_vrfy_sof_dma_request_channel(struct sof_dma *dma, uint32_t stream_tag)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	const struct device *z_dev = sof_dma_vrfy(dma)->z_dev;
 
 	return dma_request_channel(z_dev, &stream_tag);
@@ -107,6 +116,8 @@ static inline int z_vrfy_sof_dma_request_channel(struct sof_dma *dma, uint32_t s
 static inline void z_vrfy_sof_dma_release_channel(struct sof_dma *dma,
 				    uint32_t channel)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
 
 	dma_release_channel(z_dev, channel);
@@ -254,6 +265,8 @@ static bool sof_dma_dir_allowed(const struct sof_dma_kinfo *kinfo, uint32_t dir)
 static inline int z_vrfy_sof_dma_config(struct sof_dma *dma, uint32_t channel,
 					struct dma_config *config)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	struct dma_block_config *blk_cfgs;
 	struct dma_config kern_cfg = { 0 };
 	struct dma_config user_cfg;
@@ -296,6 +309,8 @@ static inline int z_vrfy_sof_dma_config(struct sof_dma *dma, uint32_t channel,
 
 static inline int z_vrfy_sof_dma_start(struct sof_dma *dma, uint32_t channel)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
 
 	return dma_start(z_dev, channel);
@@ -304,6 +319,8 @@ static inline int z_vrfy_sof_dma_start(struct sof_dma *dma, uint32_t channel)
 
 static inline int z_vrfy_sof_dma_stop(struct sof_dma *dma, uint32_t channel)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
 
 	return dma_stop(z_dev, channel);
@@ -313,6 +330,8 @@ static inline int z_vrfy_sof_dma_stop(struct sof_dma *dma, uint32_t channel)
 static inline int z_vrfy_sof_dma_get_status(struct sof_dma *dma, uint32_t channel,
 					     struct dma_status *stat)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
 
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(stat, sizeof(*stat)));
@@ -323,6 +342,8 @@ static inline int z_vrfy_sof_dma_get_status(struct sof_dma *dma, uint32_t channe
 
 static inline int z_vrfy_sof_dma_reload(struct sof_dma *dma, uint32_t channel, size_t size)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
 
 	return dma_reload(z_dev, channel, 0, 0, size);
@@ -331,6 +352,8 @@ static inline int z_vrfy_sof_dma_reload(struct sof_dma *dma, uint32_t channel, s
 
 static inline int z_vrfy_sof_dma_suspend(struct sof_dma *dma, uint32_t channel)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
 
 	return dma_suspend(z_dev, channel);
@@ -339,6 +362,8 @@ static inline int z_vrfy_sof_dma_suspend(struct sof_dma *dma, uint32_t channel)
 
 static inline int z_vrfy_sof_dma_resume(struct sof_dma *dma, uint32_t channel)
 {
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
 	const struct device *z_dev = sof_dma_chan_vrfy(dma, channel);
 
 	return dma_resume(z_dev, channel);
