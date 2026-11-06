@@ -31,7 +31,6 @@ src/lib/objpool.c
 src/audio/dai-legacy.c
 src/audio/host-legacy.c
 src/audio/intel_uaol.c
-src/audio/mic_privacy_manager/*
 src/audio/module_adapter/library/userspace_proxy.c
 
 # SOF headers that only kernel code may include.
