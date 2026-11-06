@@ -28,8 +28,6 @@ src/lib/objpool.c
 
 # Kernel sources inside the directories above.
 [not-user-sources]
-src/audio/base_fw.c
-src/audio/base_fw_intel.c
 src/audio/dai-legacy.c
 src/audio/host-legacy.c
 src/audio/intel_uaol.c

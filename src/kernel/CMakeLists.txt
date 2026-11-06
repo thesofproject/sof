@@ -10,6 +10,7 @@ if(zephyr)
 	set(ZEPHYR_CURRENT_LIBRARY sof_kernel)
 endif()
 
+add_subdirectory(audio)
 add_subdirectory(idc)
 add_subdirectory(init)
 add_subdirectory(library_manager)

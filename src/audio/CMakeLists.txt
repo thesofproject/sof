@@ -16,11 +16,6 @@ add_subdirectory(buffers)
 add_subdirectory(pcm_converter)
 add_subdirectory(pipeline)
 
-if(CONFIG_COMP_BASEFW_IPC4 AND NOT CONFIG_LIBRARY)
-	add_local_sources(sof base_fw.c)
-endif()
-add_local_sources_ifdef(CONFIG_IPC4_BASE_FW_INTEL sof base_fw_intel.c)
-
 # directories and files included conditionally (alphabetical order)
 if(CONFIG_COMP_ARIA)
 	add_subdirectory(aria)
