@@ -21,8 +21,6 @@ rsource "ipc/Kconfig"
 
 rsource "math/Kconfig"
 
-rsource "debug/telemetry/Kconfig"
-
 rsource "debug/debug_stream/Kconfig"
 
 rsource "debug/tester/Kconfig"

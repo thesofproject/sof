@@ -6,7 +6,6 @@ is_zephyr(zephyr)
 if(zephyr) ###  Zephyr ###
 
 add_subdirectory(debug_stream)
-add_subdirectory(telemetry)
 
 zephyr_library_sources_ifdef(CONFIG_COLD_STORE_EXECUTE_DEBUG dram.c)
 

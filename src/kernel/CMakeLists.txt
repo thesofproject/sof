@@ -11,6 +11,7 @@ if(zephyr)
 endif()
 
 add_subdirectory(audio)
+add_subdirectory(debug)
 add_subdirectory(idc)
 add_subdirectory(init)
 add_subdirectory(ipc)
