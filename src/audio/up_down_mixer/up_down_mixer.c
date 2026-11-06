@@ -262,6 +262,72 @@ __cold static up_down_mixer_routine select_mix_out_5_1(struct comp_dev *dev,
 	}
 }
 
+/**
+ * \brief Resolve the output slots of the 5.1 surround pair.
+ * \param[in,out] cd Component private data with out_channel_map already set.
+ *
+ * A 5.1 Surround map names the side pair instead of the surround pair, so when
+ * both surround channels are absent the side pair takes their place. The slots
+ * are stored once here so the mix routines do not repeat the lookup.
+ */
+__cold static void set_out_surround_slots(struct up_down_mixer_data *cd)
+{
+	cd->out_left_surround_slot = get_channel_location(cd->out_channel_map,
+							  CHANNEL_LEFT_SURROUND);
+	cd->out_right_surround_slot = get_channel_location(cd->out_channel_map,
+							   CHANNEL_RIGHT_SURROUND);
+
+	/* Must support also 5.1 Surround */
+	if (cd->out_left_surround_slot == CHANNEL_INVALID &&
+	    cd->out_right_surround_slot == CHANNEL_INVALID) {
+		cd->out_left_surround_slot = get_channel_location(cd->out_channel_map,
+								  CHANNEL_LEFT_SIDE);
+		cd->out_right_surround_slot = get_channel_location(cd->out_channel_map,
+								   CHANNEL_RIGHT_SIDE);
+	}
+}
+
+/**
+ * \brief Check that every channel the mix routines write lies inside the output frame.
+ * \param[in] cd Component private data with out_channel_map and the surround slots set.
+ * \param[in] out_channel_config Output channel configuration.
+ * \return true if each produced channel maps to a slot below the output channel count.
+ *
+ * The 5.1 and 7.1 output routines place each channel at the slot returned by
+ * get_channel_location() without any further check, so a channel missing from
+ * the map (CHANNEL_INVALID) or mapped at or above the channel count is written
+ * past the output frame. The map is host supplied when coefficients_select is
+ * DEFAULT_COEFFICIENTS_WITH_CHANNEL_MAP or CUSTOM_COEFFICIENTS_WITH_CHANNEL_MAP.
+ */
+__cold static bool out_channel_map_valid(const struct up_down_mixer_data *cd,
+					 enum ipc4_channel_config out_channel_config)
+{
+	const channel_map map = cd->out_channel_map;
+
+	switch (out_channel_config) {
+	case IPC4_CHANNEL_CONFIG_5_POINT_1:
+		return get_channel_location(map, CHANNEL_LEFT) < 6 &&
+		       get_channel_location(map, CHANNEL_CENTER) < 6 &&
+		       get_channel_location(map, CHANNEL_RIGHT) < 6 &&
+		       cd->out_left_surround_slot < 6 &&
+		       cd->out_right_surround_slot < 6 &&
+		       get_channel_location(map, CHANNEL_LFE) < 6;
+	case IPC4_CHANNEL_CONFIG_7_POINT_1:
+		/* All eight channels present means every slot is below 8 */
+		return get_channel_location(map, CHANNEL_LEFT) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_CENTER) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_RIGHT) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_LEFT_SURROUND) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_RIGHT_SURROUND) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_LFE) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_LEFT_SIDE) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_RIGHT_SIDE) != CHANNEL_INVALID;
+	default:
+		/* The mono and stereo output routines do not use the output map */
+		return true;
+	}
+}
+
 __cold static int init_mix(struct processing_module *mod,
 			   const struct ipc4_audio_format *format,
 			   enum ipc4_channel_config out_channel_config,
@@ -322,6 +388,13 @@ __cold static int init_mix(struct processing_module *mod,
 	if (!cd->mix_routine) {
 		comp_err(dev, "unsupported channel configuration (in=%d out=%d)",
 			 format->ch_cfg, out_channel_config);
+		return -EINVAL;
+	}
+
+	set_out_surround_slots(cd);
+	if (!out_channel_map_valid(cd, out_channel_config)) {
+		comp_err(dev, "invalid output channel map 0x%08x for out=%d",
+			 cd->out_channel_map, out_channel_config);
 		return -EINVAL;
 	}
 
