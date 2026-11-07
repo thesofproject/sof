@@ -138,16 +138,4 @@ void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
 void ipc_build_comp_event(struct sof_ipc_comp_event *event, uint32_t type,
 			  uint32_t id);
 
-/**
- * \brief Check if trace buffer is ready for transmission.
- * @param[in,out] avail Data available in trace buffer
- */
-bool ipc_trigger_trace_xfer(uint32_t avail);
-
-/**
- * \brief Build trace position IPC message.
- * @param[in,out] posn Trace position message
- */
-void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn);
-
 #endif

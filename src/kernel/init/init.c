@@ -221,11 +221,6 @@ __cold static int primary_core_init(int argc, char *argv[], struct sof *sof)
 			       sys_clock_hw_cycles_per_sec());
 #endif
 
-#if CONFIG_TRACE
-	trace_point(TRACE_BOOT_SYS_TRACES);
-	trace_init(sof);
-#endif
-
 	print_version_banner();
 
 	trace_point(TRACE_BOOT_SYS_NOTIFIER);

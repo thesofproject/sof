@@ -25,9 +25,6 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/sof.h>
-#if CONFIG_TRACE
-#include <sof/trace/dma-trace.h>
-#endif
 #include <ipc/dai.h>
 #include <ipc/header.h>
 #include <ipc/info.h>
@@ -170,12 +167,6 @@ int platform_init(struct sof *sof)
 	ret = dai_init(sof);
 	if (ret < 0)
 		return -ENODEV;
-
-#if CONFIG_TRACE
-	/* Initialize DMA for Trace*/
-	trace_point(TRACE_BOOT_PLATFORM_DMA_TRACE);
-	dma_trace_init_complete(sof->dmat);
-#endif
 
 	/* show heap status */
 	heap_trace_all(1);

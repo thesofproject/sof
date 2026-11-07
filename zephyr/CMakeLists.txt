@@ -158,7 +158,6 @@ set(SOF_SRC_PATH "${sof_top_dir}/src")
 
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/kernel/platform")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/kernel/drivers")
-set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
 
 set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
 
@@ -242,7 +241,6 @@ add_subdirectory(../src/kernel/ kernel_unused_install/)
 add_subdirectory(../src/lib/ lib_unused_install/)
 add_subdirectory(../src/samples/ samples_unused_install/)
 add_subdirectory(../src/schedule/  schedule_unused_install/)
-add_subdirectory(../src/trace/ trace_unused_install/)
 add_subdirectory(test/)
 
 # Old way below: all .c files added by this giant CMake file.

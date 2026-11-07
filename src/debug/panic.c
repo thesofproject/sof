@@ -87,10 +87,6 @@ void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
 	dump_panicinfo(ext_offset, panic_info);
 	ext_offset += sizeof(struct sof_ipc_panic_info);
 
-#if CONFIG_TRACE
-	trace_flush_dma_to_mbox();
-#endif
-
 	/* Dump stack frames and override panic code 'p' if ext_offset is
 	 * off stack_limit. Find stack_ptr.
 	 */

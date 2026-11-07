@@ -6,8 +6,6 @@ rsource "kernel/platform/Kconfig"
 
 rsource "audio/Kconfig"
 
-rsource "trace/Kconfig"
-
 rsource "samples/Kconfig"
 
 rsource "schedule/Kconfig"

@@ -6,11 +6,6 @@
 #ifndef __SOF_TRACE_PREPROC_H__
 #define __SOF_TRACE_PREPROC_H__
 
-#ifdef CONFIG_TRACE
-#error "SOF dma-trace (CONFIG_TRACE) not supported in Zephyr builds. \
-	Please use CONFIG_ZEPHYR_LOG instead."
-#endif
-
 #ifndef CONFIG_ZEPHYR_LOG
 
 /*

@@ -12,6 +12,3 @@ endif()
 
 add_subdirectory(kernel)
 
-if (CONFIG_TRACE)
-	add_subdirectory(trace)
-endif()

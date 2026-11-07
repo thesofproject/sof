@@ -25,7 +25,6 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/sof.h>
-#include <sof/trace/dma-trace.h>
 #include <ipc/dai.h>
 #include <ipc/header.h>
 #include <ipc/info.h>
@@ -158,17 +157,6 @@ int platform_init(struct sof *sof)
 	ret = dai_init(sof);
 	if (ret < 0)
 		return -ENODEV;
-#if CONFIG_TRACE
-	/* Initialize DMA for Trace*/
-	trace_point(TRACE_BOOT_PLATFORM_DMA_TRACE);
-	sof->dmat->config.elem_array.elems = rzalloc(SOF_MEM_FLAG_KERNEL,
-							sizeof(struct dma_sg_elem) * 1);
-	sof->dmat->config.elem_array.count = 1;
-	sof->dmat->config.elem_array.elems->dest = 0x03800000;
-	sof->dmat->config.elem_array.elems->size = 65536;
-	sof->dmat->config.scatter = 0;
-	dma_trace_init_complete(sof->dmat);
-#endif
 	/* show heap status */
 	heap_trace_all(1);
 	return 0;

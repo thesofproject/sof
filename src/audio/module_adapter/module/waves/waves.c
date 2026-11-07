@@ -432,31 +432,6 @@ static int waves_effect_revision(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-#if CONFIG_TRACEV
-	if (revision_len) {
-		const uint32_t *ptr = (uint32_t *)revision;
-		uint32_t len = revision_len / sizeof(uint32_t);
-		uint32_t idx = 0;
-
-		/* get requests from codec_adapter are not supported
-		 * printing strings is not supported
-		 * so dumping revision string to trace log as ascii values
-		 * if simply write a for loop here then depending on trace filtering settings
-		 * some parts of revision might not be printed - this is highly unwanted
-		 */
-		dump_hex(ptr, idx, len);
-		dump_hex(ptr, idx, len);
-		dump_hex(ptr, idx, len);
-		dump_hex(ptr, idx, len);
-		dump_hex(ptr, idx, len);
-		dump_hex(ptr, idx, len);
-		dump_hex(ptr, idx, len);
-		dump_hex(ptr, idx, len);
-		dump_hex(ptr, idx, len);
-		dump_hex(ptr, idx, len);
-	}
-#endif
-
 	comp_info(dev, "done");
 	return 0;
 }
@@ -527,20 +502,6 @@ static int waves_effect_message(struct processing_module *mod, void *data, uint3
 			return -EINVAL;
 		}
 	}
-
-#if CONFIG_TRACEV
-	/* at time of writing codec adapter does not support getting something from codec
-	 * so response is stored to internal structure and dumped into trace messages
-	 */
-	if (response_size) {
-		uint32_t idx;
-		uint32_t len = response_size / sizeof(uint32_t);
-		const uint32_t *ptr = (uint32_t *)waves_codec->response;
-
-		for (idx = 0; idx < len; )
-			dump_hex(ptr, idx, len);
-	}
-#endif
 
 	return 0;
 }

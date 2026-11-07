@@ -422,14 +422,6 @@ config PCM_REMAPPING_CONVERTERS
 	  Enable conversion functions that perform both format conversion
 	  and channel remapping simultaneously.
 
-config TRACE_CHANNEL
-	int "TRACE DMA Channel configuration"
-	default 0
-	help
-	  This option is used for custom configuration of trace dma channel other
-	  than zero dma channel.Define macro DMA_TRACE_CHANNEL in platform to
-	  configure the required channel number.
-
 config WRAP_ACTUAL_POSITION
 	bool "Buffer wrapping"
 	help
