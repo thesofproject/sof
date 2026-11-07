@@ -42,9 +42,9 @@ else()
 endif()
 
 if(CONFIG_CAVS)
-	target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/intel/cavs/include)
+	target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/kernel/platform/intel/cavs/include)
 elseif(CONFIG_ACE)
-	target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/intel/ace/include)
+	target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/kernel/platform/intel/ace/include)
 endif()
 
 # linker script, just for log entries

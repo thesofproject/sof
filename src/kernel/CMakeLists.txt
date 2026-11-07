@@ -24,6 +24,7 @@ if(zephyr)
 else()
 	# Only built for the host
 	add_subdirectory(arch)
+	add_subdirectory(platform)
 endif()
 
 # Built for Zephyr and for the host

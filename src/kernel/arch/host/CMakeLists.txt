@@ -2,7 +2,7 @@
 
 # includes
 target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/src/kernel/arch/host/include)
-target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/library/include)
+target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/src/kernel/platform/library/include)
 include(CheckCCompilerFlag)
 
 if (NOT CONFIG_SOF_ZEPHYR_STRICT_HEADERS)

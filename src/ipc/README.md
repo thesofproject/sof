@@ -45,7 +45,7 @@ graph TD
 
 ## Processing Flow
 
-When the host writes a command to the IPC mailbox and triggers an interrupt, the hardware-specific driver (`src/platform/...`) catches the IRQ and eventually calls down into the IPC framework.
+When the host writes a command to the IPC mailbox and triggers an interrupt, the hardware-specific driver (`src/kernel/platform/...`) catches the IRQ and eventually calls down into the IPC framework.
 
 Different RTOS environments (Zephyr vs. bare metal SOF native) handle the thread handoff differently. In Zephyr, this leverages the `k_work` queues heavily for `ipc_work_handler`.
 
