@@ -12,6 +12,15 @@ config SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	  Enable multi-channel DMA scheduler
 
+config ZEPHYR_LL_STACK_SIZE
+	int "Low-latency scheduler thread stack size"
+	default 16384 if WEBRTC_AEC_BACKEND_AEC3
+	default 8192
+	help
+	  Stack size in bytes for each per-core Zephyr low-latency (LL)
+	  scheduler thread. The default is 8192 bytes; modules with deep
+	  call stacks such as WebRTC AEC3 require 16384 bytes.
+
 config SCHEDULE_LL_STATS_LOG
 	bool "Log low-latency scheduler statistics"
 	default y
