@@ -47,7 +47,7 @@ sequenceDiagram
 ```
 
 1. **Context Initialization**: Sets up the global `struct sof` context.
-2. **Logging and Tracing**: Initializes Zephyr's logging timestamps and SOF's DMA trace infrastructure (`trace_init()`), printing the firmware version and ABI banner.
+2. **Logging**: Initializes Zephyr's logging timestamps and prints the firmware version and ABI banner.
 3. **System Subsystems**:
    - Initializes the system notifier (`init_system_notify()`) for inter-component messaging.
    - Sets up runtime power management (`pm_runtime_init()`).

@@ -74,7 +74,7 @@ its subdirectories span all tiers.
 
 | Tier | Meaning | Directories |
 |------|---------|-------------|
-| **Kernel-only** | OS integration, HAL, boot, inter-core. Never executes in a user thread. Must not be reached directly from user code — only via a syscall. | `kernel/` (see [its README](../../../kernel/README.md)), `trace/` * |
+| **Kernel-only** | OS integration, HAL, boot, inter-core. Never executes in a user thread. Must not be reached directly from user code — only via a syscall. | `kernel/` (see [its README](../../../kernel/README.md)) |
 | **Boundary / bridge** | Owns the syscalls and the thread / memory-domain setup. Split internally: some translation units run kernel-side, some user-side (e.g. `handler-kernel.c` vs `handler-user.c`). | `schedule/`, `ipc/`, `debug/debug_stream/` *, and (in the Zephyr integration tree) `zephyr/syscall/` |
 | **Application** | Audio pipeline / component logic that runs in user threads under userspace configs. | `audio/` |
 | **Shared library** | Context-agnostic code linked into whichever context calls it. Must stay "user-safe": no privileged operations (no direct MMIO, no spinlocks held across syscalls, no raw kernel object access) so it is safe when pulled into a user build. | `math/`, `module/` |
@@ -82,9 +82,9 @@ its subdirectories span all tiers.
 
 Directories marked * do not yet have a "Runs in:" README banner.
 
-Kernel-only code is being moved under `src/kernel/`, which Zephyr builds into a library of its
-own, `sof_kernel`, instead of `modules_sof`. The other kernel-only directories in the table
-follow one at a time.
+Kernel-only code lives under `src/kernel/`, which Zephyr builds into a library of its own,
+`sof_kernel`, instead of `modules_sof`. Source files that mix kernel and user code are split,
+and their kernel halves moved there, separately.
 
 Classification is grep-verifiable — see [Verifying the taxonomy](#verifying-the-taxonomy).
 
