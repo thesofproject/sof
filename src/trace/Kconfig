@@ -6,7 +6,7 @@ menu "Trace"
 
 config TRACE
 	bool "Trace"
-	default n if ZEPHYR_SOF_MODULE
+	default n if ZEPHYR_SOF_MODULE || LIBRARY
 	default y
 	help
 	  Enable SOF DMA based traces compatible with the sof-logger tool.

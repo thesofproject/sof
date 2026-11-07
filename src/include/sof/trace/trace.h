@@ -45,6 +45,10 @@
 #define tr_info(ctx, fmt, ...) LOG_INF(fmt, ##__VA_ARGS__)
 #define tr_dbg(ctx, fmt, ...) LOG_DBG(fmt, ##__VA_ARGS__)
 
+#elif CONFIG_LIBRARY && !defined(__ZEPHYR__)
+
+#include "trace-host.h"
+
 #elif CONFIG_TRACE
 
 #include "trace-soflogger.h"
@@ -94,6 +98,7 @@ static inline int trace_filter_update(const struct trace_filter *filter)
 #define trace_error_atomic_with_ids(class, ctx, id_1, id_2, format, ...) \
 	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
 
+#if !CONFIG_LIBRARY || defined(__ZEPHYR__)
 #define trace_dev_err(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
 	trace_event_with_ids(_TRACE_INV_CLASS, get_ctx_m(dev),		\
 			     get_id_m(dev), get_subid_m(dev),		\
@@ -110,6 +115,7 @@ static inline int trace_filter_update(const struct trace_filter *filter)
 	trace_event_with_ids(_TRACE_INV_CLASS, get_ctx_m(dev),		\
 			     get_id_m(dev), get_subid_m(dev),		\
 			     fmt, ##__VA_ARGS__)
+#endif /* !CONFIG_LIBRARY || __ZEPHYR__ */
 
 static inline void mtrace_printf(int log_level, const char *format_str, ...)
 {
