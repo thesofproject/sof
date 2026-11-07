@@ -43,7 +43,7 @@ target_include_directories(sof_tplg_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/i
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/audio)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/kernel/arch/host/include)
-target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/platform/library/include)
+target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/kernel/platform/library/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/posix/include)
 
 # Configuration time, make copy

@@ -16,7 +16,7 @@ include(${SOF_ROOT}/scripts/cmake/uuid-registry.cmake)
 target_include_directories(app PRIVATE
 	${SOF_ROOT}/zephyr/include
 	${SOF_ROOT}/src/include
-	${SOF_ROOT}/src/platform/posix/include
+	${SOF_ROOT}/src/kernel/platform/posix/include
 	${SOF_ROOT}/src/audio
 	${SOF_ROOT}/test/ztest/unit/common
 	${SOF_ROOT}/test/cmocka/include

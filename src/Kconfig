@@ -2,7 +2,7 @@
 
 rsource "kernel/arch/Kconfig"
 
-rsource "platform/Kconfig"
+rsource "kernel/platform/Kconfig"
 
 rsource "audio/Kconfig"
 

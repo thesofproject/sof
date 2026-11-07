@@ -11,7 +11,7 @@ include(${SOF_ROOT}/scripts/cmake/misc.cmake)
 target_include_directories(app PRIVATE
 	${SOF_ROOT}/zephyr/include
 	${SOF_ROOT}/src/include
-	${SOF_ROOT}/src/platform/posix/include
+	${SOF_ROOT}/src/kernel/platform/posix/include
 )
 
 # Define SOF-specific configurations for unit testing
