@@ -327,6 +327,19 @@ void ipc_complete_cmd(struct ipc *ipc);
 extern bool ipc_enter_gdb;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
+/* Events that wake the user-space IPC thread */
+#define IPC_USER_EVENT_CMD      BIT(0)
+#define IPC_USER_EVENT_STOP     BIT(1)
+
+/**
+ * @brief User-space IPC thread entry point.
+ *
+ * @param p1 struct ipc_user shared with the kernel
+ * @param p2 Core ID
+ * @param p3 Unused
+ */
+void ipc_user_thread_fn(void *p1, void *p2, void *p3);
+
 /**
  * @brief Forward an IPC command to the user-space thread and wait for it.
  *
