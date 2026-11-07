@@ -10,4 +10,6 @@ rsource "idc/Kconfig"
 
 rsource "library_manager/Kconfig"
 
+rsource "logging/Kconfig"
+
 rsource "probe/Kconfig"
