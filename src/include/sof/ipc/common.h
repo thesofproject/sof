@@ -243,12 +243,6 @@ int ipc_process_host_buffer(struct ipc *ipc,
 			    uint32_t *ring_size);
 
 /**
- * \brief Send DMA trace host buffer position to host.
- * @return 0 on success.
- */
-int ipc_dma_trace_send_position(void);
-
-/**
  * \brief send a IPC buffer status notify message
  */
 void ipc_send_buffer_status_notify(void);

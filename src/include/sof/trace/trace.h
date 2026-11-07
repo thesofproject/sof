@@ -49,10 +49,6 @@
 
 #include "trace-host.h"
 
-#elif CONFIG_TRACE
-
-#include "trace-soflogger.h"
-
 #else
 
 #define tr_err(ctx, fmt, ...) \
@@ -64,64 +60,23 @@
 #define tr_dbg(ctx, fmt, ...) \
 	trace_unused(_TRACE_INV_CLASS, ctx, _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
 
+#define trace_dev_err(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
+	trace_unused(_TRACE_INV_CLASS, get_ctx_m(dev), get_id_m(dev),	\
+		     get_subid_m(dev), fmt, ##__VA_ARGS__)
+#define trace_dev_warn(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
+	trace_unused(_TRACE_INV_CLASS, get_ctx_m(dev), get_id_m(dev),	\
+		     get_subid_m(dev), fmt, ##__VA_ARGS__)
+#define trace_dev_info(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
+	trace_unused(_TRACE_INV_CLASS, get_ctx_m(dev), get_id_m(dev),	\
+		     get_subid_m(dev), fmt, ##__VA_ARGS__)
+#define trace_dev_dbg(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
+	trace_unused(_TRACE_INV_CLASS, get_ctx_m(dev), get_id_m(dev),	\
+		     get_subid_m(dev), fmt, ##__VA_ARGS__)
+
 #endif
 
-#ifndef CONFIG_TRACE
-
-struct trace_filter;
-struct sof;
-
-#define trace_event_with_ids(class, ctx, id_1, id_2, format, ...)	\
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-#define trace_event_atomic_with_ids(class, ctx, id_1, id_2, format, ...) \
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-
-#define trace_warn_with_ids(class, ctx, id_1, id_2, format, ...)	\
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-#define trace_warn_atomic_with_ids(class, ctx, id_1, id_2, format, ...)	\
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-
-#define tracev_event_with_ids(class, ctx, id_1, id_2, format, ...)	\
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-
+/* Boot progress markers; no longer reported anywhere */
 #define trace_point(x)  do {} while (0)
-
-static inline void trace_flush_dma_to_mbox(void) { }
-static inline void trace_on(void) { }
-static inline void trace_off(void) { }
-static inline void trace_init(struct sof *sof) { }
-static inline int trace_filter_update(const struct trace_filter *filter)
-	{ return 0; }
-
-#define trace_error_with_ids(class, ctx, id_1, id_2, format, ...)      \
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-#define trace_error_atomic_with_ids(class, ctx, id_1, id_2, format, ...) \
-	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-
-#if !CONFIG_LIBRARY || defined(__ZEPHYR__)
-#define trace_dev_err(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
-	trace_event_with_ids(_TRACE_INV_CLASS, get_ctx_m(dev),		\
-			     get_id_m(dev), get_subid_m(dev),		\
-			     fmt, ##__VA_ARGS__)
-#define trace_dev_warn(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
-	trace_event_with_ids(_TRACE_INV_CLASS, get_ctx_m(dev),		\
-			     get_id_m(dev), get_subid_m(dev),		\
-			     fmt, ##__VA_ARGS__)
-#define trace_dev_info(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
-	trace_event_with_ids(_TRACE_INV_CLASS, get_ctx_m(dev),		\
-			     get_id_m(dev), get_subid_m(dev),		\
-			     fmt, ##__VA_ARGS__)
-#define trace_dev_dbg(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
-	trace_event_with_ids(_TRACE_INV_CLASS, get_ctx_m(dev),		\
-			     get_id_m(dev), get_subid_m(dev),		\
-			     fmt, ##__VA_ARGS__)
-#endif /* !CONFIG_LIBRARY || __ZEPHYR__ */
-
-static inline void mtrace_printf(int log_level, const char *format_str, ...)
-{
-};
-
-#endif /* !CONFIG_TRACE */
 
 /** Default value when there is no specific pipeline, dev, dai, etc. */
 #define _TRACE_INV_ID		-1
@@ -140,12 +95,6 @@ struct tr_ctx {
 	uint32_t level;				/**< Default log level */
 };
 
-#if defined(UNIT_TEST) || !defined(CONFIG_TRACE)
-#define TRACE_CONTEXT_SECTION
-#else
-#define TRACE_CONTEXT_SECTION __section(".trace_ctx")
-#endif
-
 /**
  * Declares trace context.
  * @param ctx_name (Symbol) name.
@@ -153,7 +102,7 @@ struct tr_ctx {
  * @param default_log_level Default log level.
  */
 #define DECLARE_TR_CTX(ctx_name, uuid, default_log_level)	\
-	struct tr_ctx ctx_name TRACE_CONTEXT_SECTION = {	\
+	struct tr_ctx ctx_name = {			\
 		.uuid_p = uuid,					\
 		.level = default_log_level,			\
 	}

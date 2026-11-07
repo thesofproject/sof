@@ -17,7 +17,6 @@ struct clock_info;
 struct comp_driver_list;
 struct dai_info;
 struct dma_info;
-struct dma_trace_data;
 struct ipc;
 struct ll_schedule_domain;
 struct mm;
@@ -27,7 +26,6 @@ struct notify_data;
 struct pm_runtime_data;
 struct sa;
 struct timer;
-struct trace;
 struct pipeline_posn;
 struct probe_pdata;
 
@@ -49,11 +47,7 @@ struct sof {
 	/* system agent */
 	struct sa *sa;
 
-	/* DMA for Trace*/
-	struct dma_trace_data *dmat;
 
-	/* generic trace structure */
-	struct trace *trace;
 
 	/* platform clock information */
 	struct clock_info *clocks;

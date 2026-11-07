@@ -181,31 +181,6 @@ void WEAK __panic(uint32_t p, const char *filename, uint32_t linenum)
 	exit(EXIT_FAILURE);
 }
 
-#if CONFIG_TRACE && !CONFIG_LIBRARY
-void WEAK trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			     uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count,
-			     va_list args)
-{
-	(void) send_atomic;
-	(void) log_entry;
-	(void) ctx;
-	(void) lvl;
-	(void) id_1;
-	(void) id_2;
-	(void) arg_count;
-	(void) args;
-}
-
-void WEAK _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
-		       const struct tr_ctx *ctx, const uint32_t lvl,
-		       uint32_t id_1, uint32_t id_2, int arg_count, ...)
-{
-}
-
-void WEAK trace_flush_dma_to_mbox(void)
-{
-}
-#endif
 
 #if CONFIG_LIBRARY
 volatile void *task_context_get(void);
@@ -425,18 +400,6 @@ int WEAK arch_cpu_is_core_enabled(int id)
 int WEAK test_bench_trace = 1;
 int WEAK debug;
 
-/* ... but not always in unit tests */
-#if CONFIG_TRACE
-/* look up subsystem class name from table */
-char * WEAK get_trace_class(uint32_t trace_class)
-{
-	(void)trace_class;
-	/* todo: trace class is deprecated,
-	 * uuid should be used only
-	 */
-	return "unknown";
-}
-#endif
 
 uint8_t * WEAK get_library_mailbox(void)
 {
