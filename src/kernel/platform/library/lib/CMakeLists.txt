@@ -6,8 +6,5 @@ add_local_sources(sof
 	dai.c
 	pm_runtime.c
 	memory.c
+	trace.c
 )
-
-if (CONFIG_TRACE)
-	add_local_sources(sof trace.c)
-endif()

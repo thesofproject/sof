@@ -9,7 +9,6 @@
 
 #include <stdint.h>
 #include <sof/trace/trace.h>
-#include <sof/trace/dma-trace.h>
 
 /* enable trace by default in testbench */
 int host_trace_level = LOG_LEVEL_ERROR;
