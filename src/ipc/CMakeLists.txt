@@ -13,14 +13,6 @@ add_local_sources(sof
 is_zephyr(zephyr)
 if(zephyr) ###  Zephyr ###
 
-# dma-copy only used for dma-trace
-zephyr_library_sources_ifdef(CONFIG_TRACE dma-copy.c)
 
-else() ###  Not Zephyr ###
-
-if (CONFIG_TRACE)
-	add_local_sources(sof
-		dma-copy.c)
-endif()
 
 endif() # Zephyr
