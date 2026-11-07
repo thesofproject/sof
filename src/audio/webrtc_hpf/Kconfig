@@ -11,7 +11,7 @@ if COMP_WEBRTC_HPF
 
 config COMP_WEBRTC_HPF_STUB
 	bool "Build with pass-through stub backend"
-	default n
+	default y if COMP_STUBS
 	help
 	  Select to build with the pass-through stub backend instead of the real filter.
 
