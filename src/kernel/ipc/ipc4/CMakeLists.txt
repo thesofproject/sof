@@ -3,6 +3,7 @@
 # Files common to Zephyr and the host library
 add_local_sources(sof
 	handler-kernel.c
+	handler-user-kernel.c
 	logging.c
 	notification.c
 )
