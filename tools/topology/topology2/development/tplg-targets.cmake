@@ -325,17 +325,23 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-crossover.bin,EFX_CROSSOVE
 "development/cavs-nocodec-rtcaec\;sof-tgl-nocodec-rtcaec\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-rtcaec.bin"
 
-# WebRTC noise suppressor (webrtc_ns + webrtc_vad) on TGL nocodec SSP
+# WebRTC voice pre-processing (webrtc_hpf + webrtc_vad + webrtc_ns + webrtc_agc) on TGL/PTL nocodec SSP
 "development/cavs-nocodec-webrtc-ns\;sof-tgl-nocodec-webrtc-ns\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-ns.bin"
+"development/cavs-nocodec-webrtc-ns\;sof-ptl-nocodec-webrtc-ns\;PLATFORM=ptl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec-webrtc-ns.bin"
 
-# WebRTC AECm echo canceller (dual SSP: mic + ref) on TGL nocodec
+# WebRTC AEC echo canceller (dual SSP: mic + ref) on TGL/PTL nocodec
 "development/cavs-nocodec-webrtc-aec\;sof-tgl-nocodec-webrtc-aec\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-aec.bin"
+"development/cavs-nocodec-webrtc-aec\;sof-ptl-nocodec-webrtc-aec\;PLATFORM=ptl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec-webrtc-aec.bin"
 
-# WebRTC NS2/RNNoise (48 kHz float) on TGL nocodec SSP
+# WebRTC NS2/RNNoise (48 kHz float) on TGL/PTL nocodec SSP
 "development/cavs-nocodec-webrtc-ns2\;sof-tgl-nocodec-webrtc-ns2\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-ns2.bin"
+"development/cavs-nocodec-webrtc-ns2\;sof-ptl-nocodec-webrtc-ns2\;PLATFORM=ptl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec-webrtc-ns2.bin"
 
 # WebRTC AEC capture on HDA generic
 "sof-hda-generic\;sof-hda-generic-webrtc-aec\;HDA_CONFIG=mix,AEC_PROCESSING=true"
