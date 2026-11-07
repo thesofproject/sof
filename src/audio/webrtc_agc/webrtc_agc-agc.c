@@ -18,7 +18,8 @@ static int webrtc_agc_real_prepare(struct processing_module *mod)
 	struct webrtc_agc_comp_data *cd = module_get_private_data(mod);
 	int c;
 
-	if (cd->rate != 8000 && cd->rate != 16000)
+	if (cd->rate != 8000 && cd->rate != 16000 &&
+	    cd->rate != 32000 && cd->rate != 48000)
 		return -EINVAL;
 
 	cd->frame_samples = (cd->rate * 10) / 1000;
@@ -83,18 +84,91 @@ static int webrtc_agc_real_process(struct processing_module *mod,
 	while (cd->in_fifo_count >= cd->frame_samples &&
 	       cd->out_fifo_count + cd->frame_samples <= WEBRTC_AGC_FIFO_FRAMES) {
 		int16_t proc_out[WEBRTC_AGC_FRAME_SAMPLES_MAX];
+		size_t num_bands = (cd->rate <= 16000) ? 1 : (size_t)(cd->rate / 16000);
 
 		for (c = 0; c < ch_count; c++) {
 			struct webrtc_agc_channel *ch = &cd->ch_data[c];
-			const int16_t *in_ptr = ch->in_fifo;
-			int16_t *out_ptr = proc_out;
 
-			WebRtcAgc_ProcessDigital(&ch->inst, &in_ptr, 1, &out_ptr,
-						 (cd->rate <= 16000) ? cd->rate : 16000, 0);
+			if (num_bands == 1) {
+				const int16_t *in_ptr = ch->in_fifo;
+				int16_t *out_ptr = &ch->out_fifo[cd->out_fifo_count];
 
-			/* Append to out_fifo */
-			memcpy(&ch->out_fifo[cd->out_fifo_count], proc_out,
-			       cd->frame_samples * sizeof(int16_t));
+				WebRtcAgc_ProcessDigital(&ch->inst, &in_ptr, 1, &out_ptr,
+							 cd->rate, 0);
+			} else {
+				const int16_t *in_ptrs[3];
+				int16_t *out_ptrs[3];
+				uint8_t max_band_idx[160];
+				size_t b, m;
+
+				/*
+				 * 2a. Partition proc_out[] into num_bands contiguous 160-sample
+				 *     sub-band buffers (2 bands @ 32 kHz, 3 bands @ 48 kHz).
+				 *     Setting in_ptrs[b] == out_ptrs[b] enables in-place processing
+				 *     inside WebRtcAgc_ProcessDigital() without an extra memcpy.
+				 */
+				for (b = 0; b < num_bands; b++) {
+					in_ptrs[b] = &proc_out[b * 160];
+					out_ptrs[b] = &proc_out[b * 160];
+				}
+
+				/*
+				 * 2b. Polyphase-deinterleave the 10 ms frame into num_bands
+				 *     160-sample phases and identify the phase b_max with the
+				 *     largest magnitude in each num_bands-sample tuple.
+				 */
+				for (m = 0; m < 160; m++) {
+					size_t b_max = 0;
+					int32_t max_abs = -1;
+					int16_t tmp;
+
+					for (b = 0; b < num_bands; b++) {
+						int16_t s = ch->in_fifo[m * num_bands + b];
+						int32_t a = (s < 0) ? -(int32_t)s : (int32_t)s;
+
+						proc_out[b * 160 + m] = s;
+						if (a > max_abs) {
+							max_abs = a;
+							b_max = b;
+						}
+					}
+
+					/*
+					 * 2c. Swap the tuple's peak sample into band 0 (proc_out[m]).
+					 *     WebRtcAgc_ProcessDigital() computes the 1 ms subframe
+					 *     peak energy env[k] and overload limiter threshold from
+					 *     band 0 only, then applies the same interpolated gain to
+					 *     all bands at index m. Placing the peak in band 0 ensures
+					 *     the limiter tracks the true 32/48 kHz peak.
+					 */
+					max_band_idx[m] = (uint8_t)b_max;
+					tmp = proc_out[m];
+					proc_out[m] = proc_out[b_max * 160 + m];
+					proc_out[b_max * 160 + m] = tmp;
+				}
+
+				/*
+				 * 2d. Run WebRtcAgc_ProcessDigital() across all num_bands phases.
+				 */
+				WebRtcAgc_ProcessDigital(&ch->inst, in_ptrs, num_bands,
+							 out_ptrs, cd->rate, 0);
+
+				/*
+				 * 2e. Restore original sample order by swapping band 0 and b_max
+				 *     back, then re-interleave all num_bands phases into out_fifo.
+				 */
+				for (m = 0; m < 160; m++) {
+					size_t b_max = max_band_idx[m];
+					int16_t tmp = proc_out[m];
+
+					proc_out[m] = proc_out[b_max * 160 + m];
+					proc_out[b_max * 160 + m] = tmp;
+
+					for (b = 0; b < num_bands; b++)
+						ch->out_fifo[cd->out_fifo_count + m * num_bands + b] =
+							proc_out[b * 160 + m];
+				}
+			}
 
 			/* Shift remaining in_fifo */
 			memmove(ch->in_fifo, &ch->in_fifo[cd->frame_samples],
