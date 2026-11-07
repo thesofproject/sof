@@ -9,6 +9,7 @@ cmocka_test(mixer
 	${PROJECT_SOURCE_DIR}/src/audio/mixer/mixer_hifi3.c
 	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
+	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc-common-kernel.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/lib/objpool.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter.c
