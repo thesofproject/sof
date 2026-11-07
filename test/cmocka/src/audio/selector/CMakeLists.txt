@@ -26,6 +26,7 @@ add_library(audio_for_selector STATIC
 	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
+	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc-common-kernel.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
