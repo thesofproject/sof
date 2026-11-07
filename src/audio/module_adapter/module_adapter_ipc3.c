@@ -320,6 +320,11 @@ int module_adapter_sink_src_prepare(struct comp_dev *dev)
 	/* acquire all sink and source buffers, get handlers to sink/source API */
 	i = 0;
 	comp_dev_for_each_consumer(dev, sink_buffer) {
+		if (i == CONFIG_MODULE_MAX_CONNECTIONS) {
+			comp_err(dev, "more than %d sinks connected",
+				 CONFIG_MODULE_MAX_CONNECTIONS);
+			return -EINVAL;
+		}
 		mod->sinks[i] = audio_buffer_get_sink(&sink_buffer->audio_buffer);
 		i++;
 	}
@@ -327,6 +332,11 @@ int module_adapter_sink_src_prepare(struct comp_dev *dev)
 
 	i = 0;
 	comp_dev_for_each_producer(dev, source_buffer) {
+		if (i == CONFIG_MODULE_MAX_CONNECTIONS) {
+			comp_err(dev, "more than %d sources connected",
+				 CONFIG_MODULE_MAX_CONNECTIONS);
+			return -EINVAL;
+		}
 		mod->sources[i] = audio_buffer_get_source(&source_buffer->audio_buffer);
 		i++;
 	}
