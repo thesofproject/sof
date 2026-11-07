@@ -337,6 +337,9 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-aec.bin"
 "development/cavs-nocodec-webrtc-ns2\;sof-tgl-nocodec-webrtc-ns2\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-ns2.bin"
 
+# WebRTC AEC capture on HDA generic
+"sof-hda-generic\;sof-hda-generic-webrtc-aec\;HDA_CONFIG=mix,AEC_PROCESSING=true"
+
 # Topology to test the USB audio offload on an HDA machine, load it with
 # snd_sof.tplg_filename=sof-hda-generic-uaol.tplg
 "development/sof-hda-generic-uaol\;sof-hda-generic-uaol\;HDA_CONFIG=mix,HDA_MIC_ENHANCED_CAPTURE=true,\
