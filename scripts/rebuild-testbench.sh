@@ -116,7 +116,7 @@ For temporary, interactive Kconfiguration use:
 
    $BUILD_BACKEND -C $TESTBENCH_DIR/$BUILD_DIR_NAME/sof_ep/build/  menuconfig
 
-Permanent configuration is "src/arch/host/configs/library_defconfig".
+Permanent configuration is "src/kernel/arch/host/configs/library_defconfig".
 
 For instant, incremental build:
 

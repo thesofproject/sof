@@ -21,6 +21,9 @@ if(zephyr)
 	add_subdirectory(logging)
 	add_subdirectory(probe)
 	add_subdirectory(schedule)
+else()
+	# Only built for the host
+	add_subdirectory(arch)
 endif()
 
 # Built for Zephyr and for the host

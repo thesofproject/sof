@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 # Looks for defconfig files in arch directories where kconfig.cmake looks too.
-set(DEFCONFIGS_DIRECTORY "${PROJECT_SOURCE_DIR}/src/arch/${ARCH}/configs")
+set(DEFCONFIGS_DIRECTORY "${PROJECT_SOURCE_DIR}/src/kernel/arch/${ARCH}/configs")
 file(GLOB DEFCONFIG_PATHS "${DEFCONFIGS_DIRECTORY}/*_defconfig")
 
 # Adds dependency on defconfigs directory
