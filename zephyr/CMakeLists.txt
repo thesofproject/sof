@@ -666,6 +666,25 @@ include(../scripts/cmake/version.cmake)
 
 include(../scripts/cmake/uuid-registry.cmake)
 
+# Everything under src/kernel belongs in sof_kernel, also the platform, driver
+# and architecture sources that this file lists itself rather than adding
+# them from src/kernel/CMakeLists.txt. Move them out of modules_sof.
+get_target_property(modules_sof_sources modules_sof SOURCES)
+cmake_path(SET sof_kernel_src_dir NORMALIZE "${SOF_SRC_PATH}/kernel/")
+set(sof_kernel_listed_sources)
+foreach(src ${modules_sof_sources})
+	cmake_path(ABSOLUTE_PATH src NORMALIZE OUTPUT_VARIABLE abs_src)
+	string(FIND "${abs_src}" "${sof_kernel_src_dir}" pos)
+	if(pos EQUAL 0)
+		list(APPEND sof_kernel_listed_sources ${src})
+	endif()
+endforeach()
+if(sof_kernel_listed_sources)
+	list(REMOVE_ITEM modules_sof_sources ${sof_kernel_listed_sources})
+	set_property(TARGET modules_sof PROPERTY SOURCES ${modules_sof_sources})
+	target_sources(sof_kernel PRIVATE ${sof_kernel_listed_sources})
+endif()
+
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)
 sof_append_relative_path_definitions(sof_kernel)
