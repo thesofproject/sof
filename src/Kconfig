@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-rsource "arch/Kconfig"
+rsource "kernel/arch/Kconfig"
 
 rsource "platform/Kconfig"
 

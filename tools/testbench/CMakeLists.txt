@@ -9,7 +9,7 @@ include(CheckCCompilerFlag)
 
 set(default_asoc_h "/usr/include/alsa/sound/uapi/asoc.h")
 
-file(READ "../../src/arch/host/configs/library_defconfig" library_defconfig)
+file(READ "../../src/kernel/arch/host/configs/library_defconfig" library_defconfig)
 
 if(library_defconfig MATCHES "CONFIG_IPC_MAJOR_4=y")
     message("-- Selected IPC4 build for testbench")

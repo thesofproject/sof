@@ -253,10 +253,10 @@ The testbench build is by default IPC4. The IPC version can be changed by applyi
 patch:
 
 ```
-diff --git a/src/arch/host/configs/library_defconfig b/src/arch/host/configs/library_defconfig
+diff --git a/src/kernel/arch/host/configs/library_defconfig b/src/kernel/arch/host/configs/library_defconfig
 index 1b9483ffe..5c944d292 100644
---- a/src/arch/host/configs/library_defconfig
-+++ b/src/arch/host/configs/library_defconfig
+--- a/src/kernel/arch/host/configs/library_defconfig
++++ b/src/kernel/arch/host/configs/library_defconfig
 @@ -22,8 +22,8 @@ CONFIG_COMP_VOLUME=y
  CONFIG_COMP_VOLUME_LINEAR_RAMP=y
  CONFIG_COMP_VOLUME_WINDOWS_FADE=y
