@@ -156,7 +156,7 @@ zephyr_interface_library_named(SOF)
 cmake_path(SET sof_top_dir NORMALIZE "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(SOF_SRC_PATH "${sof_top_dir}/src")
 
-set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
+set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/kernel/platform")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/kernel/drivers")
 set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
 
@@ -364,7 +364,7 @@ if (CONFIG_SOC_MIMX8ML8_M7)
 	)
 
 	# SOF-specific linker script additions
-	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/platform/imx8m_cm7/linker/data-sections.ld)
+	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/kernel/platform/imx8m_cm7/linker/data-sections.ld)
 
 	set(PLATFORM "imx8m_cm7")
 
@@ -428,7 +428,7 @@ if (CONFIG_SOC_MIMX9596_M7)
 	)
 
 	# SOF-specific linker script additions
-	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/platform/imx95/linker/data-sections.ld)
+	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/kernel/platform/imx95/linker/data-sections.ld)
 
 	set(PLATFORM "imx95")
 
