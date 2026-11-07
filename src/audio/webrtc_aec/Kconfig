@@ -26,6 +26,7 @@ if COMP_WEBRTC_AEC
 
 choice WEBRTC_AEC_BACKEND
 	prompt "WebRTC AEC processing backend"
+	default COMP_WEBRTC_AEC_STUB if COMP_STUBS
 	default WEBRTC_AEC_BACKEND_FLOAT if COMP_WEBRTC_AEC = y
 	default WEBRTC_AEC_BACKEND_AECM
 
