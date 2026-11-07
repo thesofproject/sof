@@ -23,7 +23,7 @@ sof-sdca-jack-compr	G001	# mixout.1.1 of sof-sdca-jack-id0
 sof-sdca-jack-ref-dai	G001	# module-copier.1.12 of sof-sdca-jack-id0
 
 # UAOL DAI type is not known to the upstream kernel find_dai() table
-sof-hda-generic-uaol	W004
+sof-hda-generic*uaol	W004
 sof-uaol-id*		W004
 
 # SAI DAI copier lacks UUID and DAI type and is not in a pipeline; SAI is
