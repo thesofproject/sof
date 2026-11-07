@@ -4,6 +4,7 @@
 add_local_sources(sof
 	handler-kernel.c
 	handler-user-kernel.c
+	helper-kernel.c
 	logging.c
 	notification.c
 )
