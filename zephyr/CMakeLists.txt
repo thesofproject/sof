@@ -170,7 +170,7 @@ set(RIMAGE_CONFIG_PATH ${RIMAGE_TOP}/config CACHE PATH
 # default SOF includes
 target_include_directories(SOF INTERFACE ${RIMAGE_TOP}/src/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
-target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
+target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/kernel/arch/${ARCH}/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/third_party/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/zephyr/include)
 
@@ -577,7 +577,7 @@ endif()
 zephyr_library_sources(
 
 	# SOF core infrastructure - runs on top of Zephyr
-	${SOF_SRC_PATH}/arch/xtensa/drivers/cache_attr.c
+	${SOF_SRC_PATH}/kernel/arch/xtensa/drivers/cache_attr.c
 
 	# Bridge wrapper between SOF and Zephyr APIs - Will shrink over time.
 	wrapper.c

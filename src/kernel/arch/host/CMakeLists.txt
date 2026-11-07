@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 # includes
-target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/src/arch/host/include)
+target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/src/kernel/arch/host/include)
 target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/library/include)
 include(CheckCCompilerFlag)
 
