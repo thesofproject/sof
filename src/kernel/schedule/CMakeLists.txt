@@ -29,4 +29,8 @@ if(zephyr)
 			zephyr_dp_schedule_thread-kernel.c
 		)
 	endif()
+
+	zephyr_library_sources_ifdef(CONFIG_ZEPHYR_TWB_SCHEDULER
+		zephyr_twb_schedule.c
+	)
 endif()

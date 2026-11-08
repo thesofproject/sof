@@ -139,7 +139,7 @@ stateDiagram-v2
 
 ## 3. TWB (Thread With Budget) Scheduler
 
-The TWB scheduler (`zephyr_twb_schedule.c`) provides execution budget limits for specific tasks to prevent them from starving the CPU. This is useful for intensive workloads that shouldn't disrupt the overall systemic low-latency chain.
+The TWB scheduler (`src/kernel/schedule/zephyr_twb_schedule.c`) provides execution budget limits for specific tasks to prevent them from starving the CPU. This is useful for intensive workloads that shouldn't disrupt the overall systemic low-latency chain.
 
 ### Architecture
 

@@ -50,8 +50,4 @@ else()
 	)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_ZEPHYR_TWB_SCHEDULER
-	zephyr_twb_schedule.c
-)
-
 endif()
