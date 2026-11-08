@@ -12,10 +12,58 @@
 #ifndef __SOF_SCHEDULE_ZEPHYR_LL_H__
 #define __SOF_SCHEDULE_ZEPHYR_LL_H__
 
+#include <sof/lib/cpu.h>
+#include <sof/list.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/task.h>
 #include <zephyr/kernel.h>
+#include <stdbool.h>
 #include <stdint.h>
+
+/* per-scheduler data */
+struct zephyr_ll {
+	struct list_item tasks;			/* list of ll tasks */
+	unsigned int n_tasks;			/* task counter */
+	struct ll_schedule_domain *ll_domain;	/* scheduling domain */
+	unsigned int core;			/* core ID of this instance */
+#if CONFIG_SOF_USERSPACE_LL
+	struct k_mutex *lock;			/* mutex for userspace */
+#endif
+	struct k_heap *heap;
+};
+
+/* per-task scheduler data */
+struct zephyr_ll_pdata {
+	bool run;
+	bool freeing;
+	struct k_sem *sem_p;
+#if !CONFIG_DYNAMIC_OBJECTS
+	struct k_sem sem;
+#endif
+};
+
+static inline void zephyr_ll_assert_core(const struct zephyr_ll *sch)
+{
+	assert(CONFIG_CORE_COUNT == 1 || IS_ENABLED(CONFIG_SOF_USERSPACE_LL) ||
+	       sch->core == cpu_get_id());
+}
+
+/* LL scheduler ops, see zephyr_ll.c */
+int zephyr_ll_task_schedule(void *data, struct task *task, uint64_t start,
+			    uint64_t period);
+int zephyr_ll_task_schedule_before(void *data, struct task *task, uint64_t start,
+				   uint64_t period, struct task *before);
+int zephyr_ll_task_schedule_after(void *data, struct task *task, uint64_t start,
+				  uint64_t period, struct task *after);
+int zephyr_ll_task_free(void *data, struct task *task);
+int zephyr_ll_task_cancel(void *data, struct task *task);
+
+#if CONFIG_SOF_USERSPACE_LL
+/* per-core LL scheduler locks, see zephyr_ll.c */
+extern struct k_mutex *zephyr_ll_locks[CONFIG_CORE_COUNT];
+
+struct k_thread *zephyr_ll_init_context(void *data, struct task *task);
+#endif
 
 struct zephyr_domain_thread {
 	struct k_thread *ll_thread;
