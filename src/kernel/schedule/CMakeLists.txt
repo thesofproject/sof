@@ -3,6 +3,7 @@
 is_zephyr(zephyr)
 if(zephyr)
 	zephyr_library_sources(
+		schedule-kernel.c
 		zephyr_domain-kernel.c
 	)
 
