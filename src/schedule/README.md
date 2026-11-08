@@ -1,12 +1,15 @@
 # SOF Scheduling Architecture
 
-> **Runs in:** Boundary / bridge — this directory owns the LL/DP schedulers and their thread +
-> memory-domain setup. `zephyr_ll.c` and `zephyr_domain.c` are kernel-side; the LL user memory
-> domain and heap are set up by `src/kernel/schedule/zephyr_ll_user.c`.
-> `zephyr_dp_schedule_thread.c` is boundary code that can create and manage both kernel and
-> `K_USER` DP threads depending on configuration; `zephyr_dp_schedule_application.c` is the
-> DP application-mode path. This directory hosts the `zephyr_ll_task_sem_*` and
-> `scheduler_dp_*` syscalls. See [User/kernel split](../include/sof/userspace/README.md).
+> **Runs in:** Boundary / bridge — this directory holds the parts of the LL and DP schedulers
+> that run in the scheduler and IPC threads, which are user threads with user-space LL. Their
+> kernel parts are in `src/kernel/schedule`, one `*-kernel.c` file per source here: scheduler
+> registration and initialization, the LL thread and timer setup and the timer interrupt, the
+> DP thread creation and memory domains, the access grants, and the kernel halves of the
+> `zephyr_ll_task_sem_*` and `scheduler_dp_*` syscalls. The LL user memory domain and heap are
+> set up by `src/kernel/schedule/zephyr_ll_user.c`, and the TWB scheduler, which is kernel-only,
+> is `src/kernel/schedule/zephyr_twb_schedule.c`. The scheduler data structures shared by both
+> parts are in `sof/schedule/zephyr_ll.h` and `sof/schedule/zephyr_dp_schedule.h`. See
+> [User/kernel split](../include/sof/userspace/README.md).
 
 This directory (`src/schedule`) contains the Sound Open Firmware (SOF) scheduling infrastructure, deeply integrated with the underlying Zephyr RTOS. SOF utilizes a multi-tiered scheduling approach to cater to different real-time constraints, ranging from hard real-time, low-latency requirements to more relaxed, compute-intensive data processing tasks.
 
