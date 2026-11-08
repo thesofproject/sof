@@ -89,6 +89,25 @@ bool ffmpeg_enc_is_ready_to_process(struct processing_module *mod,
 int ffmpeg_enc_mod_reset(struct processing_module *mod);
 int ffmpeg_enc_mod_free(struct processing_module *mod);
 
+/* Module-interface entry points for filter mode (CONFIG_FFMPEG_FILTER):
+ * PCM in -> libavfilter graph -> PCM out (ffmpeg-filter.c),
+ * selected at runtime for SND_AUDIOCODEC_PCM or PCM pipelines.
+ */
+int ffmpeg_af_mod_init(struct processing_module *mod);
+int ffmpeg_af_mod_prepare(struct processing_module *mod,
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks);
+int ffmpeg_af_mod_process(struct processing_module *mod,
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks);
+bool ffmpeg_af_is_ready_to_process(struct processing_module *mod,
+				   struct sof_source **sources, int num_of_sources,
+				   struct sof_sink **sinks, int num_of_sinks);
+int ffmpeg_af_mod_set_config(struct processing_module *mod,
+			     const uint8_t *data, size_t size);
+int ffmpeg_af_mod_reset(struct processing_module *mod);
+int ffmpeg_af_mod_free(struct processing_module *mod);
+
 /**
  * struct ffmpeg_enc_codec_ops - Per-codec encoder operations.
  * @id:              SOF internal codec enum (enum ffmpeg_dec_codec).
@@ -256,6 +275,7 @@ struct ffmpeg_dec_comp_data {
 	int out_frame_fmt;
 	uint32_t out_frame_bytes;
 	bool is_encoder;
+	bool is_filter;
 	bool configured;
 	uint8_t *in_buf;
 	size_t in_buf_size;

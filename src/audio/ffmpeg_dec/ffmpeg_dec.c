@@ -290,6 +290,7 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 	if (mod->priv.cfg.ext_data &&
 	    mod->priv.cfg.ext_data->module_data &&
 	    mod->priv.cfg.ext_data->module_data_size >= sizeof(struct snd_codec)) {
+		const struct snd_codec *codec_params = mod->priv.cfg.ext_data->module_data;
 		const uint8_t *init_bytes = mod->priv.cfg.ext_data->module_data;
 		uint32_t direction = SOF_IPC_STREAM_PLAYBACK;
 
@@ -311,6 +312,18 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 			comp_err(dev, "invalid compress stream direction %u", direction);
 			return -EINVAL;
 		}
+		if (codec_params->id == SND_AUDIOCODEC_PCM) {
+#if defined(CONFIG_FFMPEG_FILTER)
+			return ffmpeg_af_mod_init(mod);
+#else
+			comp_err(dev, "PCM filter requested but no filters enabled");
+			return -ENOTSUP;
+#endif
+		}
+#if defined(CONFIG_FFMPEG_FILTER)
+	} else {
+		return ffmpeg_af_mod_init(mod);
+#endif
 	}
 #endif
 
@@ -428,6 +441,11 @@ static int ffmpeg_dec_prepare(struct processing_module *mod,
 		return ffmpeg_enc_mod_prepare(mod, sources, num_of_sources,
 					      sinks, num_of_sinks);
 #endif
+#if defined(CONFIG_FFMPEG_FILTER)
+	if (cd && cd->is_filter)
+		return ffmpeg_af_mod_prepare(mod, sources, num_of_sources,
+					     sinks, num_of_sinks);
+#endif
 
 	/*
 	 * The PCM format the decoder must produce is that of the sink.
@@ -542,6 +560,11 @@ static bool ffmpeg_dec_is_ready_to_process(struct processing_module *mod,
 		return ffmpeg_enc_is_ready_to_process(mod, sources, num_of_sources,
 						      sinks, num_of_sinks);
 #endif
+#if defined(CONFIG_FFMPEG_FILTER)
+	if (cd && cd->is_filter)
+		return ffmpeg_af_is_ready_to_process(mod, sources, num_of_sources,
+						     sinks, num_of_sinks);
+#endif
 
 	if (num_of_sources < 1 || num_of_sinks < 1)
 		return false;
@@ -587,6 +610,11 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 	if (cd && cd->is_encoder)
 		return ffmpeg_enc_mod_process(mod, sources, num_of_sources,
 					      sinks, num_of_sinks);
+#endif
+#if defined(CONFIG_FFMPEG_FILTER)
+	if (cd && cd->is_filter)
+		return ffmpeg_af_mod_process(mod, sources, num_of_sources,
+					     sinks, num_of_sinks);
 #endif
 
 	if (num_of_sources < 1 || num_of_sinks < 1)
@@ -811,6 +839,15 @@ ffmpeg_dec_set_config(struct processing_module *mod, uint32_t config_id,
 		return 0;
 	}
 
+#if defined(CONFIG_FFMPEG_FILTER)
+	{
+		struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
+
+		if (cd && cd->is_filter)
+			return ffmpeg_af_mod_set_config(mod, config->data, config->size);
+	}
+#endif
+
 	return ffmpeg_dec_store_extradata(mod, config->data, config->size);
 }
 
@@ -831,6 +868,10 @@ static int ffmpeg_dec_reset(struct processing_module *mod)
 #if defined(CONFIG_FFMPEG_ENC)
 	if (cd && cd->is_encoder)
 		return ffmpeg_enc_mod_reset(mod);
+#endif
+#if defined(CONFIG_FFMPEG_FILTER)
+	if (cd && cd->is_filter)
+		return ffmpeg_af_mod_reset(mod);
 #endif
 
 	/* Discard any PCM staged mid-stream; the pipeline is restarting. */
@@ -868,6 +909,10 @@ __cold static int ffmpeg_dec_free(struct processing_module *mod)
 #if defined(CONFIG_FFMPEG_ENC)
 	if (cd && cd->is_encoder)
 		return ffmpeg_enc_mod_free(mod);
+#endif
+#if defined(CONFIG_FFMPEG_FILTER)
+	if (cd && cd->is_filter)
+		return ffmpeg_af_mod_free(mod);
 #endif
 
 	if (cd->backend->free)

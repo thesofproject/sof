@@ -42,15 +42,33 @@ if(CONFIG_FFMPEG_DEC_MP3)
 	list(APPEND _ff_decoders mp3)
 	list(APPEND _ff_parsers  mpegaudio)
 endif()
-# A decoder is required unless this is an encoder-only build.
-if(NOT _ff_decoders AND NOT CONFIG_FFMPEG_ENC_MP3 AND NOT CONFIG_FFMPEG_ENC_AAC)
-	message(FATAL_ERROR "ffmpeg_dec: no decoder or encoder selected (Kconfig FFMPEG_DEC_*/FFMPEG_ENC_*)")
+# At least one decoder, encoder, or filter must be selected.
+if(NOT _ff_decoders AND NOT CONFIG_FFMPEG_ENC_MP3 AND NOT CONFIG_FFMPEG_ENC_AAC AND NOT CONFIG_FFMPEG_BUILD_AVFILTER)
+	message(FATAL_ERROR "ffmpeg_dec: no decoder, encoder, or filter selected (Kconfig FFMPEG_DEC_*/FFMPEG_ENC_*/FFMPEG_FILTER_*)")
 endif()
 set(_ff_dec_cfg "")
 if(_ff_decoders)
 	list(JOIN _ff_decoders "," _ff_dec_csv)
 	list(JOIN _ff_parsers  "," _ff_par_csv)
 	set(_ff_dec_cfg --enable-decoder=${_ff_dec_csv} --enable-parser=${_ff_par_csv})
+endif()
+
+# --- 2b. Kconfig -> libavfilter audio filters (off unless a filter is chosen) ---
+set(_ff_avfilter_cfg --disable-avfilter)
+if(CONFIG_FFMPEG_BUILD_AVFILTER)
+	set(_ff_filters "")
+	if(CONFIG_FFMPEG_FILTER_AFFTDN)
+		list(APPEND _ff_filters afftdn)
+	endif()
+	if(CONFIG_FFMPEG_FILTER_ALIMITER)
+		list(APPEND _ff_filters alimiter)
+	endif()
+	list(JOIN _ff_filters "," _ff_filt_csv)
+	# abuffer/abuffersink feed/drain a filter graph; aformat negotiates format.
+	set(_ff_avfilter_cfg
+		--enable-avfilter
+		--enable-filter=abuffer,abuffersink,aformat,${_ff_filt_csv})
+	message(STATUS "ffmpeg_dec: enabling avfilter, filters [${_ff_filt_csv}]")
 endif()
 
 # --- 3. Derive the cross toolchain + per-compiler cross flags ---
@@ -346,6 +364,11 @@ if(CONFIG_FFMPEG_DEC_COLD_SPLIT)
 			${FFMPEG_INSTALL_DIR}/lib/libavutil.a
 		COMMAND ${_ff_objcopy} --rename-section .text=.cold
 			${FFMPEG_INSTALL_DIR}/lib/libswresample.a)
+	if(CONFIG_FFMPEG_BUILD_AVFILTER)
+		list(APPEND _ff_cold_rename
+			COMMAND ${_ff_objcopy} --rename-section .text=.cold
+				${FFMPEG_INSTALL_DIR}/lib/libavfilter.a)
+	endif()
 endif()
 
 # --- 3b. MP3 encoder via libshine (fixed-point; FFmpeg has no native one) ---
@@ -514,6 +537,9 @@ set(_ff_byproducts
 	${FFMPEG_INSTALL_DIR}/lib/libavcodec.a
 	${FFMPEG_INSTALL_DIR}/lib/libavutil.a
 	${FFMPEG_INSTALL_DIR}/lib/libswresample.a)
+if(CONFIG_FFMPEG_BUILD_AVFILTER)
+	list(APPEND _ff_byproducts ${FFMPEG_INSTALL_DIR}/lib/libavfilter.a)
+endif()
 
 ExternalProject_Add(ffmpeg_ext
 	DEPENDS ${_ff_shine_dep} ${_ff_vo_aacenc_dep}
@@ -532,7 +558,7 @@ ExternalProject_Add(ffmpeg_ext
 			# C intrinsics) and is required to build ff_float_dsp_init_xtensa.
 			--disable-all --disable-everything --disable-autodetect
 			--disable-programs --disable-doc --disable-network
-			--disable-avformat --disable-avdevice --disable-avfilter
+			--disable-avformat --disable-avdevice ${_ff_avfilter_cfg}
 			--disable-swscale
 			--disable-pthreads --disable-w32threads --disable-os2threads
 			--disable-runtime-cpudetect --disable-debug

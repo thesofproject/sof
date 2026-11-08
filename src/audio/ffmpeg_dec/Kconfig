@@ -77,11 +77,65 @@ config FFMPEG_ENC
 	bool
 	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC
 
-# Selected automatically when a decoder that needs IEEE float math is
+comment "FFmpeg audio filters to build (libavfilter)"
+	depends on IPC_MAJOR_4
+
+config FFMPEG_FILTER_AFFTDN
+	bool "FFT noise reduction (afftdn)"
+	depends on IPC_MAJOR_4
+	help
+	  FFT-based audio denoiser (libavfilter af_afftdn). Builds libavfilter
+	  with abuffer, abuffersink, aformat and afftdn, plus the avfilter-graph
+	  runtime path (ffmpeg-filter.c).
+
+config FFMPEG_FILTER_ALIMITER
+	bool "Lookahead peak limiter (alimiter)"
+	depends on IPC_MAJOR_4
+	help
+	  Lookahead brickwall peak limiter (libavfilter af_alimiter). Prevents
+	  digital clipping and provides speaker protection. Builds libavfilter
+	  with abuffer, abuffersink, aformat and alimiter, plus the avfilter-graph
+	  runtime path (ffmpeg-filter.c).
+
+# Turns on libavfilter in the FFmpeg cross-build when any filter is selected.
+config FFMPEG_BUILD_AVFILTER
+	bool
+	default y if FFMPEG_FILTER_AFFTDN || FFMPEG_FILTER_ALIMITER
+
+# Gates compilation of the runtime avfilter-graph path (ffmpeg-filter.c).
+config FFMPEG_FILTER
+	bool
+	default y if FFMPEG_BUILD_AVFILTER
+
+choice
+	prompt "Default FFmpeg audio filter"
+	depends on FFMPEG_FILTER
+	default FFMPEG_FILTER_DEFAULT_AFFTDN if FFMPEG_FILTER_AFFTDN
+	default FFMPEG_FILTER_DEFAULT_ALIMITER if FFMPEG_FILTER_ALIMITER
+
+config FFMPEG_FILTER_DEFAULT_AFFTDN
+	bool "FFT noise reduction (afftdn)"
+	depends on FFMPEG_FILTER_AFFTDN
+	help
+	  Select afftdn (FFT noise reduction) as the default libavfilter audio
+	  filter when no explicit filter profile or runtime configuration is
+	  supplied.
+
+config FFMPEG_FILTER_DEFAULT_ALIMITER
+	bool "Lookahead peak limiter (alimiter)"
+	depends on FFMPEG_FILTER_ALIMITER
+	help
+	  Select alimiter (lookahead brickwall peak limiter) as the default
+	  libavfilter audio filter when no explicit filter profile or runtime
+	  configuration is supplied.
+
+endchoice
+
+# Selected automatically when a decoder or filter that needs IEEE float math is
 # built. Gates compilation of the fast single-precision libm (fastmathf.c).
 config FFMPEG_DEC_FLOAT_MATH
 	bool
-	default y if FFMPEG_DEC_AAC || FFMPEG_DEC_OPUS || FFMPEG_DEC_MP3
+	default y if FFMPEG_DEC_AAC || FFMPEG_DEC_OPUS || FFMPEG_DEC_MP3 || FFMPEG_BUILD_AVFILTER
 
 config FFMPEG_DEC_COLD_SPLIT
 	bool "Place cold FFmpeg code (av_cold init/setup) in DRAM [EXPERIMENTAL]"
