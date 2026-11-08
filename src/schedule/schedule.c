@@ -25,16 +25,9 @@ SOF_DEFINE_REG_UUID(schedule);
 /* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(sch_tr, SOF_UUID(schedule_uuid), LOG_LEVEL_INFO);
 
-static inline bool scheduler_is_user(int type)
-{
-	/*
-	 * currently only LL managed in user-space, but longterm
-	 * goal is to move all audio application level scheduling
-	 * to user-space and only keep Zephyr scheduler logic in
-	 * kernel
-	 */
-	return type == SOF_SCHEDULE_LL_TIMER || type == SOF_SCHEDULE_DP;
-}
+/* Scheduler registration, which runs in kernel mode, is in
+ * src/kernel/schedule/schedule-kernel.c
+ */
 
 int schedule_task_init(struct task *task,
 		       const struct sof_uuid_entry *uid, uint16_t type,
@@ -82,60 +75,6 @@ int schedule_task_init(struct task *task,
 	task->data = data;
 
 	return 0;
-}
-
-__cold static void scheduler_register(struct schedule_data *scheduler)
-{
-	struct schedulers **sch = arch_schedulers_get();
-	struct k_heap *heap = NULL;
-
-	assert_can_be_cold();
-
-	if (IS_ENABLED(CONFIG_SOF_USERSPACE_LL) && scheduler_is_user(scheduler->type)) {
-		sch = arch_user_schedulers_get();
-		heap = sof_sys_user_heap_get();
-	}
-
-	if (!*sch) {
-		/* init schedulers list */
-		*sch = sof_heap_alloc(heap, 0, sizeof(**sch), 0);
-		if (!*sch) {
-			tr_err(&sch_tr, "allocation failed");
-			return;
-		}
-		memset(*sch, 0, sizeof(**sch));
-		list_init(&(*sch)->list);
-	}
-
-	list_item_append(&scheduler->list, &(*sch)->list);
-}
-
-__cold void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
-{
-	struct schedule_data *sch;
-	struct k_heap *heap = NULL;
-
-	assert_can_be_cold();
-
-	if (IS_ENABLED(CONFIG_SOF_USERSPACE_LL) && scheduler_is_user(type))
-		heap = sof_sys_user_heap_get();
-
-	if (!ops || !ops->schedule_task || !ops->schedule_task_cancel ||
-	    !ops->schedule_task_free)
-		return;
-
-	sch = sof_heap_alloc(heap, SOF_MEM_FLAG_KERNEL, sizeof(*sch), 0);
-	if (!sch) {
-		tr_err(&sch_tr, "allocation failed");
-		sof_panic(SOF_IPC_PANIC_IPC);
-	}
-	memset(sch, 0, sizeof(*sch));
-	list_init(&sch->list);
-	sch->type = type;
-	sch->ops = ops;
-	sch->data = data;
-
-	scheduler_register(sch);
 }
 
 /* Locks for the list here should be held by the caller,

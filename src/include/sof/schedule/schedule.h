@@ -236,6 +236,21 @@ struct schedulers **arch_user_schedulers_get(void);
 struct schedulers **arch_user_schedulers_get_for_core(int core);
 
 /**
+ * @brief Check whether a scheduler type is managed in user space.
+ * @param[in] type Scheduler type identifier (SOF_SCHEDULE_*).
+ * @return true for the LL timer and DP schedulers.
+ */
+static inline bool scheduler_is_user(int type)
+{
+	/*
+	 * currently only LL managed in user-space, but longterm
+	 * goal is to move all audio application level scheduling
+	 * to user-space and only keep Zephyr scheduler logic in
+	 * kernel
+	 */
+	return type == SOF_SCHEDULE_LL_TIMER || type == SOF_SCHEDULE_DP;
+}
+/**
  * @brief Lookup scheduler private context data by scheduler type from a schedulers container.
  * @param[in] schedulers Schedulers list container.
  * @param[in] type Scheduler type identifier (SOF_SCHEDULE_*).
