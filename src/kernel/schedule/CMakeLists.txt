@@ -20,7 +20,11 @@ if(zephyr)
 	zephyr_library_sources_ifdef(CONFIG_ZEPHYR_DP_SCHEDULER
 		zephyr_dp_schedule-kernel.c
 	)
-	if(NOT CONFIG_SOF_USERSPACE_APPLICATION)
+	if(CONFIG_SOF_USERSPACE_APPLICATION)
+		zephyr_library_sources_ifdef(CONFIG_ZEPHYR_DP_SCHEDULER
+			zephyr_dp_schedule_application-kernel.c
+		)
+	else()
 		zephyr_library_sources_ifdef(CONFIG_ZEPHYR_DP_SCHEDULER
 			zephyr_dp_schedule_thread-kernel.c
 		)

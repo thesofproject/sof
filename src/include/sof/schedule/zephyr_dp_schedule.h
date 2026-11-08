@@ -18,9 +18,13 @@
 #define __SOF_SCHEDULE_ZEPHYR_DP_SCHEDULE_H__
 
 #include <rtos/task.h>
+#include <sof/audio/component.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/list.h>
 #include <sof/compiler_attributes.h>
+
+#include <ipc4/module.h>
+#include <ipc4/pipeline.h>
 
 #include <zephyr/app_memory/mem_domain.h>
 
@@ -72,6 +76,59 @@ struct task_dp_pdata {
 #endif
 };
 
+#if CONFIG_SOF_USERSPACE_APPLICATION
+/** @brief Per-core DP thread start and IPC completion semaphores. */
+extern struct k_sem dp_sync[CONFIG_CORE_COUNT];
+
+struct ipc4_flat {
+	unsigned int cmd;
+	int ret;
+	union {
+		struct {
+			struct ipc4_module_bind_unbind bu;
+			enum bind_type type;
+		} bind;
+		struct {
+			unsigned int trigger_cmd;
+			enum ipc4_pipeline_state state;
+			int n_sources;
+			int n_sinks;
+			struct sof_source *source[CONFIG_MODULE_MAX_CONNECTIONS];
+			struct sof_sink *sink[CONFIG_MODULE_MAX_CONNECTIONS];
+		} pipeline_state;
+		/*
+		 * SOF_IPC4_MOD_INIT_INSTANCE: a by-value copy of the caller's
+		 * ext_data. The original lives on the calling thread's stack,
+		 * which the DP thread's memory domain doesn't have access to.
+		 * The pointers it contains reference the IPC mailbox, which stays
+		 * valid and is covered by the DP thread's SOF_DP_PART_CFG partition.
+		 */
+		struct module_ext_init_data init_instance;
+		struct {
+			uint32_t param_id;
+			enum module_cfg_fragment_position position;
+			uint32_t data_offset_size;
+			size_t fragment_size;
+			const char *data;
+		} set_config;
+		struct {
+			uint32_t param_id;
+			uint32_t data_offset_size;
+			size_t fragment_size;
+			char *data;
+		} get_config;
+	};
+};
+
+/* memory allocation helper structure */
+struct scheduler_dp_task_memory {
+	struct task task;
+	struct task_dp_pdata pdata;
+	struct comp_driver drv;
+	struct ipc4_flat flat;
+};
+
+#endif /* CONFIG_SOF_USERSPACE_APPLICATION */
 /** @brief Per-core DP scheduler locks, see scheduler_dp_lock(). */
 extern struct k_sem dp_lock[CONFIG_MP_MAX_NUM_CPUS];
 
