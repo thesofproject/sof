@@ -72,6 +72,20 @@ struct task_dp_pdata {
 #endif
 };
 
+/** @brief Per-core DP scheduler locks, see scheduler_dp_lock(). */
+extern struct k_sem dp_lock[CONFIG_MP_MAX_NUM_CPUS];
+
+/**
+ * @brief DP scheduler ops, see struct scheduler_ops.
+ */
+int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t start,
+			      uint64_t period);
+int scheduler_dp_task_stop(void *data, struct task *task);
+int scheduler_dp_task_free(void *data, struct task *task);
+#if CONFIG_SOF_USERSPACE_APPLICATION
+int scheduler_dp_task_cancel(void *data, struct task *task);
+#endif
+
 /**
  * @brief Recalculate deadlines and evaluate readiness for all active DP tasks on an LL tick.
  * @param[in,out] dp_sch Pointer to per-core DP scheduler state container.

@@ -16,4 +16,8 @@ if(zephyr)
 	zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_LL
 		zephyr_ll_user.c
 	)
+
+	zephyr_library_sources_ifdef(CONFIG_ZEPHYR_DP_SCHEDULER
+		zephyr_dp_schedule-kernel.c
+	)
 endif()
