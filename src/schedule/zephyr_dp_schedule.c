@@ -25,7 +25,7 @@
 #include <sof/schedule/schedule.h>
 #include <ipc4/base_fw.h>
 
-#include "zephyr_dp_schedule.h"
+#include <sof/schedule/zephyr_dp_schedule.h>
 
 #include <zephyr/kernel/thread.h>
 

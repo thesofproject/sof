@@ -25,7 +25,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "zephyr_dp_schedule.h"
+#include <sof/schedule/zephyr_dp_schedule.h>
 
 LOG_MODULE_DECLARE(dp_schedule, CONFIG_SOF_LOG_LEVEL);
 extern struct tr_ctx dp_tr;

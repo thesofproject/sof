@@ -6,10 +6,16 @@
  */
 
 /**
- * @file src/schedule/zephyr_dp_schedule.h
+ * @file include/sof/schedule/zephyr_dp_schedule.h
  * @brief Internal Data Processing (DP) scheduler structures, memory partitions, and thread helpers.
  * @ingroup scheduling_api
+ *
+ * Shared by the DP scheduler sources in src/schedule and their kernel parts in
+ * src/kernel/schedule. Not for use outside the scheduler.
  */
+
+#ifndef __SOF_SCHEDULE_ZEPHYR_DP_SCHEDULE_H__
+#define __SOF_SCHEDULE_ZEPHYR_DP_SCHEDULE_H__
 
 #include <rtos/task.h>
 #include <sof/audio/module_adapter/module/generic.h>
@@ -102,3 +108,5 @@ void scheduler_dp_unlock(unsigned int key);
  * @param[in] core Target DSP core ID.
  */
 void scheduler_dp_grant(k_tid_t thread_id, uint16_t core);
+
+#endif /* __SOF_SCHEDULE_ZEPHYR_DP_SCHEDULE_H__ */
