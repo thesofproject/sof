@@ -5,30 +5,13 @@
 // Fast-path PCM format conversion and interleaving for ffmpeg_dec.
 
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/format.h>
 #include <rtos/string.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdint.h>
 #include <libavutil/samplefmt.h>
 #include "ffmpeg_dec-convert.h"
-
-#if defined(__XTENSA__) && defined(__has_include)
-#if __has_include(<xtensa/config/core-isa.h>)
-#include <xtensa/config/core-isa.h>
-#endif
-
-#if defined(__has_builtin) && __has_builtin(__builtin_xtensa_trunc_sx2) && \
-	defined(XCHAL_HAVE_HIFI4_VFPU) && XCHAL_HAVE_HIFI4_VFPU && \
-	__has_include(<xtensahifiintrin.h>)
-#include <xtensahifiintrin.h>
-#define FFMPEG_DEC_CONV_VFPU 1
-#endif
-
-#if defined(XCHAL_HAVE_HIFI3) && XCHAL_HAVE_HIFI3 && __has_include(<xtensa/tie/xt_hifi3.h>)
-#include <xtensa/tie/xt_hifi3.h>
-#define FFMPEG_DEC_CONV_HIFI3 1
-#endif
-#endif
 
 /*
  * Branch-free soft-float-free float -> Q1.31 for f in [-1.0, 1.0).
@@ -62,67 +45,75 @@ static inline int32_t f32_to_q31_scalar(float f)
 static inline int16_t f32_to_s16_scalar(float f)
 {
 	int32_t q = f32_to_q31_scalar(f);
-	return (int16_t)(q >> 16);
+
+	return (int16_t)Q_SHIFT(q, 31, 15);
+}
+
+static inline int32_t f64_to_q31_scalar(double d)
+{
+	if (d >= 1.0)
+		return INT32_MAX;
+	if (d <= -1.0)
+		return INT32_MIN;
+	return sat_int32((int64_t)(d * (double)((int64_t)1 << 31)));
 }
 
 /* -------------------------------------------------------------------------
- * Fast Path: FLTP (Planar Float) -> S32_LE
+ * Fast Path: FLTP (Planar Float) -> S32_LE / S24_4LE
  * ------------------------------------------------------------------------- */
-static void conv_fltp_to_s32_stereo(const AVFrame *frame, int32_t *dst, int nb_samples)
+static void conv_fltp_to_s32(const AVFrame *frame, int32_t *dst,
+			     int channels, int nb_samples)
 {
-	const float *c0 = (const float *)frame->data[0];
-	const float *c1 = (const float *)frame->data[1];
-	int i = 0;
+	const float *const *src = (const float *const *)frame->data;
+	int i = ffmpeg_hifi_fltp_to_s32(src, dst, channels, nb_samples);
 
-#if defined(FFMPEG_DEC_CONV_VFPU)
-	for (; i + 2 <= nb_samples; i += 2) {
-		ae_int32x2 f0 = AE_L32X2_I((const ae_int32x2 *)&c0[i], 0);
-		ae_int32x2 f1 = AE_L32X2_I((const ae_int32x2 *)&c1[i], 0);
-		ae_int32x2 q0 = XT_TRUNC_SX2((ae_xtfloatx2)f0, 31);
-		ae_int32x2 q1 = XT_TRUNC_SX2((ae_xtfloatx2)f1, 31);
-		int32_t tmp0[2] __attribute__((aligned(8)));
-		int32_t tmp1[2] __attribute__((aligned(8)));
+	if (channels == 1) {
+		const float *c0 = src[0];
 
-		AE_S32X2_I(q0, tmp0, 0);
-		AE_S32X2_I(q1, tmp1, 0);
-
-		dst[2 * i + 0] = tmp0[0];
-		dst[2 * i + 1] = tmp1[0];
-		dst[2 * i + 2] = tmp0[1];
-		dst[2 * i + 3] = tmp1[1];
+		for (; i < nb_samples; i++)
+			dst[i] = f32_to_q31_scalar(c0[i]);
+		return;
 	}
-#else
-	for (; i + 4 <= nb_samples; i += 4) {
-		dst[2 * i + 0] = f32_to_q31_scalar(c0[i + 0]);
-		dst[2 * i + 1] = f32_to_q31_scalar(c1[i + 0]);
-		dst[2 * i + 2] = f32_to_q31_scalar(c0[i + 1]);
-		dst[2 * i + 3] = f32_to_q31_scalar(c1[i + 1]);
-		dst[2 * i + 4] = f32_to_q31_scalar(c0[i + 2]);
-		dst[2 * i + 5] = f32_to_q31_scalar(c1[i + 2]);
-		dst[2 * i + 6] = f32_to_q31_scalar(c0[i + 3]);
-		dst[2 * i + 7] = f32_to_q31_scalar(c1[i + 3]);
+
+	if (channels == 2) {
+		const float *c0 = src[0];
+		const float *c1 = src[1];
+
+		for (; i + 4 <= nb_samples; i += 4) {
+			dst[2 * i + 0] = f32_to_q31_scalar(c0[i + 0]);
+			dst[2 * i + 1] = f32_to_q31_scalar(c1[i + 0]);
+			dst[2 * i + 2] = f32_to_q31_scalar(c0[i + 1]);
+			dst[2 * i + 3] = f32_to_q31_scalar(c1[i + 1]);
+			dst[2 * i + 4] = f32_to_q31_scalar(c0[i + 2]);
+			dst[2 * i + 5] = f32_to_q31_scalar(c1[i + 2]);
+			dst[2 * i + 6] = f32_to_q31_scalar(c0[i + 3]);
+			dst[2 * i + 7] = f32_to_q31_scalar(c1[i + 3]);
+		}
+		for (; i < nb_samples; i++) {
+			dst[2 * i + 0] = f32_to_q31_scalar(c0[i]);
+			dst[2 * i + 1] = f32_to_q31_scalar(c1[i]);
+		}
+		return;
 	}
-#endif
+
 	for (; i < nb_samples; i++) {
-		dst[2 * i + 0] = f32_to_q31_scalar(c0[i]);
-		dst[2 * i + 1] = f32_to_q31_scalar(c1[i]);
+		for (int c = 0; c < channels; c++)
+			dst[i * channels + c] = f32_to_q31_scalar(src[c][i]);
 	}
 }
 
-static void conv_fltp_to_s32_mono(const AVFrame *frame, int32_t *dst, int nb_samples)
+static void conv_fltp_to_s24(const AVFrame *frame, int32_t *dst,
+			     int channels, int nb_samples)
 {
-	const float *c0 = (const float *)frame->data[0];
-	int i = 0;
+	const float *const *src = (const float *const *)frame->data;
 
-#if defined(FFMPEG_DEC_CONV_VFPU)
-	for (; i + 2 <= nb_samples; i += 2) {
-		ae_int32x2 f = AE_L32X2_I((const ae_int32x2 *)&c0[i], 0);
-		ae_int32x2 q = XT_TRUNC_SX2((ae_xtfloatx2)f, 31);
-		AE_S32X2_I(q, (ae_int32x2 *)&dst[i], 0);
+	for (int i = 0; i < nb_samples; i++) {
+		for (int c = 0; c < channels; c++) {
+			int32_t q = f32_to_q31_scalar(src[c][i]);
+
+			dst[i * channels + c] = Q_SHIFT(q, 31, 23);
+		}
 	}
-#endif
-	for (; i < nb_samples; i++)
-		dst[i] = f32_to_q31_scalar(c0[i]);
 }
 
 /* -------------------------------------------------------------------------
@@ -153,9 +144,8 @@ static void conv_fltp_to_s16_stereo(const AVFrame *frame, int16_t *dst, int nb_s
 static void conv_fltp_to_s16_mono(const AVFrame *frame, int16_t *dst, int nb_samples)
 {
 	const float *c0 = (const float *)frame->data[0];
-	int i = 0;
 
-	for (; i < nb_samples; i++)
+	for (int i = 0; i < nb_samples; i++)
 		dst[i] = f32_to_s16_scalar(c0[i]);
 }
 
@@ -193,28 +183,19 @@ static void conv_s16p_to_s32_stereo(const AVFrame *frame, int32_t *dst, int nb_s
 	const int16_t *c1 = (const int16_t *)frame->data[1];
 	int i = 0;
 
-#if defined(FFMPEG_DEC_CONV_HIFI3)
-	for (; i + 2 <= nb_samples; i += 2) {
-		dst[2 * i + 0] = (int32_t)c0[i + 0] << 16;
-		dst[2 * i + 1] = (int32_t)c1[i + 0] << 16;
-		dst[2 * i + 2] = (int32_t)c0[i + 1] << 16;
-		dst[2 * i + 3] = (int32_t)c1[i + 1] << 16;
-	}
-#else
 	for (; i + 4 <= nb_samples; i += 4) {
-		dst[2 * i + 0] = (int32_t)c0[i + 0] << 16;
-		dst[2 * i + 1] = (int32_t)c1[i + 0] << 16;
-		dst[2 * i + 2] = (int32_t)c0[i + 1] << 16;
-		dst[2 * i + 3] = (int32_t)c1[i + 1] << 16;
-		dst[2 * i + 4] = (int32_t)c0[i + 2] << 16;
-		dst[2 * i + 5] = (int32_t)c1[i + 2] << 16;
-		dst[2 * i + 6] = (int32_t)c0[i + 3] << 16;
-		dst[2 * i + 7] = (int32_t)c1[i + 3] << 16;
+		dst[2 * i + 0] = Q_SHIFT_LEFT((int32_t)c0[i + 0], 15, 31);
+		dst[2 * i + 1] = Q_SHIFT_LEFT((int32_t)c1[i + 0], 15, 31);
+		dst[2 * i + 2] = Q_SHIFT_LEFT((int32_t)c0[i + 1], 15, 31);
+		dst[2 * i + 3] = Q_SHIFT_LEFT((int32_t)c1[i + 1], 15, 31);
+		dst[2 * i + 4] = Q_SHIFT_LEFT((int32_t)c0[i + 2], 15, 31);
+		dst[2 * i + 5] = Q_SHIFT_LEFT((int32_t)c1[i + 2], 15, 31);
+		dst[2 * i + 6] = Q_SHIFT_LEFT((int32_t)c0[i + 3], 15, 31);
+		dst[2 * i + 7] = Q_SHIFT_LEFT((int32_t)c1[i + 3], 15, 31);
 	}
-#endif
 	for (; i < nb_samples; i++) {
-		dst[2 * i + 0] = (int32_t)c0[i] << 16;
-		dst[2 * i + 1] = (int32_t)c1[i] << 16;
+		dst[2 * i + 0] = Q_SHIFT_LEFT((int32_t)c0[i], 15, 31);
+		dst[2 * i + 1] = Q_SHIFT_LEFT((int32_t)c1[i], 15, 31);
 	}
 }
 
@@ -226,13 +207,13 @@ static void conv_s16_to_s32_interleaved(const int16_t *src, int32_t *dst, int to
 	int i = 0;
 
 	for (; i + 4 <= total_samples; i += 4) {
-		dst[i + 0] = (int32_t)src[i + 0] << 16;
-		dst[i + 1] = (int32_t)src[i + 1] << 16;
-		dst[i + 2] = (int32_t)src[i + 2] << 16;
-		dst[i + 3] = (int32_t)src[i + 3] << 16;
+		dst[i + 0] = Q_SHIFT_LEFT((int32_t)src[i + 0], 15, 31);
+		dst[i + 1] = Q_SHIFT_LEFT((int32_t)src[i + 1], 15, 31);
+		dst[i + 2] = Q_SHIFT_LEFT((int32_t)src[i + 2], 15, 31);
+		dst[i + 3] = Q_SHIFT_LEFT((int32_t)src[i + 3], 15, 31);
 	}
 	for (; i < total_samples; i++)
-		dst[i] = (int32_t)src[i] << 16;
+		dst[i] = Q_SHIFT_LEFT((int32_t)src[i], 15, 31);
 }
 
 /* -------------------------------------------------------------------------
@@ -242,19 +223,8 @@ static void conv_s32p_to_s32_stereo(const AVFrame *frame, int32_t *dst, int nb_s
 {
 	const int32_t *c0 = (const int32_t *)frame->data[0];
 	const int32_t *c1 = (const int32_t *)frame->data[1];
-	int i = 0;
+	int i = ffmpeg_hifi_s32p_to_s32_stereo(c0, c1, dst, nb_samples);
 
-#if defined(FFMPEG_DEC_CONV_HIFI3)
-	for (; i + 2 <= nb_samples; i += 2) {
-		ae_int32x2 v0 = AE_L32X2_I((const ae_int32x2 *)&c0[i], 0);
-		ae_int32x2 v1 = AE_L32X2_I((const ae_int32x2 *)&c1[i], 0);
-		ae_int32x2 pair0 = AE_SEL32_LL(v0, v1);
-		ae_int32x2 pair1 = AE_SEL32_HH(v0, v1);
-
-		AE_S32X2_I(pair0, (ae_int32x2 *)&dst[2 * i + 0], 0);
-		AE_S32X2_I(pair1, (ae_int32x2 *)&dst[2 * i + 2], 0);
-	}
-#else
 	for (; i + 4 <= nb_samples; i += 4) {
 		dst[2 * i + 0] = c0[i + 0];
 		dst[2 * i + 1] = c1[i + 0];
@@ -265,7 +235,6 @@ static void conv_s32p_to_s32_stereo(const AVFrame *frame, int32_t *dst, int nb_s
 		dst[2 * i + 6] = c0[i + 3];
 		dst[2 * i + 7] = c1[i + 3];
 	}
-#endif
 	for (; i < nb_samples; i++) {
 		dst[2 * i + 0] = c0[i];
 		dst[2 * i + 1] = c1[i];
@@ -273,23 +242,26 @@ static void conv_s32p_to_s32_stereo(const AVFrame *frame, int32_t *dst, int nb_s
 }
 
 /* -------------------------------------------------------------------------
- * Fallback: Generic Sample-by-Sample Conversion
+ * Fallback: Generic Sample-by-Sample Conversion (AVFrame -> SOF PCM)
  * ------------------------------------------------------------------------- */
 static inline int32_t src_sample_to_q31(const uint8_t *p, int fmt)
 {
 	switch (fmt) {
 	case AV_SAMPLE_FMT_U8:
 	case AV_SAMPLE_FMT_U8P:
-		return ((int32_t)*p - 0x80) << 24;
+		return Q_SHIFT_LEFT((int32_t)*p - 0x80, 7, 31);
 	case AV_SAMPLE_FMT_S16:
 	case AV_SAMPLE_FMT_S16P:
-		return (int32_t)*(const int16_t *)p << 16;
+		return Q_SHIFT_LEFT((int32_t)*(const int16_t *)p, 15, 31);
 	case AV_SAMPLE_FMT_S32:
 	case AV_SAMPLE_FMT_S32P:
 		return *(const int32_t *)p;
 	case AV_SAMPLE_FMT_FLT:
 	case AV_SAMPLE_FMT_FLTP:
 		return f32_to_q31_scalar(*(const float *)p);
+	case AV_SAMPLE_FMT_DBL:
+	case AV_SAMPLE_FMT_DBLP:
+		return f64_to_q31_scalar(*(const double *)p);
 	default:
 		return 0;
 	}
@@ -299,13 +271,13 @@ static inline void q31_to_sink_sample(uint8_t *p, int32_t v, int fmt)
 {
 	switch (fmt) {
 	case SOF_IPC_FRAME_S16_LE:
-		*(int16_t *)p = (int16_t)(v >> 16);
+		*(int16_t *)p = (int16_t)Q_SHIFT(v, 31, 15);
 		break;
 	case SOF_IPC_FRAME_S24_4LE:
-		*(int32_t *)p = v >> 8;
+		*(int32_t *)p = Q_SHIFT(v, 31, 23);
 		break;
 	case SOF_IPC_FRAME_FLOAT:
-		*(float *)p = (float)v / 2147483648.0f;
+		*(float *)p = Q_CONVERT_QTOF(v, 31);
 		break;
 	case SOF_IPC_FRAME_S32_LE:
 	default:
@@ -335,7 +307,146 @@ static void conv_generic(const AVFrame *frame, uint8_t *out, int sink_fmt, int c
 }
 
 /* -------------------------------------------------------------------------
- * Top-Level Dispatcher
+ * Input Conversion: SOF Interleaved PCM -> AVFrame (FLTP / DBL)
+ * ------------------------------------------------------------------------- */
+static void conv_s16_to_fltp(const int16_t *src, float *const *dst,
+			     int channels, int nb_samples)
+{
+	int i = 0;
+
+	if (channels == 2) {
+		float *dst0 = dst[0];
+		float *dst1 = dst[1];
+
+		for (; i + 4 <= nb_samples; i += 4) {
+			dst0[i + 0] = Q_CONVERT_QTOF(src[(i + 0) * 2 + 0], 15);
+			dst1[i + 0] = Q_CONVERT_QTOF(src[(i + 0) * 2 + 1], 15);
+			dst0[i + 1] = Q_CONVERT_QTOF(src[(i + 1) * 2 + 0], 15);
+			dst1[i + 1] = Q_CONVERT_QTOF(src[(i + 1) * 2 + 1], 15);
+			dst0[i + 2] = Q_CONVERT_QTOF(src[(i + 2) * 2 + 0], 15);
+			dst1[i + 2] = Q_CONVERT_QTOF(src[(i + 2) * 2 + 1], 15);
+			dst0[i + 3] = Q_CONVERT_QTOF(src[(i + 3) * 2 + 0], 15);
+			dst1[i + 3] = Q_CONVERT_QTOF(src[(i + 3) * 2 + 1], 15);
+		}
+		for (; i < nb_samples; i++) {
+			dst0[i] = Q_CONVERT_QTOF(src[i * 2 + 0], 15);
+			dst1[i] = Q_CONVERT_QTOF(src[i * 2 + 1], 15);
+		}
+		return;
+	}
+
+	for (; i < nb_samples; i++) {
+		for (int c = 0; c < channels; c++)
+			dst[c][i] = Q_CONVERT_QTOF(src[i * channels + c], 15);
+	}
+}
+
+static void conv_s24_to_fltp(const int32_t *src, float *const *dst,
+			     int channels, int nb_samples)
+{
+	for (int i = 0; i < nb_samples; i++) {
+		for (int c = 0; c < channels; c++) {
+			int32_t s = sign_extend_s24(src[i * channels + c]);
+
+			dst[c][i] = Q_CONVERT_QTOF(s, 23);
+		}
+	}
+}
+
+static void conv_s32_to_fltp(const int32_t *src, float *const *dst,
+			     int channels, int nb_samples)
+{
+	int i = ffmpeg_hifi_s32_to_fltp(src, dst, channels, nb_samples);
+
+	if (channels == 2) {
+		float *dst0 = dst[0];
+		float *dst1 = dst[1];
+
+		for (; i + 4 <= nb_samples; i += 4) {
+			dst0[i + 0] = Q_CONVERT_QTOF(src[(i + 0) * 2 + 0], 31);
+			dst1[i + 0] = Q_CONVERT_QTOF(src[(i + 0) * 2 + 1], 31);
+			dst0[i + 1] = Q_CONVERT_QTOF(src[(i + 1) * 2 + 0], 31);
+			dst1[i + 1] = Q_CONVERT_QTOF(src[(i + 1) * 2 + 1], 31);
+			dst0[i + 2] = Q_CONVERT_QTOF(src[(i + 2) * 2 + 0], 31);
+			dst1[i + 2] = Q_CONVERT_QTOF(src[(i + 2) * 2 + 1], 31);
+			dst0[i + 3] = Q_CONVERT_QTOF(src[(i + 3) * 2 + 0], 31);
+			dst1[i + 3] = Q_CONVERT_QTOF(src[(i + 3) * 2 + 1], 31);
+		}
+		for (; i < nb_samples; i++) {
+			dst0[i] = Q_CONVERT_QTOF(src[i * 2 + 0], 31);
+			dst1[i] = Q_CONVERT_QTOF(src[i * 2 + 1], 31);
+		}
+		return;
+	}
+
+	for (; i < nb_samples; i++) {
+		for (int c = 0; c < channels; c++)
+			dst[c][i] = Q_CONVERT_QTOF(src[i * channels + c], 31);
+	}
+}
+
+int ffmpeg_dec_pcm_to_frame(const uint8_t *in, AVFrame *frame,
+			    int src_fmt, int channels, int nb_samples)
+{
+	if (!in || !frame || channels <= 0 || nb_samples <= 0)
+		return -EINVAL;
+	if (frame->ch_layout.nb_channels != channels)
+		return -EINVAL;
+
+	if (frame->format == AV_SAMPLE_FMT_DBL) {
+		double *dst = (double *)frame->data[0];
+		int total = nb_samples * channels;
+
+		switch (src_fmt) {
+		case SOF_IPC_FRAME_S16_LE: {
+			const int16_t *src16 = (const int16_t *)in;
+
+			for (int i = 0; i < total; i++)
+				dst[i] = Q_CONVERT_QTOD(src16[i], 15);
+			return 0;
+		}
+		case SOF_IPC_FRAME_S24_4LE: {
+			const int32_t *src24 = (const int32_t *)in;
+
+			for (int i = 0; i < total; i++)
+				dst[i] = Q_CONVERT_QTOD(sign_extend_s24(src24[i]), 23);
+			return 0;
+		}
+		case SOF_IPC_FRAME_S32_LE: {
+			const int32_t *src32 = (const int32_t *)in;
+
+			for (int i = 0; i < total; i++)
+				dst[i] = Q_CONVERT_QTOD(src32[i], 31);
+			return 0;
+		}
+		default:
+			return -EINVAL;
+		}
+	}
+
+	if (frame->format == AV_SAMPLE_FMT_FLTP) {
+		float *const *dst = (float *const *)frame->data;
+
+		switch (src_fmt) {
+		case SOF_IPC_FRAME_S16_LE:
+			conv_s16_to_fltp((const int16_t *)in, dst, channels, nb_samples);
+			return 0;
+		case SOF_IPC_FRAME_S24_4LE:
+			conv_s24_to_fltp((const int32_t *)in, dst, channels, nb_samples);
+			return 0;
+		case SOF_IPC_FRAME_S32_LE:
+			conv_s32_to_fltp((const int32_t *)in, dst, channels, nb_samples);
+			return 0;
+		default:
+			return -EINVAL;
+		}
+	}
+
+	return -EINVAL;
+}
+
+/* -------------------------------------------------------------------------
+ * Top-Level Output Dispatcher: AVFrame -> SOF Interleaved PCM
  * ------------------------------------------------------------------------- */
 int ffmpeg_dec_convert_frame(const AVFrame *frame, uint8_t *out, size_t out_size,
 			     int sink_fmt, int channels)
@@ -368,18 +479,25 @@ int ffmpeg_dec_convert_frame(const AVFrame *frame, uint8_t *out, size_t out_size
 		}
 	}
 
-	/* 2. Stereo Fast Paths (the dominant audio decoding configuration) */
+	/* 2. Planar Float (FLTP) -> S32_LE / S24_4LE for any channel count */
+	if (frame->format == AV_SAMPLE_FMT_FLTP) {
+		if (sink_fmt == SOF_IPC_FRAME_S32_LE) {
+			conv_fltp_to_s32(frame, (int32_t *)out, channels, frame->nb_samples);
+			return (int)need;
+		}
+		if (sink_fmt == SOF_IPC_FRAME_S24_4LE) {
+			conv_fltp_to_s24(frame, (int32_t *)out, channels, frame->nb_samples);
+			return (int)need;
+		}
+	}
+
+	/* 3. Stereo Fast Paths (the dominant audio decoding configuration) */
 	if (channels == 2) {
-		/* AAC / Opus (FLTP) */
-		if (frame->format == AV_SAMPLE_FMT_FLTP) {
-			if (sink_fmt == SOF_IPC_FRAME_S32_LE) {
-				conv_fltp_to_s32_stereo(frame, (int32_t *)out, frame->nb_samples);
-				return (int)need;
-			}
-			if (sink_fmt == SOF_IPC_FRAME_S16_LE) {
-				conv_fltp_to_s16_stereo(frame, (int16_t *)out, frame->nb_samples);
-				return (int)need;
-			}
+		/* AAC / Opus / afftdn (FLTP) -> S16_LE */
+		if (frame->format == AV_SAMPLE_FMT_FLTP &&
+		    sink_fmt == SOF_IPC_FRAME_S16_LE) {
+			conv_fltp_to_s16_stereo(frame, (int16_t *)out, frame->nb_samples);
+			return (int)need;
 		}
 
 		/* MP3 / FLAC (S16P) */
@@ -409,11 +527,11 @@ int ffmpeg_dec_convert_frame(const AVFrame *frame, uint8_t *out, size_t out_size
 		}
 	}
 
-	/* 3. Mono Fast Paths */
+	/* 4. Mono Fast Paths */
 	if (channels == 1) {
 		if (frame->format == AV_SAMPLE_FMT_FLTP || frame->format == AV_SAMPLE_FMT_FLT) {
 			if (sink_fmt == SOF_IPC_FRAME_S32_LE) {
-				conv_fltp_to_s32_mono(frame, (int32_t *)out, frame->nb_samples);
+				conv_fltp_to_s32(frame, (int32_t *)out, 1, frame->nb_samples);
 				return (int)need;
 			}
 			if (sink_fmt == SOF_IPC_FRAME_S16_LE) {
@@ -430,7 +548,7 @@ int ffmpeg_dec_convert_frame(const AVFrame *frame, uint8_t *out, size_t out_size
 		}
 	}
 
-	/* 4. General Fallback */
+	/* 5. General Fallback */
 	conv_generic(frame, out, sink_fmt, channels);
 	return (int)need;
 }

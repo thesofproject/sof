@@ -24,6 +24,7 @@ else()
   else()
     add_local_sources(sof ffmpeg_dec-ffmpeg.c)
     add_local_sources(sof ffmpeg_dec-convert.c)
+    add_local_sources(sof ffmpeg-convert-hifi.c)
     if(CONFIG_FFMPEG_ENC)
       add_local_sources(sof ffmpeg-encode.c)
     endif()
@@ -32,6 +33,9 @@ else()
     endif()
     if(CONFIG_FFMPEG_ENC_AAC)
       add_local_sources(sof ffmpeg-enc-aac.c)
+    endif()
+    if(CONFIG_FFMPEG_FILTER)
+      add_local_sources(sof ffmpeg-filter.c)
     endif()
     # Scalar soft-float for the SOF glue that touches float. core-isa.h reports
     # XCHAL_HAVE_FP=1 so LLVM would lower the FLT/FLTP -> Q1.31 sample conversion
@@ -47,7 +51,9 @@ else()
     set(_ffmpeg_dec_sources
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-ffmpeg.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-convert.c)
+        ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-convert.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg-convert-hifi.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-builtin-libc.c)
     if(CONFIG_FFMPEG_ENC)
       list(APPEND _ffmpeg_dec_sources ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg-encode.c)
     endif()
@@ -56,6 +62,9 @@ else()
     endif()
     if(CONFIG_FFMPEG_ENC_AAC)
       list(APPEND _ffmpeg_dec_sources ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg-enc-aac.c)
+    endif()
+    if(CONFIG_FFMPEG_FILTER)
+      list(APPEND _ffmpeg_dec_sources ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg-filter.c)
     endif()
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         set_source_files_properties(
@@ -103,6 +112,9 @@ else()
       # stubs in ffmpeg_dec-builtin-libc.c). FLAC is integer-only so it never
       # calls libm at runtime, but the references still resolve to real kernels
       # now, and lossy decoders (AAC/Opus/Vorbis) need them to decode correctly.
+      if(CONFIG_FFMPEG_BUILD_AVFILTER)
+        target_link_libraries(SOF INTERFACE avfilter)
+      endif()
       target_link_libraries(SOF INTERFACE avcodec swresample avutil)
       # Encode mode: libshine MP3 encoder archive (built by ffmpeg.cmake
       # section 3b when FFMPEG_ENC_MP3 is set). Linked AFTER avcodec,
