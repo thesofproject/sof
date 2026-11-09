@@ -7,6 +7,7 @@
 #include <sof/audio/format.h>
 #include <sof/common.h>
 #include <rtos/alloc.h>
+#include <rtos/symbol.h>
 #include <sof/math/fft.h>
 
 #ifdef FFT_HIFI3
@@ -156,4 +157,5 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 		}
 	}
 }
+EXPORT_SYMBOL(fft_execute_32);
 #endif

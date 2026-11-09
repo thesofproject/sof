@@ -7,6 +7,7 @@
 #include <sof/math/exp_fcn.h>
 #include <sof/math/log.h>
 #include <sof/math/pcan.h>
+#include <rtos/symbol.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -197,6 +198,7 @@ int pcan_populate_state(const struct pcan_config *config, struct pcan_state *sta
 
 	return 0;
 }
+EXPORT_SYMBOL(pcan_populate_state);
 
 void pcan_free_state(struct pcan_state *state)
 {
@@ -232,3 +234,8 @@ void pcan_log_scale(struct pcan_state *state, uint32_t *signal)
 	for (i = state->num_channels - 1; i >= 0; --i)
 		signal[i] = scaled[i];
 }
+EXPORT_SYMBOL(pcan_log_scale);
+
+/* the TFLM microfrontend sources can't carry SOF symbol exports */
+EXPORT_SYMBOL(NoiseReductionApply);
+EXPORT_SYMBOL(PcanGainControlApply);
