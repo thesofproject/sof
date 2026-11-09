@@ -17,6 +17,7 @@ Audio stream capture and device verification are executed using direct Linux ALS
 2. [Signal Processing Flow](#signal-processing-flow)
 3. [Arbiter State Machine](#arbiter-state-machine)
 4. [Pipeline State Transitions & Re-Arm Cycle](#pipeline-state-transitions--re-arm-cycle)
+    - [WoV Call-State Control](#wov-call-state-control)
 5. [SOF Notifier Inter-Module Signaling](#sof-notifier-inter-module-signaling)
 6. [Firmware API Reference](#firmware-api-reference)
 7. [Linux Host API Reference](#linux-host-api-reference)
@@ -355,6 +356,15 @@ arecord / wov_capture_app captures frames at 16 kHz 2-channel from hw:0,11
 | Listening → Active | WOV_DETECT | detect_test fires | Stays OPEN |
 | Active → Listening | STOP/PAUSE | host or driver closes/re-arms | Stays OPEN (re-armed) |
 | Any → closed | close() | host exits | Closed |
+
+### WoV Call-State Control
+
+Set `DMIC WoV Call State` to `Call Active` to pause all detectors. The arbiter
+acknowledges after detector callbacks complete; set it to `Listening` to resume.
+
+The acknowledgement confirms detector gating, not pipeline teardown. The Audio
+HAL must close the WoV pipeline and wait for teardown before starting the call
+path. On call end, close the call path before reopening WoV.
 
 ---
 

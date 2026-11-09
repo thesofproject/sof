@@ -20,6 +20,7 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/wov_arbiter.h>
 #include <sof/common.h>
+#include <rtos/atomic.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/notifier.h>
@@ -57,9 +58,11 @@ struct wov_arb_data {
 	 * Protected by the scheduler; no extra lock needed.
 	 */
 	uint8_t active_slot;
+	atomic_t call_active;
 	/* Number of input pins (= KPB slots); read from nb_input_pins at init. */
 	uint8_t num_slots;
 	uint16_t active_slot_ctl_id;
+	uint16_t call_state_ctl_id;
 	uint32_t copy_count;
 	uint32_t drain_frames_copied;
 	uint32_t drain_frames_total;
@@ -175,6 +178,12 @@ static void arb_on_detect(void *arg, enum notify_id id, void *data)
 		return;
 	}
 
+	if (atomic_read(&cd->call_active)) {
+		comp_dbg(dev, "wov_arb: ignoring slot %u detection while call is active",
+			 det->slot_id);
+		return;
+	}
+
 	/* First-wins: ignore if another slot is already draining. */
 	if (cd->active_slot != WOV_ARB_NO_ACTIVE) {
 		comp_warn(dev, "wov_arb: slot %u detected but slot %u active, ignoring",
@@ -233,7 +242,7 @@ static struct comp_dev *wov_arb_new(const struct comp_driver *drv,
 
 	/* Detection notifications arrive via notifier bus across pipelines, so support up to MAX_SLOTS */
 	cd->num_slots = WOV_ARB_MAX_SLOTS;
-	cd->active_slot_ctl_id = 1;
+	cd->active_slot_ctl_id = WOV_ARB_ACTIVE_SLOT_CONTROL_ID;
 
 	/* Start with no active slot; first WOV_DETECT notifier will activate one. */
 	cd->active_slot = WOV_ARB_NO_ACTIVE;
@@ -317,6 +326,10 @@ static int wov_arb_prepare(struct comp_dev *dev)
 
 #if CONFIG_IPC_MAJOR_4
 	notify_control_change(dev, cd, cd->active_slot_ctl_id, 0);
+	if (cd->call_state_ctl_id)
+		notify_control_change(dev, cd, cd->call_state_ctl_id,
+				     atomic_read(&cd->call_active) ?
+				     WOV_ARB_CALL_STATE_ACTIVE : WOV_ARB_CALL_STATE_LISTENING);
 #endif
 
 	if (!dev->frames) {
@@ -356,8 +369,11 @@ static int wov_arb_prepare(struct comp_dev *dev)
 	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_DETECT);
 	notifier_register(dev, NULL, NOTIFIER_ID_WOV_DETECT, arb_on_detect, 0);
 
-	/* Broadcast RESUME so all WOV detector slots start unpaused. */
-	struct wov_ctrl_notif ctrl = { .cmd = WOV_ARB_CMD_RESUME };
+	/* Preserve the call gate if the host re-prepares the pipeline. */
+	struct wov_ctrl_notif ctrl = {
+		.cmd = atomic_read(&cd->call_active) ? WOV_ARB_CMD_PAUSE : WOV_ARB_CMD_RESUME,
+		.slot_id = WOV_ARB_NO_ACTIVE,
+	};
 	notifier_event(dev, NOTIFIER_ID_WOV_CTRL, NOTIFIER_TARGET_CORE_ALL_MASK,
 		       &ctrl, sizeof(ctrl));
 
@@ -372,10 +388,13 @@ static int wov_arb_reset(struct comp_dev *dev)
 
 	if (cd && cd->active_slot != WOV_ARB_NO_ACTIVE) {
 		cd->active_slot = WOV_ARB_NO_ACTIVE;
-		struct wov_ctrl_notif c = { .cmd = WOV_ARB_CMD_RESUME };
-		notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
-			       NOTIFIER_TARGET_CORE_ALL_MASK,
-			       &c, sizeof(c));
+		if (!atomic_read(&cd->call_active)) {
+			struct wov_ctrl_notif c = { .cmd = WOV_ARB_CMD_RESUME };
+
+			notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
+				       NOTIFIER_TARGET_CORE_ALL_MASK,
+				       &c, sizeof(c));
+		}
 	}
 
 	cd->drain_frames_copied = 0;
@@ -460,9 +479,45 @@ static int wov_arb_set_large_config(struct comp_dev *dev,
 		const struct sof_ipc4_control_msg_payload *cp =
 			(const struct sof_ipc4_control_msg_payload *)data;
 
+		if (cp->id == WOV_ARB_CALL_STATE_CONTROL_ID) {
+			cd->call_state_ctl_id = cp->id;
+			if (cp->num_elems > 0) {
+				uint32_t val = cp->chanv[0].value;
+
+				if (val != WOV_ARB_CALL_STATE_LISTENING &&
+				    val != WOV_ARB_CALL_STATE_ACTIVE)
+					return -EINVAL;
+
+				bool call_active = val == WOV_ARB_CALL_STATE_ACTIVE;
+
+				atomic_set(&cd->call_active, call_active);
+				cd->active_slot = WOV_ARB_NO_ACTIVE;
+				struct wov_ctrl_notif c = {
+					.cmd = call_active ? WOV_ARB_CMD_PAUSE : WOV_ARB_CMD_RESUME,
+					.slot_id = WOV_ARB_NO_ACTIVE,
+				};
+				notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
+					       NOTIFIER_TARGET_CORE_ALL_MASK,
+					       &c, sizeof(c));
+				notify_control_change(dev, cd, cp->id, val);
+				comp_info(dev, "wov_arb: call state %s; detector control complete",
+					  call_active ? "active" : "listening");
+			}
+			return 0;
+		}
+
+		if (cp->id != WOV_ARB_ACTIVE_SLOT_CONTROL_ID)
+			return -EINVAL;
+
 		cd->active_slot_ctl_id = cp->id;
 		if (cp->num_elems > 0) {
 			uint32_t val = cp->chanv[0].value;
+
+			if (atomic_read(&cd->call_active))
+				return -EBUSY;
+
+			if (val > cd->num_slots)
+				return -EINVAL;
 
 			if (val == 0) {
 				comp_info(dev, "wov_arb: reset active_slot to listening (0)");
@@ -476,17 +531,7 @@ static int wov_arb_set_large_config(struct comp_dev *dev,
 
 				comp_info(dev, "wov_arb: filter listening to slot=%u via kcontrol",
 					  selected_slot);
-				/*
-				 * Do not force cd->active_slot: the arbiter must remain
-				 * in listening mode (WOV_ARB_NO_ACTIVE) so the selected
-				 * detector can still trigger when the keyword is spoken,
-				 * and so the host PCM stays idle until actual detection.
-				 *
-				 * Broadcast RESUME so the target slot unpauses even if
-				 * it was previously paused, then broadcast PAUSE with
-				 * slot_id = selected_slot so every OTHER slot suspends
-				 * inference and yields CPU time to the selected detector.
-				 */
+				/* Keep listening mode while pausing all but the selected slot. */
 				cd->active_slot = WOV_ARB_NO_ACTIVE;
 				struct wov_ctrl_notif r = { .cmd = WOV_ARB_CMD_RESUME };
 				notifier_event(dev, NOTIFIER_ID_WOV_CTRL,
