@@ -85,6 +85,11 @@ enum ipc4_connector_node_id_type {
 	ipc4_spi_output_class = 25,
 	/** SPI hardware gateway input. */
 	ipc4_spi_input_class = 26,
+
+	/** i.MX SAI link output */
+	ipc4_sai_link_output_class = 28,
+	/** i.MX SAI link input */
+	ipc4_sai_link_input_class = 29,
 	/** Sentinel marking maximum connector node ID type. */
 	ipc4_max_connector_node_id_type
 };
