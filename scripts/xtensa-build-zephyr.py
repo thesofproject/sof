@@ -88,6 +88,7 @@ class PlatformConfig:
 	RIMAGE_KEY: pathlib.Path = pathlib.Path(SOF_TOP, "keys", "otc_private_key_3k.pem")
 	aliases: list = dataclasses.field(default_factory=list)
 	ipc4: bool = False
+	extra_conf: pathlib.Path = None
 
 # These cannot be built by everyone out of the box yet.
 # For instance: there's no open-source toolchain available for them yet.
@@ -952,6 +953,9 @@ def build_platforms():
 		# building relocatable ELF objects.
 		if platf_build_environ.get("ZEPHYR_TOOLCHAIN_VARIANT") == 'xt-clang':
 			extra_conf_files.append(str(pathlib.Path(SOF_TOP, "app", "llext_relocatable.conf")))
+
+		if platform_dict.get("extra_conf"):
+			extra_conf_files.append(str(platform_dict["extra_conf"]))
 
 		if extra_conf_files:
 			extra_conf_files = ";".join(extra_conf_files)
