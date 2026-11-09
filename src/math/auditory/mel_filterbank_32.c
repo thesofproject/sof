@@ -10,6 +10,7 @@
 #include <sof/math/log.h>
 #include <sof/math/numbers.h>
 #include <sof/math/sqrt.h>
+#include <rtos/symbol.h>
 #include <stdint.h>
 
 static inline uint32_t mel_sqrt32(uint32_t num)
@@ -127,9 +128,11 @@ void psy_apply_mel_filterbank_with_linear_32(struct psy_mel_filterbank *fb, stru
 		}
 	}
 }
+EXPORT_SYMBOL(psy_apply_mel_filterbank_with_linear_32);
 
 void psy_apply_mel_filterbank_32(struct psy_mel_filterbank *fb, struct icomplex32 *fft_out,
 				 int32_t *power_spectra, int32_t *mel_log, int bitshift)
 {
 	psy_apply_mel_filterbank_with_linear_32(fb, fft_out, power_spectra, mel_log, NULL, bitshift);
 }
+EXPORT_SYMBOL(psy_apply_mel_filterbank_32);

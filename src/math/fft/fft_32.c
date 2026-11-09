@@ -9,6 +9,7 @@
 #include <sof/math/fft.h>
 #include <sof/math/icomplex32.h>
 #include <sof/common.h>
+#include <rtos/symbol.h>
 #include <stdint.h>
 
 #ifdef FFT_GENERIC
@@ -93,5 +94,6 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 		}
 	}
 }
+EXPORT_SYMBOL(fft_execute_32);
 
 #endif /* FFT_GENERIC */
