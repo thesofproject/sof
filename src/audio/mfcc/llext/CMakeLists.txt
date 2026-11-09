@@ -8,6 +8,8 @@ sof_llext_build("mfcc"
 		../mfcc_generic.c
 		../mfcc_hifi3.c
 		../mfcc_hifi4.c
+		../mfcc_vad.c
 		../mfcc_agc8.c
+		../mfcc_ipc4.c
 	LIB openmodules
 )
