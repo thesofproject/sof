@@ -56,6 +56,8 @@ int platform_context_save(struct sof *sof);
 struct sof_man_module;
 /** \brief Map an IPC4 module ID to its manifest entry. */
 const struct sof_man_module *platform_ipc4_get_module(uint32_t module_id);
+/** \brief Send SOF_IPC4_FW_READY to the host. */
+int imx_ipc4_boot_complete(uint32_t boot_message);
 #endif
 
 /** @}*/
