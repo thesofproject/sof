@@ -230,6 +230,16 @@ platform_configs_all = {
 		"hifi4_mscale_v2_0_2_prod",
 		RIMAGE_KEY = "key param ignored by imx8m"
 	),
+	# i.MX8MP IPC4 build. Opt-in target; the default 'imx8m' stays IPC3.
+	"imx8m-ipc4" : PlatformConfig(
+		"imx", "imx8mp_evk/mimx8ml8/adsp",
+		f"RI-2023.11{xtensa_tools_version_postfix}",
+		"hifi4_mscale_v2_0_2_prod",
+		RIMAGE_KEY = "key param ignored by imx8m",
+		ipc4 = True,
+		extra_conf = pathlib.Path(SOF_TOP, "app", "boards",
+		                          "imx8mp_evk_mimx8ml8_adsp_ipc4.conf")
+	),
 	"imx8m_cm7" : PlatformConfig(
 		"imx", "imx8mp_evk/mimx8ml8/m7/ddr",
 		"", "", "", ""
@@ -1354,7 +1364,7 @@ def gzip_compress(fname, gzdst=None):
 # Don't run sof_ri_info and ignore silently .ri files that don't have one.
 RI_INFO_UNSUPPORTED = []
 
-RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8m_cm7', 'imx8ulp', 'imx95']
+RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8m-ipc4', 'imx8m_cm7', 'imx8ulp', 'imx95']
 RI_INFO_UNSUPPORTED += ['rn', 'acp_6_0', 'acp_7_0', 'acp_7_x']
 RI_INFO_UNSUPPORTED += ['mt8186', 'mt8188', 'mt8195', 'mt8196', 'mt8365']
 RI_INFO_UNSUPPORTED += ['qemu_xtensa', 'qemu_xtensa_mmu', 'native_sim']
