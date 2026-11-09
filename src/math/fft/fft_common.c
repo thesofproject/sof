@@ -12,6 +12,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/common.h>
 #include <rtos/alloc.h>
+#include <rtos/symbol.h>
 #include <sof/math/fft.h>
 #include "fft_common.h"
 
@@ -103,6 +104,7 @@ struct fft_plan *mod_fft_plan_new(struct processing_module *mod, void *inb,
 	fft_plan_init_bit_reverse(plan->bit_reverse_idx, plan->size, plan->len);
 	return plan;
 }
+EXPORT_SYMBOL(mod_fft_plan_new);
 
 void mod_fft_plan_free(struct processing_module *mod, struct fft_plan *plan)
 {
@@ -112,3 +114,4 @@ void mod_fft_plan_free(struct processing_module *mod, struct fft_plan *plan)
 	mod_free(mod, plan->bit_reverse_idx);
 	mod_free(mod, plan);
 }
+EXPORT_SYMBOL(mod_fft_plan_free);
