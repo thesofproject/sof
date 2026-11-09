@@ -201,13 +201,14 @@ const unsigned char *MWW_GetDefaultModel(uint8_t slot_id, size_t *size)
 		return mww_model_data_strawberry;
 	case 1:
 		if (size)
-			*size = mww_model_data_hi_intel_size;
-		return mww_model_data_hi_intel;
-	case 2:
-	default:
-		if (size)
 			*size = mww_model_data_orange_size;
 		return mww_model_data_orange;
+	case 2:
+	default:
+		/* a lone detector gets slot 2 from its IPC4 instance ID 0 */
+		if (size)
+			*size = mww_model_data_hi_intel_size;
+		return mww_model_data_hi_intel;
 	}
 #endif
 }

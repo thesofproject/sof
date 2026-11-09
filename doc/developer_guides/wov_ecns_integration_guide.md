@@ -305,7 +305,7 @@ The `wov_arbiter` component synchronizes multi-slot pipelines and multiplexes de
 sequenceDiagram
     autonumber
     participant WOV0 as WOV Slot 0 (Strawberry)
-    participant WOV1 as WOV Slot 1 (Hi Intel)
+    participant WOV1 as WOV Slot 1 (Orange)
     participant KPB as KPB (Pipeline 106)
     participant ARB as WOV Arbiter (Pipeline 104)
     participant HOST as Linux ALSA Driver (PCM 11)

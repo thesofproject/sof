@@ -60,7 +60,7 @@ config COMP_MWW_MODEL_PIPELINE_ID
 	bool "Select model via pipeline ID"
 	help
 	  Select model dynamically based on pipeline/slot ID (slot 0: strawberry,
-	  slot 1: hi_intel, slot 2: orange). All default models from available
+	  slot 1: orange, slot 2: hi_intel). All default models from available
 	  header files are built into the firmware image.
 
 config COMP_MWW_MODEL_HI_INTEL

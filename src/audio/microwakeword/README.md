@@ -11,8 +11,8 @@ outputting a single sigmoid wake-word probability per keyword model.
 
 In this architecture, **one unified codebase** supports **three concurrent keyword spotter instances**:
 - **Slot 0** (Pipeline 101): `"strawberry"`
-- **Slot 1** (Pipeline 102): `"hi intel"`
-- **Slot 2** (Pipeline 103): `"orange"`
+- **Slot 1** (Pipeline 102): `"orange"`
+- **Slot 2** (Pipeline 103): `"hi intel"`
 
 ---
 
@@ -47,17 +47,17 @@ graph TD
         MO101 --> MFCC0 --> MWW0
     end
 
-    subgraph P102["Pipeline 102 — Slot 1: 'hi intel'  (Core 0, DP 10ms)"]
+    subgraph P102["Pipeline 102 — Slot 1: 'orange'  (Core 0, DP 10ms)"]
         MO102["mixout 102.1"]
         MFCC1["mfcc.102.1\n(Mel-40 10ms PCAN Compress)\nIBS: 320B | OBS: 64B"]
-        MWW1["mww.102.1\n(microWakeWord)\nModel: 'hi intel'"]
+        MWW1["mww.102.1\n(microWakeWord)\nModel: 'orange'"]
         MO102 --> MFCC1 --> MWW1
     end
 
-    subgraph P103["Pipeline 103 — Slot 2: 'orange'  (Core 0, DP 10ms)"]
+    subgraph P103["Pipeline 103 — Slot 2: 'hi intel'  (Core 0, DP 10ms)"]
         MO103["mixout 103.1"]
         MFCC2["mfcc.103.1\n(Mel-40 10ms PCAN Compress)\nIBS: 320B | OBS: 64B"]
-        MWW2["mww.103.1\n(microWakeWord)\nModel: 'orange'"]
+        MWW2["mww.103.1\n(microWakeWord)\nModel: 'hi intel'"]
         MO103 --> MFCC2 --> MWW2
     end
 
@@ -150,8 +150,12 @@ This guarantees deterministic execution, avoids heap fragmentation, and ensures 
 ### 3. Keyword Model Dispatch
 Default built-in models are bound automatically by slot/pipeline index when using `CONFIG_COMP_MWW_MODEL_PIPELINE_ID` (default):
 - **Slot 0** (`pipeline_id == 101`): `mww_model_data_strawberry`
-- **Slot 1** (`pipeline_id == 102`): `mww_model_data_hi_intel`
-- **Slot 2** (`pipeline_id == 103`): `mww_model_data_orange`
+- **Slot 1** (`pipeline_id == 102`): `mww_model_data_orange`
+- **Slot 2** (`pipeline_id == 103`): `mww_model_data_hi_intel`
+
+With IPC4 the kernel assigns its own pipeline IDs, so the slot is derived from
+the MWW instance ID instead. A topology with a single detector gets slot 2 and
+the "hi intel" model.
 
 Alternatively, a single built-in model can be forced via Kconfig (`CONFIG_COMP_MWW_MODEL_HI_INTEL`, `CONFIG_COMP_MWW_MODEL_HEY_JARVIS`, `CONFIG_COMP_MWW_MODEL_STRAWBERRY`, `CONFIG_COMP_MWW_MODEL_ORANGE`, or `CONFIG_COMP_MWW_MODEL_BANANA`), omitting all other models from the build to reduce firmware image size.
 
@@ -191,7 +195,7 @@ The arbiter exposes a volatile read-only ALSA enum kcontrol:
 amixer -c 0 cget name='DMIC Phrase Detect ID'
 # For SDW Headset WoV:
 amixer -c 0 cget name='Jack In Phrase Detect ID'
-# Values: 0 = Listening, 1 = Slot 1 ("strawberry"), 2 = Slot 2 ("hi intel"), 3 = Slot 3 ("orange")
+# Values: 0 = Listening, 1 = Slot 1 ("strawberry"), 2 = Slot 2 ("orange"), 3 = Slot 3 ("hi intel")
 ```
 
 ### 2. Audio Capture Endpoints
