@@ -9,7 +9,7 @@ include(CheckCCompilerFlag)
 
 set(default_asoc_h "/usr/include/alsa/sound/uapi/asoc.h")
 
-file(READ "../../src/arch/host/configs/library_defconfig" library_defconfig)
+file(READ "../../src/kernel/arch/host/configs/library_defconfig" library_defconfig)
 
 if(library_defconfig MATCHES "CONFIG_IPC_MAJOR_4=y")
     message("-- Selected IPC4 build for testbench")
@@ -39,7 +39,7 @@ set(sof_binary_directory "${PROJECT_BINARY_DIR}/sof_ep/build")
 
 set(config_h ${sof_binary_directory}/library_autoconfig.h)
 
-target_include_directories(${testbench} PRIVATE "${sof_source_directory}/src/platform/library/include")
+target_include_directories(${testbench} PRIVATE "${sof_source_directory}/src/kernel/platform/library/include")
 target_include_directories(${testbench} PRIVATE "${sof_source_directory}/src/audio")
 
 # Configuration time, make copy

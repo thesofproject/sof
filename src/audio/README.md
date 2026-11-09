@@ -15,5 +15,5 @@ modules in user context.
 
 When adding a component here, keep it inside the application tier: allocate through the module
 allocation syscalls (`mod_*`), mark any globals shared with the kernel using the partition
-markers, and never call kernel-only subsystems (`kernel/drivers/`, `platform/`, `kernel/idc/`)
+markers, and never call kernel-only subsystems (`kernel/drivers/`, `kernel/platform/`, `kernel/idc/`)
 directly.

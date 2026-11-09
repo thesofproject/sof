@@ -156,9 +156,8 @@ zephyr_interface_library_named(SOF)
 cmake_path(SET sof_top_dir NORMALIZE "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(SOF_SRC_PATH "${sof_top_dir}/src")
 
-set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
+set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/kernel/platform")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/kernel/drivers")
-set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
 
 set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
 
@@ -170,7 +169,7 @@ set(RIMAGE_CONFIG_PATH ${RIMAGE_TOP}/config CACHE PATH
 # default SOF includes
 target_include_directories(SOF INTERFACE ${RIMAGE_TOP}/src/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
-target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
+target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/kernel/arch/${ARCH}/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/third_party/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/zephyr/include)
 
@@ -242,7 +241,6 @@ add_subdirectory(../src/kernel/ kernel_unused_install/)
 add_subdirectory(../src/lib/ lib_unused_install/)
 add_subdirectory(../src/samples/ samples_unused_install/)
 add_subdirectory(../src/schedule/  schedule_unused_install/)
-add_subdirectory(../src/trace/ trace_unused_install/)
 add_subdirectory(test/)
 
 # Old way below: all .c files added by this giant CMake file.
@@ -364,7 +362,7 @@ if (CONFIG_SOC_MIMX8ML8_M7)
 	)
 
 	# SOF-specific linker script additions
-	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/platform/imx8m_cm7/linker/data-sections.ld)
+	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/kernel/platform/imx8m_cm7/linker/data-sections.ld)
 
 	set(PLATFORM "imx8m_cm7")
 
@@ -428,7 +426,7 @@ if (CONFIG_SOC_MIMX9596_M7)
 	)
 
 	# SOF-specific linker script additions
-	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/platform/imx95/linker/data-sections.ld)
+	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/kernel/platform/imx95/linker/data-sections.ld)
 
 	set(PLATFORM "imx95")
 
@@ -577,7 +575,7 @@ endif()
 zephyr_library_sources(
 
 	# SOF core infrastructure - runs on top of Zephyr
-	${SOF_SRC_PATH}/arch/xtensa/drivers/cache_attr.c
+	${SOF_SRC_PATH}/kernel/arch/xtensa/drivers/cache_attr.c
 
 	# Bridge wrapper between SOF and Zephyr APIs - Will shrink over time.
 	wrapper.c
@@ -665,6 +663,25 @@ add_definitions(-DXCC_TOOLS_VERSION="${ZEPHYR_TOOLCHAIN_VARIANT}" -DCC_OPTIMIZE_
 include(../scripts/cmake/version.cmake)
 
 include(../scripts/cmake/uuid-registry.cmake)
+
+# Everything under src/kernel belongs in sof_kernel, also the platform, driver
+# and architecture sources that this file lists itself rather than adding
+# them from src/kernel/CMakeLists.txt. Move them out of modules_sof.
+get_target_property(modules_sof_sources modules_sof SOURCES)
+cmake_path(SET sof_kernel_src_dir NORMALIZE "${SOF_SRC_PATH}/kernel/")
+set(sof_kernel_listed_sources)
+foreach(src ${modules_sof_sources})
+	cmake_path(ABSOLUTE_PATH src NORMALIZE OUTPUT_VARIABLE abs_src)
+	string(FIND "${abs_src}" "${sof_kernel_src_dir}" pos)
+	if(pos EQUAL 0)
+		list(APPEND sof_kernel_listed_sources ${src})
+	endif()
+endforeach()
+if(sof_kernel_listed_sources)
+	list(REMOVE_ITEM modules_sof_sources ${sof_kernel_listed_sources})
+	set_property(TARGET modules_sof PROPERTY SOURCES ${modules_sof_sources})
+	target_sources(sof_kernel PRIVATE ${sof_kernel_listed_sources})
+endif()
 
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)

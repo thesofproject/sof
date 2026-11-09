@@ -7,7 +7,7 @@ elseif (CONFIG_IPC_MAJOR_4)
 endif()
 
 # Files common to Zephyr and the host library
-add_local_sources(sof notification_pool.c)
+add_local_sources(sof ipc-common-kernel.c notification_pool.c)
 
 is_zephyr(zephyr)
 if(zephyr)

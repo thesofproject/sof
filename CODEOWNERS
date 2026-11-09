@@ -47,9 +47,9 @@ src/audio/module_adapter/*		@ranj063 @jxstelter
 src/audio/google/*			@thesofproject/google
 
 # platforms
-src/platform/imx8/**			@dbaluta
-src/platform/amd/**			@bhiregoudar @sunilkumardommati
-src/platform/mtk/**			@yaochunhung @kuanhsuncheng
+src/kernel/platform/imx8/**			@dbaluta
+src/kernel/platform/amd/**			@bhiregoudar @sunilkumardommati
+src/kernel/platform/mtk/**			@yaochunhung @kuanhsuncheng
 
 # drivers
 src/drivers/intel/dmic.c		@singalsu

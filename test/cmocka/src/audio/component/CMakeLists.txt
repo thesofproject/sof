@@ -8,6 +8,7 @@ cmocka_test(comp_set_state
 	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
+	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc-common-kernel.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffers/audio_buffer.c

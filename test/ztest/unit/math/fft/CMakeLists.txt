@@ -16,7 +16,7 @@ include(${SOF_ROOT}/scripts/cmake/uuid-registry.cmake)
 target_include_directories(app PRIVATE
 	${SOF_ROOT}/zephyr/include
 	${SOF_ROOT}/src/include
-	${SOF_ROOT}/src/platform/posix/include
+	${SOF_ROOT}/src/kernel/platform/posix/include
 	${SOF_ROOT}/src/audio
 	${SOF_ROOT}/test/ztest/unit/common
 	${SOF_ROOT}/test/cmocka/include
@@ -65,6 +65,7 @@ target_sources(app PRIVATE
 	${SOF_ROOT}/src/module/audio/sink_api.c
 	${SOF_ROOT}/src/kernel/ipc/ipc3/helper.c
 	${SOF_ROOT}/src/ipc/ipc-common.c
+	${SOF_ROOT}/src/kernel/ipc/ipc-common-kernel.c
 	${SOF_ROOT}/src/ipc/ipc-helper.c
 	${SOF_ROOT}/src/audio/pipeline/pipeline-graph.c
 	${SOF_ROOT}/src/audio/pipeline/pipeline-params.c

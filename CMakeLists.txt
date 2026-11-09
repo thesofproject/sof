@@ -144,6 +144,6 @@ endif()
 
 if(BUILD_UNIT_TESTS)
 	enable_testing()
-	add_subdirectory(src/arch/${ARCH})
+	add_subdirectory(src/kernel/arch/${ARCH})
 	add_subdirectory(test)
 endif()

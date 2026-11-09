@@ -3,7 +3,7 @@
 cmocka_test(alloc
 	alloc.c
 	${PROJECT_SOURCE_DIR}/src/lib/alloc.c
-	${PROJECT_SOURCE_DIR}/src/platform/library/lib/memory.c
+	${PROJECT_SOURCE_DIR}/src/kernel/platform/library/lib/memory.c
 )
 
-target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/intel/cavs/include)
+target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/kernel/platform/intel/cavs/include)

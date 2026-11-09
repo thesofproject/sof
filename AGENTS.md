@@ -29,12 +29,11 @@ memory-partition markers and Kconfig hierarchy are documented in
 [`src/include/sof/userspace/README.md`](src/include/sof/userspace/README.md). When adding or
 moving code, follow it:
 
-* **Place code in the right tier.** OS/HAL/boot/inter-core → a kernel-only directory
-  (`kernel/`, which is built into the `sof_kernel` library, and the directories not yet
-  moved there: `arch/`, `platform/`, `trace/`); audio
-  application logic → `audio/`; reusable pure code → a shared-library directory (`lib/`,
-  `math/`, `module/`) kept free of privileged operations. Each top-level directory's
-  `README.md` states its tier in a "Runs in:" banner — keep it accurate.
+* **Place code in the right tier.** OS/HAL/boot/inter-core → the kernel-only directory
+  (`kernel/`, which is built into the `sof_kernel` library); audio application logic →
+  `audio/`; reusable pure code → a shared-library directory (`lib/`, `math/`, `module/`) kept
+  free of privileged operations. Each top-level directory's `README.md` states its tier in a
+  "Runs in:" banner — keep it accurate.
 * **Cross the boundary only via a syscall.** Add a `__syscall` declaration, put the `z_vrfy_`
   validator in the boundary tier (preferably `zephyr/syscall/<subsystem>.c`), validate every
   user-supplied argument, and add the call to

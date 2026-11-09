@@ -35,9 +35,6 @@
 #include <sof/platform.h>
 #include <rtos/string.h>
 #include <rtos/string_macro.h>
-#if CONFIG_TRACE
-#include <sof/trace/dma-trace.h>
-#endif
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/dai.h>
@@ -759,10 +756,6 @@ static int ipc_pm_gate(uint32_t header)
 
 	tr_info(&ipc_tr, "ipc: pm gate flags 0x%x", pm_gate.flags);
 
-	/* pause dma trace firstly if needed */
-	if (pm_gate.flags & SOF_PM_NO_TRACE)
-		trace_off();
-
 	if (pm_gate.flags & SOF_PM_PPG) {
 		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 	} else {
@@ -774,10 +767,6 @@ static int ipc_pm_gate(uint32_t header)
 		 */
 		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 	}
-
-	/* resume dma trace if needed */
-	if (!(pm_gate.flags & SOF_PM_NO_TRACE))
-		trace_on();
 
 	return 0;
 }
@@ -806,158 +795,6 @@ static int ipc_glb_pm_message(uint32_t header)
 	}
 }
 
-#if CONFIG_TRACE
-/*
- * Debug IPC Operations.
- */
-static void ipc_dma_trace_free(uint32_t header)
-{
-	struct dma_trace_data *dmat = dma_trace_data_get();
-
-	dma_trace_disable(dmat);
-}
-
-static int ipc_dma_trace_config(uint32_t header)
-{
-#if CONFIG_HOST_PTABLE
-	struct dma_sg_elem_array elem_array;
-	uint32_t ring_size;
-#endif
-	struct dma_trace_data *dmat = dma_trace_data_get();
-	struct ipc *ipc = ipc_get();
-	struct sof_ipc_dma_trace_params_ext params;
-	int err;
-
-	if (!dmat) {
-		mtrace_printf(LOG_LEVEL_ERROR,
-			      "failed: dmat not initialized");
-		return -ENOMEM;
-	}
-
-	/* copy message with ABI safe method */
-	IPC_COPY_CMD(params, ipc->comp_data);
-
-	if (iCS(header) == SOF_IPC_TRACE_DMA_PARAMS_EXT)
-		/* As version 5.12 Linux sends the monotonic
-		 *  ktime_get(). Search for
-		 *  "SOF_IPC_TRACE_DMA_PARAMS_EXT" in your particular
-		 *  kernel version.
-		 */
-		dmat->time_delta = k_ns_to_cyc_near64(params.timestamp_ns) - sof_cycle_get_64();
-	else
-		dmat->time_delta = 0;
-
-#if CONFIG_HOST_PTABLE
-	err = ipc_process_host_buffer(ipc, &params.buffer,
-				      SOF_IPC_STREAM_CAPTURE,
-				      &elem_array,
-				      &ring_size);
-	if (err < 0)
-		goto processing_error;
-
-	err = dma_trace_host_buffer(dmat, &elem_array, ring_size);
-	if (err < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: trace failed to set host buffers %d",
-			    err);
-		goto error;
-	}
-#else
-	/* stream tag of capture stream for DMA trace */
-	dmat->stream_tag = params.stream_tag;
-
-	/* host buffer size for DMA trace */
-	dmat->host_size = params.buffer.size;
-#endif /* CONFIG_HOST_PTABLE */
-
-	err = dma_trace_enable(dmat);
-	if (err < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: failed to enable trace %d", err);
-		goto error;
-	}
-
-	return 0;
-
-error:
-#if CONFIG_HOST_PTABLE
-	dma_sg_free(NULL, &elem_array);
-
-processing_error:
-#endif
-
-	return err;
-}
-
-static int ipc_trace_filter_update(uint32_t header)
-{
-	struct sof_ipc_trace_filter_elem *next_elem;
-	struct sof_ipc_trace_filter_elem *elem;
-	struct sof_ipc_trace_filter_elem *end;
-	struct sof_ipc_trace_filter *packet;
-	struct trace_filter filter;
-	struct ipc *ipc = ipc_get();
-	int ret = 0;
-	int cnt;
-
-	packet = ipc->comp_data;
-
-	/* validation, packet->hdr.size has already been compared with SOF_IPC_MSG_MAX_SIZE */
-	if (sizeof(*packet) + sizeof(*elem) * packet->elem_cnt != packet->hdr.size) {
-		ipc_cmd_err(&ipc_tr, "trace_filter_update failed, elem_cnt %d is inconsistent with hdr.size %d",
-			    packet->elem_cnt, packet->hdr.size);
-		return -EINVAL;
-	}
-
-	tr_info(&ipc_tr, "ipc: trace_filter_update received, size %d elems",
-		packet->elem_cnt);
-
-	elem = packet->elems;
-	end = &packet->elems[packet->elem_cnt];
-
-	/* read each filter set and update selected components trace settings */
-	while (elem != end) {
-		next_elem = trace_filter_fill(elem, end, &filter);
-		if (!next_elem)
-			return -EINVAL;
-
-		cnt = trace_filter_update(&filter);
-		if (cnt < 0) {
-			ipc_cmd_err(&ipc_tr, "trace_filter_update failed for UUID key 0x%X, comp %d.%d and log level %d",
-				    filter.uuid_id, filter.pipe_id, filter.comp_id,
-				    filter.log_level);
-			ret = cnt;
-		} else {
-			tr_info(&ipc_tr, "trace_filter_update for UUID key 0x%X, comp %d.%d affected %d components",
-				filter.uuid_id, filter.pipe_id, filter.comp_id,
-				cnt);
-		}
-
-		elem = next_elem;
-	}
-
-	return ret;
-}
-
-static int ipc_glb_trace_message(uint32_t header)
-{
-	uint32_t cmd = iCS(header);
-
-	tr_info(&ipc_tr, "ipc: debug cmd 0x%x", cmd);
-
-	switch (cmd) {
-	case SOF_IPC_TRACE_DMA_PARAMS:
-	case SOF_IPC_TRACE_DMA_PARAMS_EXT:
-		return ipc_dma_trace_config(header);
-	case SOF_IPC_TRACE_DMA_FREE:
-		ipc_dma_trace_free(header);
-		return 0;
-	case SOF_IPC_TRACE_FILTER_UPDATE:
-		return ipc_trace_filter_update(header);
-	default:
-		ipc_cmd_err(&ipc_tr, "ipc: unknown debug cmd 0x%x", cmd);
-		return -EINVAL;
-	}
-}
-#else /* CONFIG_TRACE */
 static int ipc_glb_trace_message(uint32_t header)
 {
 	/* Return success, as the protocol provides no way to inform
@@ -966,7 +803,6 @@ static int ipc_glb_trace_message(uint32_t header)
 	 */
 	return 0;
 }
-#endif /* CONFIG_TRACE */
 
 static int ipc_glb_gdb_debug(uint32_t header)
 {

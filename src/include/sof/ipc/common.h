@@ -214,12 +214,6 @@ int ipc_process_host_buffer(struct ipc *ipc,
 			    uint32_t *ring_size);
 
 /**
- * \brief Send DMA trace host buffer position to host.
- * @return 0 on success.
- */
-int ipc_dma_trace_send_position(void);
-
-/**
  * \brief send a IPC buffer status notify message
  */
 void ipc_send_buffer_status_notify(void);
@@ -333,6 +327,19 @@ void ipc_complete_cmd(struct ipc *ipc);
 extern bool ipc_enter_gdb;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
+/* Events that wake the user-space IPC thread */
+#define IPC_USER_EVENT_CMD      BIT(0)
+#define IPC_USER_EVENT_STOP     BIT(1)
+
+/**
+ * @brief User-space IPC thread entry point.
+ *
+ * @param p1 struct ipc_user shared with the kernel
+ * @param p2 Core ID
+ * @param p3 Unused
+ */
+void ipc_user_thread_fn(void *p1, void *p2, void *p3);
+
 /**
  * @brief Forward an IPC command to the user-space thread and wait for it.
  *
