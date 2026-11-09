@@ -47,6 +47,19 @@ jobs:
         with:
           path: sof
 
+      # MFCC with PCAN needs the TFLM microfrontend sources next to sof/,
+      # use the revision pinned in the west submanifest.
+      - name: Checkout TFLM microfrontend
+        run: |
+          rev=$(awk '/name: tflite-micro/ {f=1} f && /revision:/ {print $2; exit}' \
+                sof/submanifests/tflm.yml)
+          git init tflite-micro
+          cd tflite-micro
+          git remote add origin https://github.com/tensorflow/tflite-micro
+          git sparse-checkout set tensorflow/lite/experimental/microfrontend/lib
+          git fetch --depth 1 --filter=blob:none origin "$rev"
+          git checkout FETCH_HEAD
+
       # note: libasound-dev needed for testbench build which still
       #       requires system ALSA headers to be present
       - name: apt get
