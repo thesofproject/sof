@@ -983,6 +983,25 @@ make -C build-tools \
     topology2_prod_sof-ptl-dmic-wov-multi-4ch
 ```
 
+##### Configurable Detector Count With Dummy ECNS
+
+With `INCLUDE_WOV=multi`, set the per-target preprocessor define
+`WOV_SLOT_COUNT=1`, `2`, or `3` in
+[tplg-targets-ace3.cmake](production/tplg-targets-ace3.cmake), then rebuild the
+target. The default is `3`; output filenames and WCL symlinks stay unchanged.
+Use `INCLUDE_WOV=false` to disable WoV, not `WOV_SLOT_COUNT=0`.
+
+| WOV_SLOT_COUNT | Active slots per source | Arbiter input pins |
+| --- | --- | --- |
+| 1 | 0 | 2: KPB audio + one detector |
+| 2 | 0, 1 | 3: KPB audio + two detectors |
+| 3 | 0, 1, 2 | 4: KPB audio + three detectors |
+
+The count also applies to headset WoV when `INCLUDE_SDW_JACK_WOV=true`.
+Unused detector pipelines, controls, routes, and fanout/arbiter pins are omitted.
+Dummy ECNS, channel mapping, KPB, fanout pipeline, arbiter, PCM IDs, and model
+slot IDs are preserved. Load the desired model into an active MWW bytes control.
+
 ##### Method B: Direct CLI Preprocessor Invocation (`alsatplg -p`)
 
 To compile the full production SoundWire RT721 multi-slot WoV topology directly using system `alsatplg`:
