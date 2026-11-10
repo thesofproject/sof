@@ -212,10 +212,10 @@ static struct k_heap l3_heap_copy __imrdata;
 static uintptr_t calc_l3_heap_start(void)
 {
 	const struct sof_man_fw_desc *desc =
-		(const struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
+		sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)
+					   IMR_BOOT_LDR_MANIFEST_BASE);
 	uintptr_t image_end;
 
-	sys_cache_data_invd_range((void *)&desc->header, sizeof(desc->header));
 	image_end = IMR_BOOT_LDR_MANIFEST_BASE +
 		desc->header.preload_page_count * HOST_PAGE_SIZE;
 
