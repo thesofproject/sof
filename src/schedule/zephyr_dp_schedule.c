@@ -7,6 +7,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <sof/llext_manager.h>
 #include <rtos/task.h>
 #include <rtos/userspace_helper.h>
@@ -254,6 +255,22 @@ void z_vrfy_scheduler_dp_ll_tick(void)
 	z_impl_scheduler_dp_ll_tick();
 }
 #include <zephyr/syscalls/scheduler_dp_ll_tick_mrsh.c>
+#endif
+
+void z_impl_scheduler_dp_check_deadline(uint16_t core, uint32_t deadline_clock_ticks)
+{
+	if (deadline_clock_ticks &&
+	    (int32_t)(k_cycle_get_32() - deadline_clock_ticks) > 0)
+		telemetry_notify_dp_deadline_miss(core);
+}
+
+#ifdef CONFIG_USERSPACE
+void z_vrfy_scheduler_dp_check_deadline(uint16_t core, uint32_t deadline_clock_ticks)
+{
+	K_OOPS(K_SYSCALL_VERIFY(core < CONFIG_MP_MAX_NUM_CPUS));
+	z_impl_scheduler_dp_check_deadline(core, deadline_clock_ticks);
+}
+#include <zephyr/syscalls/scheduler_dp_check_deadline_mrsh.c>
 #endif
 
 #if CONFIG_SOF_USERSPACE_APPLICATION

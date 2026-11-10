@@ -90,7 +90,21 @@ __syscall void scheduler_dp_internal_free(struct task *task);
  * queued DP tasks, updates their absolute deadlines, and signals worker threads.
  */
 __syscall void scheduler_dp_ll_tick(void);
+
+/**
+ * @brief Check whether a DP task finished after its deadline and report a telemetry miss.
+ *
+ * @param[in] core DSP core ID of the DP task.
+ * @param[in] deadline_clock_ticks Absolute hardware cycle deadline of the run.
+ */
+__syscall void scheduler_dp_check_deadline(uint16_t core, uint32_t deadline_clock_ticks);
 #include <zephyr/syscalls/dp_schedule.h>
+#else
+static inline void scheduler_dp_check_deadline(uint16_t core, uint32_t deadline_clock_ticks)
+{
+	(void)core;
+	(void)deadline_clock_ticks;
+}
 #endif
 
 /**
