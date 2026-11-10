@@ -9,7 +9,7 @@
 #include <string.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/alloc.h>
-#if !defined(LLEXT_MODULE)
+#if !defined(LLEXT_MODULE) && !defined(LL_EXTENSION_BUILD)
 #include <rtos/userspace_helper.h>
 static APP_SYSUSER_BSS struct processing_module *active_ns2_mod;
 #else
@@ -56,7 +56,7 @@ void *webrtc_ns2_calloc(size_t nmemb, size_t size)
 	return p;
 }
 
-#if defined(LLEXT_MODULE)
+#if defined(LLEXT_MODULE) || defined(LL_EXTENSION_BUILD)
 /* ============================ Memory ============================ */
 
 void *malloc(size_t size)
@@ -111,6 +111,7 @@ void *memmove(void *dest, const void *src, size_t n)
 	}
 	return dest;
 }
+#endif /* LLEXT_MODULE || LL_EXTENSION_BUILD */
 
 /* ============================ Math ============================== */
 
@@ -143,17 +144,17 @@ static float ns2_log2f(float x)
 	return (float)e + z * (1.44269504f - z * (0.72134752f - z * 0.48089834f));
 }
 
-float log10f(float x)
+__attribute__((weak)) float log10f(float x)
 {
 	return ns2_log2f(x) * 0.3010299956639812f;
 }
 
-double log10(double x)
+__attribute__((weak)) double log10(double x)
 {
 	return (double)log10f((float)x);
 }
 
-float floorf(float x)
+__attribute__((weak)) float floorf(float x)
 {
 	int i = (int)x;
 
@@ -162,12 +163,12 @@ float floorf(float x)
 	return (float)i;
 }
 
-double floor(double x)
+__attribute__((weak)) double floor(double x)
 {
 	return (double)floorf((float)x);
 }
 
-float ceilf(float x)
+__attribute__((weak)) float ceilf(float x)
 {
 	int i = (int)x;
 
@@ -181,24 +182,24 @@ static inline float ns2_roundf(float x)
 	return (x >= 0.0f) ? floorf(x + 0.5f) : ceilf(x - 0.5f);
 }
 
-float fabsf(float x)
+__attribute__((weak)) float fabsf(float x)
 {
 	return (x < 0.0f) ? -x : x;
 }
 
-double fabs(double x)
+__attribute__((weak)) double fabs(double x)
 {
 	return (x < 0.0) ? -x : x;
 }
 
-float sqrtf(float x)
+__attribute__((weak)) float sqrtf(float x)
 {
 	if (x <= 0.0f)
 		return 0.0f;
 	return __builtin_sqrtf(x);
 }
 
-double sqrt(double x)
+__attribute__((weak)) double sqrt(double x)
 {
 	return (double)sqrtf((float)x);
 }
@@ -211,7 +212,7 @@ static inline void ns2_sincosf_poly(float z, float *s_out, float *c_out)
 	*c_out = 1.0f + z2 * (-0.5f + z2 * (0.041666667f + z2 * (-0.0013888889f + z2 * 0.0000248016f)));
 }
 
-float sinf(float x)
+__attribute__((weak)) float sinf(float x)
 {
 	const float inv_half_pi = 0.636619772367581343f;
 	const float half_pi_hi  = 1.5707963267948966f;
@@ -229,12 +230,12 @@ float sinf(float x)
 	}
 }
 
-double sin(double x)
+__attribute__((weak)) double sin(double x)
 {
 	return (double)sinf((float)x);
 }
 
-float cosf(float x)
+__attribute__((weak)) float cosf(float x)
 {
 	const float inv_half_pi = 0.636619772367581343f;
 	const float half_pi_hi  = 1.5707963267948966f;
@@ -252,12 +253,12 @@ float cosf(float x)
 	}
 }
 
-double cos(double x)
+__attribute__((weak)) double cos(double x)
 {
 	return (double)cosf((float)x);
 }
 
-float exp2f(float x)
+__attribute__((weak)) float exp2f(float x)
 {
 	int n;
 	float f, p;
@@ -276,13 +277,12 @@ float exp2f(float x)
 	return p * ns2_ldexp2(n);
 }
 
-float expf(float x)
+__attribute__((weak)) float expf(float x)
 {
 	return exp2f(x * 1.4426950408889634f);
 }
 
-double exp(double x)
+__attribute__((weak)) double exp(double x)
 {
 	return (double)expf((float)x);
 }
-#endif /* LLEXT_MODULE */

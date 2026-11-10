@@ -39,6 +39,16 @@ set(LIBFVAD_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/libfvad-install"
 # Rather than invoking its CMakeLists (which would need a CMake toolchain file),
 # we compile the objects directly and archive them. This mirrors the libshine
 # approach in ffmpeg.cmake.
+if("${ARCH}" STREQUAL "xtensa")
+  if(CONFIG_LLEXT_BUILD_PIC)
+    set(_fvad_arch_cflags "-fPIC -mlongcalls -mtext-section-literals")
+  else()
+    set(_fvad_arch_cflags "-fno-pic -fno-pie -mlongcalls -mtext-section-literals")
+  endif()
+else()
+  set(_fvad_arch_cflags "-fPIC")
+endif()
+
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/fvad-build.sh"
 "#!/bin/sh
 set -e
@@ -66,7 +76,7 @@ SRCS=\"
 
 for f in \$SRCS; do
   bn=\$(basename \"\$f\" .c)
-  ${CMAKE_C_COMPILER} -O2 -fPIC \
+  ${CMAKE_C_COMPILER} -O2 ${_fvad_arch_cflags} -DNDEBUG \
     -I$SRC/include \
     -I$SRC/src \
     -c \"\$f\" -o \"$OBJ/\${bn}.o\"

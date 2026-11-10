@@ -33,6 +33,16 @@ set(WEBRTC_AECM_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-install"
 
 set(_aecm_src "${SOF_WEBRTC_APM_SRC_DIR}/webrtc")
 
+if("${ARCH}" STREQUAL "xtensa")
+  if(CONFIG_LLEXT_BUILD_PIC)
+    set(_aecm_arch_cflags "-fPIC -mlongcalls -mtext-section-literals")
+  else()
+    set(_aecm_arch_cflags "-fno-pic -fno-pie -mlongcalls -mtext-section-literals")
+  endif()
+else()
+  set(_aecm_arch_cflags "-fPIC")
+endif()
+
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-build.sh"
 "#!/bin/sh
 set -e
@@ -42,7 +52,7 @@ OBJ=${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-obj
 
 mkdir -p \"$OBJ\" \"$INST/lib\" \"$INST/include\" \"$INST/include/webrtc\"
 
-CFLAGS=\"-O2 -fPIC -I${SOF_WEBRTC_APM_SRC_DIR} -I$SRC -I$SRC/common_audio/signal_processing/include -DWEBRTC_ARCH_32_BITS= -DWEBRTC_ARCH_LITTLE_ENDIAN= -Dmalloc=webrtc_malloc -Dcalloc=webrtc_calloc -Drealloc=webrtc_realloc -Dfree=webrtc_free\"
+CFLAGS=\"-O2 ${_aecm_arch_cflags} -DNDEBUG -I${SOF_WEBRTC_APM_SRC_DIR} -I$SRC -I$SRC/common_audio/signal_processing/include -DWEBRTC_ARCH_32_BITS= -DWEBRTC_ARCH_LITTLE_ENDIAN= -Dmalloc=webrtc_malloc -Dcalloc=webrtc_calloc -Drealloc=webrtc_realloc -Dfree=webrtc_free\"
 
 # AECm core
 SRCS=\"

@@ -178,6 +178,7 @@ void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 		}
 	}
 }
+EXPORT_SYMBOL(notifier_event);
 
 __cold void init_system_notify(struct sof *sof)
 {
