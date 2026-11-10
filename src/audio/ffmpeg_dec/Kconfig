@@ -59,6 +59,14 @@ config FFMPEG_DEC_ALAC
 	  --enable-decoder=alac in the libavcodec build for compress playback
 	  streams requesting SND_AUDIOCODEC_ALAC.
 
+config FFMPEG_DEC_SBC
+	bool "Bluetooth SBC / mSBC decoder"
+	help
+	  Bluetooth A2DP Subband Codec (SBC) and HFP Wideband Speech (mSBC)
+	  decoder. Pure integer synthesis filterbank with no floating-point
+	  math dependency. Enables --enable-decoder=sbc --enable-parser=sbc
+	  in the libavcodec build.
+
 comment "FFmpeg encoders to build (footprint scales with selection)"
 
 config FFMPEG_ENC_MP3
@@ -96,11 +104,19 @@ config FFMPEG_ENC_ALAC
 	  Selected at runtime for compress capture streams requesting
 	  SND_AUDIOCODEC_ALAC.
 
+config FFMPEG_ENC_SBC
+	bool "Bluetooth SBC / mSBC encoder (native libavcodec)"
+	help
+	  Bluetooth A2DP Subband Codec (SBC) and HFP Wideband Speech (mSBC)
+	  encoder via native libavcodec sbc encoder. Pure integer analysis
+	  filterbank with no floating-point math dependency. Selected at
+	  runtime for compress capture streams requesting SND_AUDIOCODEC_SBC.
+
 # Selected automatically when any encoder is enabled. Gates compilation of the
 # runtime encode path (ffmpeg-encode.c).
 config FFMPEG_ENC
 	bool
-	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC || FFMPEG_ENC_FLAC || FFMPEG_ENC_ALAC
+	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC || FFMPEG_ENC_FLAC || FFMPEG_ENC_ALAC || FFMPEG_ENC_SBC
 
 comment "FFmpeg audio filters to build (libavfilter)"
 	depends on IPC_MAJOR_4
