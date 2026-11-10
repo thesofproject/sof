@@ -13,7 +13,7 @@
 #include <string.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/alloc.h>
-#if !defined(LLEXT_MODULE)
+#if !defined(LLEXT_MODULE) && !defined(LL_EXTENSION_BUILD)
 #include <rtos/userspace_helper.h>
 static APP_SYSUSER_BSS struct processing_module *active_ns_mod;
 #else
@@ -60,7 +60,7 @@ void *webrtc_ns_calloc(size_t nmemb, size_t size)
 	return p;
 }
 
-#if defined(LLEXT_MODULE)
+#if defined(LLEXT_MODULE) || defined(LL_EXTENSION_BUILD)
 /* ============================ Memory ============================ */
 
 void *malloc(size_t size)
@@ -174,3 +174,146 @@ float atanf(float x)
 	float x2 = x * x;
 	return x * (1.0f + 0.28f * x2) / (1.0f + 0.613f * x2);
 }
+
+#if defined(LLEXT_MODULE) || defined(LL_EXTENSION_BUILD)
+static float ns_log2f(float x)
+{
+	union { float f; uint32_t i; } u = { .f = x };
+	int e;
+	float m, z;
+
+	if (x <= 0.0f)
+		return -127.0f;
+
+	e = (int)((u.i >> 23) & 0xff) - 127;
+	u.i = (u.i & 0x007fffff) | 0x3f800000;
+	m = u.f;
+	z = m - 1.0f;
+
+	return (float)e + z * (1.44269504f - z * (0.72134752f - z * 0.48089834f));
+}
+
+float logf(float x)
+{
+	return ns_log2f(x) * 0.6931471805599453f;
+}
+
+double log(double x)
+{
+	return (double)logf((float)x);
+}
+
+float sqrtf(float x)
+{
+	if (x <= 0.0f)
+		return 0.0f;
+	return __builtin_sqrtf(x);
+}
+
+double sqrt(double x)
+{
+	return (double)sqrtf((float)x);
+}
+
+float powf(float x, float y)
+{
+	if (x <= 0.0f)
+		return (x == 0.0f && y > 0.0f) ? 0.0f : 1.0f;
+	if (y == 0.0f)
+		return 1.0f;
+	if (y == 1.0f)
+		return x;
+	if (y == 2.0f)
+		return x * x;
+	if (y == 0.5f)
+		return sqrtf(x);
+	return ns_exp2f(y * ns_log2f(x));
+}
+
+static inline float ns_floorf(float x)
+{
+	int i = (int)x;
+
+	if (x < 0.0f && (float)i != x)
+		i--;
+	return (float)i;
+}
+
+float floorf(float x)
+{
+	return ns_floorf(x);
+}
+
+double floor(double x)
+{
+	return (double)ns_floorf((float)x);
+}
+
+static inline float ns_ceilf(float x)
+{
+	int i = (int)x;
+
+	if (x > 0.0f && (float)i != x)
+		i++;
+	return (float)i;
+}
+
+static inline float ns_roundf(float x)
+{
+	return (x >= 0.0f) ? ns_floorf(x + 0.5f) : ns_ceilf(x - 0.5f);
+}
+
+static inline void ns_sincosf_poly(float z, float *s_out, float *c_out)
+{
+	float z2 = z * z;
+
+	*s_out = z * (1.0f + z2 * (-0.166666667f + z2 * (0.008333333f - z2 * 0.0001984127f)));
+	*c_out = 1.0f + z2 * (-0.5f + z2 * (0.041666667f + z2 * (-0.0013888889f + z2 * 0.0000248016f)));
+}
+
+float sinf(float x)
+{
+	const float inv_half_pi = 0.636619772367581343f;
+	const float half_pi_hi  = 1.5707963267948966f;
+	int k = (int)ns_roundf(x * inv_half_pi);
+	float z = x - (float)k * half_pi_hi;
+	float s, c;
+
+	ns_sincosf_poly(z, &s, &c);
+
+	switch ((k % 4 + 4) % 4) {
+	case 0: return s;
+	case 1: return c;
+	case 2: return -s;
+	case 3: default: return -c;
+	}
+}
+
+double sin(double x)
+{
+	return (double)sinf((float)x);
+}
+
+float cosf(float x)
+{
+	const float inv_half_pi = 0.636619772367581343f;
+	const float half_pi_hi  = 1.5707963267948966f;
+	int k = (int)ns_roundf(x * inv_half_pi);
+	float z = x - (float)k * half_pi_hi;
+	float s, c;
+
+	ns_sincosf_poly(z, &s, &c);
+
+	switch ((k % 4 + 4) % 4) {
+	case 0: return c;
+	case 1: return -s;
+	case 2: return -c;
+	case 3: default: return s;
+	}
+}
+
+double cos(double x)
+{
+	return (double)cosf((float)x);
+}
+#endif
