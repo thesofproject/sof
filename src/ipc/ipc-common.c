@@ -1057,6 +1057,9 @@ __cold int ipc_init(struct sof *sof)
 		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 	memset(ipc->comp_data, 0, SOF_IPC_MSG_MAX_SIZE);
+#ifdef CONFIG_SOF_USERSPACE_LL
+	ipc_ks(ipc)->comp_data = ipc->comp_data;
+#endif
 
 	k_spinlock_init(&ipc_ks(ipc)->lock);
 	list_init(&ipc_ks(ipc)->msg_list);

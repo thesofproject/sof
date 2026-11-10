@@ -108,7 +108,7 @@ static inline struct ipc4_message_request *ipc4_get_message_request(void)
 static inline void ipc4_send_reply(struct ipc4_message_reply *reply)
 {
 	struct ipc *ipc = ipc_get();
-	char *data = ipc->comp_data;
+	char *data = ipc_ks(ipc)->comp_data;
 
 	ipc_msg_send(&msg_reply, data, true);
 }
@@ -481,7 +481,7 @@ __cold static int ipc4_process_module_message(struct ipc4_message_request *ipc4)
 
 __cold struct ipc_cmd_hdr *mailbox_validate(void)
 {
-	struct ipc_cmd_hdr *hdr = ipc_get()->comp_data;
+	struct ipc_cmd_hdr *hdr = ipc_ks(ipc_get())->comp_data;
 
 	assert_can_be_cold();
 
