@@ -27,6 +27,7 @@
 #include <libavutil/channel_layout.h>
 #include <libavutil/log.h>
 #include <libavutil/mem.h>
+#include <libavutil/opt.h>
 #include <libavutil/samplefmt.h>
 
 LOG_MODULE_DECLARE(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
@@ -112,6 +113,18 @@ static enum AVCodecID ffmpeg_dec_av_codec_id(enum ffmpeg_dec_codec codec)
 #if defined(CONFIG_FFMPEG_DEC_ALAC)
 	case FFMPEG_DEC_CODEC_ALAC:
 		return AV_CODEC_ID_ALAC;
+#endif
+#if defined(CONFIG_FFMPEG_DEC_SBC)
+	case FFMPEG_DEC_CODEC_SBC:
+		return AV_CODEC_ID_SBC;
+#endif
+#if defined(CONFIG_FFMPEG_DEC_G722)
+	case FFMPEG_DEC_CODEC_G722:
+		return AV_CODEC_ID_ADPCM_G722;
+#endif
+#if defined(CONFIG_FFMPEG_DEC_APTX)
+	case FFMPEG_DEC_CODEC_APTX:
+		return AV_CODEC_ID_APTX;
 #endif
 	default:
 		return AV_CODEC_ID_NONE;
@@ -240,6 +253,28 @@ static int ffmpeg_dec_ff_configure(struct processing_module *mod)
 	if (ff->avctx->max_samples <= 0)
 		ff->avctx->max_samples = INT_MAX;
 
+	if (cd->codec == FFMPEG_DEC_CODEC_G722) {
+		int bpc = 8;
+
+		if (cd->req_bit_rate == 48000) {
+			bpc = 6;
+		} else if (cd->req_bit_rate == 56000) {
+			bpc = 7;
+		} else if (cd->req_bit_rate != 0 && cd->req_bit_rate != 64000) {
+			comp_err(dev, "unsupported G.722 bitrate %u", cd->req_bit_rate);
+			return -EINVAL;
+		}
+		ff->avctx->sample_rate = 16000;
+		av_opt_set_int(ff->avctx->priv_data, "bits_per_codeword", bpc, 0);
+	}
+
+	if (cd->codec == FFMPEG_DEC_CODEC_APTX) {
+		if (ff->avctx->ch_layout.nb_channels <= 0)
+			av_channel_layout_default(&ff->avctx->ch_layout, 2);
+		if (ff->avctx->sample_rate <= 0)
+			ff->avctx->sample_rate = cd->out_rate ? cd->out_rate : 48000;
+	}
+
 	ret = avcodec_open2(ff->avctx, ff->codec, NULL);
 	if (ret < 0) {
 		comp_err(dev, "avcodec_open2 failed %d", ret);
@@ -348,6 +383,47 @@ static int ffmpeg_dec_ff_decode(struct processing_module *mod,
 			return 0;
 		}
 
+		size_t raw_len = pkt_len;
+
+		if (cd->codec_ops && cd->codec_ops->limit_packet_size) {
+			size_t lim = cd->codec_ops->limit_packet_size(cd, pkt_len);
+
+			if (lim == 0) {
+				if (!in || !in_size) {
+					ff->pktbuf_len = 0;
+					return 0;
+				}
+				if (prev_len == 0) {
+					size_t copy = in_size < cap ? in_size : cap;
+
+					memcpy_s(ff->pktbuf, cap, in, copy);
+					memset(ff->pktbuf + copy, 0,
+					       AV_INPUT_BUFFER_PADDING_SIZE);
+					ff->pktbuf_len = copy;
+					*consumed = copy;
+				} else {
+					size_t space = prev_len < cap ? cap - prev_len : 0;
+					size_t copy = in_size < space ? in_size : space;
+
+					ff->pktbuf_len = prev_len + copy;
+					*consumed = copy;
+				}
+				return 0;
+			}
+			if (lim < pkt_len) {
+				if (pkt_data == in && lim <= cap) {
+					memcpy_s(ff->pktbuf, cap, in, lim);
+					memset(ff->pktbuf + lim, 0,
+					       AV_INPUT_BUFFER_PADDING_SIZE);
+					pkt_data = ff->pktbuf;
+				} else if (pkt_data == ff->pktbuf) {
+					memset(ff->pktbuf + lim, 0,
+					       AV_INPUT_BUFFER_PADDING_SIZE);
+				}
+				pkt_len = lim;
+			}
+		}
+
 		ff->pkt->data = (uint8_t *)pkt_data;
 		ff->pkt->size = (int)pkt_len;
 
@@ -362,8 +438,9 @@ static int ffmpeg_dec_ff_decode(struct processing_module *mod,
 				ff->pktbuf_len = 0;
 				return 0;
 			}
-			if (pkt_len >= cap) {
-				comp_err(dev, "unparsed packet reassembly buffer full without valid frame");
+			if (raw_len >= cap ||
+			    (cd->codec_ops && cd->codec_ops->limit_packet_size)) {
+				comp_err(dev, "unparsed packet reassembly buffer full or invalid block");
 				ff->pktbuf_len = 0;
 				return -EIO;
 			}

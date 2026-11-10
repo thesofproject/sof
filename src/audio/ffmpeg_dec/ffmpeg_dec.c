@@ -231,6 +231,15 @@ static const struct ffmpeg_dec_codec_ops * const ffmpeg_dec_codecs[] = {
 #if defined(CONFIG_FFMPEG_DEC_ALAC) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
 	&ffmpeg_dec_alac_ops,
 #endif
+#if defined(CONFIG_FFMPEG_DEC_SBC) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_sbc_ops,
+#endif
+#if defined(CONFIG_FFMPEG_DEC_G722) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_g722_ops,
+#endif
+#if defined(CONFIG_FFMPEG_DEC_APTX) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_aptx_ops,
+#endif
 };
 
 static const struct ffmpeg_dec_codec_ops *ffmpeg_dec_find_codec_ops(enum ffmpeg_dec_codec id)
@@ -243,10 +252,17 @@ static const struct ffmpeg_dec_codec_ops *ffmpeg_dec_find_codec_ops(enum ffmpeg_
 }
 
 #if CONFIG_IPC_MAJOR_4
-static const struct ffmpeg_dec_codec_ops *ffmpeg_dec_find_codec_ops_by_snd_id(uint32_t snd_id)
+static const struct ffmpeg_dec_codec_ops *
+ffmpeg_dec_find_codec_ops_by_snd_id(const struct snd_codec *codec_params)
 {
-	if (snd_id == SND_AUDIOCODEC_BESPOKE)
-		snd_id = SND_AUDIOCODEC_OPUS_RAW;
+	uint32_t snd_id = codec_params->id;
+
+	if (snd_id == SND_AUDIOCODEC_BESPOKE) {
+		if (codec_params->options.generic.reserved[0])
+			snd_id = codec_params->options.generic.reserved[0];
+		else
+			snd_id = SND_AUDIOCODEC_OPUS_RAW;
+	}
 
 	for (size_t i = 0; i < ARRAY_SIZE(ffmpeg_dec_codecs); i++) {
 		if (ffmpeg_dec_codecs[i]->snd_codec_id == snd_id)
@@ -346,7 +362,7 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 		const struct snd_codec *codec_params = mod->priv.cfg.ext_data->module_data;
 		const struct ffmpeg_dec_codec_ops *ops;
 
-		ops = ffmpeg_dec_find_codec_ops_by_snd_id(codec_params->id);
+		ops = ffmpeg_dec_find_codec_ops_by_snd_id(codec_params);
 		if (!ops) {
 			comp_err(dev, "unsupported or disabled snd_codec id 0x%x",
 				 codec_params->id);
@@ -355,6 +371,7 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 		}
 		cd->codec_ops = ops;
 		cd->codec = ops->id;
+		cd->req_bit_rate = codec_params->bit_rate;
 		comp_info(dev, "codec selected from IPC: %s (%d, snd_codec id 0x%x)",
 			  cd->codec_ops->name, cd->codec, codec_params->id);
 	}

@@ -420,6 +420,53 @@ static inline int16_t pcm_frame_to_s16_mono(const uint8_t *in, int idx,
 	}
 }
 
+void ffmpeg_dec_pcm_decimate_3to1_s16_mono(const uint8_t *in, int16_t *dst,
+					   int src_fmt, int src_ch,
+					   int nb_out_samples,
+					   int16_t hist[FFMPEG_DECIM_3TO1_HIST_LEN])
+{
+	int i, k;
+
+	for (i = 0; i < nb_out_samples; i++) {
+		int16_t x0 = pcm_frame_to_s16_mono(in, 3 * i + 0, src_fmt, src_ch);
+		int16_t x1 = pcm_frame_to_s16_mono(in, 3 * i + 1, src_fmt, src_ch);
+		int16_t x2 = pcm_frame_to_s16_mono(in, 3 * i + 2, src_fmt, src_ch);
+		/* 13-sample window: hist[0..11] followed by x0, x1, x2 (shifted by 3) */
+		int32_t s0  = hist[2];
+		int32_t s2  = hist[4];
+		int32_t s3  = hist[5];
+		int32_t s4  = hist[6];
+		int32_t s5  = hist[7];
+		int32_t s6  = hist[8];
+		int32_t s7  = hist[9];
+		int32_t s8  = hist[10];
+		int32_t s9  = hist[11];
+		int32_t s10 = x0;
+		int32_t s12 = x2;
+		int32_t acc;
+
+		/*
+		 * 13-tap symmetric linear-phase FIR low-pass filter
+		 * h = [-208, 0, 1096, 2272, 4344, 5840, 6080, 5840, 4344, 2272, 1096, 0, -208]
+		 * Unity DC gain (32768), exact notch at 12 kHz, -30 dB at 16 kHz.
+		 */
+		acc = -208 * (s0 + s12) +
+		      1096 * (s2 + s10) +
+		      2272 * (s3 + s9) +
+		      4344 * (s4 + s8) +
+		      5840 * (s5 + s7) +
+		      6080 * s6;
+		acc = (acc + 16384) >> 15;
+		dst[i] = sat_int16(acc);
+
+		for (k = 0; k < 9; k++)
+			hist[k] = hist[k + 3];
+		hist[9]  = x0;
+		hist[10] = x1;
+		hist[11] = x2;
+	}
+}
+
 int ffmpeg_dec_pcm_to_frame(const uint8_t *in, AVFrame *frame,
 			    int src_fmt, int channels, int nb_samples)
 {
