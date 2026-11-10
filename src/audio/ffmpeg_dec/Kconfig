@@ -67,6 +67,14 @@ config FFMPEG_DEC_SBC
 	  math dependency. Enables --enable-decoder=sbc --enable-parser=sbc
 	  in the libavcodec build.
 
+config FFMPEG_DEC_G722
+	bool "ITU-T G.722 ADPCM wideband speech decoder"
+	help
+	  ITU-T G.722 7 kHz wideband speech ADPCM decoder (64/56/48 kbps).
+	  Pure integer QMF + 2-band ADPCM decoder with no floating-point math
+	  dependency. Enables --enable-decoder=adpcm_g722 in the libavcodec
+	  build for compress playback streams requesting SND_AUDIOCODEC_G722.
+
 comment "FFmpeg encoders to build (footprint scales with selection)"
 
 config FFMPEG_ENC_MP3
@@ -112,11 +120,19 @@ config FFMPEG_ENC_SBC
 	  filterbank with no floating-point math dependency. Selected at
 	  runtime for compress capture streams requesting SND_AUDIOCODEC_SBC.
 
+config FFMPEG_ENC_G722
+	bool "ITU-T G.722 ADPCM wideband speech encoder (native libavcodec)"
+	help
+	  ITU-T G.722 7 kHz wideband speech ADPCM encoder (64 kbps) via
+	  native libavcodec g722 encoder. Pure integer QMF + 2-band ADPCM
+	  encoder with no floating-point math dependency. Selected at runtime
+	  for compress capture streams requesting SND_AUDIOCODEC_G722.
+
 # Selected automatically when any encoder is enabled. Gates compilation of the
 # runtime encode path (ffmpeg-encode.c).
 config FFMPEG_ENC
 	bool
-	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC || FFMPEG_ENC_FLAC || FFMPEG_ENC_ALAC || FFMPEG_ENC_SBC
+	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC || FFMPEG_ENC_FLAC || FFMPEG_ENC_ALAC || FFMPEG_ENC_SBC || FFMPEG_ENC_G722
 
 comment "FFmpeg audio filters to build (libavfilter)"
 	depends on IPC_MAJOR_4
