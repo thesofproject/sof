@@ -32,7 +32,6 @@ choice WEBRTC_AEC_BACKEND
 
 config WEBRTC_AEC_BACKEND_FLOAT
 	bool "Classic Float AEC (Multidelay Block Frequency Domain with hardware FPU)"
-	depends on COMP_WEBRTC_AEC = y
 	help
 	  Single-precision floating-point AEC using partitioned-block
 	  frequency domain adaptive filtering (MDF) accelerated by the
