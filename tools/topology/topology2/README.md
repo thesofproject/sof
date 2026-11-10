@@ -21,6 +21,11 @@ provides its own DAI pipelines. The default component-benchmark DAI gateways
 are only instantiated with `HDA_CONFIG=none` to avoid duplicate widget names
 and overlapping pipeline IDs.
 
+The MFCC and MFCC-mel HDA benchmarks use 16 kHz throughout, including the HDA
+link. Their copiers convert sample formats, not sample rates. Use 16 kHz when
+running these benchmarks; MFCC output carries feature data, not listenable
+audio.
+
 ## Key Advantages
 
 - **Object-Oriented Syntax**: Topology v2 allows for the definition of classes (`Class.Widget`, `Class.Pipeline`) and object instantiation, making the topology files much easier to read, maintain, and extend.
