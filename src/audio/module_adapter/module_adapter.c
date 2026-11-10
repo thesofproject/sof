@@ -205,7 +205,7 @@ __cold static void module_adapter_mem_free(struct processing_module *mod)
 	 * on the module heap since we're freeing the heap itself too
 	 */
 #if CONFIG_IPC_MAJOR_4
-	sof_heap_free(alloc->heap, mod->priv.cfg.input_pins);
+	sof_ctx_free(alloc, mod->priv.cfg.input_pins);
 #endif
 	sof_ctx_free(alloc, mod->dev);
 	sof_ctx_free(alloc, mod);
