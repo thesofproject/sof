@@ -178,14 +178,34 @@ static void ipc_thread_unflatten_run(struct processing_module *pmod, struct ipc4
 int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 			    union scheduler_dp_thread_ipc_param *param)
 {
+	const void *config_data;
+	struct k_event *event;
+	struct ipc4_flat *flat;
+	unsigned int core;
+	int ret;
+
 	if (!pmod) {
 		tr_err(&dp_tr, "no thread module");
 		return -EINVAL;
 	}
 
-	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
-	unsigned int core = pmod->dev->task->core;
-	int ret;
+	if (k_is_user_context()) {
+		struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
+
+		event = pdata->event;
+		flat = pdata->flat;
+		config_data = NULL;
+		core = pmod->dev->task->core;
+	} else {
+		/*
+		 * The module and its task memory are writable by user threads,
+		 * so the kernel takes the DP task objects from its own record.
+		 */
+		if (scheduler_dp_task_ipc_params(pmod, &event, &flat, &config_data, &core)) {
+			tr_err(&dp_tr, "no DP task for module");
+			return -EINVAL;
+		}
+	}
 
 	if (cmd == SOF_IPC4_MOD_INIT_INSTANCE) {
 		/* Wait for the DP thread to start */
@@ -199,11 +219,11 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 	unsigned int lock_key = scheduler_dp_lock(core);
 
 	/* IPCs are serialised */
-	pdata->flat->ret = -ENOSYS;
+	flat->ret = -ENOSYS;
 
-	ret = ipc_thread_flatten(cmd, param, pdata->flat);
+	ret = ipc_thread_flatten(cmd, param, flat);
 	if (!ret)
-		k_event_post(pdata->event, DP_TASK_EVENT_IPC);
+		k_event_post(event, DP_TASK_EVENT_IPC);
 
 	scheduler_dp_unlock(lock_key);
 
@@ -217,14 +237,26 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 		return ret;
 	}
 
-	if (!pdata->flat->ret && cmd == SOF_IPC4_MOD_LARGE_CONFIG_GET) {
-		/* A single case of returning data */
-		param->get_config.data_offset_size = pdata->flat->get_config.data_offset_size;
+	ret = flat->ret;
+	if (!ret && cmd == SOF_IPC4_MOD_LARGE_CONFIG_GET) {
+		/*
+		 * A single case of returning data. The kernel only copies from
+		 * the buffer in its record, which is NULL if the module had no
+		 * get_configuration at init. User threads use the pointer set by
+		 * the DP thread, they cannot read more through it than they can
+		 * read anyway.
+		 */
+		if (k_is_user_context())
+			config_data = flat->get_config.data;
+		if (!config_data)
+			return -EINVAL;
+
+		param->get_config.data_offset_size = flat->get_config.data_offset_size;
 		return memcpy_s(param->get_config.data, SOF_IPC_MSG_MAX_SIZE,
-				pdata->flat->get_config.data, param->get_config.fragment_size);
+				config_data, param->get_config.fragment_size);
 	}
 
-	return pdata->flat->ret;
+	return ret;
 }
 
 /* Go through all DP tasks and recalculate their readiness and deadlines

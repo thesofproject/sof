@@ -149,6 +149,21 @@ int scheduler_dp_task_cancel(void *data, struct task *task);
  */
 void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch);
 
+#if CONFIG_SOF_USERSPACE_APPLICATION
+/**
+ * @brief Get the objects for an IPC to the DP thread of a module from the kernel-only record.
+ * @param[in] mod Module of the DP task.
+ * @param[out] event Event to post the IPC to.
+ * @param[out] flat IPC parameter area in the task memory.
+ * @param[out] config_data LARGE_CONFIG_GET reply buffer, or NULL.
+ * @param[out] core Core of the DP task.
+ * @return 0 on success, -EINVAL if @p mod has no DP task. Kernel context only.
+ */
+int scheduler_dp_task_ipc_params(const struct processing_module *mod, struct k_event **event,
+				 struct ipc4_flat **flat, const void **config_data,
+				 unsigned int *core);
+#endif
+
 /**
  * @brief Worker thread entry point function for Data Processing tasks.
  *
