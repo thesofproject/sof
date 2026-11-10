@@ -10,6 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/debug/telemetry/performance_monitor.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <rtos/idc.h>
 #include <rtos/interrupt.h>
 #include <sof/ipc/topology.h>
@@ -317,6 +318,7 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 
 #ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 	free_performance_data(icd->cd->perf_data.perf_data_item);
+	icd->cd->perf_data.perf_data_item = NULL;
 #endif
 
 	if (!icd->cd->bsource_list.next || !icd->cd->bsink_list.next) {
@@ -362,29 +364,33 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 
 	/*
 	 * A completed pipeline stores raw comp_dev pointers in its
-	 * source_comp/sink_comp/sched_comp fields.
+	 * source_comp/sink_comp/sched_comp fields. Unlink icd before
+	 * freeing cd so concurrent readers of ipc->comp_list never
+	 * observe a freed component.
 	 */
+	struct comp_dev *cd = icd->cd;
+
 	list_for_item(clist, &ipc->comp_list) {
 		struct ipc_comp_dev *ppl_icd = container_of(clist, struct ipc_comp_dev, list);
 
-		if (ppl_icd->type != COMP_TYPE_PIPELINE)
+		if (ppl_icd->type != COMP_TYPE_PIPELINE || !ppl_icd->pipeline)
 			continue;
 
-		if (ppl_icd->pipeline->source_comp == icd->cd)
+		if (ppl_icd->pipeline->source_comp == cd)
 			ppl_icd->pipeline->source_comp = NULL;
-		if (ppl_icd->pipeline->sink_comp == icd->cd)
+		if (ppl_icd->pipeline->sink_comp == cd)
 			ppl_icd->pipeline->sink_comp = NULL;
-		if (ppl_icd->pipeline->sched_comp == icd->cd)
+		if (ppl_icd->pipeline->sched_comp == cd)
 			ppl_icd->pipeline->sched_comp = NULL;
 	}
 
-	/* free component and remove from list */
-	comp_free(icd->cd);
-
 	icd->cd = NULL;
-
 	list_item_del(&icd->list);
+
+	/* free component and container */
+	comp_free(cd);
 	sof_heap_free(sof_sys_user_heap_get(), icd);
+	telemetry_notify_pipeline_change();
 
 	return 0;
 }
