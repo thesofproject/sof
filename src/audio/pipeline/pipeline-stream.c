@@ -8,6 +8,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <sof/lib/dai.h>
 #include <rtos/timer.h>
 #include <sof/list.h>
@@ -401,7 +402,10 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 		if (p->status == COMP_STATE_PAUSED || p->xrun_bytes) {
 			/* The task isn't running, trigger inline */
 			ret = pipeline_trigger_run(p, host, cmd);
-			return ret < 0 ? ret : 0;
+			if (ret < 0)
+				return ret;
+			telemetry_notify_pipeline_change();
+			return 0;
 		}
 
 		COMPILER_FALLTHROUGH;
@@ -435,6 +439,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 		return PPL_STATUS_SCHEDULED;
 	}
 
+	telemetry_notify_pipeline_change();
 	return 0;
 }
 
