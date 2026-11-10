@@ -15,6 +15,7 @@
 #include <zephyr/logging/log.h>
 #include <sof/lib/vpage.h>
 #include <sof/lib/vregion.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <rtos/alloc.h>
 #include <sof/common.h>
 #include <sof/lib/cold.h>
@@ -117,6 +118,81 @@ struct vregion {
 static sys_dlist_t vregion_list = SYS_DLIST_STATIC_INIT(&vregion_list);
 static K_MUTEX_DEFINE(vregion_list_lock);
 
+#ifdef CONFIG_SOF_TELEMETRY_VREGION
+static struct vregion *tel_vregions[SOF_TEL_MAX_VREGIONS];
+static struct sof_tel_vregion_info tel_vregion_snap[SOF_TEL_MAX_VREGIONS];
+static uint16_t tel_vregions_created;
+
+static void vregion_tel_fill_info(struct vregion *vr, struct sof_tel_vregion_info *info)
+{
+	memset(info, 0, sizeof(*info));
+	info->base_va = (uint32_t)POINTER_TO_UINT(vr->base);
+	info->total_pages = (uint16_t)vr->pages;
+	info->use_count = (uint8_t)MIN(vr->use_count, UINT8_MAX);
+	info->type_and_flags = (uint8_t)vr->type;
+	info->lifetime_size_bytes = (uint32_t)vr->lifetime.size;
+	info->lifetime_used_bytes = (uint32_t)MIN(vr->lifetime.used, vr->lifetime.size);
+	info->lifetime_free_count = (uint16_t)MIN(vr->lifetime.free_count, UINT16_MAX);
+#if CONFIG_SYS_HEAP_RUNTIME_STATS
+	if (vr->type == VREGION_MEM_TYPE_INTERIM && vr->interim.heap.heap.heap) {
+		struct sys_memory_stats stats = { 0 };
+		int ret = sys_heap_runtime_stats_get(&vr->interim.heap.heap, &stats);
+
+		if (ret == 0) {
+			info->interim_alloc_bytes = (uint32_t)stats.allocated_bytes;
+			info->interim_free_kb = (uint16_t)(stats.free_bytes >> 10);
+		}
+	}
+#endif
+}
+
+/* Must be called while vr->lock is held (or during creation before vr is published) */
+static void vregion_tel_sync_locked(struct vregion *vr)
+{
+	struct sof_tel_vregion_info info;
+
+	vregion_tel_fill_info(vr, &info);
+	for (int i = 0; i < SOF_TEL_MAX_VREGIONS; i++) {
+		if (tel_vregions[i] == vr) {
+			tel_vregion_snap[i] = info;
+			break;
+		}
+	}
+}
+
+static void vregion_tel_register(struct vregion *vr)
+{
+	struct sof_tel_vregion_info info;
+
+	vregion_tel_fill_info(vr, &info);
+	tel_vregions_created++;
+	for (int i = 0; i < SOF_TEL_MAX_VREGIONS; i++) {
+		if (!tel_vregions[i]) {
+			tel_vregions[i] = vr;
+			tel_vregion_snap[i] = info;
+			break;
+		}
+	}
+	telemetry_notify_vregion_change();
+}
+
+static void vregion_tel_unregister(struct vregion *vr)
+{
+	for (int i = 0; i < SOF_TEL_MAX_VREGIONS; i++) {
+		if (tel_vregions[i] == vr) {
+			tel_vregions[i] = NULL;
+			memset(&tel_vregion_snap[i], 0, sizeof(tel_vregion_snap[i]));
+			break;
+		}
+	}
+	telemetry_notify_vregion_change();
+}
+#else
+static inline void vregion_tel_sync_locked(struct vregion *vr) { (void)vr; }
+static inline void vregion_tel_register(struct vregion *vr) { (void)vr; }
+static inline void vregion_tel_unregister(struct vregion *vr) { (void)vr; }
+#endif
+
 /**
  * @brief Create a new virtual region instance.
  *
@@ -197,6 +273,8 @@ __cold struct vregion *vregion_create(size_t memsize)
 	LOG_INF("new at base %p size %#zx pages %u metadata at %p",
 		(void *)vregion_base, total_size, pages, (void *)vr);
 
+	vregion_tel_register(vr);
+
 	return vr;
 }
 
@@ -207,6 +285,7 @@ struct vregion *z_impl_vregion_get(struct vregion *vr)
 
 	k_mutex_lock(&vr->lock, K_FOREVER);
 	vr->use_count++;
+	vregion_tel_sync_locked(vr);
 	k_mutex_unlock(&vr->lock);
 
 	return vr;
@@ -299,6 +378,7 @@ static void vregion_destroy(struct vregion *vr)
 	/* log the vregion being destroyed */
 	LOG_DBG("destroy %p size %#zx pages %u", (void *)vr->base, vr->size, vr->pages);
 	LOG_DBG(" lifetime used %zu free count %d", vr->lifetime.used, vr->lifetime.free_count);
+	vregion_tel_unregister(vr);
 	vpage_free(vr->base);
 
 	vregion_unmap(vr);
@@ -319,6 +399,8 @@ static int vregion_put_locked(struct vregion *vr)
 
 	if (!--vr->use_count)
 		sys_dlist_remove(&vr->node);
+	else
+		vregion_tel_sync_locked(vr);
 
 	return vr->use_count;
 }
@@ -414,6 +496,7 @@ void z_impl_vregion_set_interim(struct vregion *vr)
 	k_mutex_lock(&vr->lock, K_FOREVER);
 
 	interim_heap_init(vr);
+	vregion_tel_sync_locked(vr);
 
 	k_mutex_unlock(&vr->lock);
 }
@@ -535,6 +618,7 @@ void z_impl_vregion_free(struct vregion *vr, void *ptr)
 	else
 		LOG_ERR("error: vregion free invalid pointer %p", ptr);
 
+	vregion_tel_sync_locked(vr);
 	k_mutex_unlock(&vr->lock);
 }
 EXPORT_SYMBOL(z_impl_vregion_free);
@@ -573,6 +657,7 @@ void *z_impl_vregion_alloc_align(struct vregion *vr,
 		p = NULL;
 	}
 
+	vregion_tel_sync_locked(vr);
 	k_mutex_unlock(&vr->lock);
 
 #if CONFIG_SYS_HEAP_RUNTIME_STATS
@@ -703,8 +788,10 @@ bool vregion_pinned_get(struct vregion *vr)
 	k_mutex_lock(&vr->lock, K_FOREVER);
 	/* do not revive a vregion whose last reference is already gone */
 	ok = vr->use_count && vr->use_count < UINT_MAX;
-	if (ok)
+	if (ok) {
 		vr->use_count++;
+		vregion_tel_sync_locked(vr);
+	}
 	k_mutex_unlock(&vr->lock);
 
 	return ok;
@@ -722,5 +809,27 @@ int vregion_pinned_put(struct vregion *vr)
 
 	/* destroying is left to vregion_unpin(), the caller still holds a pin */
 	return ret;
+}
+#endif
+
+#ifdef CONFIG_SOF_TELEMETRY_VREGION
+void telemetry_collect_vregion_stats(struct sof_tel_vregion_section *vsec)
+{
+	uint16_t active_cnt = 0;
+
+	if (!vsec)
+		return;
+
+	for (int i = 0; i < SOF_TEL_MAX_VREGIONS; i++) {
+		if (!tel_vregions[i]) {
+			memset(&vsec->vregions[i], 0, sizeof(vsec->vregions[i]));
+			continue;
+		}
+		active_cnt++;
+		vsec->vregions[i] = tel_vregion_snap[i];
+	}
+
+	vsec->active_vregion_count = active_cnt;
+	vsec->total_vregions_created = tel_vregions_created;
 }
 #endif
