@@ -124,12 +124,12 @@ void *memmove(void *dest, const void *src, size_t n)
  */
 
 
-float fabsf(float x)
+__attribute__((weak)) float fabsf(float x)
 {
 	return (x < 0.0f) ? -x : x;
 }
 
-double fabs(double x)
+__attribute__((weak)) double fabs(double x)
 {
 	return (x < 0.0) ? -x : x;
 }
@@ -149,17 +149,17 @@ static inline float ns_exp2f(float x)
 	return p * u.f;
 }
 
-float expf(float x)
+__attribute__((weak)) float expf(float x)
 {
 	return ns_exp2f(x * 1.4426950408889634f);
 }
 
-double exp(double x)
+__attribute__((weak)) double exp(double x)
 {
 	return (double)expf((float)x);
 }
 
-double tanh(double x)
+__attribute__((weak)) double tanh(double x)
 {
 	if (x > 10.0) return 1.0;
 	if (x < -10.0) return -1.0;
@@ -167,7 +167,7 @@ double tanh(double x)
 	return (e2 - 1.0) / (e2 + 1.0);
 }
 
-float atanf(float x)
+__attribute__((weak)) float atanf(float x)
 {
 	if (x == 1.0f)
 		return 0.7853981633974483f;
@@ -175,7 +175,6 @@ float atanf(float x)
 	return x * (1.0f + 0.28f * x2) / (1.0f + 0.613f * x2);
 }
 
-#if defined(LLEXT_MODULE) || defined(LL_EXTENSION_BUILD)
 static float ns_log2f(float x)
 {
 	union { float f; uint32_t i; } u = { .f = x };
@@ -193,29 +192,29 @@ static float ns_log2f(float x)
 	return (float)e + z * (1.44269504f - z * (0.72134752f - z * 0.48089834f));
 }
 
-float logf(float x)
+__attribute__((weak)) float logf(float x)
 {
 	return ns_log2f(x) * 0.6931471805599453f;
 }
 
-double log(double x)
+__attribute__((weak)) double log(double x)
 {
 	return (double)logf((float)x);
 }
 
-float sqrtf(float x)
+__attribute__((weak)) float sqrtf(float x)
 {
 	if (x <= 0.0f)
 		return 0.0f;
 	return __builtin_sqrtf(x);
 }
 
-double sqrt(double x)
+__attribute__((weak)) double sqrt(double x)
 {
 	return (double)sqrtf((float)x);
 }
 
-float powf(float x, float y)
+__attribute__((weak)) float powf(float x, float y)
 {
 	if (x <= 0.0f)
 		return (x == 0.0f && y > 0.0f) ? 0.0f : 1.0f;
@@ -239,12 +238,12 @@ static inline float ns_floorf(float x)
 	return (float)i;
 }
 
-float floorf(float x)
+__attribute__((weak)) float floorf(float x)
 {
 	return ns_floorf(x);
 }
 
-double floor(double x)
+__attribute__((weak)) double floor(double x)
 {
 	return (double)ns_floorf((float)x);
 }
@@ -271,7 +270,7 @@ static inline void ns_sincosf_poly(float z, float *s_out, float *c_out)
 	*c_out = 1.0f + z2 * (-0.5f + z2 * (0.041666667f + z2 * (-0.0013888889f + z2 * 0.0000248016f)));
 }
 
-float sinf(float x)
+__attribute__((weak)) float sinf(float x)
 {
 	const float inv_half_pi = 0.636619772367581343f;
 	const float half_pi_hi  = 1.5707963267948966f;
@@ -289,12 +288,12 @@ float sinf(float x)
 	}
 }
 
-double sin(double x)
+__attribute__((weak)) double sin(double x)
 {
 	return (double)sinf((float)x);
 }
 
-float cosf(float x)
+__attribute__((weak)) float cosf(float x)
 {
 	const float inv_half_pi = 0.636619772367581343f;
 	const float half_pi_hi  = 1.5707963267948966f;
@@ -312,8 +311,7 @@ float cosf(float x)
 	}
 }
 
-double cos(double x)
+__attribute__((weak)) double cos(double x)
 {
 	return (double)cosf((float)x);
 }
-#endif
