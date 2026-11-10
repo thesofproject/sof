@@ -229,14 +229,21 @@ DEEPBUFFER_FW_DMA_MS=false,HDA_ANALOG_CAPTURE_RATE=96000,HDA_ANALOG_PLAYBACK_RAT
 "sof-hda-generic\;sof-hda-generic-ffmpeg-aac-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=aac,COMPR_FFMPEG_DEC_HEAP=901120"
 "sof-hda-generic\;sof-hda-generic-ffmpeg-opus-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=opus,COMPR_FFMPEG_DEC_HEAP=524288"
 "sof-hda-generic\;sof-hda-generic-ffmpeg-alac-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=alac"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-sbc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=sbc"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-g722-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=g722"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-aptx-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=aptx"
 # Compress capture (encode: PCM -> MP3 via libshine, AAC-LC via vo-aacenc,
-# or lossless FLAC/ALAC via libavcodec) driven by ffmpeg_enc. COMPR_FFMPEG_ENC
+# lossless FLAC/ALAC, or Bluetooth/voice SBC/G.722/aptX via libavcodec) driven
+# by ffmpeg_enc. COMPR_FFMPEG_ENC
 # gates compr-capture-ffmpeg.conf, which taps the HDA analog capture BE, so it
 # may be built alongside or independently of the decode COMPR_FFMPEG path above.
 "sof-hda-generic\;sof-hda-generic-ffmpeg-mp3-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
 "sof-hda-generic\;sof-hda-generic-ffmpeg-aac-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
 "sof-hda-generic\;sof-hda-generic-ffmpeg-flac-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
 "sof-hda-generic\;sof-hda-generic-ffmpeg-alac-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-sbc-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-g722-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-aptx-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
 
 # SDW + DMIC + HDMI, with 16 kHz DMIC1
 "cavs-sdw\;sof-mtl-sdw-cs42l42-l0-max98363-l2-4ch-48k-16k\;PLATFORM=mtl,\
