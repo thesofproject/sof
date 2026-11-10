@@ -1030,7 +1030,11 @@ __cold int module_unbind(struct processing_module *mod, const struct bind_info *
 
 uint32_t module_get_deadline(struct processing_module *mod)
 {
+	/* a DP module can write mod: read the count once and bound it */
+	size_t num_of_sinks = mod->num_of_sinks;
 	uint32_t deadline;
+
+	num_of_sinks = MIN(num_of_sinks, ARRAY_SIZE(mod->sinks));
 
 	/* LL modules have no deadline - it is always "now" */
 	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
@@ -1042,9 +1046,14 @@ uint32_t module_get_deadline(struct processing_module *mod)
 
 	deadline = UINT32_MAX;
 	/* calculate the shortest LFT for all sinks */
-	for (size_t i = 0; i < mod->num_of_sinks; i++) {
-		uint32_t sink_lft = sink_get_last_feeding_time(mod->sinks[i]);
+	for (size_t i = 0; i < num_of_sinks; i++) {
+		struct sof_sink *sink = mod->sinks[i];
+		uint32_t sink_lft;
 
+		if (!sink)
+			continue;
+
+		sink_lft = sink_get_last_feeding_time(sink);
 		deadline = MIN(deadline, sink_lft);
 	}
 
