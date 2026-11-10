@@ -8,6 +8,19 @@
 #include <sof/boot_test.h>
 #include <zephyr/logging/log.h>
 
+#if defined(CONFIG_PLATFORM_NORDIC)
+#if defined(CONFIG_USB_DEVICE_STACK_NEXT)
+#include <zephyr/usb/usbd.h>
+#include <zephyr/usb/class/usbd_uac2.h>
+#include <sample_usbd.h>
+#endif
+#include <zephyr/device.h>
+#include <rtos/sof.h>
+#include <sof/audio/pipeline/sof_static_pipeline.h>
+#if defined(CONFIG_COMP_BT_AUDIO)
+#include <sof/audio/bt_service.h>
+#endif
+#endif
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 /* define qemu boot tests if any qemu target is defined, add targets to end */
@@ -41,6 +54,35 @@ static int sof_app_main(void)
 
 	LOG_INF("SOF initialized");
 
+#if defined(CONFIG_PLATFORM_NORDIC)
+#if defined(CONFIG_USB_DEVICE_STACK_NEXT)
+	/* Register UAC2 class callbacks before initializing USB stack */
+	const struct device *uac2_dev = DEVICE_DT_GET_ONE(zephyr_uac2);
+	if (device_is_ready(uac2_dev)) {
+		usbd_uac2_set_ops(uac2_dev, sof_get_uac2_ops(), NULL);
+	} else {
+		LOG_ERR("UAC2 device not ready");
+	}
+
+	/* Initialize USB device stack and UAC2 class */
+	struct usbd_context *sample_usbd = sample_usbd_init_device(NULL);
+	if (sample_usbd) {
+		usbd_enable(sample_usbd);
+		LOG_INF("SOF USB UAC2 device stack enabled");
+	} else {
+		LOG_ERR("Failed to initialize USB device context");
+	}
+#endif
+
+#if defined(CONFIG_COMP_BT_AUDIO)
+	/* Initialize Bluetooth Audio Service */
+	bt_service_init();
+#endif
+
+	/* Initialize static audio pipelines (EQ+DRC Playback & EQ Capture / Synth) */
+	sof_static_pipelines_init(sof_get());
+	LOG_INF("SOF static audio pipelines started");
+#endif
 #ifdef CONFIG_ARCH_POSIX_LIBFUZZER
 	/* Workaround for an apparent timing bug in libfuzzer+asan.
 	 * If the initial/main thread is allowed to return, ASAN will
@@ -53,6 +95,11 @@ static int sof_app_main(void)
 	 * and easy.
 	 */
 	k_thread_suspend(k_current_get());
+#endif
+#if defined(CONFIG_PLATFORM_NORDIC)
+	while (1) {
+		k_sleep(K_FOREVER);
+	}
 #endif
 	return 0;
 }
