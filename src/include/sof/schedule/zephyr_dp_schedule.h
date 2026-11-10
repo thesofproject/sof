@@ -162,6 +162,13 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch);
 int scheduler_dp_task_ipc_params(const struct processing_module *mod, struct k_event **event,
 				 struct ipc4_flat **flat, const void **config_data,
 				 unsigned int *core);
+
+/**
+ * @brief Count the DP tasks of a core from the kernel-only DP task records.
+ * @param[in] core DSP core.
+ * @return Number of scheduled DP tasks on @p core. Kernel context only.
+ */
+unsigned int scheduler_dp_task_count(unsigned int core);
 #endif
 
 /**
