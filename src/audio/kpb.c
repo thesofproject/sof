@@ -2024,28 +2024,29 @@ static enum task_state kpb_draining_task(void *arg)
 		} else {
 			draining_data->next_copy_time = 0;
 		}
+	}
 
-		if (draining_data->drain_req == 0) {
-		/* We have finished draining of requested data however
-		 * while we were draining real time stream could provided
-		 * new data which needs to be copy to host.
+	/* also reached with a zero-length (no history) draining request */
+	if (draining_data->drain_req == 0) {
+	/* We have finished draining of requested data however
+	 * while we were draining real time stream could provided
+	 * new data which needs to be copy to host.
+	 */
+		comp_cl_info(&comp_kpb, "kpb: update drain_req by %zu",
+			     *rt_stream_update);
+		kpb_lock(kpb);
+		draining_data->drain_req += *rt_stream_update;
+		*rt_stream_update = 0;
+		if (!draining_data->drain_req && kpb->state == KPB_STATE_DRAINING) {
+		/* Draining is done. Now switch KPB to copy real time
+		 * stream to client's sink. This state is called
+		 * "draining on demand"
+		 * Note! If KPB state changed during draining due to
+		 * i.e reset request we should not change that state.
 		 */
-			comp_cl_info(&comp_kpb, "kpb: update drain_req by %zu",
-				     *rt_stream_update);
-			kpb_lock(kpb);
-			draining_data->drain_req += *rt_stream_update;
-			*rt_stream_update = 0;
-			if (!draining_data->drain_req && kpb->state == KPB_STATE_DRAINING) {
-			/* Draining is done. Now switch KPB to copy real time
-			 * stream to client's sink. This state is called
-			 * "draining on demand"
-			 * Note! If KPB state changed during draining due to
-			 * i.e reset request we should not change that state.
-			 */
-				kpb_change_state(kpb, KPB_STATE_HOST_COPY);
-			}
-			kpb_unlock(kpb);
+			kpb_change_state(kpb, KPB_STATE_HOST_COPY);
 		}
+		kpb_unlock(kpb);
 	}
 
 out:
