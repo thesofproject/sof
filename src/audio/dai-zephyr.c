@@ -10,6 +10,7 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <module/module/base.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
@@ -357,6 +358,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 			/* fill buffer with silence */
 			buffer_zero(dd->dma_buffer);
 
+		telemetry_update_dai_hot(dd, dev);
 		return dma_status;
 	}
 
@@ -502,6 +504,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 	/* Increment performance counters */
 	io_perf_monitor_update_data(dd->io_perf_dai_byte_count, bytes);
 #endif
+	telemetry_update_dai_hot(dd, dev);
 
 	return dma_status;
 }
@@ -532,6 +535,7 @@ dai_dma_multi_endpoint_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t fr
 			/* fill buffer with silence */
 			buffer_zero(dd->dma_buffer);
 
+		telemetry_update_dai_hot(dd, dev);
 		return dma_status;
 	}
 
@@ -564,6 +568,7 @@ dai_dma_multi_endpoint_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t fr
 
 	/* update host position (in bytes offset) for drivers */
 	dd->total_data_processed += bytes;
+	telemetry_update_dai_hot(dd, dev);
 
 	return dma_status;
 }
@@ -656,6 +661,7 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 		io_perf_monitor_init_data(&dd->io_perf_dai_byte_count, &init_data);
 	}
 #endif
+	telemetry_register_dai(dd, dev);
 
 	return 0;
 }
@@ -790,6 +796,7 @@ __cold void dai_common_free(struct dai_data *dd)
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	io_perf_monitor_release_slot(dd->io_perf_dai_byte_count);
 #endif
+	telemetry_unregister_dai(dd);
 
 	if (dd->group)
 		dai_group_put(dd->group);
@@ -1293,6 +1300,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		goto out;
 	}
 
+	telemetry_register_dai(dd, dev);
 out:
 	/*
 	 * Make sure to free all allocated items, all functions
@@ -1395,12 +1403,15 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 	if (dd->xrun) {
 		/* after prepare, we have recovered from xrun */
 		dd->xrun = 0;
+		telemetry_update_dai_hot(dd, dev);
 		return 0;
 	}
 
 	ret = dai_dma_config(dd);
 	if (ret < 0)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
+	else
+		telemetry_update_dai_hot(dd, dev);
 
 	return ret;
 }
@@ -1456,6 +1467,7 @@ void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 	dd->wallclock = 0;
 	dd->total_data_processed = 0;
 	dd->xrun = 0;
+	telemetry_update_dai_hot(dd, NULL);
 }
 
 static int dai_reset(struct comp_dev *dev)
@@ -1559,6 +1571,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 	case COMP_TRIGGER_XRUN:
 		comp_info(dev, "XRUN");
 		dd->xrun = 1;
+		telemetry_update_dai_hot(dd, dev);
 
 		COMPILER_FALLTHROUGH;
 	case COMP_TRIGGER_STOP:
@@ -1611,8 +1624,10 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 	 * See issue #8920 for details.
 	 */
 	if (!ret)
-		return comp_set_state(dev, cmd);
+		ret = comp_set_state(dev, cmd);
 #endif /* CONFIG_IPC_MAJOR_3 */
+	if (!ret)
+		telemetry_update_dai_hot(dd, dev);
 
 	return ret;
 }

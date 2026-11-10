@@ -25,6 +25,7 @@
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <sof/debug/telemetry/performance_monitor.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <sof/schedule/ll_schedule_domain.h> /* zephyr_ll_user_heap() */
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -291,6 +292,7 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 #endif
 
 	hd->total_data_processed += bytes;
+	telemetry_update_host_hot(hd, dev);
 
 	/* new local period, update host buffer position blks
 	 * local_pos is queried by the ops.position() API
@@ -557,6 +559,8 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 					  avail_samples, free_samples);
 			}
 			hd->n_skipped++;
+			telemetry_notify_host_skip(hd);
+			telemetry_update_host_hot(hd, dev);
 		}
 	}
 
@@ -738,6 +742,9 @@ int host_common_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 		break;
 	}
 
+	if (!ret)
+		telemetry_update_host_hot(hd, dev);
+
 	return ret;
 }
 
@@ -866,6 +873,7 @@ __cold void host_common_free(struct host_data *hd)
 		hd->io_perf_host_byte_count = NULL;
 	}
 #endif
+	telemetry_unregister_host(hd);
 
 	/* release DMA channel if not already done by reset */
 	if (hd->chan_index >=  0) {
@@ -1197,6 +1205,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		io_perf_monitor_init_data(&hd->io_perf_host_byte_count, &init_data);
 	}
 #endif
+	telemetry_register_host(hd, dev);
 
 	return 0;
 
@@ -1232,6 +1241,7 @@ static int host_params(struct comp_dev *dev,
 int host_common_prepare(struct host_data *hd)
 {
 	buffer_zero(hd->dma_buffer);
+	telemetry_update_host_hot(hd, NULL);
 	return 0;
 }
 
@@ -1299,6 +1309,7 @@ void host_common_reset(struct host_data *hd, uint16_t state)
 	hd->copy_type = COMP_COPY_NORMAL;
 	hd->source = NULL;
 	hd->sink = NULL;
+	telemetry_update_host_hot(hd, NULL);
 }
 
 #if CONFIG_IPC_MAJOR_3
