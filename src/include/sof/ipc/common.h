@@ -127,16 +127,49 @@ struct ipc_user {
 	struct ipc_user_xcore xcore[IPC_DSP_CORE_COUNT];
 };
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+/**
+ * Kernel-only IPC state.
+ *
+ * With CONFIG_SOF_USERSPACE_LL, struct ipc is in a partition that the LL and
+ * IPC user threads can write. The send queue, its lock and the completion
+ * state are used by kernel code only, so they are kept here instead. The
+ * field names match the struct ipc fields used without
+ * CONFIG_SOF_USERSPACE_LL, so code accesses both through ipc_ks().
+ */
+struct ipc_kstate {
+	struct k_spinlock lock;		/* locking mechanism */
+	int pm_prepare_D3;		/* do we need to prepare for D3 */
+	struct list_item msg_list;	/* queue of messages to be sent */
+	uint32_t task_mask;		/* tasks to be completed by this IPC */
+};
+
+/** Kernel context only. */
+struct ipc_kstate *ipc_kstate_get(void);
+
+struct ipc;
+
+static inline struct ipc_kstate *ipc_ks(struct ipc *ipc)
+{
+	(void)ipc;
+
+	return ipc_kstate_get();
+}
+#else
+#define ipc_ks(ipc) (ipc)
+#endif
+
 struct ipc {
-	struct k_spinlock lock;	/* locking mechanism */
+#ifndef CONFIG_SOF_USERSPACE_LL
+	/* in struct ipc_kstate with CONFIG_SOF_USERSPACE_LL, use ipc_ks() */
+	struct k_spinlock lock;		/* locking mechanism */
+	int pm_prepare_D3;		/* do we need to prepare for D3 */
+	struct list_item msg_list;	/* queue of messages to be sent */
+	uint32_t task_mask;		/* tasks to be completed by this IPC */
+#endif
 	void *comp_data;
 
-	/* PM */
-	int pm_prepare_D3;	/* do we need to prepare for D3 */
-
-	struct list_item msg_list;	/* queue of messages to be sent */
 	bool is_notification_pending;	/* notification is being sent to host */
-	uint32_t task_mask;		/* tasks to be completed by this IPC */
 	unsigned int core;		/* core, processing the IPC */
 
 	struct list_item comp_list;	/* list of component devices */

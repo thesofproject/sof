@@ -741,8 +741,8 @@ void z_impl_ipc_msg_reply(struct sof_ipc_reply *reply)
 
 	mailbox_hostbox_write(0, reply, reply->hdr.size);
 
-	key = k_spin_lock(&ipc->lock);
-	ipc->task_mask &= ~IPC_TASK_IN_THREAD;
+	key = k_spin_lock(&ipc_ks(ipc)->lock);
+	ipc_ks(ipc)->task_mask &= ~IPC_TASK_IN_THREAD;
 	ipc_complete_cmd(ipc);
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&ipc_ks(ipc)->lock, key);
 }

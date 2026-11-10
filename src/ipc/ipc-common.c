@@ -64,9 +64,17 @@ K_APPMEM_PARTITION_DEFINE(ipc_context_part);
 
 K_APP_BMEM(ipc_context_part) static struct ipc ipc_context;
 
+/* kernel-only, see struct ipc_kstate */
+static struct ipc_kstate ipc_kstate;
+
 struct ipc *ipc_get(void)
 {
 	return &ipc_context;
+}
+
+struct ipc_kstate *ipc_kstate_get(void)
+{
+	return &ipc_kstate;
 }
 #endif
 
@@ -127,9 +135,9 @@ int ipc_process_on_core(uint32_t core, bool blocking)
 		k_spinlock_key_t key;
 
 		ipc->core = core;
-		key = k_spin_lock(&ipc->lock);
-		ipc->task_mask |= IPC_TASK_SECONDARY_CORE;
-		k_spin_unlock(&ipc->lock, key);
+		key = k_spin_lock(&ipc_ks(ipc)->lock);
+		ipc_ks(ipc)->task_mask |= IPC_TASK_SECONDARY_CORE;
+		k_spin_unlock(&ipc_ks(ipc)->lock, key);
 	}
 
 	/* send IDC message */
@@ -208,16 +216,16 @@ void ipc_send_queued_msg(void)
 	struct ipc_msg *msg;
 	k_spinlock_key_t key;
 
-	key = k_spin_lock(&ipc->lock);
+	key = k_spin_lock(&ipc_ks(ipc)->lock);
 
-	if (ipc->pm_prepare_D3)
+	if (ipc_ks(ipc)->pm_prepare_D3)
 		goto out;
 
 	/* any messages to send ? */
-	if (list_is_empty(&ipc->msg_list))
+	if (list_is_empty(&ipc_ks(ipc)->msg_list))
 		goto out;
 
-	msg = list_first_item(&ipc->msg_list, struct ipc_msg,
+	msg = list_first_item(&ipc_ks(ipc)->msg_list, struct ipc_msg,
 			      list);
 
 	if (ipc_platform_send_msg(msg) == 0) {
@@ -232,7 +240,7 @@ void ipc_send_queued_msg(void)
 #endif
 	}
 out:
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&ipc_ks(ipc)->lock, key);
 }
 
 #ifdef __ZEPHYR__
@@ -271,7 +279,7 @@ __cold void ipc_msg_send_direct(struct ipc_msg *msg, void *data)
 
 	assert_can_be_cold();
 
-	key = k_spin_lock(&ipc->lock);
+	key = k_spin_lock(&ipc_ks(ipc)->lock);
 
 	/* copy mailbox data to message if not already copied */
 	if (data && msg->tx_size > 0 && msg->tx_size <= SOF_IPC_MSG_MAX_SIZE &&
@@ -282,7 +290,7 @@ __cold void ipc_msg_send_direct(struct ipc_msg *msg, void *data)
 
 	ipc_platform_send_msg_direct(msg);
 
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&ipc_ks(ipc)->lock, key);
 }
 
 void z_impl_ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
@@ -291,7 +299,7 @@ void z_impl_ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 	k_spinlock_key_t key;
 	int ret;
 
-	key = k_spin_lock(&ipc->lock);
+	key = k_spin_lock(&ipc_ks(ipc)->lock);
 
 	/* copy mailbox data to message if not already copied */
 	if (data && (msg->tx_size > 0 && msg->tx_size <= SOF_IPC_MSG_MAX_SIZE) &&
@@ -312,7 +320,7 @@ void z_impl_ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 	if (high_priority) {
 		ret = ipc_platform_send_msg(msg);
 		if (!ret) {
-			k_spin_unlock(&ipc->lock, key);
+			k_spin_unlock(&ipc_ks(ipc)->lock, key);
 			return;
 		}
 	}
@@ -320,14 +328,14 @@ void z_impl_ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 	/* add to queue unless already there */
 	if (list_is_empty(&msg->list)) {
 		if (high_priority)
-			list_item_prepend(&msg->list, &ipc->msg_list);
+			list_item_prepend(&msg->list, &ipc_ks(ipc)->msg_list);
 		else
-			list_item_append(&msg->list, &ipc->msg_list);
+			list_item_append(&msg->list, &ipc_ks(ipc)->msg_list);
 	}
 
 	schedule_ipc_worker();
 
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&ipc_ks(ipc)->lock, key);
 }
 EXPORT_SYMBOL(ipc_msg_send);
 
@@ -360,9 +368,9 @@ void z_impl_ipc_msg_list_remove(struct ipc_msg *msg)
 	struct ipc *ipc = ipc_get();
 	k_spinlock_key_t key;
 
-	key = k_spin_lock(&ipc->lock);
+	key = k_spin_lock(&ipc_ks(ipc)->lock);
 	list_item_del(&msg->list);
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&ipc_ks(ipc)->lock, key);
 }
 
 #ifdef CONFIG_USERSPACE
@@ -383,7 +391,7 @@ void z_vrfy_ipc_msg_list_remove(struct ipc_msg *msg)
 	if (list_is_empty(&msg->list))
 		return;
 
-	list_for_item_safe(mlist, _mlist, &ipc->msg_list)  {
+	list_for_item_safe(mlist, _mlist, &ipc_ks(ipc)->msg_list)  {
 		if (mlist == &msg->list) {
 			found = true;
 			break;
@@ -403,12 +411,12 @@ static void ipc_work_handler(struct k_work *work)
 
 	ipc_send_queued_msg();
 
-	key = k_spin_lock(&ipc->lock);
+	key = k_spin_lock(&ipc_ks(ipc)->lock);
 
-	if (!list_is_empty(&ipc->msg_list) && !ipc->pm_prepare_D3)
+	if (!list_is_empty(&ipc_ks(ipc)->msg_list) && !ipc_ks(ipc)->pm_prepare_D3)
 		schedule_ipc_worker();
 
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&ipc_ks(ipc)->lock, key);
 }
 #endif
 
@@ -490,9 +498,9 @@ int ipc_user_forward_cmd(uint32_t primary, uint32_t extension, unsigned int core
 	pdata->ipc = ipc;
 
 	/* Prevent host completion until user thread finishes */
-	key = k_spin_lock(&ipc->lock);
-	ipc->task_mask |= IPC_TASK_IN_THREAD;
-	k_spin_unlock(&ipc->lock, key);
+	key = k_spin_lock(&ipc_ks(ipc)->lock);
+	ipc_ks(ipc)->task_mask |= IPC_TASK_IN_THREAD;
+	k_spin_unlock(&ipc_ks(ipc)->lock, key);
 
 	/*
 	 * Wake the user thread. Post, not set: a cross-core request
@@ -508,10 +516,10 @@ int ipc_user_forward_cmd(uint32_t primary, uint32_t extension, unsigned int core
 	}
 
 	/* Clear the task mask bit and check for completion */
-	key = k_spin_lock(&ipc->lock);
-	ipc->task_mask &= ~IPC_TASK_IN_THREAD;
+	key = k_spin_lock(&ipc_ks(ipc)->lock);
+	ipc_ks(ipc)->task_mask &= ~IPC_TASK_IN_THREAD;
 	ipc_complete_cmd(ipc);
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&ipc_ks(ipc)->lock, key);
 
 	return !ret ? pdata->result : ret;
 }
@@ -1050,8 +1058,8 @@ __cold int ipc_init(struct sof *sof)
 	}
 	memset(ipc->comp_data, 0, SOF_IPC_MSG_MAX_SIZE);
 
-	k_spinlock_init(&ipc->lock);
-	list_init(&ipc->msg_list);
+	k_spinlock_init(&ipc_ks(ipc)->lock);
+	list_init(&ipc_ks(ipc)->msg_list);
 	list_init(&ipc->comp_list);
 
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
@@ -1097,7 +1105,7 @@ __cold int ipc_init(struct sof *sof)
 	return platform_ipc_init(ipc);
 }
 
-/* Locking: call with ipc->lock held and interrupts disabled */
+/* Locking: call with ipc_ks(ipc)->lock held and interrupts disabled */
 void ipc_complete_cmd(struct ipc *ipc)
 {
 	/*
@@ -1108,11 +1116,11 @@ void ipc_complete_cmd(struct ipc *ipc)
 	 * is important to only signal the host that the IPC processing has
 	 * completed after *all* tasks have completed. Therefore only the last
 	 * context should do that. We accomplish this by setting IPC_TASK_* bits
-	 * in ipc->task_mask for each used IPC context and by clearing them when
+	 * in ipc_ks(ipc)->task_mask for each used IPC context and by clearing them when
 	 * each of those contexts completes. Only when the mask is 0 we can
 	 * signal the host.
 	 */
-	if (ipc->task_mask)
+	if (ipc_ks(ipc)->task_mask)
 		return;
 
 	ipc_platform_complete_cmd(ipc);
@@ -1130,10 +1138,10 @@ static void ipc_complete_task(void *data)
 	struct ipc *ipc = data;
 	k_spinlock_key_t key;
 
-	key = k_spin_lock(&ipc->lock);
-	ipc->task_mask &= ~IPC_TASK_INLINE;
+	key = k_spin_lock(&ipc_ks(ipc)->lock);
+	ipc_ks(ipc)->task_mask &= ~IPC_TASK_INLINE;
 	ipc_complete_cmd(ipc);
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&ipc_ks(ipc)->lock, key);
 #if CONFIG_GDBSTUB
 	if (ipc_enter_gdb) {
 		ipc_enter_gdb = false;
@@ -1156,7 +1164,7 @@ static enum task_state ipc_do_cmd(void *data)
 	 * 32-bit writes are atomic and at the moment no IPC processing is
 	 * taking place, so, no need for a lock.
 	 */
-	ipc->task_mask = IPC_TASK_INLINE;
+	ipc_ks(ipc)->task_mask = IPC_TASK_INLINE;
 
 	return ipc_platform_do_cmd(ipc);
 }
