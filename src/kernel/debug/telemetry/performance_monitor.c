@@ -5,6 +5,7 @@
 // Author: Tobiasz Dryjanski <tobiaszx.dryjanski@intel.com>
 
 #include <sof/audio/component.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/debug/telemetry/performance_monitor.h>
 #include <sof/debug/telemetry/telemetry.h>
 #include <sof/lib/cpu.h>
@@ -28,8 +29,41 @@
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
+#ifdef CONFIG_SOF_TELEMETRY_MODULE_RESOURCES
+#define PERF_DATA_MAX_WINDOW_BYTES SOF_TEL_MW3_MOD_HOT_OFFSET
+#else
+#define PERF_DATA_MAX_WINDOW_BYTES CONFIG_MEMORY_WIN_3_SIZE
+#endif
+
+#ifdef CONFIG_SOF_TELEMETRY_MAX_COMP_ENTRIES
+#define PERFORMANCE_DATA_ENTRIES_COUNT CONFIG_SOF_TELEMETRY_MAX_COMP_ENTRIES
+#else
 #define PERFORMANCE_DATA_ENTRIES_COUNT \
-	(CONFIG_MEMORY_WIN_3_SIZE / sizeof(struct perf_data_item_comp))
+	(PERF_DATA_MAX_WINDOW_BYTES / sizeof(struct perf_data_item_comp))
+#endif
+
+BUILD_ASSERT(PERFORMANCE_DATA_ENTRIES_COUNT * sizeof(struct perf_data_item_comp) <=
+	     PERF_DATA_MAX_WINDOW_BYTES,
+	     "PERFORMANCE_DATA_ENTRIES_COUNT exceeds Memory Window 3 perf_data partition");
+#ifdef CONFIG_SOF_TELEMETRY_MODULE_RESOURCES
+BUILD_ASSERT(SOF_TEL_MW3_MOD_HOT_OFFSET +
+	     PERFORMANCE_DATA_ENTRIES_COUNT * sizeof(struct sof_tel_mod_hot) <=
+	     SOF_TEL_MW3_MOD_COLD_OFFSET,
+	     "mod_hot_data exceeds its Memory Window 3 partition");
+BUILD_ASSERT(SOF_TEL_MW3_MOD_COLD_OFFSET +
+	     PERFORMANCE_DATA_ENTRIES_COUNT * sizeof(struct sof_tel_mod_cold) <=
+	     SOF_TEL_MW3_IO_PERF_OFFSET,
+	     "mod_cold_data exceeds its Memory Window 3 partition");
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+BUILD_ASSERT(SOF_TEL_MW3_IO_PERF_OFFSET +
+	     SOF_TEL_MW3_MAX_IO_ITEMS * sizeof(struct io_perf_data_item) <=
+	     SOF_TEL_MW3_HDR_OFFSET,
+	     "io_perf_data exceeds its Memory Window 3 partition");
+#endif
+BUILD_ASSERT(SOF_TEL_MW3_HDR_OFFSET + sizeof(struct sof_tel_mw3_hdr) <=
+	     CONFIG_MEMORY_WIN_3_SIZE,
+	     "sof_tel_mw3_hdr exceeds Memory Window 3 size");
+#endif
 
 SYS_BITARRAY_DEFINE_STATIC(performance_data_bit_array, PERFORMANCE_DATA_ENTRIES_COUNT);
 
@@ -49,6 +83,11 @@ struct io_perf_monitor_ctx {
 struct perf_bitmap performance_data_bitmap;
 
 struct perf_data_item_comp *perf_data;
+
+#ifdef CONFIG_SOF_TELEMETRY_MODULE_RESOURCES
+static struct sof_tel_mod_hot *mod_hot_data;
+static struct sof_tel_mod_cold *mod_cold_data;
+#endif
 
 /* Note that ref. FW used one state per core, all set together to the same state
  * by one IPC but only for active cores. It may work slightly different in case
@@ -157,6 +196,14 @@ int perf_data_free(struct perf_data_item_comp * const item)
 	if (ret < 0)
 		return ret;
 
+#ifdef CONFIG_SOF_TELEMETRY_MODULE_RESOURCES
+	if (mod_hot_data && idx >= 0 && idx < PERFORMANCE_DATA_ENTRIES_COUNT) {
+		memset(item, 0, sizeof(*item));
+		memset(&mod_hot_data[idx], 0, sizeof(mod_hot_data[idx]));
+		memset(&mod_cold_data[idx], 0, sizeof(mod_cold_data[idx]));
+	}
+#endif
+
 	return 0;
 }
 
@@ -169,6 +216,13 @@ void perf_data_item_comp_reset(struct perf_data_item_comp *perf)
 	perf->restricted_peak_cycles = 0;
 	perf->item.peak_kcps = 0;
 	perf->item.avg_kcps = 0;
+
+#ifdef CONFIG_SOF_TELEMETRY_MODULE_RESOURCES
+	int idx = (int)(perf - perf_data);
+
+	if (mod_hot_data && idx >= 0 && idx < PERFORMANCE_DATA_ENTRIES_COUNT)
+		memset(&mod_hot_data[idx], 0, sizeof(mod_hot_data[idx]));
+#endif
 }
 
 __cold void perf_data_item_comp_init(struct perf_data_item_comp *perf, uint32_t resource_id,
@@ -180,7 +234,88 @@ __cold void perf_data_item_comp_init(struct perf_data_item_comp *perf, uint32_t 
 	perf->item.resource_id = resource_id;
 	perf->item.is_removed = false;
 	perf->item.power_mode = power_mode;
+
+#ifdef CONFIG_SOF_TELEMETRY_MODULE_RESOURCES
+	int idx = (int)(perf - perf_data);
+
+	if (mod_cold_data && idx >= 0 && idx < PERFORMANCE_DATA_ENTRIES_COUNT) {
+		mod_cold_data[idx].resource_id = resource_id;
+		mod_cold_data[idx].heap_usage = 0;
+		mod_cold_data[idx].heap_high_water_mark = 0;
+		mod_cold_data[idx].configured_cpc = 0;
+	}
+#endif
 }
+
+#ifdef CONFIG_SOF_TELEMETRY_MODULE_RESOURCES
+void perf_data_update_module_resources(struct comp_dev *dev)
+{
+	struct perf_data_item_comp *item;
+#if CONFIG_COMP_MODULE_ADAPTER
+	struct processing_module *mod;
+	size_t hwm = 0;
+	size_t usage;
+#endif
+	int idx;
+
+	if (!dev || !mod_cold_data || !perf_data)
+		return;
+
+	item = dev->perf_data.perf_data_item;
+	if (!item || item->item.is_removed)
+		return;
+
+	idx = (int)(item - perf_data);
+	if (idx < 0 || idx >= PERFORMANCE_DATA_ENTRIES_COUNT)
+		return;
+
+	mod_cold_data[idx].resource_id = dev->ipc_config.id;
+	mod_cold_data[idx].configured_cpc = dev->cpc;
+#if CONFIG_COMP_MODULE_ADAPTER
+	mod = dev->mod;
+	if (mod) {
+		usage = module_adapter_heap_usage(mod, &hwm);
+		mod_cold_data[idx].heap_usage = (uint32_t)usage;
+		mod_cold_data[idx].heap_high_water_mark =
+			MAX(mod_cold_data[idx].heap_high_water_mark, (uint32_t)hwm);
+	}
+#endif
+}
+
+void perf_data_inc_cpc_violation(struct comp_dev *dev)
+{
+	struct perf_data_item_comp *item;
+	int idx;
+
+	if (!dev || !mod_hot_data || !perf_data)
+		return;
+
+	item = dev->perf_data.perf_data_item;
+	if (!item || item->item.is_removed)
+		return;
+
+	idx = (int)(item - perf_data);
+	if (idx >= 0 && idx < PERFORMANCE_DATA_ENTRIES_COUNT)
+		mod_hot_data[idx].cpc_violation_count++;
+}
+
+void perf_data_inc_xrun(struct comp_dev *dev)
+{
+	struct perf_data_item_comp *item;
+	int idx;
+
+	if (!dev || !mod_hot_data || !perf_data)
+		return;
+
+	item = dev->perf_data.perf_data_item;
+	if (!item || item->item.is_removed)
+		return;
+
+	idx = (int)(item - perf_data);
+	if (idx >= 0 && idx < PERFORMANCE_DATA_ENTRIES_COUNT)
+		mod_hot_data[idx].xrun_count++;
+}
+#endif
 
 __cold int free_performance_data(struct perf_data_item_comp *item)
 {
@@ -432,21 +567,44 @@ __cold int performance_monitor_init(void)
 	perf_bitmap_init(&performance_data_bitmap, &performance_data_bit_array,
 			 PERFORMANCE_DATA_ENTRIES_COUNT);
 
+#ifdef CONFIG_SOF_TELEMETRY_MODULE_RESOURCES
+	uint8_t *pmw_base = (uint8_t *)ADSP_PMW;
+	struct sof_tel_mw3_hdr *hdr = (struct sof_tel_mw3_hdr *)(pmw_base + SOF_TEL_MW3_HDR_OFFSET);
+
+	memset(perf_data, 0, sizeof(*perf_data) * PERFORMANCE_DATA_ENTRIES_COUNT);
+	mod_hot_data = (struct sof_tel_mod_hot *)(pmw_base + SOF_TEL_MW3_MOD_HOT_OFFSET);
+	mod_cold_data = (struct sof_tel_mod_cold *)(pmw_base + SOF_TEL_MW3_MOD_COLD_OFFSET);
+	memset(mod_hot_data, 0, sizeof(*mod_hot_data) * PERFORMANCE_DATA_ENTRIES_COUNT);
+	memset(mod_cold_data, 0, sizeof(*mod_cold_data) * PERFORMANCE_DATA_ENTRIES_COUNT);
+	memset(hdr, 0, sizeof(*hdr));
+	hdr->magic = SOF_TEL_MW3_MAGIC;
+	hdr->version = 1;
+	hdr->max_comp_entries = PERFORMANCE_DATA_ENTRIES_COUNT;
+	hdr->max_io_entries = SOF_TEL_MW3_MAX_IO_ITEMS;
+	hdr->mod_hot_offset = SOF_TEL_MW3_MOD_HOT_OFFSET;
+	hdr->mod_cold_offset = SOF_TEL_MW3_MOD_COLD_OFFSET;
+	hdr->io_perf_offset = SOF_TEL_MW3_IO_PERF_OFFSET;
+#endif
+
 	return 0;
 }
 
-/* init performance monitor using Zephyr */
-SYS_INIT(performance_monitor_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+/* init performance monitor before sof_init (POST_KERNEL, 99) creates components */
+SYS_INIT(performance_monitor_init, PRE_KERNEL_2, 0);
 
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 
-SYS_BITARRAY_DEFINE_STATIC(io_performance_data_bit_array, PERFORMANCE_DATA_ENTRIES_COUNT);
-
+#ifdef CONFIG_SOF_TELEMETRY_MODULE_RESOURCES
+#define IO_PERFORMANCE_MAX_ENTRIES SOF_TEL_MW3_MAX_IO_ITEMS
+#else
 #define IO_PERFORMANCE_ALLOC_BYTES 0x1000
 #define IO_PERFORMANCE_MAX_ENTRIES (IO_PERFORMANCE_ALLOC_BYTES / sizeof(struct io_perf_data_item))
+static struct io_perf_data_item io_perf_data_items[IO_PERFORMANCE_MAX_ENTRIES];
+#endif
+
+SYS_BITARRAY_DEFINE_STATIC(io_performance_data_bit_array, IO_PERFORMANCE_MAX_ENTRIES);
 
 static struct io_perf_monitor_ctx perf_monitor_ctx;
-static struct io_perf_data_item io_perf_data_items[IO_PERFORMANCE_MAX_ENTRIES];
 
 __cold int io_perf_monitor_init(void)
 {
@@ -458,8 +616,15 @@ __cold int io_perf_monitor_init(void)
 	k_spinlock_init(&self->lock);
 	k_spinlock_key_t key = k_spin_lock(&self->lock);
 
+#ifdef CONFIG_SOF_TELEMETRY_MODULE_RESOURCES
+	self->io_perf_data = (struct io_perf_data_item *)((uint8_t *)ADSP_PMW +
+							  SOF_TEL_MW3_IO_PERF_OFFSET);
+	memset(self->io_perf_data, 0, sizeof(*self->io_perf_data) * IO_PERFORMANCE_MAX_ENTRIES);
+	self->state = IPC4_PERF_MEASUREMENTS_STARTED;
+#else
 	self->io_perf_data = (struct io_perf_data_item *)io_perf_data_items;
 	self->state = IPC4_PERF_MEASUREMENTS_DISABLED;
+#endif
 
 	ret = perf_bitmap_init(&self->io_performance_data_bitmap, &io_performance_data_bit_array,
 			       IO_PERFORMANCE_MAX_ENTRIES);
