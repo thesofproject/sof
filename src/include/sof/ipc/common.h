@@ -136,9 +136,13 @@ struct ipc_user {
  * state and the IPC processing task are used by kernel code only, so they
  * are kept here instead. The field names match the struct ipc fields used
  * without CONFIG_SOF_USERSPACE_LL, so code accesses both through ipc_ks().
+ *
+ * comp_data stays in struct ipc for the IPC user thread, but kernel code
+ * must use the copy here, ipc_ks(ipc)->comp_data, to find the buffer.
  */
 struct ipc_kstate {
 	struct k_spinlock lock;		/* locking mechanism */
+	void *comp_data;		/* kernel copy of ipc->comp_data */
 	int pm_prepare_D3;		/* do we need to prepare for D3 */
 	struct list_item msg_list;	/* queue of messages to be sent */
 	uint32_t task_mask;		/* tasks to be completed by this IPC */

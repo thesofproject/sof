@@ -282,10 +282,21 @@ __cold int ipc4_route_large_config_get(struct ipc4_message_request *ipc4, struct
 				   ipc4_user_target_core_module(ipc4));
 	if (!ret) {
 		struct ipc_user *pdata = ipc_user_get();
+		/*
+		 * pdata is writable by user threads: read the size once and
+		 * always reply from the kernel copy of the IPC data buffer,
+		 * which is where the user thread wrote the reply.
+		 */
+		uint32_t size = pdata->reply_tx_size;
+
+		if (size > SOF_IPC_MSG_MAX_SIZE || size > MAILBOX_DSPBOX_SIZE) {
+			ipc_cmd_err(&ipc_tr, "reply size %u too large", size);
+			return IPC4_INVALID_CONFIG_DATA_STRUCT;
+		}
 
 		reply->extension = pdata->reply_ext;
-		reply->tx_size = pdata->reply_tx_size;
-		reply->tx_data = pdata->reply_tx_data;
+		reply->tx_size = size;
+		reply->tx_data = ipc_ks(ipc_get())->comp_data;
 	}
 
 	return ret;
