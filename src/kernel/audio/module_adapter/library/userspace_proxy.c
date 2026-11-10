@@ -28,6 +28,7 @@
 #include <sof/lib_manager.h>
 #include <sof/llext_manager.h>
 #include <sof/audio/component.h>
+#include <sof/ipc/msg.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/lib/mailbox.h>
 #include <rtos/userspace_helper.h>
@@ -494,6 +495,8 @@ void userspace_proxy_destroy(const struct comp_driver *drv, struct userspace_con
 {
 	tr_dbg(&userspace_proxy_tr, "userspace proxy destroy");
 	user_work_item_free(user_ctx, drv->user_heap);
+	/* drop messages still queued by the module, before the domain is reused */
+	ipc_user_msg_purge(user_ctx->comp_dom);
 	rfree(user_ctx->comp_dom);
 	k_heap_free(drv->user_heap, user_ctx);
 }
