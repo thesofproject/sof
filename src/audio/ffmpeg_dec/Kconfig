@@ -88,11 +88,19 @@ config FFMPEG_ENC_FLAC
 	  Selected at runtime for compress capture streams requesting
 	  SND_AUDIOCODEC_FLAC.
 
+config FFMPEG_ENC_ALAC
+	bool "ALAC encoder (native libavcodec, fixed LPC)"
+	help
+	  Apple Lossless Audio Codec (ALAC) encoder via native libavcodec alac
+	  encoder configured with fixed integer LPC prediction (compression_level 1).
+	  Selected at runtime for compress capture streams requesting
+	  SND_AUDIOCODEC_ALAC.
+
 # Selected automatically when any encoder is enabled. Gates compilation of the
 # runtime encode path (ffmpeg-encode.c).
 config FFMPEG_ENC
 	bool
-	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC || FFMPEG_ENC_FLAC
+	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC || FFMPEG_ENC_FLAC || FFMPEG_ENC_ALAC
 
 comment "FFmpeg audio filters to build (libavfilter)"
 	depends on IPC_MAJOR_4
