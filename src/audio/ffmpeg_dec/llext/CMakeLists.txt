@@ -73,6 +73,9 @@ else()
 		list(APPEND ffmpeg_dec_libs vo-aacenc)
 		list(APPEND ffmpeg_dec_libpaths "${VO_AACENC_INSTALL}/lib")
 	endif()
+	if(CONFIG_FFMPEG_ENC_FLAC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-flac.c)
+	endif()
 
 	# Real libm (newlib double math) LAST so libav*/filter references resolve against it
 	get_filename_component(_ff_libm_dir "${FFMPEG_TARGET_LIBM}" DIRECTORY)

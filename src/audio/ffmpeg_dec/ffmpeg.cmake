@@ -46,6 +46,9 @@ endif()
 if(CONFIG_FFMPEG_DEC_ALAC)
 	list(APPEND _ff_decoders alac)
 endif()
+if(CONFIG_FFMPEG_ENC_FLAC)
+	list(APPEND _ff_encoders flac)
+endif()
 # At least one decoder, encoder, or filter must be selected.
 if(NOT _ff_decoders AND NOT _ff_encoders AND NOT CONFIG_FFMPEG_ENC_MP3 AND NOT CONFIG_FFMPEG_ENC_AAC AND NOT CONFIG_FFMPEG_BUILD_AVFILTER)
 	message(FATAL_ERROR "ffmpeg_dec: no decoder, encoder, or filter selected (Kconfig FFMPEG_DEC_*/FFMPEG_ENC_*/FFMPEG_FILTER_*)")
@@ -93,6 +96,18 @@ set(_ff_extra_cflags "-fPIC -mlongcalls -mtext-section-literals -Wno-error=incom
 # enough for the DSP heap. See libavcodec/aacsbr_template.c.
 if(CONFIG_FFMPEG_DEC_AAC)
 	set(_ff_extra_cflags "${_ff_extra_cflags} -DSOF_AAC_LC_ONLY=1")
+endif()
+
+# FFmpeg's stock FlacEncodeContext embeds fixed arrays for 8 channels x 65535
+# blocksize + 32 exact-Rice partition tables (~7.35 MiB). SOF's FLAC encoder
+# runs at compression_level=1 (1152-sample blocksize, <=2 channels, estimated
+# Rice params where only sums[0] is used); cap FlacEncodeContext in the
+# out-of-tree build copy of flacenc.c so priv_data shrinks to ~60 KiB.
+set(_ff_flacenc_prep "")
+if(CONFIG_FFMPEG_ENC_FLAC)
+	set(_ff_extra_cflags "${_ff_extra_cflags} -I${SOF_FFMPEG_SRC_DIR}/libavcodec")
+	set(_ff_flacenc_prep
+		COMMAND sh -c "sed -e 's/FLAC_MAX_BLOCKSIZE/1152/g' -e 's/rc_sums\\[32\\]/rc_sums[1]/g' -e 's/subframes\\[FLAC_MAX_CHANNELS\\]/subframes[2]/g' -e 's/channels > FLAC_MAX_CHANNELS/channels > 2/g' <SOURCE_DIR>/libavcodec/flacenc.c > <BINARY_DIR>/libavcodec/flacenc.c")
 endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
@@ -580,6 +595,7 @@ ExternalProject_Add(ffmpeg_ext
 			${_ff_shine_cfg}
 			--enable-small --enable-pic --enable-hardcoded-tables
 			"--extra-cflags=${_ff_extra_cflags}"
+		${_ff_flacenc_prep}
 	BUILD_COMMAND
 		${CMAKE_COMMAND} -E env "PATH=${_tc_dir}:$ENV{PATH}" make -j 8
 	INSTALL_COMMAND make install
