@@ -124,7 +124,7 @@ syscall by subsystem:
 | CPU | `cpu_get_id` | `sof/lib/cpu.h` | `zephyr/syscall/cpu.c` / `zephyr/lib/cpu.c` |
 | Module management | `mod_balloc_align`, `mod_alloc_ext`, `mod_free`, `mod_free_all`, `mod_data_blob_handler_new`, `mod_data_blob_set`, `mod_fast_get` | `sof/audio/module_adapter/module/generic.h` | scattered: `audio/module_adapter/module/generic.c` |
 | Library manager | `lib_manager_free_module` | `sof/lib_manager.h` | scattered: `kernel/library_manager/lib_manager.c` |
-| Scheduling | `zephyr_ll_task_sem_alloc`, `zephyr_ll_task_sem_free`, `scheduler_dp_internal_free`, `scheduler_dp_ll_tick` | `sof/schedule/ll_schedule_domain.h`, `sof/schedule/dp_schedule.h` | scattered: `schedule/zephyr_ll.c`, `schedule/zephyr_dp_schedule*.c` |
+| Scheduling | `zephyr_ll_task_sem_alloc`, `zephyr_ll_task_sem_free`, `scheduler_dp_internal_free`, `scheduler_dp_ll_tick`, `scheduler_dp_kick` | `sof/schedule/ll_schedule_domain.h`, `sof/schedule/dp_schedule.h` | scattered: `schedule/zephyr_ll.c`, `schedule/zephyr_dp_schedule*.c` |
 | Debug | `debug_stream_slot_send_record` | `user/debug_stream_slot.h` | scattered: `debug/debug_stream/debug_stream_slot.c` |
 | KPB | `kpb_notifier_init` | `sof/audio/kpb.h` | scattered: `audio/kpb.c` |
 
@@ -141,8 +141,14 @@ from user-writable data such as `ipc_user->thread[]`.
 |-----------------|----------|
 | Any user thread, including DP module threads | `cpu_get_id`, all module management syscalls (`mod_*`), `ipc_msg_send`, `ipc_msg_list_remove`, `send_resource_notif` |
 | IPC user thread only | `ipc_compound_pre_start`, `ipc_compound_post_start`, `ipc_wait_for_compound_msg`, `lib_manager_free_module` |
-| LL user thread only | `scheduler_dp_ll_tick` |
+| LL user thread only | `scheduler_dp_ll_tick`, `scheduler_dp_kick` |
 | LL or IPC user thread | all other SOF syscalls |
+
+With `CONFIG_SOF_USERSPACE_APPLICATION`, the DP task list and task memory are writable by DP
+threads, so the kernel does not walk them. The DP readiness and deadline calculation runs in
+the LL user thread (`scheduler_dp_ll_post_tick()`), which passes its results to
+`scheduler_dp_kick()`; the kernel takes the DP thread and event objects from its own task
+records. `scheduler_dp_ll_tick` is not built when `CONFIG_SOF_USERSPACE_LL` is also set.
 
 DP modules only get the syscalls needed to implement the module interface. That includes
 sending notifications: modules queue messages from `mod_ipc_msg_init()` with
