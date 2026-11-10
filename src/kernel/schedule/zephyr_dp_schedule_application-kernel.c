@@ -54,7 +54,7 @@ STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_sync, CONFIG_CORE_COUNT) = { DP_SYNC_INI
  * into the DP thread's memory domain, and is also writable by the LL and IPC
  * user threads. Freeing must therefore never use the pointers stored there:
  * scheduler_dp_internal_free() takes them from this record instead. The task
- * pointer is only used as a lookup key.
+ * and module pointers are only used as lookup keys.
  */
 struct scheduler_dp_task_kobj {
 	struct list_item list;
@@ -62,9 +62,12 @@ struct scheduler_dp_task_kobj {
 	struct processing_module *mod;
 	struct k_event *event;
 	struct k_thread *thread;
+	struct ipc4_flat *flat;		/* IPC parameter area in task memory */
+	void *config_data;		/* LARGE_CONFIG_GET reply buffer in task memory */
 	struct k_mem_domain *mdom;
 	struct k_mem_partition mpart[SOF_DP_PART_TYPE_COUNT];
 	uint32_t comp_id;
+	uint16_t core;
 	uint32_t gen;			/* unique per record, see dp_task_kobj_take() */
 };
 
@@ -95,6 +98,29 @@ static struct scheduler_dp_task_kobj *dp_task_kobj_find(const struct task *task)
 	}
 
 	return NULL;
+}
+
+/* Copy the record for @mod to @copy */
+static bool dp_task_kobj_peek_mod(const struct processing_module *mod,
+				  struct scheduler_dp_task_kobj *copy)
+{
+	k_spinlock_key_t key = k_spin_lock(&dp_task_kobj_lock);
+	struct scheduler_dp_task_kobj *kobj;
+	struct list_item *item;
+	bool found = false;
+
+	list_for_item(item, &dp_task_kobj_list) {
+		kobj = container_of(item, struct scheduler_dp_task_kobj, list);
+		if (kobj->mod == mod) {
+			*copy = *kobj;
+			found = true;
+			break;
+		}
+	}
+
+	k_spin_unlock(&dp_task_kobj_lock, key);
+
+	return found;
 }
 
 /* Copy the record for @task to @copy without unlinking it */
@@ -291,6 +317,7 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 	kobj->task = ptask;
 	kobj->mod = mod;
+	kobj->core = core;
 	comp_id = mod->dev->ipc_config.id;
 	kobj->comp_id = comp_id;
 
@@ -303,8 +330,10 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 		}
 	}
 	pdata->ipc_config_data = ipc_config_data;
+	kobj->config_data = ipc_config_data;
 
-	pdata->flat = &task_memory->flat;
+	kobj->flat = &task_memory->flat;
+	pdata->flat = kobj->flat;
 
 	kobj->event = k_object_alloc(K_OBJ_EVENT);
 	if (!kobj->event) {
@@ -466,6 +495,27 @@ e_tmem:
 	mod->dev->drv = drv;
 	mod_free(mod, task_memory);
 	return ret;
+}
+
+/*
+ * Get the objects needed to send an IPC to the DP thread of @mod from the
+ * kernel-only record. Returns -EINVAL if @mod has no DP task.
+ */
+int scheduler_dp_task_ipc_params(const struct processing_module *mod, struct k_event **event,
+				 struct ipc4_flat **flat, const void **config_data,
+				 unsigned int *core)
+{
+	struct scheduler_dp_task_kobj kobj;
+
+	if (!dp_task_kobj_peek_mod(mod, &kobj))
+		return -EINVAL;
+
+	*event = kobj.event;
+	*flat = kobj.flat;
+	*config_data = kobj.config_data;
+	*core = kobj.core;
+
+	return 0;
 }
 
 #ifdef CONFIG_USERSPACE
