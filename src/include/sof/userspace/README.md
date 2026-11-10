@@ -150,6 +150,16 @@ sending notifications: modules queue messages from `mod_ipc_msg_init()` with
 processing errors with `send_resource_notif()`. DP modules have no access to the other IPC
 syscalls or to heap, vregion, DMA, DAI or scheduler syscalls.
 
+A message sent by a user thread is never linked into the kernel send queue. `ipc_msg_send()`
+copies its header and payload (at most `CONFIG_SOF_IPC_USER_MSG_MAX_SIZE` bytes) once into
+one of `CONFIG_SOF_IPC_USER_MSG_SLOTS` kernel-owned slots and queues the slot. The slot is
+found again by the address of the user message and the memory domain of the sender, so
+sending a queued message again updates the queued copy, and `ipc_msg_list_remove()` only
+removes messages of the caller's own domain. `msg->list` and `msg->callback` of a user
+message are not used. With `CONFIG_SOF_USERSPACE_LL`, the send queue, its lock and the IPC
+processing task are kept in kernel-only `struct ipc_kstate`, not in the user-writable
+`struct ipc`; kernel code accesses them with `ipc_ks()`.
+
 The `zephyr/syscall/*.c` files hold the validators in one place per subsystem; the rows marked
 **scattered** keep their `z_vrfy_` next to the kernel logic and are the migration targets.
 
