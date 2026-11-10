@@ -70,7 +70,7 @@ static inline struct ipc_msg *ipc_msg_init(struct k_heap *heap,
  *
  * @param msg The IPC message to remove from the queue.
  */
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION) && defined(CONFIG_USERSPACE)
 __syscall void ipc_msg_list_remove(struct ipc_msg *msg);
 #include <zephyr/syscalls/msg.h>
 #else
@@ -103,7 +103,7 @@ void ipc_send_queued_msg(void);
  * @param data The message data.
  * @param high_priority True if a high priority message.
  */
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION) && defined(CONFIG_USERSPACE)
 __syscall void ipc_msg_send(struct ipc_msg *msg, void *data,
 			    bool high_priority);
 #include <zephyr/syscalls/msg.h>

@@ -215,7 +215,59 @@ config MTK
 	help
 	  Select if your target is a Mediatek DSP.  Builds Zephyr firmware.
 
+config PLATFORM_RP2350
+	bool "Build for Raspberry Pi RP2350 (ARM Cortex-M33)"
+	select ZEPHYR_LOG
+	select ZEPHYR_NATIVE_DRIVERS
+	help
+	  Select if your target platform is Raspberry Pi RP2350 (Pico 2).
+
 endchoice
+
+if PLATFORM_RP2350
+
+choice
+	prompt "RP2350 Board Role"
+	default RP2350_BOARD_A
+	help
+	  Select whether this binary is for Board A (Master Tx) or Board B (Slave Rx).
+
+config RP2350_BOARD_A
+	bool "RP2350 Board A (Master Clock Provider / Tx)"
+	help
+	  Configure board as Board A (Master clock provider for I2S,
+	  generates BCLK and LRCLK). Appears on host USB as
+	  'SOF RP2350 Audio A'.
+
+config RP2350_BOARD_B
+	bool "RP2350 Board B (Slave Clock Consumer / Rx)"
+	help
+	  Configure board as Board B (Slave clock consumer for I2S,
+	  receives BCLK and LRCLK). Appears on host USB as
+	  'SOF RP2350 Audio B'.
+
+endchoice
+
+choice
+	prompt "RP2350 Audio Hardware Interface"
+	default RP2350_INTERFACE_LOOPBACK
+	help
+	  Select whether the static audio pipeline connects to internal loopback or PIO I2S.
+
+config RP2350_INTERFACE_LOOPBACK
+	bool "Internal Loopback (UAC2 Playback -> SOF -> UAC2 Capture)"
+	help
+	  Route host USB audio playback directly through SOF volume/EQ processing
+	  and back to host USB audio capture for zero-wire verification.
+
+config RP2350_INTERFACE_PIO_I2S
+	bool "PIO I2S Digital Audio Interface"
+	help
+	  Route audio through RP2350 PIO state machines (I2S mode).
+
+endchoice
+
+endif
 
 config ESP32P4_PIE_SIMD
 	bool "Enable ESP32-P4 PIE (Xespv2p2) 128-bit vector SIMD acceleration"

@@ -328,6 +328,10 @@ static void init_buffer_params(struct comp_buffer *buf, uint32_t dir, enum sof_i
  * \param[in] topo Topology descriptor pointer.
  * \return 0 on success, negative errno on failure.
  */
+int g_topo_fail_stage = 0;
+int g_topo_fail_item = 0;
+int g_topo_fail_code = 0;
+
 static int sof_static_topology_init_pipelines(const struct sof_static_topology *topo)
 {
 	for (size_t i = 0; i < topo->num_pipelines && i < MAX_STATIC_PIPELINES; i++) {
