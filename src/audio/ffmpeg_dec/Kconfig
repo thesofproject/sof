@@ -51,6 +51,14 @@ config FFMPEG_DEC_MP3
 	  MPEG-1/2 Layer III decoder. Enables --enable-decoder=mp3 and the
 	  mpegaudio parser in the libavcodec build. Uses the float math layer.
 
+config FFMPEG_DEC_ALAC
+	bool "ALAC decoder"
+	help
+	  Apple Lossless Audio Codec (ALAC) decoder. Pure 16/24-bit integer
+	  lossless decoder with no floating-point math dependency. Enables
+	  --enable-decoder=alac in the libavcodec build for compress playback
+	  streams requesting SND_AUDIOCODEC_ALAC.
+
 comment "FFmpeg encoders to build (footprint scales with selection)"
 
 config FFMPEG_ENC_MP3
