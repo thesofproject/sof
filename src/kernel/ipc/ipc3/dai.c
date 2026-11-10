@@ -116,6 +116,10 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 					      dd->stream_id);
 		channel = AFE_HS_GET_CHAN(handshake);
 		break;
+	case SOF_DAI_ESP32_I2S:
+	case SOF_DAI_ESP32_PDM:
+		channel = 0;
+		break;
 	default:
 		/* other types of DAIs not handled for now */
 		comp_err(dev, "Unknown dai type %d",
@@ -291,6 +295,10 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 #endif /* defined(CONFIG_AMD) && !defined(CONFIG_SOC_ACP_6_0) */
 		break;
 	case SOF_DAI_MEDIATEK_AFE:
+		break;
+	case SOF_DAI_ESP32_I2S:
+	case SOF_DAI_ESP32_PDM:
+		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
 		break;
 	default:
 		/* other types of DAIs not handled for now */
