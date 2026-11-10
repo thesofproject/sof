@@ -437,7 +437,7 @@ __cold static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 #endif
 
 #if defined(CONFIG_PM)
-		ipc_get()->task_mask |= IPC_TASK_POWERDOWN;
+		ipc_ks(ipc_get())->task_mask |= IPC_TASK_POWERDOWN;
 #endif
 		/* do platform specific suspending */
 		platform_context_save(sof_get());
@@ -447,7 +447,7 @@ __cold static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 		platform_timer_stop(timer_get());
 #endif
 #if defined(CONFIG_PM)
-		ipc_get()->pm_prepare_D3 = 1;
+		ipc_ks(ipc_get())->pm_prepare_D3 = 1;
 #endif
 	}
 
@@ -559,10 +559,10 @@ static bool is_notification_queued(struct ipc_msg *msg)
 	k_spinlock_key_t key;
 	bool queued = false;
 
-	key = k_spin_lock(&ipc->lock);
+	key = k_spin_lock(&ipc_ks(ipc)->lock);
 	if (!list_is_empty(&msg->list))
 		queued = true;
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&ipc_ks(ipc)->lock, key);
 
 	return queued;
 }
@@ -704,7 +704,8 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 		 */
 
 		/* Reply prepared by secondary core */
-		if ((ipc->task_mask & IPC_TASK_SECONDARY_CORE) && cpu_is_primary(cpu_get_id()))
+		if ((ipc_ks(ipc)->task_mask & IPC_TASK_SECONDARY_CORE) &&
+		    cpu_is_primary(cpu_get_id()))
 			return;
 		/* Reply has been prepared by secondary core */
 		if (msg_reply.header != in->primary.dat)
@@ -714,7 +715,7 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 		 * The reply is going to be sent as part of the power down
 		 * sequence
 		 */
-		if (ipc->task_mask & IPC_TASK_POWERDOWN)
+		if (ipc_ks(ipc)->task_mask & IPC_TASK_POWERDOWN)
 			return;
 
 		if (ipc_wait_for_compound_msg() != 0) {

@@ -46,7 +46,7 @@ const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 				continue;
 
 			/* skipping when some ipc task is not finished */
-			if (ipc_get()->task_mask || !ipc_platform_poll_is_host_ready())
+			if (ipc_ks(ipc_get())->task_mask || !ipc_platform_poll_is_host_ready())
 				continue;
 		}
 
