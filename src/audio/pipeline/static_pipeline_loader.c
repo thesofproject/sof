@@ -396,6 +396,7 @@ static struct comp_dev *sof_static_init_dai_comp(const struct sof_static_comp *c
 		.sampling_frequency = dai_rate,
 		.dma_buffer_size = 1024,
 		.format = cdesc->ep.dai.format,
+		.is_config_blob = true,
 	};
 	struct comp_dev *dev = drv->ops.create(drv, cfg, &dai_cfg);
 
