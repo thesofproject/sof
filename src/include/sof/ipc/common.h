@@ -132,16 +132,23 @@ struct ipc_user {
  * Kernel-only IPC state.
  *
  * With CONFIG_SOF_USERSPACE_LL, struct ipc is in a partition that the LL and
- * IPC user threads can write. The send queue, its lock and the completion
- * state are used by kernel code only, so they are kept here instead. The
- * field names match the struct ipc fields used without
- * CONFIG_SOF_USERSPACE_LL, so code accesses both through ipc_ks().
+ * IPC user threads can write. The send queue, its lock, the completion
+ * state and the IPC processing task are used by kernel code only, so they
+ * are kept here instead. The field names match the struct ipc fields used
+ * without CONFIG_SOF_USERSPACE_LL, so code accesses both through ipc_ks().
  */
 struct ipc_kstate {
 	struct k_spinlock lock;		/* locking mechanism */
 	int pm_prepare_D3;		/* do we need to prepare for D3 */
 	struct list_item msg_list;	/* queue of messages to be sent */
 	uint32_t task_mask;		/* tasks to be completed by this IPC */
+
+	/* processing task, run by the kernel scheduler */
+#if CONFIG_TWB_IPC_TASK
+	struct task *ipc_task;
+#else
+	struct task ipc_task;
+#endif
 };
 
 /** Kernel context only. */
@@ -174,11 +181,13 @@ struct ipc {
 
 	struct list_item comp_list;	/* list of component devices */
 
-	/* processing task */
+#ifndef CONFIG_SOF_USERSPACE_LL
+	/* processing task, in struct ipc_kstate with CONFIG_SOF_USERSPACE_LL */
 #if CONFIG_TWB_IPC_TASK
 	struct task *ipc_task;
 #else
 	struct task ipc_task;
+#endif
 #endif
 
 #ifdef CONFIG_SOF_USERSPACE_LL
