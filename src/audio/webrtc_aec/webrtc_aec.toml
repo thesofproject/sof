@@ -12,6 +12,7 @@
 	domain_types = "1"
 	load_type = LOAD_TYPE
 	module_type = "9"
+	init_config = "1"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
 	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
