@@ -435,16 +435,35 @@ __cold int scheduler_dp_init(void)
 
 void scheduler_get_task_info_dp(struct scheduler_props *scheduler_props, uint32_t *data_off_size)
 {
-	unsigned int lock_key;
-
 	scheduler_props->processing_domain = COMP_PROCESSING_DOMAIN_DP;
+#if CONFIG_SOF_USERSPACE_APPLICATION
+	/*
+	 * The task list links are in DP task memory, which DP threads can
+	 * write. Count the kernel-only task records instead of walking it.
+	 */
+	struct task_props *task_props = (struct task_props *)(scheduler_props + 1);
+	unsigned int count = scheduler_dp_task_count(cpu_get_id());
+	unsigned int i;
+
+	scheduler_props->core_id = cpu_get_id();
+	scheduler_props->task_count = count;
+	*data_off_size += sizeof(*scheduler_props);
+
+	for (i = 0; i < count; i++) {
+		task_props[i].task_id = 0;
+		task_props[i].module_instance_count = 0;
+		*data_off_size += sizeof(*task_props);
+	}
+#else
 #if CONFIG_SOF_USERSPACE_LL
 	struct scheduler_dp_data *dp_sch = scheduler_get_user_data(SOF_SCHEDULE_DP);
 #else
 	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
 #endif
+	unsigned int lock_key;
 
 	lock_key = scheduler_dp_lock(cpu_get_id());
 	scheduler_get_task_info(scheduler_props, data_off_size,  &dp_sch->tasks);
 	scheduler_dp_unlock(lock_key);
+#endif
 }

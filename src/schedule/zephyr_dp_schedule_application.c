@@ -535,6 +535,29 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 		scheduler_dp_kick(kicks, n);
 }
 
+unsigned int scheduler_dp_task_count(unsigned int core)
+{
+	k_spinlock_key_t key = k_spin_lock(&dp_task_kobj_lock);
+	struct scheduler_dp_task_kobj *kobj;
+	struct list_item *item;
+	unsigned int count = 0;
+
+	/*
+	 * Task memory is only freed after its record is unlinked, so it can be
+	 * read here. Only the state value is used, no pointers from it: a
+	 * forged state only changes whether that task is counted.
+	 */
+	list_for_item(item, &dp_task_kobj_list) {
+		kobj = container_of(item, struct scheduler_dp_task_kobj, list);
+		if (kobj->core == core && task_is_active(kobj->task))
+			count++;
+	}
+
+	k_spin_unlock(&dp_task_kobj_lock, key);
+
+	return count;
+}
+
 #if CONFIG_SOF_BOOT_TEST_STANDALONE
 /* Add a DP task record for zephyr/test/userspace/test_dp_kick.c */
 int scheduler_dp_test_record_add(struct task *task, struct k_event *event,

@@ -72,6 +72,15 @@ struct task_dp_pdata {
  */
 void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch);
 
+#if CONFIG_SOF_USERSPACE_APPLICATION
+/**
+ * @brief Count the DP tasks of a core from the kernel-only DP task records.
+ * @param[in] core DSP core.
+ * @return Number of scheduled DP tasks on @p core. Kernel context only.
+ */
+unsigned int scheduler_dp_task_count(unsigned int core);
+#endif
+
 /**
  * @brief Worker thread entry point function for Data Processing tasks.
  *
