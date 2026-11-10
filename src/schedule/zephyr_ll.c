@@ -151,7 +151,9 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 	 * important to decrement the task counter last before aborting the
 	 * thread.
 	 */
-	domain_unregister(sch->ll_domain, task, --sch->n_tasks);
+	sch->n_tasks--;
+	telemetry_notify_ll_task_count(sch->core, sch->n_tasks);
+	domain_unregister(sch->ll_domain, task, sch->n_tasks);
 }
 
 /* The caller must hold the lock and possibly disable interrupts */
@@ -416,6 +418,7 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 		zephyr_ll_task_insert_after_unlocked(task, reference);
 
 	sch->n_tasks++;
+	telemetry_notify_ll_task_count(sch->core, sch->n_tasks);
 
 	zephyr_ll_unlock(sch, &flags);
 
