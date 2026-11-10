@@ -266,7 +266,8 @@ static void schedule_ipc_worker(void)
 	 * note: in XTOS builds, this is handled in
 	 * task_main_primary_core()
 	 */
-#ifdef __ZEPHYR__
+#if defined(__ZEPHYR__) && !CONFIG_SOF_BOOT_TEST_STANDALONE
+	/* with SOF_BOOT_TEST_STANDALONE, ipc_init() does not set up the work queue */
 	k_work_schedule_for_queue(&ipc_send_wq, &ipc_send_work, K_USEC(IPC_PERIOD_USEC));
 #endif
 }
@@ -340,25 +341,141 @@ void z_impl_ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 EXPORT_SYMBOL(ipc_msg_send);
 
 #ifdef CONFIG_USERSPACE
+/*
+ * Messages from user threads are never linked into the kernel send queue
+ * and their callbacks are never called. Each send copies the header and the
+ * payload once into a kernel-owned slot, which is queued in their place.
+ * The slot is found again by the address of the user message and the
+ * memory domain of the sender. Neither is dereferenced, so the user message
+ * may change or go away at any time without affecting the kernel.
+ */
+struct ipc_user_msg_slot {
+	struct ipc_msg msg;		/* in ipc_ks(ipc)->msg_list if key is set */
+	const struct ipc_msg *key;	/* user message, NULL if slot is free */
+	struct k_mem_domain *domain;	/* memory domain of the sender */
+	uint32_t payload[DIV_ROUND_UP(CONFIG_SOF_IPC_USER_MSG_MAX_SIZE, sizeof(uint32_t))];
+};
+
+BUILD_ASSERT(CONFIG_SOF_IPC_USER_MSG_MAX_SIZE <= SOF_IPC_MSG_MAX_SIZE,
+	     "user IPC messages must fit in the IPC mailbox");
+
+static struct ipc_user_msg_slot ipc_user_msg_slots[CONFIG_SOF_IPC_USER_MSG_SLOTS];
+
+static struct k_mem_domain *ipc_user_msg_domain(void)
+{
+	return k_current_get()->mem_domain_info.mem_domain;
+}
+
+static void ipc_user_msg_slot_free(struct ipc_user_msg_slot *slot)
+{
+	slot->key = NULL;
+	slot->domain = NULL;
+}
+
+/* Called by ipc_send_queued_msg() with the IPC lock held, after sending */
+static void ipc_user_msg_sent(struct ipc_msg *msg)
+{
+	ipc_user_msg_slot_free(container_of(msg, struct ipc_user_msg_slot, msg));
+}
+
+/* Call with the IPC lock held */
+static struct ipc_user_msg_slot *ipc_user_msg_find(const struct ipc_msg *key,
+						    struct k_mem_domain *domain)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ipc_user_msg_slots); i++)
+		if (ipc_user_msg_slots[i].key == key &&
+		    ipc_user_msg_slots[i].domain == domain)
+			return &ipc_user_msg_slots[i];
+
+	return NULL;
+}
+
+static void ipc_user_msg_queue(const struct ipc_msg *key, const struct ipc_msg *kmsg,
+			       const void *payload, bool high_priority)
+{
+	struct k_mem_domain *domain = ipc_user_msg_domain();
+	struct ipc *ipc = ipc_get();
+	struct ipc_user_msg_slot *slot;
+	k_spinlock_key_t lock_key;
+
+	lock_key = k_spin_lock(&ipc_ks(ipc)->lock);
+
+	/* a message that is still queued is updated in place, not queued again */
+	slot = ipc_user_msg_find(key, domain);
+	if (!slot) {
+		slot = ipc_user_msg_find(NULL, NULL);
+		if (!slot) {
+			k_spin_unlock(&ipc_ks(ipc)->lock, lock_key);
+			LOG_WRN("no free slot, dropping user IPC message %#x", kmsg->header);
+			return;
+		}
+
+		slot->key = key;
+		slot->domain = domain;
+		if (high_priority)
+			list_item_prepend(&slot->msg.list, &ipc_ks(ipc)->msg_list);
+		else
+			list_item_append(&slot->msg.list, &ipc_ks(ipc)->msg_list);
+	}
+
+	slot->msg.header = kmsg->header;
+	slot->msg.extension = kmsg->extension;
+	slot->msg.tx_size = kmsg->tx_size;
+	slot->msg.tx_data = slot->payload;
+	slot->msg.callback = ipc_user_msg_sent;
+	memcpy(slot->payload, payload, kmsg->tx_size);
+
+	schedule_ipc_worker();
+
+	k_spin_unlock(&ipc_ks(ipc)->lock, lock_key);
+}
+
+void ipc_user_msg_purge(struct k_mem_domain *domain)
+{
+	struct ipc *ipc = ipc_get();
+	k_spinlock_key_t key;
+	int i;
+
+	key = k_spin_lock(&ipc_ks(ipc)->lock);
+
+	for (i = 0; i < ARRAY_SIZE(ipc_user_msg_slots); i++) {
+		struct ipc_user_msg_slot *slot = &ipc_user_msg_slots[i];
+
+		if (slot->key && slot->domain == domain) {
+			list_item_del(&slot->msg.list);
+			ipc_user_msg_slot_free(slot);
+		}
+	}
+
+	k_spin_unlock(&ipc_ks(ipc)->lock, key);
+}
+
 void z_vrfy_ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 {
 	/* No caller check: DP modules send notifications, see mod_ipc_msg_init() */
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(msg, sizeof(*msg)));
+	uint32_t payload[DIV_ROUND_UP(CONFIG_SOF_IPC_USER_MSG_MAX_SIZE, sizeof(uint32_t))];
+	struct ipc_msg kmsg;
 
-	K_OOPS(K_SYSCALL_VERIFY(msg->tx_size <= SOF_IPC_MSG_MAX_SIZE));
+	/* only the header fields are used, list and callback are ignored */
+	K_OOPS(k_usermode_from_copy(&kmsg, msg, sizeof(kmsg)));
 
-	K_OOPS(K_SYSCALL_VERIFY(list_is_empty(&msg->list)));
+	K_OOPS(K_SYSCALL_VERIFY(kmsg.tx_size <= CONFIG_SOF_IPC_USER_MSG_MAX_SIZE));
 
-	if (msg->tx_size > 0) {
-                K_OOPS(K_SYSCALL_VERIFY(msg->tx_data != NULL));
-                K_OOPS(K_SYSCALL_MEMORY_WRITE(msg->tx_data, msg->tx_size));
-        }
+	if (kmsg.tx_size) {
+		/* as in z_impl_ipc_msg_send(), data replaces the message payload */
+		const void *src = data ? data : kmsg.tx_data;
 
-	/* If data != NULL and tx_size > 0, verify the data buffer */
-	if (data && msg->tx_size > 0)
-		K_OOPS(K_SYSCALL_MEMORY_READ(data, msg->tx_size));
+		K_OOPS(K_SYSCALL_VERIFY(src != NULL));
+		K_OOPS(k_usermode_from_copy(payload, src, kmsg.tx_size));
 
-	z_impl_ipc_msg_send(msg, data, high_priority);
+		/* keep the message payload up to date, as z_impl_ipc_msg_send() does */
+		if (data && data != kmsg.tx_data)
+			K_OOPS(k_usermode_to_copy(kmsg.tx_data, payload, kmsg.tx_size));
+	}
+
+	ipc_user_msg_queue(msg, &kmsg, payload, high_priority);
 }
 #include <zephyr/syscalls/ipc_msg_send_mrsh.c>
 #endif /* CONFIG_USERSPACE */
@@ -378,27 +495,19 @@ void z_vrfy_ipc_msg_list_remove(struct ipc_msg *msg)
 {
 	/* No caller check: called by mod_ipc_msg_free() in DP module threads */
 	struct ipc *ipc = ipc_get();
-	struct list_item *mlist, *_mlist;
-	bool found = false;
+	struct ipc_user_msg_slot *slot;
+	k_spinlock_key_t key;
 
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(msg, sizeof(*msg)));
+	/* msg is only used as a key, removing a message that is not queued is a no-op */
+	key = k_spin_lock(&ipc_ks(ipc)->lock);
 
-	/*
-	 * special case: empty list was passed. we can't trust where
-	 * list->prev points to, so do not pass to
-	 * z_impl_ipc_msg_list_remove(), but handle here
-	 */
-	if (list_is_empty(&msg->list))
-		return;
-
-	list_for_item_safe(mlist, _mlist, &ipc_ks(ipc)->msg_list)  {
-		if (mlist == &msg->list) {
-			found = true;
-			break;
-		}
+	slot = ipc_user_msg_find(msg, ipc_user_msg_domain());
+	if (slot) {
+		list_item_del(&slot->msg.list);
+		ipc_user_msg_slot_free(slot);
 	}
-	K_OOPS(K_SYSCALL_VERIFY(found));
-	z_impl_ipc_msg_list_remove(msg);
+
+	k_spin_unlock(&ipc_ks(ipc)->lock, key);
 }
 #include <zephyr/syscalls/ipc_msg_list_remove_mrsh.c>
 #endif /* CONFIG_USERSPACE */

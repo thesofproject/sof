@@ -398,6 +398,27 @@ config STACK_SIZE_IPC_TX
 	help
 	  IPC sender work-queue thread stack size. Keep a power of 2.
 
+config SOF_IPC_USER_MSG_SLOTS
+	int "Number of IPC messages from user threads that can be queued"
+	default 16
+	depends on USERSPACE
+	help
+	  IPC messages sent by user threads, for example module
+	  notifications, are copied to kernel-owned slots before they
+	  are queued for sending to the host. A message sent while all
+	  slots are in use is dropped.
+
+config SOF_IPC_USER_MSG_MAX_SIZE
+	int "Maximum payload size of an IPC message from a user thread"
+	default 384 if IPC_MAJOR_3
+	default 64
+	depends on USERSPACE
+	help
+	  Maximum payload size in bytes of an IPC message sent by a
+	  user thread. Each of the SOF_IPC_USER_MSG_SLOTS slots reserves
+	  this much kernel memory. Sending a larger message faults the
+	  sending thread.
+
 config SOF_IPC_USER_THREAD_STACK_SIZE
 	int "IPC user thread stack size"
 	default 8192

@@ -113,6 +113,22 @@ void z_impl_ipc_msg_send(struct ipc_msg *msg, void *data,
 #define ipc_msg_send z_impl_ipc_msg_send
 #endif
 
+#ifdef CONFIG_USERSPACE
+struct k_mem_domain;
+
+/**
+ * \brief Drop queued messages sent by user threads of a memory domain.
+ *
+ * Messages sent by user threads are queued as kernel copies, found by the
+ * address of the user message and the memory domain of the sender. Call
+ * this before a memory domain is reused, so that a message still queued
+ * from its previous threads is not taken as theirs. Kernel context only.
+ *
+ * @param domain The memory domain.
+ */
+void ipc_user_msg_purge(struct k_mem_domain *domain);
+#endif
+
 /**
  * \brief Send an IPC message directly for emergency.
  * @param msg The IPC message to be freed.
