@@ -133,6 +133,10 @@ void vmh_log_stats(struct vmh_heap *heap);
  */
 void vmh_log_alloc_stats(struct vmh_heap *heap);
 #endif
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+struct sof_tel_mem_section;
+void vmh_fill_telemetry_stats(struct vmh_heap *heap, struct sof_tel_mem_section *mem);
+#endif
 /**
  * @brief Checks if ptr is in range of given memory range.
  *

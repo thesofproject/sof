@@ -9,6 +9,7 @@
 #include <errno.h>
 
 #include <sof/audio/component.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <sof/lib/fast-get.h>
 #include <sof/lib/vregion.h>
 #include <sof/objpool.h>
@@ -36,6 +37,14 @@ struct sof_fast_get_data {
 static struct sof_fast_get_data fast_get_data = {
 	.pool.list = LIST_INIT(fast_get_data.pool.list),
 };
+
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+static uint32_t fast_get_total_calls;
+static uint16_t fast_get_active_entries;
+static uint16_t fast_get_fail_count;
+static uint32_t fast_get_live_bytes;
+static uint32_t fast_get_peak_bytes;
+#endif
 
 LOG_MODULE_REGISTER(fast_get, CONFIG_SOF_LOG_LEVEL);
 
@@ -270,13 +279,38 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 	entry->size = size;
 	entry->sram_ptr = ret;
 	entry->refcount = 1;
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+	fast_get_active_entries++;
+	fast_get_live_bytes += (uint32_t)size;
+	if (fast_get_live_bytes > fast_get_peak_bytes)
+		fast_get_peak_bytes = fast_get_live_bytes;
+#endif
 out:
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+	fast_get_total_calls++;
+	if (!ret)
+		fast_get_fail_count++;
+#endif
 	k_spin_unlock(&data->lock, key);
 	LOG_DBG("get %p, %p, size %u, refcnt %u", dram_ptr, ret, size, entry ? entry->refcount : 0);
 
 	return ret;
 }
 EXPORT_SYMBOL(fast_get);
+
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+void telemetry_collect_fast_get_stats(struct sof_tel_fast_get_info *fg)
+{
+	if (!fg)
+		return;
+
+	fg->active_entries = fast_get_active_entries;
+	fg->fail_count = fast_get_fail_count;
+	fg->total_sram_bytes = fast_get_live_bytes;
+	fg->peak_sram_bytes = fast_get_peak_bytes;
+	fg->total_get_calls = fast_get_total_calls;
+}
+#endif
 
 static bool fast_put_find_entry(void *data, void *arg)
 {
@@ -312,6 +346,14 @@ void fast_put(struct mod_alloc_ctx *alloc, struct k_mem_domain *mdom, const void
 	entry->refcount--;
 
 	if (!entry->refcount) {
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+		if (fast_get_active_entries > 0)
+			fast_get_active_entries--;
+		if (fast_get_live_bytes >= (uint32_t)entry->size)
+			fast_get_live_bytes -= (uint32_t)entry->size;
+		else
+			fast_get_live_bytes = 0;
+#endif
 		LOG_DBG("freeing buffer %p", sram_ptr);
 		if (alloc && alloc->vreg && entry->size <= FAST_GET_MAX_COPY_SIZE)
 			vregion_free(alloc->vreg, entry->sram_ptr);
