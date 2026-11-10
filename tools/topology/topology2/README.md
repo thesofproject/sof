@@ -14,6 +14,13 @@ Topology v2 introduces an object-oriented pre-processing layer directly into the
 Building topologies requires `alsatplg` version 1.2.7 or later. The version check is
 enforced in `CMakeLists.txt` at configure time.
 
+### HDA benchmarks
+
+The generic HDA benchmark (`BENCH_CONFIG=benchmark,HDA_CONFIG=benchmark`)
+provides its own DAI pipelines. The default component-benchmark DAI gateways
+are only instantiated with `HDA_CONFIG=none` to avoid duplicate widget names
+and overlapping pipeline IDs.
+
 ## Key Advantages
 
 - **Object-Oriented Syntax**: Topology v2 allows for the definition of classes (`Class.Widget`, `Class.Pipeline`) and object instantiation, making the topology files much easier to read, maintain, and extend.
