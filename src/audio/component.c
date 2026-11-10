@@ -640,13 +640,18 @@ void comp_init_performance_data(struct comp_dev *dev)
 {
 	struct perf_data_item_comp *item = dev->perf_data.perf_data_item;
 
-	if (item)
+	if (item) {
 		perf_data_item_comp_init(item, dev->ipc_config.id, 0);
+		perf_data_update_module_resources(dev);
+	}
 }
 
 /* returns true if budget violation occurred */
 static bool update_peak_of_measured_cpc(struct comp_dev *dev, size_t measured_cpc)
 {
+	if (dev->cpc && measured_cpc > dev->cpc)
+		perf_data_inc_cpc_violation(dev);
+
 	if (measured_cpc <= dev->perf_data.peak_of_measured_cpc)
 		return false;
 	dev->perf_data.peak_of_measured_cpc = measured_cpc;
@@ -657,7 +662,8 @@ bool comp_update_performance_data(struct comp_dev *dev, uint32_t cycles_used)
 {
 	struct perf_data_item_comp *item = dev->perf_data.perf_data_item;
 
-	if (perf_meas_get_state() == IPC4_PERF_MEASUREMENTS_STARTED) {
+	if (perf_meas_get_state() == IPC4_PERF_MEASUREMENTS_STARTED ||
+	    IS_ENABLED(CONFIG_SOF_TELEMETRY_MODULE_RESOURCES)) {
 		/* we divide by ibs so we need to check if its set */
 		if (item && dev->ibs != 0) {
 			item->total_iteration_count++;
@@ -720,6 +726,9 @@ void comp_update_ibs_obs_cpc(struct comp_dev *dev)
 	dev->obs = dev_cfg.obs;
 	dev->ibs = dev_cfg.ibs;
 	dev->cpc = dev_cfg.cpc;
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+	perf_data_update_module_resources(dev);
+#endif
 #else
 	/* set neutral values */
 	dev->ll_chunk_size = 0;
