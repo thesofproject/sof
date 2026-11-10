@@ -119,7 +119,14 @@ struct comp_data {
 #if CONFIG_KPB_CLI_Q
 #include <zephyr/kernel.h>
 
-static struct k_queue *kpb_q;
+/*
+ * Only a single KPB instance is currently supported: the queue, thread and
+ * dev below are global. Requests are copied by value, so user space never
+ * passes pointers to the kernel.
+ */
+K_MSGQ_DEFINE(kpb_cli_msgq, sizeof(struct kpb_client), KPB_MAX_NO_OF_CLIENTS,
+	      __alignof__(struct kpb_client));
+static struct comp_dev *kpb_cli_q_dev;
 static struct k_thread kpb_thread;
 K_KERNEL_STACK_DEFINE(kpb_stack, 4096);
 #endif
@@ -479,37 +486,34 @@ static int kpb_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 #if CONFIG_KPB_CLI_Q
 static void kpb_thread_fn(void *p1, void *p2, void *p3)
 {
-	struct k_queue *q = p1;
+	struct comp_dev *dev = p1;
+	struct kpb_client cli;
 
 	for (;;) {
-		struct kpb_client *cli = k_queue_get(q, K_FOREVER);
-
-		kpb_init_draining(cli->dev, cli);
+		k_msgq_get(&kpb_cli_msgq, &cli, K_FOREVER);
+		/* keep the LL thread (kpb_copy()) from preempting draining setup */
+		k_sched_lock();
+		kpb_init_draining(dev, &cli);
+		k_sched_unlock();
 	}
 }
 
-void kpb_notifier_schedule(struct kpb_client *cli)
+int z_impl_kpb_notifier_schedule(uint32_t id, uint32_t drain_req)
 {
-	k_queue_alloc_append(cli->queue, cli);
-}
-EXPORT_SYMBOL(kpb_notifier_schedule);
+	struct kpb_client cli = {
+		.id = id,
+		.drain_req = drain_req,
+	};
 
-void z_impl_kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli)
-{
-	comp_dbg(dev, "adding new client to %p", kpb_q);
-	k_thread_access_grant(k_current_get(), kpb_q);
-	cli->queue = kpb_q;
-	cli->dev = dev;
-}
+	if (id >= KPB_MAX_NO_OF_CLIENTS || drain_req > KPB_MAX_DRAINING_REQ)
+		return -EINVAL;
 
-#include <zephyr/internal/syscall_handler.h>
-void z_vrfy_kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli)
-{
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(dev, sizeof(*dev)));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(cli, sizeof(*cli)));
-	z_impl_kpb_notifier_init(dev, cli);
+	if (!kpb_cli_q_dev)
+		return -ENODEV;
+
+	return k_msgq_put(&kpb_cli_msgq, &cli, K_NO_WAIT);
 }
-#include <zephyr/syscalls/kpb_notifier_init_mrsh.c>
+EXPORT_SYMBOL(z_impl_kpb_notifier_schedule);
 #endif
 
 /*
@@ -550,6 +554,13 @@ __cold static struct comp_dev *kpb_new(const struct comp_driver *drv,
 			    ipc_config_size);
 		return NULL;
 	}
+
+#if CONFIG_KPB_CLI_Q
+	if (kpb_cli_q_dev) {
+		comp_cl_err(&comp_kpb, "only one KPB instance is supported with KPB_CLI_Q");
+		return NULL;
+	}
+#endif
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -608,18 +619,13 @@ __cold static struct comp_dev *kpb_new(const struct comp_driver *drv,
 #endif
 
 #if CONFIG_KPB_CLI_Q
-	kpb_q = k_object_alloc(K_OBJ_QUEUE);
-	if (!kpb_q) {
-		comp_free_device(dev);
-		return NULL;
-	}
-
-	k_queue_init(kpb_q);
-	k_thread_create(&kpb_thread, kpb_stack, 4096, kpb_thread_fn, kpb_q, NULL, NULL,
+	k_msgq_purge(&kpb_cli_msgq);
+	k_thread_create(&kpb_thread, kpb_stack, 4096, kpb_thread_fn, dev, NULL, NULL,
 			1, 0, K_FOREVER);
 
 	k_thread_cpu_pin(&kpb_thread, cpu_get_id());
 	k_thread_start(&kpb_thread);
+	kpb_cli_q_dev = dev;
 #endif
 
 	return dev;
@@ -770,8 +776,9 @@ __cold static void kpb_free(struct comp_dev *dev)
 	comp_info(dev, "entry");
 
 #if CONFIG_KPB_CLI_Q
+	kpb_cli_q_dev = NULL;
 	k_thread_abort(&kpb_thread);
-	k_object_free(kpb_q);
+	k_msgq_purge(&kpb_cli_msgq);
 #elif CONFIG_AMS
 	/* Unregister KPB as AMS consumer */
 	int ret;
@@ -1705,7 +1712,9 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	bool is_sink_ready = (comp_buffer_get_sink_state(kpb->host_sink) == COMP_STATE_ACTIVE);
+	/* sinks are NULL before bind and after reset/unbind */
+	bool is_sink_ready = kpb->host_sink && kpb->sel_sink &&
+			     comp_buffer_get_sink_state(kpb->host_sink) == COMP_STATE_ACTIVE;
 	size_t sample_width = kpb->config.sampling_width;
 	size_t drain_req = (size_t)cli->drain_req * kpb->config.channels *
 			       (kpb->config.sampling_freq / 1000) *
@@ -2015,28 +2024,29 @@ static enum task_state kpb_draining_task(void *arg)
 		} else {
 			draining_data->next_copy_time = 0;
 		}
+	}
 
-		if (draining_data->drain_req == 0) {
-		/* We have finished draining of requested data however
-		 * while we were draining real time stream could provided
-		 * new data which needs to be copy to host.
+	/* also reached with a zero-length (no history) draining request */
+	if (draining_data->drain_req == 0) {
+	/* We have finished draining of requested data however
+	 * while we were draining real time stream could provided
+	 * new data which needs to be copy to host.
+	 */
+		comp_cl_info(&comp_kpb, "kpb: update drain_req by %zu",
+			     *rt_stream_update);
+		kpb_lock(kpb);
+		draining_data->drain_req += *rt_stream_update;
+		*rt_stream_update = 0;
+		if (!draining_data->drain_req && kpb->state == KPB_STATE_DRAINING) {
+		/* Draining is done. Now switch KPB to copy real time
+		 * stream to client's sink. This state is called
+		 * "draining on demand"
+		 * Note! If KPB state changed during draining due to
+		 * i.e reset request we should not change that state.
 		 */
-			comp_cl_info(&comp_kpb, "kpb: update drain_req by %zu",
-				     *rt_stream_update);
-			kpb_lock(kpb);
-			draining_data->drain_req += *rt_stream_update;
-			*rt_stream_update = 0;
-			if (!draining_data->drain_req && kpb->state == KPB_STATE_DRAINING) {
-			/* Draining is done. Now switch KPB to copy real time
-			 * stream to client's sink. This state is called
-			 * "draining on demand"
-			 * Note! If KPB state changed during draining due to
-			 * i.e reset request we should not change that state.
-			 */
-				kpb_change_state(kpb, KPB_STATE_HOST_COPY);
-			}
-			kpb_unlock(kpb);
+			kpb_change_state(kpb, KPB_STATE_HOST_COPY);
 		}
+		kpb_unlock(kpb);
 	}
 
 out:
