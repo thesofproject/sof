@@ -27,3 +27,90 @@ config SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	  Disabled by default and enabled with IPC. Measurements can be extracted also by IPC.
 	  Interfaces measured: IPC, IDC, DMIC, I2S, SNDW, HDA, USB, GPIO, I2c, I3C, UART, SPI, CSI_2, DTF.
 
+if SOF_TELEMETRY
+
+config SOF_TELEMETRY_EXTENDED_WINDOW
+	bool "Extended telemetry directory in Memory Window 2 Slot 1"
+	default y
+	help
+	  Places a 64-byte-aligned self-describing TEL2 directory header and
+	  cache-line-concentrated hot counter zone after system_tick_info in
+	  the telemetry debug window slot to expose internal SOF resources.
+
+config SOF_TELEMETRY_HOT_CACHE_STAGING
+	bool "Stage LL hot-path telemetry updates in L1 D-cache lines"
+	depends on SOF_TELEMETRY_EXTENDED_WINDOW
+	default y
+	help
+	  Accumulates LL hot-path counter increments in 64-byte-aligned L1 D$
+	  lines and flushes dirty cache lines to the uncached memory window
+	  once at the end of the LL tick.
+
+config SOF_TELEMETRY_MEMORY
+	bool "Memory, k_heap, virtual heap, and SRAM page telemetry"
+	depends on SOF_TELEMETRY_EXTENDED_WINDOW
+	select SYS_HEAP_RUNTIME_STATS
+	select SYS_MEM_BLOCKS_RUNTIME_STATS if SYS_MEM_BLOCKS
+	default y
+	help
+	  Exports live usage, free bytes, high-water marks, and allocation
+	  failure counters for sof_heap, shared_buffer_heap, ll_user_heap,
+	  l3_heap, virtual_buffers_heap (vmh), and fast_get in MW2 Slot 1.
+
+config SOF_TELEMETRY_VREGION
+	bool "Virtual page (vpage) and virtual region (vregion) telemetry"
+	depends on SOF_TELEMETRY_EXTENDED_WINDOW && SOF_VREGIONS
+	default y
+	help
+	  Tracks vpage_ctx page usage/fragmentation and per-vregion lifetime
+	  linear allocator and interim k_heap usage in MW2 Slot 1.
+
+config SOF_TELEMETRY_PIPELINES
+	bool "Pipeline and LL/DP scheduler telemetry"
+	depends on SOF_TELEMETRY_EXTENDED_WINDOW
+	default y
+	help
+	  Exports active pipeline states, periods, priorities, XRUN counts,
+	  and per-core LL/DP task counts and deadline misses in MW2 Slot 1.
+
+config SOF_TELEMETRY_DAIS
+	bool "DAI and Host DMA gateway telemetry"
+	depends on SOF_TELEMETRY_EXTENDED_WINDOW
+	default y
+	help
+	  Exports active DAI and Host DMA gateway state, DMA channel, buffer
+	  fill levels, XRUN/skip counts, and total bytes processed in MW2 Slot 1.
+
+config SOF_TELEMETRY_THREADS
+	bool "Compact Zephyr thread CPU and stack telemetry in MW2 Slot 1"
+	depends on SOF_TELEMETRY_EXTENDED_WINDOW
+	select THREAD_MONITOR
+	select THREAD_NAME
+	select THREAD_STACK_INFO
+	select INIT_STACKS
+	select THREAD_RUNTIME_STATS
+	default y
+	help
+	  Periodically snapshots per-thread CPU load (%) and stack high-water
+	  mark (%) into MW2 Slot 1 without requiring an extra 4 KB debug_stream slot.
+
+config SOF_TELEMETRY_MODULE_RESOURCES
+	bool "Per-module heap usage, CPC violation, and I/O telemetry in MW3"
+	depends on SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+	default y
+	help
+	  Partitions Memory Window 3 to include per-component module_resources
+	  (heap_usage, heap_high_water_mark), peak CPC vs budget, and relocating
+	  io_perf_data_items from .bss into MW3.
+
+config SOF_TELEMETRY_MAX_COMP_ENTRIES
+	int "Maximum component entries in Memory Window 3"
+	depends on SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+	range 1 88 if SOF_TELEMETRY_MODULE_RESOURCES
+	range 1 170
+	default 88 if SOF_TELEMETRY_MODULE_RESOURCES
+	default 170
+	help
+	  Maximum number of component performance entries in Memory Window 3.
+
+endif # SOF_TELEMETRY
