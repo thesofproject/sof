@@ -75,6 +75,14 @@ config FFMPEG_DEC_G722
 	  dependency. Enables --enable-decoder=adpcm_g722 in the libavcodec
 	  build for compress playback streams requesting SND_AUDIOCODEC_G722.
 
+config FFMPEG_DEC_APTX
+	bool "Bluetooth aptX decoder"
+	help
+	  Bluetooth aptX audio decoder. Pure integer 4-band QMF + ADPCM
+	  decoder with no floating-point math dependency. Enables
+	  --enable-decoder=aptx in the libavcodec build for compress playback
+	  streams requesting SND_AUDIOCODEC_APTX.
+
 comment "FFmpeg encoders to build (footprint scales with selection)"
 
 config FFMPEG_ENC_MP3
@@ -128,11 +136,19 @@ config FFMPEG_ENC_G722
 	  encoder with no floating-point math dependency. Selected at runtime
 	  for compress capture streams requesting SND_AUDIOCODEC_G722.
 
+config FFMPEG_ENC_APTX
+	bool "Bluetooth aptX encoder (native libavcodec)"
+	help
+	  Bluetooth aptX audio encoder via native libavcodec aptx encoder.
+	  Pure integer 4-band QMF + ADPCM encoder with no floating-point math
+	  dependency. Selected at runtime for compress capture streams
+	  requesting SND_AUDIOCODEC_APTX.
+
 # Selected automatically when any encoder is enabled. Gates compilation of the
 # runtime encode path (ffmpeg-encode.c).
 config FFMPEG_ENC
 	bool
-	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC || FFMPEG_ENC_FLAC || FFMPEG_ENC_ALAC || FFMPEG_ENC_SBC || FFMPEG_ENC_G722
+	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC || FFMPEG_ENC_FLAC || FFMPEG_ENC_ALAC || FFMPEG_ENC_SBC || FFMPEG_ENC_G722 || FFMPEG_ENC_APTX
 
 comment "FFmpeg audio filters to build (libavfilter)"
 	depends on IPC_MAJOR_4
