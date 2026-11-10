@@ -48,6 +48,7 @@ enum ffmpeg_dec_codec {
 	FFMPEG_DEC_CODEC_AAC,
 	FFMPEG_DEC_CODEC_OPUS,
 	FFMPEG_DEC_CODEC_MP3,
+	FFMPEG_DEC_CODEC_ALAC,
 };
 
 /* Default codec for a new instance, picked from the Kconfig selection until the
@@ -55,6 +56,8 @@ enum ffmpeg_dec_codec {
  */
 #if defined(CONFIG_FFMPEG_DEC_FLAC) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
 #define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_FLAC
+#elif defined(CONFIG_FFMPEG_DEC_ALAC)
+#define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_ALAC
 #elif defined(CONFIG_FFMPEG_DEC_AAC)
 #define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_AAC
 #elif defined(CONFIG_FFMPEG_DEC_OPUS)
@@ -174,6 +177,8 @@ struct ffmpeg_enc_data {
 
 extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_mp3_ops;
 extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_aac_ops;
+extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_flac_ops;
+extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_alac_ops;
 
 void ffmpeg_enc_pcm_to_s16_interleaved(const uint8_t *pcm_in, int16_t *dst,
 				       size_t total_samples, int src_fmt);
@@ -184,15 +189,17 @@ void ffmpeg_enc_stage_packet(struct processing_module *mod, struct ffmpeg_enc_da
 
 /**
  * struct ffmpeg_dec_codec_ops - Per-codec stream and configuration operations.
- * @id:                SOF internal codec enum (enum ffmpeg_dec_codec).
- * @snd_codec_id:      ALSA compress SND_AUDIOCODEC_* identifier.
- * @name:              Human-readable codec name (e.g. "flac", "mp3", "aac", "opus").
- * @decoder_name:      Optional explicit libavcodec decoder name (e.g. "aac_fixed"), or NULL.
- * @max_frame_samples: Return maximum PCM samples per channel per decoded frame.
- * @skip_container:    Optional one-time stream container/header parser called before
- *                     decoder open; returns 0 when ready to decode frames, -ENODATA
- *                     when more input bytes are needed, or negative errno on error.
- * @prepare_extradata: Optional hook to validate/filter cd->extradata before avcodec_open2().
+ * @id:                   SOF internal codec enum (enum ffmpeg_dec_codec).
+ * @snd_codec_id:         ALSA compress SND_AUDIOCODEC_* identifier.
+ * @name:                 Human-readable codec name (e.g. "flac", "mp3", "aac", "opus").
+ * @decoder_name:         Optional explicit libavcodec decoder name (e.g. "aac_fixed"), or NULL.
+ * @max_frame_samples:    Return maximum PCM samples per channel per decoded frame.
+ * @skip_container:       Optional one-time stream container/header parser called before
+ *                        decoder open; returns 0 when ready to decode frames, -ENODATA
+ *                        when more input bytes are needed, or negative errno on error.
+ * @prepare_extradata:    Optional hook to validate/filter cd->extradata before avcodec_open2().
+ * @frame_bytes_consumed: Optional hook for unparsed self-delimiting codecs (e.g. ALAC)
+ *                        returning the exact byte count consumed by the last decoded frame.
  */
 struct ffmpeg_dec_codec_ops {
 	enum ffmpeg_dec_codec id;
@@ -202,12 +209,14 @@ struct ffmpeg_dec_codec_ops {
 	uint32_t (*max_frame_samples)(const struct ffmpeg_dec_comp_data *cd);
 	int (*skip_container)(struct processing_module *mod, struct sof_source *src);
 	void (*prepare_extradata)(struct processing_module *mod);
+	size_t (*frame_bytes_consumed)(const void *priv_data);
 };
 
 extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_flac_ops;
 extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_mp3_ops;
 extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_aac_ops;
 extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_opus_ops;
+extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_alac_ops;
 
 /**
  * struct ffmpeg_dec_backend - decode backend operations.
@@ -287,6 +296,8 @@ struct ffmpeg_dec_comp_data {
 	size_t skip_bytes;
 	bool flac_parsing_meta;
 	bool flac_last_block;
+	bool alac_parsing_caf;
+	bool alac_skip_to_eof;
 	bool draining;
 	bool drained;
 #if CONFIG_IPC_MAJOR_4

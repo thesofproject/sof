@@ -31,7 +31,7 @@ int ffmpeg_dec_convert_frame(const AVFrame *frame, uint8_t *out, size_t out_size
 /**
  * ffmpeg_dec_pcm_to_frame - Convert interleaved SOF PCM into an AVFrame.
  * @in: Source interleaved PCM buffer.
- * @frame: Destination pre-allocated AVFrame (AV_SAMPLE_FMT_FLTP or AV_SAMPLE_FMT_DBL).
+ * @frame: Destination pre-allocated AVFrame (S16, S16P, S32, S32P, FLTP, or DBL).
  * @src_fmt: SOF valid sample format (SOF_IPC_FRAME_S16_LE / S24_4LE / S32_LE).
  * @channels: Input channel count.
  * @nb_samples: Number of audio frames (samples per channel) to convert.

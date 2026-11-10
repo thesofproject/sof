@@ -42,6 +42,12 @@ static const struct ffmpeg_enc_codec_ops * const ffmpeg_enc_codecs[] = {
 #if defined(CONFIG_FFMPEG_ENC_AAC)
 	&ffmpeg_enc_aac_ops,
 #endif
+#if defined(CONFIG_FFMPEG_ENC_FLAC)
+	&ffmpeg_enc_flac_ops,
+#endif
+#if defined(CONFIG_FFMPEG_ENC_ALAC)
+	&ffmpeg_enc_alac_ops,
+#endif
 };
 
 static const struct ffmpeg_enc_codec_ops *ffmpeg_enc_find_codec_ops_by_snd_id(uint32_t snd_id)
@@ -306,7 +312,8 @@ int ffmpeg_enc_mod_init(struct processing_module *mod)
 			return -ENOTSUP;
 		}
 		if (codec_params->rate_control != 0 &&
-		    codec_params->rate_control != SND_RATECONTROLMODE_CONSTANTBITRATE) {
+		    codec_params->rate_control != SND_RATECONTROLMODE_CONSTANTBITRATE &&
+		    codec_params->rate_control != SND_RATECONTROLMODE_VARIABLEBITRATE) {
 			comp_err(dev, "unsupported rate_control mode 0x%x",
 				 codec_params->rate_control);
 			mod_free(mod, e);
@@ -494,7 +501,7 @@ bool ffmpeg_enc_is_ready_to_process(struct processing_module *mod,
 		return false;
 
 	if (!cd->configured)
-		return true;
+		return source_get_data_available(sources[0]) > 0;
 
 	if (e->out_avail)
 		return sink_get_free_size(sinks[0]) > 0;
