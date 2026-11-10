@@ -33,22 +33,35 @@ set(WEBRTC_AECM_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-install"
 
 set(_aecm_src "${SOF_WEBRTC_APM_SRC_DIR}/webrtc")
 
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-build.sh"
+if(CONFIG_WEBRTC_AEC_BACKEND_FLOAT)
+  set(_aec_backend_srcs "
+  $SRC/modules/audio_processing/aec/echo_cancellation.c
+  $SRC/modules/audio_processing/aec/aec_core.c
+  $SRC/modules/audio_processing/aec/aec_rdft.c
+  $SRC/modules/audio_processing/aec/aec_resampler.c")
+  set(_aec_backend_hdr "$SRC/modules/audio_processing/aec/include/echo_cancellation.h")
+else()
+  set(_aec_backend_srcs "
+  $SRC/modules/audio_processing/aecm/aecm_core.c
+  $SRC/modules/audio_processing/aecm/aecm_core_c.c
+  $SRC/modules/audio_processing/aecm/echo_control_mobile.c")
+  set(_aec_backend_hdr "$SRC/modules/audio_processing/aecm/include/echo_control_mobile.h")
+endif()
+
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-build.sh.tmp"
 "#!/bin/sh
 set -e
 SRC=${_aecm_src}
 INST=${WEBRTC_AECM_INSTALL_DIR}
 OBJ=${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-obj
 
+rm -rf \"$OBJ\" \"$INST/lib/libwebrtc_aecm.a\"
 mkdir -p \"$OBJ\" \"$INST/lib\" \"$INST/include\" \"$INST/include/webrtc\"
 
-CFLAGS=\"-O2 -fPIC -I${SOF_WEBRTC_APM_SRC_DIR} -I$SRC -I$SRC/common_audio/signal_processing/include -DWEBRTC_ARCH_32_BITS= -DWEBRTC_ARCH_LITTLE_ENDIAN= -Dmalloc=webrtc_malloc -Dcalloc=webrtc_calloc -Drealloc=webrtc_realloc -Dfree=webrtc_free\"
+CFLAGS=\"-O2 -fPIC -DNDEBUG -I${SOF_WEBRTC_APM_SRC_DIR} -I$SRC -I$SRC/common_audio/signal_processing/include -DWEBRTC_ARCH_32_BITS= -DWEBRTC_ARCH_LITTLE_ENDIAN= -Dmalloc=webrtc_malloc -Dcalloc=webrtc_calloc -Drealloc=webrtc_realloc -Dfree=webrtc_free\"
 
-# AECm core
-SRCS=\"
-  $SRC/modules/audio_processing/aecm/aecm_core.c
-  $SRC/modules/audio_processing/aecm/aecm_core_c.c
-  $SRC/modules/audio_processing/aecm/echo_control_mobile.c
+# AEC backend core
+SRCS=\"${_aec_backend_srcs}
   $SRC/common_audio/ring_buffer.c
   $SRC/modules/audio_processing/utility/delay_estimator.c
   $SRC/modules/audio_processing/utility/delay_estimator_wrapper.c
@@ -78,14 +91,19 @@ for f in \$SRCS; do
 done
 
 ${_aecm_ar} rcs \"$INST/lib/libwebrtc_aecm.a\" \"$OBJ\"/*.o
-cp $SRC/modules/audio_processing/aecm/include/echo_control_mobile.h \"$INST/include/\"
+cp ${_aec_backend_hdr} \"$INST/include/\"
 cp $SRC/typedefs.h \"$INST/include/webrtc/\" 2>/dev/null || true
 ")
 
+# Only touch the script when its content changes so that the library is
+# rebuilt on flag changes but not on every reconfigure.
+configure_file("${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-build.sh.tmp"
+  "${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-build.sh" COPYONLY)
+
 add_custom_command(
   OUTPUT "${WEBRTC_AECM_INSTALL_DIR}/lib/libwebrtc_aecm.a"
-         "${WEBRTC_AECM_INSTALL_DIR}/include/echo_control_mobile.h"
   COMMAND sh "${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-build.sh"
+  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-build.sh"
   VERBATIM)
 
 add_custom_target(webrtc_aecm_ext
