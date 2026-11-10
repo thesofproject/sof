@@ -291,13 +291,15 @@ static void conv_generic(const AVFrame *frame, uint8_t *out, int sink_fmt, int c
 	int src_bps = av_get_bytes_per_sample(frame->format);
 	int planar = av_sample_fmt_is_planar(frame->format);
 	int sink_bps = (sink_fmt == SOF_IPC_FRAME_S16_LE) ? 2 : 4;
+	int src_ch = frame->ch_layout.nb_channels;
 	int i, ch;
 
 	for (i = 0; i < frame->nb_samples; i++) {
 		for (ch = 0; ch < channels; ch++) {
+			int c = (src_ch == 1) ? 0 : ch;
 			const uint8_t *src = planar ?
-				frame->data[ch] + (size_t)i * src_bps :
-				frame->data[0] + ((size_t)i * channels + ch) * src_bps;
+				frame->data[c] + (size_t)i * src_bps :
+				frame->data[0] + ((size_t)i * src_ch + c) * src_bps;
 			int32_t q = src_sample_to_q31(src, frame->format);
 
 			q31_to_sink_sample(out + ((size_t)i * channels + ch) * sink_bps,
@@ -385,13 +387,192 @@ static void conv_s32_to_fltp(const int32_t *src, float *const *dst,
 	}
 }
 
+static inline int16_t pcm_frame_to_s16_mono(const uint8_t *in, int idx,
+					    int src_fmt, int src_ch)
+{
+	int32_t acc = 0;
+	int c;
+
+	if (src_fmt == SOF_IPC_FRAME_S16_LE) {
+		const int16_t *s16 = (const int16_t *)in + (size_t)idx * src_ch;
+
+		if (src_ch == 1)
+			return s16[0];
+		for (c = 0; c < src_ch; c++)
+			acc += s16[c];
+		return (int16_t)(acc / src_ch);
+	}
+
+	if (src_fmt == SOF_IPC_FRAME_S24_4LE) {
+		const int32_t *s24 = (const int32_t *)in + (size_t)idx * src_ch;
+
+		for (c = 0; c < src_ch; c++)
+			acc += Q_SHIFT(sign_extend_s24(s24[c]), 23, 15);
+		return (int16_t)(acc / src_ch);
+	}
+
+	{
+		const int32_t *s32 = (const int32_t *)in + (size_t)idx * src_ch;
+
+		for (c = 0; c < src_ch; c++)
+			acc += Q_SHIFT(s32[c], 31, 15);
+		return (int16_t)(acc / src_ch);
+	}
+}
+
 int ffmpeg_dec_pcm_to_frame(const uint8_t *in, AVFrame *frame,
 			    int src_fmt, int channels, int nb_samples)
 {
+	int dst_ch;
+
 	if (!in || !frame || channels <= 0 || nb_samples <= 0)
 		return -EINVAL;
-	if (frame->ch_layout.nb_channels != channels)
+
+	dst_ch = frame->ch_layout.nb_channels;
+	if (dst_ch != channels && !(dst_ch == 1 && frame->format == AV_SAMPLE_FMT_S16))
 		return -EINVAL;
+
+	if (frame->format == AV_SAMPLE_FMT_S16) {
+		int16_t *dst = (int16_t *)frame->data[0];
+
+		if (dst_ch == 1 && channels > 1) {
+			for (int i = 0; i < nb_samples; i++)
+				dst[i] = pcm_frame_to_s16_mono(in, i, src_fmt, channels);
+			return 0;
+		}
+
+		size_t total = (size_t)nb_samples * dst_ch;
+
+		if (src_fmt == SOF_IPC_FRAME_S16_LE) {
+			memcpy_s(dst, total * sizeof(int16_t),
+				 in, total * sizeof(int16_t));
+			return 0;
+		}
+		if (src_fmt == SOF_IPC_FRAME_S24_4LE) {
+			const int32_t *src24 = (const int32_t *)in;
+
+			for (size_t i = 0; i < total; i++)
+				dst[i] = (int16_t)Q_SHIFT(sign_extend_s24(src24[i]), 23, 15);
+			return 0;
+		}
+		if (src_fmt == SOF_IPC_FRAME_S32_LE) {
+			const int32_t *src32 = (const int32_t *)in;
+
+			for (size_t i = 0; i < total; i++)
+				dst[i] = (int16_t)Q_SHIFT(src32[i], 31, 15);
+			return 0;
+		}
+		return -EINVAL;
+	}
+
+	if (frame->format == AV_SAMPLE_FMT_S16P) {
+		if (src_fmt == SOF_IPC_FRAME_S16_LE) {
+			const int16_t *src16 = (const int16_t *)in;
+
+			for (int c = 0; c < dst_ch; c++) {
+				int16_t *out = (int16_t *)frame->data[c];
+
+				for (int i = 0; i < nb_samples; i++)
+					out[i] = src16[i * dst_ch + c];
+			}
+			return 0;
+		}
+		if (src_fmt == SOF_IPC_FRAME_S24_4LE) {
+			const int32_t *src24 = (const int32_t *)in;
+
+			for (int c = 0; c < dst_ch; c++) {
+				int16_t *out = (int16_t *)frame->data[c];
+
+				for (int i = 0; i < nb_samples; i++) {
+					int32_t v = sign_extend_s24(src24[i * dst_ch + c]);
+
+					out[i] = (int16_t)Q_SHIFT(v, 23, 15);
+				}
+			}
+			return 0;
+		}
+		if (src_fmt == SOF_IPC_FRAME_S32_LE) {
+			const int32_t *src32 = (const int32_t *)in;
+
+			for (int c = 0; c < dst_ch; c++) {
+				int16_t *out = (int16_t *)frame->data[c];
+
+				for (int i = 0; i < nb_samples; i++)
+					out[i] = (int16_t)Q_SHIFT(src32[i * dst_ch + c], 31, 15);
+			}
+			return 0;
+		}
+		return -EINVAL;
+	}
+
+	if (frame->format == AV_SAMPLE_FMT_S32) {
+		int32_t *dst = (int32_t *)frame->data[0];
+		size_t total = (size_t)nb_samples * dst_ch;
+
+		if (src_fmt == SOF_IPC_FRAME_S16_LE) {
+			const int16_t *src16 = (const int16_t *)in;
+
+			for (size_t i = 0; i < total; i++)
+				dst[i] = Q_SHIFT_LEFT((int32_t)src16[i], 15, 31);
+			return 0;
+		}
+		if (src_fmt == SOF_IPC_FRAME_S24_4LE) {
+			const int32_t *src24 = (const int32_t *)in;
+
+			for (size_t i = 0; i < total; i++)
+				dst[i] = Q_SHIFT_LEFT(sign_extend_s24(src24[i]), 23, 31);
+			return 0;
+		}
+		if (src_fmt == SOF_IPC_FRAME_S32_LE) {
+			memcpy_s(dst, total * sizeof(int32_t),
+				 in, total * sizeof(int32_t));
+			return 0;
+		}
+		return -EINVAL;
+	}
+
+	if (frame->format == AV_SAMPLE_FMT_S32P) {
+		if (src_fmt == SOF_IPC_FRAME_S16_LE) {
+			const int16_t *src16 = (const int16_t *)in;
+
+			for (int c = 0; c < dst_ch; c++) {
+				int32_t *out = (int32_t *)frame->data[c];
+
+				for (int i = 0; i < nb_samples; i++) {
+					int32_t v = src16[i * dst_ch + c];
+
+					out[i] = Q_SHIFT_LEFT(v, 15, 31);
+				}
+			}
+			return 0;
+		}
+		if (src_fmt == SOF_IPC_FRAME_S24_4LE) {
+			const int32_t *src24 = (const int32_t *)in;
+
+			for (int c = 0; c < dst_ch; c++) {
+				int32_t *out = (int32_t *)frame->data[c];
+
+				for (int i = 0; i < nb_samples; i++) {
+					int32_t v = sign_extend_s24(src24[i * dst_ch + c]);
+
+					out[i] = Q_SHIFT_LEFT(v, 23, 31);
+				}
+			}
+			return 0;
+		}
+		if (src_fmt == SOF_IPC_FRAME_S32_LE) {
+			const int32_t *src32 = (const int32_t *)in;
+
+			for (int c = 0; c < dst_ch; c++) {
+				int32_t *out = (int32_t *)frame->data[c];
+
+				for (int i = 0; i < nb_samples; i++)
+					out[i] = src32[i * dst_ch + c];
+			}
+			return 0;
+		}
+		return -EINVAL;
+	}
 
 	if (frame->format == AV_SAMPLE_FMT_DBL) {
 		double *dst = (double *)frame->data[0];
@@ -459,13 +640,18 @@ int ffmpeg_dec_convert_frame(const AVFrame *frame, uint8_t *out, size_t out_size
 
 	/*
 	 * The frame's channel count comes from the bitstream, @channels from the
-	 * sink. Every path below indexes the frame planes with @channels, so a
-	 * stream with fewer channels than the sink would be read past its end.
+	 * sink. Allow mono (nb_channels == 1) to upmix to @channels via conv_generic.
 	 */
-	if (frame->ch_layout.nb_channels != channels)
+	if (frame->ch_layout.nb_channels != channels &&
+	    frame->ch_layout.nb_channels != 1)
 		return -EINVAL;
 	if (need > out_size)
 		return -ENOSPC;
+
+	if (frame->ch_layout.nb_channels != channels) {
+		conv_generic(frame, out, sink_fmt, channels);
+		return (int)need;
+	}
 
 	/* 1. Direct copy if format, layout and bit-depth match identically */
 	if (channels == 1 || !av_sample_fmt_is_planar(frame->format)) {

@@ -23,9 +23,10 @@ if(NOT EXISTS "${SOF_FFMPEG_SRC_DIR}/configure")
 		"-DSOF_FFMPEG_SRC_DIR=<path-to-clean-ffmpeg-checkout>.")
 endif()
 
-# --- 2. Kconfig -> --enable-decoder / --enable-parser lists ---
+# --- 2. Kconfig -> --enable-decoder / --enable-parser / --enable-encoder lists ---
 set(_ff_decoders "")
 set(_ff_parsers "")
+set(_ff_encoders "")
 if(CONFIG_FFMPEG_DEC_FLAC)
 	list(APPEND _ff_decoders flac)
 	list(APPEND _ff_parsers  flac)
@@ -43,14 +44,22 @@ if(CONFIG_FFMPEG_DEC_MP3)
 	list(APPEND _ff_parsers  mpegaudio)
 endif()
 # At least one decoder, encoder, or filter must be selected.
-if(NOT _ff_decoders AND NOT CONFIG_FFMPEG_ENC_MP3 AND NOT CONFIG_FFMPEG_ENC_AAC AND NOT CONFIG_FFMPEG_BUILD_AVFILTER)
+if(NOT _ff_decoders AND NOT _ff_encoders AND NOT CONFIG_FFMPEG_ENC_MP3 AND NOT CONFIG_FFMPEG_ENC_AAC AND NOT CONFIG_FFMPEG_BUILD_AVFILTER)
 	message(FATAL_ERROR "ffmpeg_dec: no decoder, encoder, or filter selected (Kconfig FFMPEG_DEC_*/FFMPEG_ENC_*/FFMPEG_FILTER_*)")
 endif()
 set(_ff_dec_cfg "")
 if(_ff_decoders)
 	list(JOIN _ff_decoders "," _ff_dec_csv)
+	list(APPEND _ff_dec_cfg --enable-decoder=${_ff_dec_csv})
+endif()
+if(_ff_parsers)
 	list(JOIN _ff_parsers  "," _ff_par_csv)
-	set(_ff_dec_cfg --enable-decoder=${_ff_dec_csv} --enable-parser=${_ff_par_csv})
+	list(APPEND _ff_dec_cfg --enable-parser=${_ff_par_csv})
+endif()
+set(_ff_enc_cfg "")
+if(_ff_encoders)
+	list(JOIN _ff_encoders "," _ff_enc_csv)
+	set(_ff_enc_cfg --enable-encoder=${_ff_enc_csv})
 endif()
 
 # --- 2b. Kconfig -> libavfilter audio filters (off unless a filter is chosen) ---
@@ -564,6 +573,7 @@ ExternalProject_Add(ffmpeg_ext
 			--disable-runtime-cpudetect --disable-debug
 			--enable-avcodec --enable-avutil --enable-swresample
 			${_ff_dec_cfg}
+			${_ff_enc_cfg}
 			${_ff_shine_cfg}
 			--enable-small --enable-pic --enable-hardcoded-tables
 			"--extra-cflags=${_ff_extra_cflags}"

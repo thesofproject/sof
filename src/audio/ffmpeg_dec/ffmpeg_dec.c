@@ -228,6 +228,9 @@ static const struct ffmpeg_dec_codec_ops * const ffmpeg_dec_codecs[] = {
 #if defined(CONFIG_FFMPEG_DEC_OPUS) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
 	&ffmpeg_dec_opus_ops,
 #endif
+#if defined(CONFIG_FFMPEG_DEC_ALAC) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_alac_ops,
+#endif
 };
 
 static const struct ffmpeg_dec_codec_ops *ffmpeg_dec_find_codec_ops(enum ffmpeg_dec_codec id)
@@ -512,6 +515,8 @@ static int ffmpeg_dec_prepare(struct processing_module *mod,
 	cd->skip_bytes = 0;
 	cd->flac_parsing_meta = false;
 	cd->flac_last_block = false;
+	cd->alac_parsing_caf = false;
+	cd->alac_skip_to_eof = false;
 	cd->draining = false;
 	cd->drained = false;
 
@@ -881,6 +886,8 @@ static int ffmpeg_dec_reset(struct processing_module *mod)
 	cd->skip_bytes = 0;
 	cd->flac_parsing_meta = false;
 	cd->flac_last_block = false;
+	cd->alac_parsing_caf = false;
+	cd->alac_skip_to_eof = false;
 	cd->draining = false;
 	cd->drained = false;
 #if CONFIG_IPC_MAJOR_4
