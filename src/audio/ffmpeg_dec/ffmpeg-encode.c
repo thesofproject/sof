@@ -48,10 +48,26 @@ static const struct ffmpeg_enc_codec_ops * const ffmpeg_enc_codecs[] = {
 #if defined(CONFIG_FFMPEG_ENC_ALAC)
 	&ffmpeg_enc_alac_ops,
 #endif
+#if defined(CONFIG_FFMPEG_ENC_SBC)
+	&ffmpeg_enc_sbc_ops,
+#endif
+#if defined(CONFIG_FFMPEG_ENC_G722)
+	&ffmpeg_enc_g722_ops,
+#endif
+#if defined(CONFIG_FFMPEG_ENC_APTX)
+	&ffmpeg_enc_aptx_ops,
+#endif
 };
 
-static const struct ffmpeg_enc_codec_ops *ffmpeg_enc_find_codec_ops_by_snd_id(uint32_t snd_id)
+static const struct ffmpeg_enc_codec_ops *
+ffmpeg_enc_find_codec_ops_by_snd_id(const struct snd_codec *codec_params)
 {
+	uint32_t snd_id = codec_params->id;
+
+	if (snd_id == SND_AUDIOCODEC_BESPOKE &&
+	    codec_params->options.generic.reserved[0])
+		snd_id = codec_params->options.generic.reserved[0];
+
 	for (size_t i = 0; i < ARRAY_SIZE(ffmpeg_enc_codecs); i++) {
 		if (ffmpeg_enc_codecs[i]->snd_codec_id == snd_id)
 			return ffmpeg_enc_codecs[i];
@@ -322,7 +338,7 @@ int ffmpeg_enc_mod_init(struct processing_module *mod)
 			return -ENOTSUP;
 		}
 
-		ops = ffmpeg_enc_find_codec_ops_by_snd_id(codec_params->id);
+		ops = ffmpeg_enc_find_codec_ops_by_snd_id(codec_params);
 		if (!ops) {
 			comp_err(dev, "unsupported or disabled encoder snd_codec id 0x%x",
 				 codec_params->id);
@@ -346,6 +362,8 @@ int ffmpeg_enc_mod_init(struct processing_module *mod)
 		e->req_channels = codec_params->ch_in ?
 				  codec_params->ch_in : codec_params->ch_out;
 		e->req_ch_mode = codec_params->ch_mode;
+		e->req_profile = codec_params->profile;
+		e->req_bit_rate = codec_params->bit_rate;
 		comp_info(dev, "encoder codec selected from IPC: %s (snd_codec id 0x%x)",
 			  ops->name, codec_params->id);
 		if (codec_params->bit_rate)
@@ -392,6 +410,7 @@ int ffmpeg_enc_mod_prepare(struct processing_module *mod,
 		e->out_avail = 0;
 		e->out_rd = 0;
 		e->pcm_fill = 0;
+		memset(e->decim_hist, 0, sizeof(e->decim_hist));
 	}
 
 	dev->period = 96000; /* us */
@@ -460,8 +479,14 @@ static int ffmpeg_enc_configure(struct processing_module *mod, struct sof_source
 		return -EINVAL;
 	}
 
-	if ((e->req_rate && e->req_rate != cd->out_rate) ||
-	    (e->req_channels && e->req_channels != cd->out_channels)) {
+	if ((e->req_rate && e->req_rate != cd->out_rate &&
+	     !(e->req_rate == 16000 && cd->out_rate == 48000 &&
+	       (cd->codec == FFMPEG_DEC_CODEC_G722 ||
+		(cd->codec == FFMPEG_DEC_CODEC_SBC && e->req_profile == 1)))) ||
+	    (e->req_channels && e->req_channels != cd->out_channels &&
+	     !(e->req_channels == 1 &&
+	       (cd->codec == FFMPEG_DEC_CODEC_G722 ||
+		cd->codec == FFMPEG_DEC_CODEC_SBC)))) {
 		comp_err(dev, "ffmpeg_enc: requested %u Hz/%u ch does not match source %u Hz/%u ch",
 			 e->req_rate, e->req_channels, cd->out_rate, cd->out_channels);
 		return -EINVAL;
@@ -590,6 +615,7 @@ int ffmpeg_enc_mod_reset(struct processing_module *mod)
 		if (e->codec_ops && e->codec_ops->reset)
 			e->codec_ops->reset(mod, e);
 		ffmpeg_enc_free_staging(mod, e);
+		memset(e->decim_hist, 0, sizeof(e->decim_hist));
 	}
 	cd->configured = false;
 	return 0;

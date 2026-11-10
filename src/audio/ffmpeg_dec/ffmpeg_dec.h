@@ -49,6 +49,9 @@ enum ffmpeg_dec_codec {
 	FFMPEG_DEC_CODEC_OPUS,
 	FFMPEG_DEC_CODEC_MP3,
 	FFMPEG_DEC_CODEC_ALAC,
+	FFMPEG_DEC_CODEC_SBC,
+	FFMPEG_DEC_CODEC_G722,
+	FFMPEG_DEC_CODEC_APTX,
 };
 
 /* Default codec for a new instance, picked from the Kconfig selection until the
@@ -64,6 +67,12 @@ enum ffmpeg_dec_codec {
 #define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_OPUS
 #elif defined(CONFIG_FFMPEG_DEC_MP3)
 #define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_MP3
+#elif defined(CONFIG_FFMPEG_DEC_SBC)
+#define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_SBC
+#elif defined(CONFIG_FFMPEG_DEC_G722)
+#define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_G722
+#elif defined(CONFIG_FFMPEG_DEC_APTX)
+#define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_APTX
 #else
 #define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_NONE
 #endif
@@ -160,9 +169,12 @@ struct ffmpeg_enc_data {
 	const struct ffmpeg_enc_codec_ops *codec_ops;
 	void *codec_priv;
 	uint32_t bit_rate;
+	uint32_t req_bit_rate;
 	uint32_t req_rate;
 	uint32_t req_channels;
 	uint32_t req_ch_mode;
+	uint32_t req_profile;
+	int16_t decim_hist[12];
 	int src_fmt;
 	int frame_bytes;
 	int nb;
@@ -179,6 +191,9 @@ extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_mp3_ops;
 extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_aac_ops;
 extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_flac_ops;
 extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_alac_ops;
+extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_sbc_ops;
+extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_g722_ops;
+extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_aptx_ops;
 
 void ffmpeg_enc_pcm_to_s16_interleaved(const uint8_t *pcm_in, int16_t *dst,
 				       size_t total_samples, int src_fmt);
@@ -200,6 +215,8 @@ void ffmpeg_enc_stage_packet(struct processing_module *mod, struct ffmpeg_enc_da
  * @prepare_extradata:    Optional hook to validate/filter cd->extradata before avcodec_open2().
  * @frame_bytes_consumed: Optional hook for unparsed self-delimiting codecs (e.g. ALAC)
  *                        returning the exact byte count consumed by the last decoded frame.
+ * @limit_packet_size:    Optional hook for unparsed block/stream codecs (e.g. G.722, aptX)
+ *                        returning the clamped/aligned input packet byte size per decode call.
  */
 struct ffmpeg_dec_codec_ops {
 	enum ffmpeg_dec_codec id;
@@ -210,6 +227,7 @@ struct ffmpeg_dec_codec_ops {
 	int (*skip_container)(struct processing_module *mod, struct sof_source *src);
 	void (*prepare_extradata)(struct processing_module *mod);
 	size_t (*frame_bytes_consumed)(const void *priv_data);
+	size_t (*limit_packet_size)(const struct ffmpeg_dec_comp_data *cd, size_t pkt_len);
 };
 
 extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_flac_ops;
@@ -217,6 +235,9 @@ extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_mp3_ops;
 extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_aac_ops;
 extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_opus_ops;
 extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_alac_ops;
+extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_sbc_ops;
+extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_g722_ops;
+extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_aptx_ops;
 
 /**
  * struct ffmpeg_dec_backend - decode backend operations.
@@ -281,6 +302,7 @@ struct ffmpeg_dec_comp_data {
 	size_t extradata_size;
 	uint32_t out_rate;
 	uint32_t out_channels;
+	uint32_t req_bit_rate;
 	int out_frame_fmt;
 	uint32_t out_frame_bytes;
 	bool is_encoder;
