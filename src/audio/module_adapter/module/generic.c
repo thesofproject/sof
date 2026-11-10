@@ -17,6 +17,7 @@
 #include <sof/objpool.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/data_blob.h>
+#include <sof/debug/telemetry/performance_monitor.h>
 #include <sof/lib/cold.h>
 #include <sof/lib/fast-get.h>
 #include <sof/lib/vregion.h>
@@ -231,6 +232,7 @@ void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t
 		res->heap_high_water_mark = res->heap_usage;
 
 	k_mutex_unlock(&mod_res_lock);
+	perf_data_update_module_resources(mod->dev);
 	return ptr;
 }
 EXPORT_SYMBOL(z_impl_mod_balloc_align);
@@ -284,6 +286,7 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 		res->heap_high_water_mark = res->heap_usage;
 
 	k_mutex_unlock(&mod_res_lock);
+	perf_data_update_module_resources(mod->dev);
 	return ptr;
 }
 EXPORT_SYMBOL(z_impl_mod_alloc_ext);
@@ -486,6 +489,8 @@ int z_impl_mod_free(struct processing_module *mod, const void *ptr)
 
 	if (ret < 0)
 		comp_err(mod->dev, "error: could not find memory pointed by %p", ptr);
+	else
+		perf_data_update_module_resources(mod->dev);
 
 	return ret;
 }
@@ -791,6 +796,7 @@ __cold void z_impl_mod_free_all(struct processing_module *mod)
 
 	/* Make sure resource lists and accounting are reset */
 	mod_resource_init(mod);
+	perf_data_update_module_resources(mod->dev);
 }
 
 __cold int module_free(struct processing_module *mod)
