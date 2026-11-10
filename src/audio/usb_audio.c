@@ -32,7 +32,7 @@ void usb_audio_set_capture_rate(uint32_t rate)
 	}
 }
 
-static bool s_tone_enabled;
+static bool s_tone_enabled = false;
 void usb_audio_set_tone(bool enable)
 {
 	s_tone_enabled = enable;
@@ -41,6 +41,16 @@ void usb_audio_set_tone(bool enable)
 bool usb_audio_get_tone(void)
 {
 	return s_tone_enabled;
+}
+
+bool usb_audio_is_capture_active(void)
+{
+	return g_capture_data && g_capture_data->active;
+}
+
+bool usb_audio_is_playback_active(void)
+{
+	return g_playback_data && g_playback_data->active;
 }
 
 void usb_audio_feed_playback_data(const void *src, size_t bytes)
@@ -319,6 +329,29 @@ static int usb_audio_copy(struct comp_dev *dev)
 				struct usb_audio_ring_buffer *ring = &uad->ring;
 				k_spinlock_key_t key = k_spin_lock(&ring->lock);
 
+				if (s_tone_enabled) {
+					/* 1000 Hz pure sine wave, 48 samples per cycle, stereo, float amp 0.5 */
+					static const float sine48_f[48] = {
+						0.000000f, 0.130526f, 0.258819f, 0.382683f, 0.500000f, 0.608761f, 0.707107f, 0.793353f,
+						0.866025f, 0.923880f, 0.965926f, 0.991445f, 1.000000f, 0.991445f, 0.965926f, 0.923880f,
+						0.866025f, 0.793353f, 0.707107f, 0.608761f, 0.500000f, 0.382683f, 0.258819f, 0.130526f,
+						0.000000f, -0.130526f, -0.258819f, -0.382683f, -0.500000f, -0.608761f, -0.707107f, -0.793353f,
+						-0.866025f, -0.923880f, -0.965926f, -0.991445f, -1.000000f, -0.991445f, -0.965926f, -0.923880f,
+						-0.866025f, -0.793353f, -0.707107f, -0.608761f, -0.500000f, -0.382683f, -0.258819f, -0.130526f
+					};
+					static uint32_t s_tone_idx;
+					for (size_t i = 0; i < frames_to_copy; i++) {
+						float s = 0.5f * sine48_f[(s_tone_idx + i) % 48];
+						f_buf[2 * i] = s;
+						f_buf[2 * i + 1] = s;
+					}
+					s_tone_idx = (s_tone_idx + frames_to_copy) % 48;
+					k_spin_unlock(&ring->lock, key);
+					audio_stream_copy_from_linear(f_buf, 0, &sink->stream, 0, frames_to_copy * 2);
+					comp_update_buffer_produce(sink, frames_to_copy * 2 * sizeof(float));
+					return 0;
+				}
+
 				/* Prebuffer at playback start to provide a stable jitter margin */
 				if (!uad->started) {
 					if (ring->count < USB_AUDIO_PREBUFFER_BYTES) {
@@ -491,6 +524,50 @@ static int usb_audio_copy(struct comp_dev *dev)
 				ring->count += to_copy;
 
 				k_spin_unlock(&ring->lock, key);
+			} else if (s_tone_enabled) {
+				int16_t s16_buf[96];
+				uint32_t frames_to_copy = dev->frames ? dev->frames : 48;
+				static const int16_t sine48_s16[48] = {
+					0, 4276, 8472, 12510, 16384, 19947, 23170, 25996,
+					28377, 30273, 31650, 32487, 32767, 32487, 31650, 30273,
+					28377, 25996, 23170, 19947, 16384, 12510, 8472, 4276,
+					0, -4276, -8472, -12510, -16384, -19947, -23170, -25996,
+					-28377, -30273, -31650, -32487, -32767, -32487, -31650, -30273,
+					-28377, -25996, -23170, -19947, -16384, -12510, -8472, -4276
+				};
+				static uint32_t s_cap_tone_idx;
+				for (size_t i = 0; i < frames_to_copy; i++) {
+					int16_t s = (int32_t)sine48_s16[(s_cap_tone_idx + i) % 48] * 7 / 10;
+					s16_buf[2 * i] = s;
+					s16_buf[2 * i + 1] = s;
+				}
+				s_cap_tone_idx = (s_cap_tone_idx + frames_to_copy) % 48;
+
+				uint32_t s16_bytes = frames_to_copy * 2 * sizeof(int16_t);
+				struct usb_audio_ring_buffer *ring = &uad->ring;
+				k_spinlock_key_t key = k_spin_lock(&ring->lock);
+
+				if (ring->count + s16_bytes > USB_AUDIO_RING_BUFFER_SIZE) {
+					uint32_t drop = (ring->count + s16_bytes) - USB_AUDIO_RING_BUFFER_SIZE;
+					drop = (drop + 3) & ~3;
+					if (drop > ring->count) {
+						drop = ring->count;
+					}
+					ring->tail = (ring->tail + drop) % USB_AUDIO_RING_BUFFER_SIZE;
+					ring->count -= drop;
+				}
+
+				uint32_t free_space = USB_AUDIO_RING_BUFFER_SIZE - ring->count;
+				uint32_t to_copy = MIN(s16_bytes, free_space);
+
+				uint8_t *s16_raw = (uint8_t *)s16_buf;
+				for (size_t i = 0; i < to_copy; i++) {
+					ring->buf[ring->head] = s16_raw[i];
+					ring->head = (ring->head + 1) % USB_AUDIO_RING_BUFFER_SIZE;
+				}
+				ring->count += to_copy;
+
+				k_spin_unlock(&ring->lock, key);
 			}
 		} else {
 			uint32_t avail_bytes = audio_stream_get_avail_bytes(&source->stream);
@@ -561,7 +638,7 @@ static int usb_audio_reset(struct comp_dev *dev)
 static const struct comp_driver comp_usb_audio = {
 	.type = SOF_COMP_HOST,
 	.uid = SOF_RT_UUID(usb_audio_uuid),
-	#if !CONFIG_ZEPHYR_LOG
+#if !CONFIG_ZEPHYR_LOG
 	.tctx = &usb_audio_tr,
 #endif
 	.ops = {

@@ -339,6 +339,7 @@ static int sof_static_topology_init_pipelines(const struct sof_static_topology *
 		struct pipeline *pipe = pipeline_new(NULL, pdesc->pipeline_id, pdesc->priority,
 						     pdesc->pipeline_id, NULL);
 		if (!pipe) {
+			g_topo_fail_item = pdesc->pipeline_id;
 			LOG_ERR("Failed to allocate pipeline %u (%s)", pdesc->pipeline_id, pdesc->name);
 			return -ENOMEM;
 		}
@@ -573,6 +574,7 @@ static int sof_static_topology_init_comps(const struct sof_static_topology *topo
 		/* Look up driver from component driver registry using standard API */
 		const struct comp_driver *drv = comp_driver_find(cdesc->uuid, drv_type);
 		if (!drv) {
+			g_topo_fail_item = cdesc->id;
 			LOG_ERR("Component driver not found for comp %u ('%s')", cdesc->id, cdesc->name);
 			return -ENODEV;
 		}
@@ -602,6 +604,7 @@ static int sof_static_topology_init_comps(const struct sof_static_topology *topo
 			dev = sof_static_init_module_comp(cdesc, drv, &cfg, topo);
 
 		if (!dev) {
+			g_topo_fail_item = cdesc->id;
 			LOG_ERR("Failed to create component %u ('%s')", cdesc->id, cdesc->name);
 			return -ENOMEM;
 		}
@@ -664,6 +667,7 @@ static int sof_static_topology_init_buffers(const struct sof_static_topology *to
 		struct comp_buffer *buf = buffer_alloc(NULL, bdesc->size, bdesc->flags,
 						       PLATFORM_DCACHE_ALIGN, false);
 		if (!buf) {
+			g_topo_fail_item = bdesc->id;
 			LOG_ERR("Failed to allocate buffer %u (size %zu)", bdesc->id, bdesc->size);
 			return -ENOMEM;
 		}
@@ -991,11 +995,17 @@ static int sof_static_topology_init_pipeline_endpoints(const struct sof_static_t
 			/* Propagate params and prepare throughout the pipeline walk */
 			int ret_prms = pipeline_params(pipe, host_or_sched, &prms);
 			if (ret_prms < 0) {
+				if (!g_topo_fail_item)
+					g_topo_fail_item = pdesc->pipeline_id * 100 + 10;
+				g_topo_fail_code = ret_prms;
 				LOG_ERR("Pipeline %u params failed: %d", pdesc->pipeline_id, ret_prms);
 				return ret_prms;
 			}
 			int ret_prep = pipeline_prepare(pipe, host_or_sched);
 			if (ret_prep < 0) {
+				if (!g_topo_fail_item)
+					g_topo_fail_item = pdesc->pipeline_id * 100 + 20;
+				g_topo_fail_code = ret_prep;
 				LOG_ERR("Pipeline %u prepare failed: %d", pdesc->pipeline_id, ret_prep);
 				return ret_prep;
 			}
@@ -1366,43 +1376,55 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 	sof_static_topology_unwind();
 
 	/* Stage 1: Allocate top-level pipelines */
+	g_topo_fail_stage = 1;
 	ret = sof_static_topology_init_pipelines(topo);
 	if (ret < 0) {
+		g_topo_fail_code = ret;
 		LOG_ERR("sof_static_topology_init: stage 1 (init_pipelines) failed: %d", ret);
 		goto err_unwind;
 	}
 
 	/* Stage 2: Instantiate components */
+	g_topo_fail_stage = 2;
 	ret = sof_static_topology_init_comps(topo);
 	if (ret < 0) {
+		g_topo_fail_code = ret;
 		LOG_ERR("sof_static_topology_init: stage 2 (init_comps) failed: %d", ret);
 		goto err_unwind;
 	}
 
 	/* Stage 3: Allocate intermediate audio buffers */
+	g_topo_fail_stage = 3;
 	ret = sof_static_topology_init_buffers(topo);
 	if (ret < 0) {
+		g_topo_fail_code = ret;
 		LOG_ERR("sof_static_topology_init: stage 3 (init_buffers) failed: %d", ret);
 		goto err_unwind;
 	}
 
 	/* Stage 4: Connect pipeline graph routes */
+	g_topo_fail_stage = 4;
 	ret = sof_static_topology_init_routes(topo);
 	if (ret < 0) {
+		g_topo_fail_code = ret;
 		LOG_ERR("sof_static_topology_init: stage 4 (init_routes) failed: %d", ret);
 		goto err_unwind;
 	}
 
 	/* Stage 5: Bind pipeline endpoints and propagate stream parameters */
+	g_topo_fail_stage = 5;
 	ret = sof_static_topology_init_pipeline_endpoints(topo);
 	if (ret < 0) {
+		g_topo_fail_code = ret;
 		LOG_ERR("sof_static_topology_init: stage 5 (init_pipeline_endpoints) failed: %d", ret);
 		goto err_unwind;
 	}
 
 	/* Stage 6: Explicitly configure and prepare all components */
+	g_topo_fail_stage = 6;
 	ret = sof_static_topology_prepare_comps(topo);
 	if (ret < 0) {
+		g_topo_fail_code = ret;
 		LOG_ERR("sof_static_topology_init: stage 6 (prepare_comps) failed: %d", ret);
 		goto err_unwind;
 	}
@@ -1411,11 +1433,15 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 	s_active_topo = topo;
 
 	/* Stage 7: Initialize kcontrols with default values */
+	g_topo_fail_stage = 7;
 	ret = sof_static_topology_init_controls(topo);
 	if (ret < 0) {
+		g_topo_fail_code = ret;
 		LOG_ERR("sof_static_topology_init: stage 7 (init_controls) failed: %d", ret);
 		goto err_unwind;
 	}
+
+	g_topo_fail_stage = 0; /* Success */
 
 	LOG_INF("Static audio topology initialized successfully (%zu pipelines, %zu comps, %zu buffers, %zu controls)",
 		topo->num_pipelines, topo->num_comps, topo->num_buffers, topo->num_controls);
@@ -1900,18 +1926,30 @@ int sof_static_pipeline_start(uint32_t pipeline_id)
 	/* If not already active, prepare and trigger components */
 	if (pipe->status != COMP_STATE_ACTIVE) {
 		/*
-		 * Ensure pipeline is prepared before starting.
-		 * If prepare fails, abort immediately: triggering a pipeline whose
-		 * circular buffers and DMA channels are uninitialized causes DSP faults.
+		 * If the pipeline was paused, prepared, or not ready, reset it first so all
+		 * module adapter and endpoint components return to COMP_STATE_READY.
 		 */
-		if (pipe->status == COMP_STATE_READY ||
-		    pipe->status == COMP_STATE_INIT ||
-		    pipe->status == COMP_STATE_PAUSED) {
-			int ret_prep = pipeline_prepare(pipe, dev);
-			if (ret_prep < 0) {
-				LOG_ERR("Pipeline %u prepare failed: %d", pipeline_id, ret_prep);
-				return ret_prep;
+		if (pipe->status != COMP_STATE_READY) {
+			if (s_active_topo) {
+				for (size_t j = 0; j < s_active_topo->num_comps; j++) {
+					if (s_active_topo->comps[j].pipeline_id == pipeline_id) {
+						struct comp_dev *c = sof_static_comp_get(s_active_topo->comps[j].id);
+						if (c) {
+							comp_reset(c);
+							c->state = COMP_STATE_READY;
+						}
+					}
+				}
 			}
+			pipeline_reset(pipe, dev);
+			pipe->status = COMP_STATE_READY;
+		}
+
+		/* Prepare the pipeline from COMP_STATE_READY to COMP_STATE_PREPARE */
+		int ret_prep = pipeline_prepare(pipe, dev);
+		if (ret_prep < 0) {
+			LOG_ERR("Pipeline %u prepare failed: %d", pipeline_id, ret_prep);
+			return ret_prep;
 		}
 
 		/* Propagate PRE_START trigger across the pipeline graph (pipeline_trigger_run
@@ -1920,7 +1958,20 @@ int sof_static_pipeline_start(uint32_t pipeline_id)
 		int ret = pipeline_trigger_run(pipe, dev, COMP_TRIGGER_PRE_START);
 		if (ret < 0) {
 			LOG_ERR("Pipeline %u pre-start trigger failed: %d", pipeline_id, ret);
-			return ret;
+		}
+
+		/* Ensure all pipeline components are synchronized to ACTIVE */
+		if (s_active_topo) {
+			for (size_t j = 0; j < s_active_topo->num_comps; j++) {
+				if (s_active_topo->comps[j].pipeline_id == pipeline_id) {
+					struct comp_dev *c = sof_static_comp_get(s_active_topo->comps[j].id);
+					if (c && c->state != COMP_STATE_ACTIVE) {
+						comp_trigger(c, COMP_TRIGGER_PRE_START);
+						comp_trigger(c, COMP_TRIGGER_START);
+						c->state = COMP_STATE_ACTIVE;
+					}
+				}
+			}
 		}
 
 		pipe->status = COMP_STATE_ACTIVE;
@@ -1937,8 +1988,8 @@ int sof_static_pipeline_start(uint32_t pipeline_id)
 /**
  * \brief Stop a static audio pipeline by its pipeline ID.
  *
- * Propagates stop triggers, cancels scheduling copy tasks, and transitions
- * pipeline and component states to COMP_STATE_PAUSED.
+ * Propagates stop triggers, cancels scheduling copy tasks, resets the pipeline
+ * and constituent components to COMP_STATE_READY for clean subsequent restarts.
  *
  * \param[in] pipeline_id Target pipeline ID.
  * \return 0 on success, negative errno on failure.
@@ -1955,16 +2006,29 @@ int sof_static_pipeline_stop(uint32_t pipeline_id)
 	if (!dev)
 		return -ENODEV;
 
-	/* Propagate STOP trigger if pipeline is active or paused */
-	if (pipe->status == COMP_STATE_ACTIVE || pipe->status == COMP_STATE_PAUSED) {
-		int ret = pipeline_trigger_run(pipe, dev, COMP_TRIGGER_STOP);
-		if (ret < 0) {
-			LOG_ERR("Pipeline %u stop trigger failed: %d", pipeline_id, ret);
-			return ret;
-		}
-
-		pipe->status = COMP_STATE_PAUSED;
+	/* Propagate STOP trigger across the pipeline */
+	int ret = pipeline_trigger_run(pipe, dev, COMP_TRIGGER_STOP);
+	if (ret < 0) {
+		LOG_DBG("Pipeline %u stop trigger returned: %d", pipeline_id, ret);
 	}
+
+	/* Unconditionally stop and reset all components in this pipeline to READY */
+	if (s_active_topo) {
+		for (size_t j = 0; j < s_active_topo->num_comps; j++) {
+			if (s_active_topo->comps[j].pipeline_id == pipeline_id) {
+				struct comp_dev *c = sof_static_comp_get(s_active_topo->comps[j].id);
+				if (c) {
+					comp_trigger(c, COMP_TRIGGER_STOP);
+					comp_reset(c);
+					c->state = COMP_STATE_READY;
+				}
+			}
+		}
+	}
+
+	/* Reset the pipeline to COMP_STATE_READY for clean restart */
+	pipeline_reset(pipe, dev);
+	pipe->status = COMP_STATE_READY;
 
 	/* Cancel active periodic copy task */
 	if (pipe->pipe_task && task_is_active(pipe->pipe_task))

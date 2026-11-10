@@ -6,8 +6,10 @@
 #include <sof/audio/pipeline/sof_static_pipeline.h>
 #include <sof/audio/pipeline/static_pipeline.h>
 #include <sof/audio/usb_audio.h>
+#if CONFIG_COMP_BT_AUDIO
 #include <sof/audio/bt_audio.h>
 #include <sof/audio/bt_service.h>
+#endif
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/buffer.h>
@@ -72,6 +74,12 @@ static struct sof_static_pipeline_status g_status = {
 static uint32_t s_sof_diag_cnt;
 uint32_t g_rx_pkt_cnt = 0;
 uint32_t g_tx_pkt_cnt = 0;
+int g_topo_init_ret = 0;
+uint32_t g_cap_copy_cnt = 0;
+uint32_t g_pb_copy_cnt = 0;
+uint32_t g_last_trig_term = 0;
+uint32_t g_last_trig_enable = 0;
+int g_last_trig_ret = 0;
 
 static void sof_uac2_send_capture_pending(const struct device *dev)
 {
@@ -93,11 +101,6 @@ static void sof_uac2_send_capture_pending(const struct device *dev)
 	while (1) {
 		void *buf = NULL;
 		if (k_mem_slab_alloc(&uac2_tx_slab, &buf, K_NO_WAIT) != 0) {
-			static uint32_t s_slab_alloc_fails;
-			s_slab_alloc_fails++;
-			if (s_slab_alloc_fails <= 5 || s_slab_alloc_fails % 100 == 0) {
-				LOG_WRN("[UAC2 TX SLAB FULL %u] Failed to allocate TX slab block!", s_slab_alloc_fails);
-			}
 			break;
 		}
 
@@ -111,19 +114,19 @@ static void sof_uac2_send_capture_pending(const struct device *dev)
 			have_data = usb_audio_peek_capture_data(buf, frame_bytes);
 		}
 
-		if (!have_data) {
-			k_mem_slab_free(&uac2_tx_slab, buf);
-			break;
-		}
-
-		if (g_status.capture_mute) {
+		if (have_data) {
+			if (g_status.capture_mute) {
+				memset(buf, 0, frame_bytes);
+			}
+		} else {
+			/* Fallback to silence frame to keep USB isochronous IN streaming active */
 			memset(buf, 0, frame_bytes);
 		}
 
 		int ret = usbd_uac2_send(dev, CAPTURE_TERM_ID, buf, frame_bytes);
 		if (ret == 0) {
 			g_tx_pkt_cnt++;
-			if (!g_status.capture_mute) {
+			if (have_data && !g_status.capture_mute) {
 #if CONFIG_COMP_BT_AUDIO
 				if (g_status.audio_route == SOF_AUDIO_ROUTE_USB_BT) {
 					bt_audio_consume_capture_data(frame_bytes);
@@ -173,6 +176,17 @@ void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 		s_sof_diag_cnt = 0;
 	}
 
+	if (g_status.capture_active) {
+		struct pipeline *pipe = sof_static_pipeline_get(2);
+		if (pipe && pipe->status == COMP_STATE_ACTIVE) {
+			g_cap_copy_cnt++;
+			if (g_cap_copy_cnt == 1 || g_cap_copy_cnt % 1000 == 0) {
+				LOG_INF("[SOF CAP] pipeline_copy #%u", g_cap_copy_cnt);
+			}
+			pipeline_copy(pipe);
+		}
+	}
+
 	if (g_status.capture_active && dev) {
 		sof_uac2_send_capture_pending(dev);
 	}
@@ -181,20 +195,21 @@ void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 void sof_uac2_terminal_update_cb(const struct device *dev, uint8_t terminal,
 				 bool enabled, bool microframes, void *user_data)
 {
-	ARG_UNUSED(dev);
 	ARG_UNUSED(user_data);
 
 	LOG_INF("[UAC2 Terminal] update: terminal %u, enabled %d, microframes %d (PB expected %u, CAP expected %u)",
 		terminal, enabled, microframes, PLAYBACK_TERM_ID, CAPTURE_TERM_ID);
 
 	g_status.microframes = microframes;
+	g_last_trig_term = terminal;
+	g_last_trig_enable = enabled ? 1 : 0;
 
 	if (terminal == PLAYBACK_TERM_ID) {
 		g_status.playback_active = enabled;
-		sof_static_pipeline_trigger_by_uac2_term(terminal, enabled);
+		g_last_trig_ret = sof_static_pipeline_trigger_by_uac2_term(terminal, enabled);
 	} else if (terminal == CAPTURE_TERM_ID) {
 		g_status.capture_active = enabled;
-		sof_static_pipeline_trigger_by_uac2_term(terminal, enabled);
+		g_last_trig_ret = sof_static_pipeline_trigger_by_uac2_term(terminal, enabled);
 	}
 }
 
@@ -234,6 +249,17 @@ void sof_uac2_data_recv_cb(const struct device *dev, uint8_t terminal,
 #endif
 		{
 			usb_audio_feed_playback_data(buf, size);
+		}
+
+		if (g_status.playback_active) {
+			struct pipeline *pipe = sof_static_pipeline_get(1);
+			if (pipe && pipe->status == COMP_STATE_ACTIVE) {
+				g_pb_copy_cnt++;
+				if (g_pb_copy_cnt == 1 || g_pb_copy_cnt % 1000 == 0) {
+					LOG_INF("[SOF PB] pipeline_copy #%u", g_pb_copy_cnt);
+				}
+				pipeline_copy(pipe);
+			}
 		}
 	}
 	if (buf) {
@@ -438,6 +464,7 @@ int sof_static_pipelines_init(struct sof *sof)
 	return 0;
 #elif defined(CONFIG_PLATFORM_RP2350)
 	int ret = sof_static_topology_init(&g_rp2350_static_topology);
+	g_topo_init_ret = ret;
 	if (ret < 0)
 		return ret;
 
@@ -473,6 +500,7 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 	LOG_INF("Set interface %d clock mode to %s", iface,
 		mode == SOF_CLOCK_MASTER ? "MASTER" : (mode == SOF_CLOCK_DMIC ? "DMIC (SLAVE TX)" : "SLAVE"));
 
+#if defined(CONFIG_PLATFORM_ESP32P4)
 	uint32_t sof_format = 0;
 	if (iface == SOF_AUDIO_IF_I2S) {
 		sof_format = (mode == SOF_CLOCK_MASTER) ?
@@ -620,6 +648,7 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 		pipeline_params(pipe, host_or_sched, &prms);
 		pipeline_prepare(pipe, host_or_sched);
 	}
+#endif /* CONFIG_PLATFORM_ESP32P4 */
 
 	return 0;
 }

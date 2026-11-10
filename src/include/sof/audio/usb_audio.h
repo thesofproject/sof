@@ -18,7 +18,7 @@
 			    0x92, 0x76, 0x2f, 0xbb, 0x27, 0xc6, 0x2d, 0x01)
 
 #define USB_AUDIO_RING_BUFFER_SIZE 16384
-#define USB_AUDIO_PREBUFFER_BYTES 3840 /* 20ms at 48kHz stereo 16-bit */
+#define USB_AUDIO_PREBUFFER_BYTES 384 /* 2ms at 48kHz stereo 16-bit */
 
 struct usb_audio_ring_buffer {
 	uint8_t buf[USB_AUDIO_RING_BUFFER_SIZE];
