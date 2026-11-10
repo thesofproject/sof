@@ -479,6 +479,13 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt721-4ch-echoref.bin,DMIC0_ENHANC
 EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default,\
 DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,SDW_JACK_ECHO_REF=true,SDW_SPK_ECHO_REF=true,SDW_ECHO_REF_DAI=true"
 
+# RT713 headset on link 3 and RT1320 amplifiers on links 1 and 2 with mono
+# 16 kHz WebRTC AEC of the SoundWire DMIC against the speaker echo reference
+"cavs-sdw\;sof-ptl-rt713-l3-rt1320-l12-aec\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=2,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+SDW_SPK_ECHO_REF=true,SDW_ECHO_REF_DAI=true,SDW_SPK_AEC_CAPTURE_PCM=true"
+
 # RT721 eval board with PCH-DMIC, sof_sdw_quirk_table with SOC_SDW_PCH_DMIC
 # Enable echo reference capture from jack and speaker output
 # Enable SSP2 BT
