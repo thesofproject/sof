@@ -557,6 +557,32 @@ int z_impl_scheduler_dp_kick(const struct scheduler_dp_kick *kicks, uint32_t cou
 	return skipped;
 }
 
+#if CONFIG_SOF_BOOT_TEST_STANDALONE
+/* Add a DP task record for zephyr/test/userspace/test_dp_kick.c */
+int scheduler_dp_test_record_add(struct task *task, struct k_event *event,
+				 struct k_thread *thread, uint16_t core)
+{
+	struct scheduler_dp_task_kobj *kobj = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+						      sizeof(*kobj));
+
+	if (!kobj)
+		return -ENOMEM;
+
+	kobj->task = task;
+	kobj->event = event;
+	kobj->thread = thread;
+	kobj->core = core;
+	dp_task_kobj_add(kobj);
+
+	return 0;
+}
+
+void scheduler_dp_test_record_del(struct task *task)
+{
+	rfree(dp_task_kobj_take(task, NULL));
+}
+#endif
+
 #ifdef CONFIG_USERSPACE
 #include <zephyr/internal/syscall_handler.h>
 #include <sof/userspace/syscall_caller.h>

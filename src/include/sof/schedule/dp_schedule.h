@@ -150,6 +150,13 @@ static inline void scheduler_dp_check_deadline(uint16_t core, uint32_t deadline_
  */
 void scheduler_dp_ll_post_tick(void);
 
+#if CONFIG_SOF_BOOT_TEST_STANDALONE && CONFIG_SOF_USERSPACE_APPLICATION
+/* Test hooks: add and remove kernel-only DP task records without a DP task */
+int scheduler_dp_test_record_add(struct task *task, struct k_event *event,
+				 struct k_thread *thread, uint16_t core);
+void scheduler_dp_test_record_del(struct task *task);
+#endif
+
 /**
  * @brief Extract telemetry information about Data Processing scheduler tasks.
  *
