@@ -221,9 +221,19 @@ struct schedulers **arch_schedulers_get(void);
  * Invokes cpu_get_id(), so this function must only be called from kernel context.
  * User-space callers should use @ref arch_user_schedulers_get_for_core instead.
  *
+ * Returns the kernel-only copy of the list head. After changing it, call
+ * arch_user_schedulers_publish() to make it visible to user threads.
+ *
  * @return Pointer to the per-core user schedulers list head pointer, or NULL if user LL is disabled.
  */
 struct schedulers **arch_user_schedulers_get(void);
+
+/**
+ * @brief Make the user scheduler list of the current core visible to user threads.
+ *
+ * Kernel context only.
+ */
+void arch_user_schedulers_publish(void);
 
 /**
  * @brief Retrieve registered schedulers for user-space threads on a specific core.

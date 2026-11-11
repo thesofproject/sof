@@ -25,6 +25,12 @@ static struct schedulers *_k_schedulers[CONFIG_CORE_COUNT];
  * types that are managed in user-space
  */
 static APP_SYSUSER_BSS struct schedulers *_u_schedulers[CONFIG_CORE_COUNT];
+
+/*
+ * Kernel-only copy of _u_schedulers: user threads can write _u_schedulers,
+ * so kernel code uses this copy to find the user scheduler lists.
+ */
+static struct schedulers *_ku_schedulers[CONFIG_CORE_COUNT];
 #endif
 
 /**
@@ -53,9 +59,25 @@ struct schedulers **arch_user_schedulers_get(void)
 {
 #ifdef CONFIG_SOF_USERSPACE_LL
 	assert(!k_is_user_context());
-	return _u_schedulers + cpu_get_id();
+	return _ku_schedulers + cpu_get_id();
 #else
 	return NULL;
+#endif
+}
+
+/**
+ * Makes the user scheduler list of the current core visible to user threads.
+ *
+ * Kernel context only, call after changing the list head returned by
+ * arch_user_schedulers_get().
+ */
+void arch_user_schedulers_publish(void)
+{
+#ifdef CONFIG_SOF_USERSPACE_LL
+	unsigned int core = cpu_get_id();
+
+	assert(!k_is_user_context());
+	_u_schedulers[core] = _ku_schedulers[core];
 #endif
 }
 
@@ -70,6 +92,9 @@ struct schedulers **arch_user_schedulers_get(void)
 struct schedulers **arch_user_schedulers_get_for_core(int core)
 {
 #ifdef CONFIG_SOF_USERSPACE_LL
+	if (!k_is_user_context())
+		return _ku_schedulers + core;
+
 	return _u_schedulers + core;
 #else
 	return NULL;
