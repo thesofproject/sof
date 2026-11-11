@@ -14,11 +14,11 @@
 #include <stdio.h>
 #include <sof/math/a_law.h>
 
-/* a_law_codec.h was moved here from the legacy CMocka tree
- * (test/cmocka/src/math/arithmetic/) when that CMocka test was removed.
- * ref_chirp_mono_8k_s16.h is still shared with the CMocka mu_law test and
- * stays #included in place from the CMocka tree until that test is removed
- * too, so both frameworks keep exercising identical fixed-point data.
+/* ref_chirp_mono_8k_s16.h is shared with the mu_law suite via the
+ * test/ztest/unit/math/arithmetic include path; a_law_codec.h is colocated
+ * with this test. Both were moved here from the legacy CMocka tree
+ * (test/cmocka/src/math/arithmetic/) when the CMocka a_law/mu_law tests
+ * were removed, preserving the exact same fixed-point data.
  */
 #include "ref_chirp_mono_8k_s16.h"
 #include "a_law_codec.h"

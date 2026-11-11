@@ -12,9 +12,9 @@ set(SOF_ROOT "${PROJECT_SOURCE_DIR}/../../../../..")
 target_include_directories(app PRIVATE
 	${SOF_ROOT}/zephyr/include
 	${SOF_ROOT}/src/include
-	# ref_chirp_mono_8k_s16.h is still shared with the CMocka mu_law test
-	# via this include path; a_law_codec.h is colocated with this test.
-	${SOF_ROOT}/test/cmocka/src/math/arithmetic
+	# ref_chirp_mono_8k_s16.h is shared with the mu_law suite; a_law_codec.h
+	# is colocated with this test.
+	${SOF_ROOT}/test/ztest/unit/math/arithmetic
 )
 
 # Define SOF-specific configurations for unit testing
