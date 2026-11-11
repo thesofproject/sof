@@ -17,7 +17,7 @@ from tplgparse import binary
 from tplgparse.binary import TplgType
 
 from . import ERROR, INFO, WARNING, rule
-from .paths import host_copier, routes_on_pcm_paths
+from .paths import fmt_key, host_copier, routes_on_pcm_paths
 
 VIRTUAL_TYPES = ("input", "output", "out_drv")  # skipped by sof_route_setup()
 AUDIO_FMT_TYPES = ("aif_in", "aif_out", "dai_in", "dai_out", "buffer", "pga", "mixer",
@@ -332,6 +332,82 @@ def process_pin_formats(ctx):
             if missing:
                 yield w.label, (f"no {side} format for pin {', '.join(map(str, missing))}; "
                                 f"required if the firmware module uses extended init")
+
+
+def connection_pin(kw, peer, output):
+    "Resolve a queue without guessing the allocation order of unbound pins."
+    pins = kw.num_output_pins if output else kw.num_input_pins
+    binding = kw.output_pin_binding if output else kw.input_pin_binding
+    if pins == 1:
+        return 0
+    if pins > 1 and binding is not None and binding.count(peer.name) == 1:
+        return binding.index(peer.name)
+    return None
+
+
+def connection_formats(widget, kw, pin, output):
+    """Formats declared for this pin, accounting for shared module formats.
+
+    An undeclared secondary copier output is configured from the sink at
+    bind time, not constrained by the copier's pin-0 output formats.
+    """
+    _, _, ins, outs = kw.audio_formats()
+    fmts = outs if output else ins
+    rate, cfg, index, depth = (1930, 1937, TKN_OUT_PIN_INDEX, 1931) if output else \
+        (1900, 1907, TKN_IN_PIN_INDEX, 1901)
+    if output and widget.type_name == "mixer":
+        # The kernel selects a single mixer output format without a pin filter.
+        selected = fmts
+    else:
+        selected = [f for f in fmts if f.get(index, 0) == pin]
+    if not selected and output and pin > 0 and widget.type_name in PROCESS_TYPES:
+        selected = [f for f in fmts if not f.get(index, 0)]
+    # Do not infer incompatibility from incomplete format declarations.
+    if not selected or any(not f.get(rate) or not f.get(depth) or
+                           not (f.get(cfg, 0) & 0xff) or
+                           not ((f.get(cfg, 0) >> 8) & 0xff) for f in selected):
+        return set()
+
+    def key(fmt):
+        stype = (fmt[cfg] >> 16) & 0xff
+        representation = 1 if stype in (0, 1, 2) else stype
+        return fmt_key(fmt, rate, cfg, depth) + (representation,)
+
+    return {key(f) for f in selected}
+
+
+def describe_formats(formats):
+    return ", ".join(f"{rate}Hz/{channels}ch/{bits}bit/kernel-type{stype}/repr{representation}"
+                     for rate, channels, bits, stype, representation in sorted(formats))
+
+
+@rule("F003", "L4", ERROR,
+      "sof_ipc4_route_setup, sof_ipc4_set_copier_sink_format, sof_ipc4_get_input_pin_audio_fmt",
+      "connected output and input pins have a common declared format")
+def connection_pin_formats(ctx):
+    for r, src, sink in kernel_routes(ctx):
+        ps, pk = ctx.pipeline_widget(src), ctx.pipeline_widget(sink)
+        if ps is None or pk is None or pipeline_info(ctx, ps)[0] or pipeline_info(ctx, pk)[0]:
+            continue
+        src_kw, sink_kw = ctx.kw(src), ctx.kw(sink)
+        if src_kw.error or sink_kw.error:
+            continue
+        out_pin = connection_pin(src_kw, sink, True)
+        in_pin = connection_pin(sink_kw, src, False)
+        if out_pin is None or in_pin is None:
+            yield r.label, ("cannot statically resolve the connected pins; explicit "
+                            "bindings are needed for multi-pin endpoints"), INFO
+            continue
+        outs = connection_formats(src, src_kw, out_pin, True)
+        ins = connection_formats(sink, sink_kw, in_pin, False)
+        if not outs or not ins:
+            yield r.label, (f"output pin {out_pin} -> input pin {in_pin}: "
+                            "no static format comparison; one or both pins have no "
+                            "complete declared formats"), INFO
+        elif outs.isdisjoint(ins):
+            yield r.label, (f"output pin {out_pin} [{describe_formats(outs)}] has no "
+                            f"compatible format with input pin {in_pin} "
+                            f"[{describe_formats(ins)}]")
 
 
 # --- controls ----------------------------------------------------------------

@@ -215,3 +215,36 @@ def unused_tokens(ctx):
                          if t.token in kt.TOKEN_NAMES and t.token not in used})
         if unused:
             yield w.label, f"{w.type_name}: {', '.join(map(tname, unused))}"
+
+
+@rule("T008", "L2", ERROR, "sof_ipc4_get_audio_fmt, audio_stream_fmt_conversion",
+      "audio format sample types and bit depths are valid")
+def audio_format_types(ctx):
+    for w in ctx.tplg.widgets:
+        kw = ctx.kw(w)
+        if kw.error:
+            continue
+        _, _, ins, outs = kw.audio_formats()
+        for direction, fmts, rate_token in (("input", ins, TKN_IN_RATE),
+                                             ("output", outs, TKN_OUT_RATE)):
+            _, depth_tok, _, cfg_tok, _ = FORMAT_FIELDS[rate_token]
+            for i, fmt in enumerate(fmts):
+                cfg, depth = fmt.get(cfg_tok, 0), fmt.get(depth_tok, 0)
+                if not cfg:
+                    continue
+                bits, stype = (cfg >> 8) & 0xff, (cfg >> 16) & 0xff
+                if stype not in SAMPLE_TYPES:
+                    problem = f"unknown sample type {stype}"
+                elif not depth or not bits:
+                    continue
+                elif bits > depth:
+                    problem = f"valid bit depth {bits} exceeds container depth {depth}"
+                elif stype == 4 and (depth, bits) != (32, 32):
+                    problem = f"float requires 32/32 bits, got {depth}/{bits}"
+                elif stype == 3 and (depth, bits) != (8, 8):
+                    problem = f"unsigned integer requires 8/8 bits, got {depth}/{bits}"
+                elif stype in (5, 6) and (depth, bits) != (8, 8):
+                    problem = f"{SAMPLE_TYPES[stype].strip()} requires 8/8 bits, got {depth}/{bits}"
+                else:
+                    continue
+                yield w.label, f"{direction} format {i}: {problem}"
