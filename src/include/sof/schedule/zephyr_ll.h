@@ -12,6 +12,7 @@
 #ifndef __SOF_SCHEDULE_ZEPHYR_LL_H__
 #define __SOF_SCHEDULE_ZEPHYR_LL_H__
 
+#include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/list.h>
 #include <sof/schedule/ll_schedule_domain.h>
@@ -29,7 +30,6 @@ struct zephyr_ll {
 #if CONFIG_SOF_USERSPACE_LL
 	struct k_mutex *lock;			/* mutex for userspace */
 #endif
-	struct k_heap *heap;
 };
 
 /* per-task scheduler data */
@@ -41,6 +41,37 @@ struct zephyr_ll_pdata {
 	struct k_sem sem;
 #endif
 };
+
+#if CONFIG_SOF_USERSPACE_LL
+/*
+ * The scheduler state and the tasks that kernel threads create at boot are
+ * in the kernel RW area of the LL memory region, see
+ * zephyr_ll_karea_alloc(). They are never freed. Other tasks and their
+ * data are on the LL user heap.
+ */
+static inline bool zephyr_ll_in_karea(const void *ptr, size_t size)
+{
+	/*
+	 * The area bounds are kernel-only. Boot tasks are only created and
+	 * freed by kernel code, user threads only handle heap tasks.
+	 */
+	if (k_is_user_context())
+		return false;
+
+	return zephyr_ll_karea_contains(ZEPHYR_LL_KAREA_RW, ptr, size);
+}
+
+static inline void zephyr_ll_free(void *ptr)
+{
+	if (!zephyr_ll_in_karea(ptr, 1))
+		sof_heap_free(zephyr_ll_user_heap(), ptr);
+}
+#else
+static inline void zephyr_ll_free(void *ptr)
+{
+	sof_heap_free(sof_sys_heap_get(), ptr);
+}
+#endif
 
 static inline void zephyr_ll_assert_core(const struct zephyr_ll *sch)
 {

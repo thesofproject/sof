@@ -241,7 +241,7 @@ static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 #if CONFIG_SOF_USERSPACE_LL
 	domain_thread_free(sch->ll_domain, sch->n_tasks);
 #endif
-	sof_heap_free(sch->heap, sch);
+	zephyr_ll_free(sch);
 }
 #endif /* CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY */
 
@@ -265,19 +265,18 @@ __cold int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 {
 	struct zephyr_ll *sch;
 	int core = cpu_get_id();
-	struct k_heap *heap = sof_sys_heap_get();
-	int flags = SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT;
 
 	assert_can_be_cold();
 
-#if CONFIG_SOF_USERSPACE_LL
-	heap = zephyr_ll_user_heap();
-	flags = SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT;
-#endif
 	tr_dbg(&ll_tr, "init on core %d", core);
 
 	/* initialize per-core scheduler private data */
-	sch = sof_heap_alloc(heap, flags, sizeof(*sch), 0);
+#if CONFIG_SOF_USERSPACE_LL
+	sch = zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, SOF_MEM_FLAG_COHERENT, sizeof(*sch), 0);
+#else
+	sch = sof_heap_alloc(sof_sys_heap_get(), SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+			     sizeof(*sch), 0);
+#endif
 	if (!sch) {
 		tr_err(&ll_tr, "allocation failed");
 		return -ENOMEM;
@@ -289,14 +288,13 @@ __cold int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 	sch->ll_domain = domain;
 	sch->core = core;
 	sch->n_tasks = 0;
-	sch->heap = heap;
 
 #if CONFIG_SOF_USERSPACE_LL
 	/* Allocate mutex dynamically for userspace access */
 	sch->lock = k_object_alloc(K_OBJ_MUTEX);
 	if (!sch->lock) {
 		tr_err(&ll_tr, "mutex allocation failed");
-		sof_heap_free(sch->heap, sch);
+		zephyr_ll_free(sch);
 		return -ENOMEM;
 	}
 	assert(core < CONFIG_CORE_COUNT && zephyr_ll_locks[core] == NULL);
