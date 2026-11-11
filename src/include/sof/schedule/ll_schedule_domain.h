@@ -235,6 +235,34 @@ enum zephyr_ll_karea {
 };
 
 /**
+ * @brief Allocate from a kernel-managed area of the LL user memory region.
+ *
+ * For objects that kernel code creates and LL user threads access. The
+ * allocator state is kernel-only and memory is never freed, so use this
+ * for objects that live until the firmware is reset. Objects in
+ * ZEPHYR_LL_KAREA_RO can only be written by kernel threads, not by kernel
+ * code running in the LL memory domain, such as system calls from LL
+ * threads. Kernel context only.
+ *
+ * @param[in] area The area to allocate from.
+ * @param[in] flags SOF_MEM_FLAG_COHERENT for an uncached pointer.
+ * @param[in] bytes Size in bytes.
+ * @param[in] alignment Required alignment in bytes, 0 for the cache line size.
+ * @return Pointer to the memory, or NULL if the area is full.
+ */
+void *zephyr_ll_karea_alloc(enum zephyr_ll_karea area, uint32_t flags, size_t bytes,
+			    size_t alignment);
+
+/**
+ * @brief Check that memory lies in a kernel-managed area of the LL region.
+ * @param[in] area The area to check.
+ * @param[in] ptr Start of the memory, cached or uncached alias.
+ * @param[in] bytes Size in bytes.
+ * @return true if [ptr, ptr + bytes) lies in the area.
+ */
+bool zephyr_ll_karea_contains(enum zephyr_ll_karea area, const void *ptr, size_t bytes);
+
+/**
  * @brief Grant thread access to per-core Low-Latency mutexes.
  *
  * Kernel context only.
