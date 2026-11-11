@@ -276,6 +276,29 @@ default ID ranges for the same endpoint types.
 | Deep Buffer | 31 | `DEEP_BUFFER_PCM_ID` |
 | Compress HDA Analog | 50 | `COMPR_PCM_ID` |
 
+**Intel HDA Backend DAI Link IDs:**
+
+These IDs match the fixed backend DAI-link IDs defined by the kernel machine
+driver. They are independent of PCM IDs and pipeline indexes. The kernel defines
+base IDs for iDisp HDMI, HDA, and UAOL. The HDA helper increments the iDisp and
+HDA base IDs when it creates additional links; UAOL stream backends also use
+consecutive IDs.
+
+| Backend | DAI Link ID | Kernel Define | Topology Variable |
+|---|---:|---|---|
+| iDisp HDMI 1 | 1 | `IDISP_HDMI_BE_ID` | `HDMI1_ID` |
+| iDisp HDMI 2 | 2 | `IDISP_HDMI_BE_ID + 1` | `HDMI2_ID` |
+| iDisp HDMI 3 | 3 | `IDISP_HDMI_BE_ID + 2` | `HDMI3_ID` |
+| HDA Analog | 4 | `HDA_BE_ID` | Hard-coded as `id 4` |
+| HDA Digital | 5 | `HDA_BE_ID + 1` | — |
+| DMIC01 | 6 | `DMIC01_BE_ID` | `DMIC0_ID` |
+| DMIC 16 kHz | 7 | `DMIC16K_BE_ID` | `DMIC1_ID` |
+| Bluetooth Offload | 8 | `BT_OFFLOAD_BE_ID` | Not used by HDA generic |
+| UAOL Play0 | 9 | `UAOL_BE_ID` | `UAOL_PB_BE_ID` |
+| UAOL Cap0 | 10 | `UAOL_BE_ID + 1` | `UAOL_CP_BE_ID` |
+| UAOL Play1 | 11 | `UAOL_BE_ID + 2` | `UAOL_PB1_BE_ID` |
+| UAOL Cap1 | 12 | `UAOL_BE_ID + 3` | `UAOL_CP1_BE_ID` |
+
 Key rules:
 
 * PCM ID 0 is always the primary playback endpoint
