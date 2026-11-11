@@ -227,6 +227,13 @@ bool zephyr_ll_user_heap_verify(struct k_heap *heap);
  */
 void zephyr_ll_user_resources_init(void);
 
+/** @brief Kernel-managed areas of the LL user memory region */
+enum zephyr_ll_karea {
+	ZEPHYR_LL_KAREA_RW,	/**< read-write for LL user threads */
+	ZEPHYR_LL_KAREA_RO,	/**< read-only for LL user threads */
+	ZEPHYR_LL_KAREA_COUNT,
+};
+
 /**
  * @brief Grant thread access to per-core Low-Latency mutexes.
  *
