@@ -2,4 +2,3 @@
 
 add_subdirectory(fft)
 add_subdirectory(window)
-add_subdirectory(dct)
