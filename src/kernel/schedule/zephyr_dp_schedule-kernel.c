@@ -285,8 +285,14 @@ __cold int scheduler_dp_init(void)
 {
 	assert_can_be_cold();
 
+#if CONFIG_SOF_USERSPACE_LL
+	/* used by LL user threads, created at boot and never freed */
+	struct scheduler_dp_data *dp_sch = zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, 0,
+								 sizeof(*dp_sch), 0);
+#else
 	struct scheduler_dp_data *dp_sch = sof_heap_alloc(sof_sys_user_heap_get(),
 							  SOF_MEM_FLAG_KERNEL, sizeof(*dp_sch), 0);
+#endif
 	if (!dp_sch)
 		return -ENOMEM;
 
