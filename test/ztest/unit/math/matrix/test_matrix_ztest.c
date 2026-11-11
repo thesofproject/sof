@@ -17,9 +17,8 @@
 #include <stdint.h>
 #include <math.h>
 
-/* Reference test vectors shared with the legacy CMocka test. They are
- * #included in place from the CMocka tree (added to the include path in
- * CMakeLists.txt) so the exact same fixed-point data is exercised.
+/* Reference test vectors were moved here from the legacy CMocka tree
+ * (test/cmocka/src/math/matrix/) when that CMocka test was removed.
  */
 #include "ref_matrix_mult_16_test1.h"
 #include "ref_matrix_mult_16_test2.h"
