@@ -6,11 +6,14 @@
 /*
  * Tests for the kernel-managed areas of the LL memory region: LL user
  * threads can write objects in the RW area, only read objects in the RO
- * area, and the kernel allocator state is not in user memory.
+ * area, such as the user scheduler descriptors, and the kernel allocator
+ * state is not in user memory.
  */
 
 #include <sof/boot_test.h>
+#include <sof/lib/cpu.h>
 #include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/schedule.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/ztest.h>
@@ -38,6 +41,8 @@ enum karea_test_case {
 	KAREA_READ_RO,
 	/* write an object in the RO area */
 	KAREA_WRITE_RO,
+	/* write the user scheduler list of the current core */
+	KAREA_WRITE_SCHEDULERS,
 };
 
 static void user_function(void *p1, void *p2, void *p3)
@@ -60,6 +65,12 @@ static void user_function(void *p1, void *p2, void *p3)
 	case KAREA_WRITE_RO:
 		obj[0] = 0;
 		break;
+	case KAREA_WRITE_SCHEDULERS:
+		/* user threads find the list through their own copy of the head */
+		obj = (uint32_t *)*arch_user_schedulers_get_for_core((int)(uintptr_t)p3);
+		zassert_not_null(obj);
+		obj[0] = 0;
+		break;
 	default:
 		zassert_unreachable("unknown test case");
 	}
@@ -72,8 +83,9 @@ static void run_case(enum karea_test_case test_case, uint32_t *obj, bool expect_
 	int ret;
 
 	k_thread_create(&user_thread, user_stack, USER_STACKSIZE,
-			user_function, (void *)(uintptr_t)test_case, obj, NULL,
-			-1, K_USER, K_FOREVER);
+			user_function, (void *)(uintptr_t)test_case, obj,
+			(void *)(uintptr_t)cpu_get_id(), -1, K_USER, K_FOREVER);
+	k_thread_cpu_pin(&user_thread, cpu_get_id());
 	k_mem_domain_add_thread(zephyr_ll_mem_domain(), &user_thread);
 
 	if (expect_fault)
@@ -125,6 +137,24 @@ ZTEST(userspace_ll_karea, ro_area_user_write_faults)
 	ro_obj[0] = TEST_PATTERN;
 	run_case(KAREA_WRITE_RO, ro_obj, true);
 	zassert_equal(ro_obj[0], TEST_PATTERN, "RO object was written");
+}
+
+ZTEST(userspace_ll_karea, schedulers_read_only)
+{
+	struct schedulers *sch = *arch_user_schedulers_get();
+	struct list_item *slist;
+
+	zassert_not_null(sch, "no user schedulers");
+	zassert_true(zephyr_ll_karea_contains(ZEPHYR_LL_KAREA_RO, sch, sizeof(*sch)));
+
+	list_for_item(slist, &sch->list) {
+		struct schedule_data *sd = container_of(slist, struct schedule_data, list);
+
+		zassert_true(zephyr_ll_karea_contains(ZEPHYR_LL_KAREA_RO, sd, sizeof(*sd)),
+			     "scheduler %d data not in the RO area", sd->type);
+	}
+
+	run_case(KAREA_WRITE_SCHEDULERS, NULL, true);
 }
 
 ZTEST(userspace_ll_karea, contains_and_limits)
