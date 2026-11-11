@@ -117,12 +117,15 @@ TKN_IN_RATE, TKN_IN_FMT_CFG, TKN_IN_PIN = 1900, 1907, 1909
 TKN_OUT_RATE, TKN_OUT_FMT_CFG, TKN_OUT_PIN = 1930, 1937, 1939
 
 
-def fmt_key(fmt: dict, rate_tok, cfg_tok):
-    """(rate, channels, valid bits, type) as compared by
-    sof_ipc4_init_input_audio_fmt(), using sof_ipc4_fmt_cfg_to_type()."""
+def fmt_key(fmt: dict, rate_tok, cfg_tok, depth_tok):
+    """Canonical rate/channel/valid-bit/type key for declared IPC4 formats."""
     cfg = fmt.get(cfg_tok, 0)
     bits = (cfg >> 8) & 0xff
-    stype = (cfg >> 16) & 0xff if bits in (8, 32) else TYPE_LSB_INTEGER
+    stype = (cfg >> 16) & 0xff
+    if bits == 32 and fmt.get(depth_tok, 0) == 32 and stype in (0, 2):
+        stype = TYPE_LSB_INTEGER
+    elif bits not in (8, 32):
+        stype = TYPE_LSB_INTEGER
     return fmt.get(rate_tok, 0), cfg & 0xff, bits, stype
 
 
@@ -149,12 +152,12 @@ def pcm_host_formats(ctx):
             continue
         _ni, _no, ins, outs = kw.audio_formats()
         if path.direction == PLAYBACK:
-            fmts, keys = ins, (TKN_IN_RATE, TKN_IN_FMT_CFG, TKN_IN_PIN)
+            fmts, keys = ins, (TKN_IN_RATE, TKN_IN_FMT_CFG, TKN_IN_PIN, 1901)
         else:
-            fmts, keys = outs, (TKN_OUT_RATE, TKN_OUT_FMT_CFG, TKN_OUT_PIN)
+            fmts, keys = outs, (TKN_OUT_RATE, TKN_OUT_FMT_CFG, TKN_OUT_PIN, 1931)
         if not fmts:
             continue
-        avail = [fmt_key(f, keys[0], keys[1]) for f in fmts if not f.get(keys[2], 0)]
+        avail = [fmt_key(f, keys[0], keys[1], keys[3]) for f in fmts if not f.get(keys[2], 0)]
         if len({a[:3] for a in avail}) <= 1:
             continue  # single format: the kernel uses it without matching
         bad = [(rate, ch, name) for rate, ch, name, bits, stype in
@@ -177,10 +180,10 @@ def pcm_host_sample_formats(ctx):
             continue
         _ni, _no, ins, outs = kw.audio_formats()
         if path.direction == PLAYBACK:
-            fmts, keys = ins, (TKN_IN_RATE, TKN_IN_FMT_CFG, TKN_IN_PIN)
+            fmts, keys = ins, (TKN_IN_RATE, TKN_IN_FMT_CFG, TKN_IN_PIN, 1901)
         else:
-            fmts, keys = outs, (TKN_OUT_RATE, TKN_OUT_FMT_CFG, TKN_OUT_PIN)
-        avail = [fmt_key(f, keys[0], keys[1]) for f in fmts if not f.get(keys[2], 0)]
+            fmts, keys = outs, (TKN_OUT_RATE, TKN_OUT_FMT_CFG, TKN_OUT_PIN, 1931)
+        avail = [fmt_key(f, keys[0], keys[1], keys[3]) for f in fmts if not f.get(keys[2], 0)]
         if len({a[:3] for a in avail}) <= 1:
             continue
         have = {(bits, stype) for _r, _c, bits, stype in avail}
