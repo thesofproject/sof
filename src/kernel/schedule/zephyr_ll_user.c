@@ -12,6 +12,35 @@
 
 LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
+/*
+ * Layout of the LL user memory region, each part page aligned:
+ *
+ *   | kernel RO area | kernel RW area | LL user heap |
+ *
+ * The heap and the kernel RW area are mapped read-write into the LL memory
+ * domain, the kernel RO area read-only. Kernel code allocates objects that
+ * LL user threads must access from the kernel areas, see
+ * zephyr_ll_karea_alloc(). The allocator state of those areas is kept in
+ * ll_mem_resources, which is kernel-only.
+ */
+#define LL_REGION_SIZE		CONFIG_SOF_ZEPHYR_SYS_USER_HEAP_SIZE
+#define LL_KAREA_RO_SIZE	CONFIG_SOF_ZEPHYR_LL_KAREA_RO_SIZE
+#define LL_KAREA_RW_SIZE	CONFIG_SOF_ZEPHYR_LL_KAREA_RW_SIZE
+#define LL_HEAP_SIZE		(LL_REGION_SIZE - LL_KAREA_RO_SIZE - LL_KAREA_RW_SIZE)
+
+BUILD_ASSERT(LL_REGION_SIZE % CONFIG_MM_DRV_PAGE_SIZE == 0);
+BUILD_ASSERT(LL_KAREA_RO_SIZE % CONFIG_MM_DRV_PAGE_SIZE == 0);
+BUILD_ASSERT(LL_KAREA_RW_SIZE % CONFIG_MM_DRV_PAGE_SIZE == 0);
+BUILD_ASSERT(LL_KAREA_RO_SIZE + LL_KAREA_RW_SIZE < LL_REGION_SIZE,
+	     "kernel areas do not leave room for the LL user heap");
+
+/* A kernel-managed area, addresses are the uncached alias */
+struct zephyr_ll_karea_state {
+	uint8_t *base;
+	size_t size;
+	size_t used;
+};
+
 /**
  * Memory resources for userspace LL scheduler
  *
@@ -22,64 +51,73 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 struct zephyr_ll_mem_resources {
 	struct k_mem_domain mem_domain; /**< Memory domain for LL thread isolation */
 	struct k_heap heap; /**< Heap allocator for LL scheduler memory */
+	struct zephyr_ll_karea_state karea[ZEPHYR_LL_KAREA_COUNT]; /**< Kernel-managed areas */
 };
 
 static struct zephyr_ll_mem_resources ll_mem_resources;
 
-static struct k_heap *ll_heap_alloc(void)
+static void ll_region_map(uint8_t *start, size_t size, k_mem_partition_attr_t attr)
 {
-	const size_t alloc_size = CONFIG_SOF_ZEPHYR_SYS_USER_HEAP_SIZE;
+	struct k_mem_partition part;
+	int ret;
 
-	BUILD_ASSERT(CONFIG_SOF_ZEPHYR_SYS_USER_HEAP_SIZE % CONFIG_MM_DRV_PAGE_SIZE == 0);
+	part.start = (uintptr_t)sys_cache_cached_ptr_get(start);
+	part.size = size;
+	part.attr = attr | XTENSA_MMU_CACHED_WB;
 
-	void *mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, alloc_size,
-				  CONFIG_MM_DRV_PAGE_SIZE);
-	if (!mem)
-		return NULL;
+	ret = k_mem_domain_add_partition(&ll_mem_resources.mem_domain, &part);
+	tr_dbg(&ll_tr, "map %p size %#zx (cached), ret %d", (void *)part.start, size, ret);
+	if (ret)
+		k_panic();
 
-	k_heap_init(&ll_mem_resources.heap, mem, alloc_size);
+#ifdef CONFIG_CACHE_HAS_MIRRORED_MEMORY_REGIONS
+	part.start = (uintptr_t)sys_cache_uncached_ptr_get(start);
+	part.attr = attr;
+
+	ret = k_mem_domain_add_partition(&ll_mem_resources.mem_domain, &part);
+	tr_dbg(&ll_tr, "map %p size %#zx (uncached), ret %d", (void *)part.start, size, ret);
+	if (ret)
+		k_panic();
+#endif
+}
+
+static void ll_region_init(void)
+{
+	struct zephyr_ll_karea_state *ro = &ll_mem_resources.karea[ZEPHYR_LL_KAREA_RO];
+	struct zephyr_ll_karea_state *rw = &ll_mem_resources.karea[ZEPHYR_LL_KAREA_RW];
+	uint8_t *mem;
+
+	mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, LL_REGION_SIZE,
+			    CONFIG_MM_DRV_PAGE_SIZE);
+	if (!mem) {
+		tr_err(&ll_tr, "region alloc fail");
+		k_panic();
+	}
+
+	ro->base = mem;
+	ro->size = LL_KAREA_RO_SIZE;
+	rw->base = mem + LL_KAREA_RO_SIZE;
+	rw->size = LL_KAREA_RW_SIZE;
+
+	mem += LL_KAREA_RO_SIZE + LL_KAREA_RW_SIZE;
+	k_heap_init(&ll_mem_resources.heap, mem, LL_HEAP_SIZE);
 
 	/*
 	 * k_heap_init() does not set these, so set the values
 	 * manually here
 	 */
 	ll_mem_resources.heap.heap.init_mem = mem;
-	ll_mem_resources.heap.heap.init_bytes = alloc_size;
+	ll_mem_resources.heap.heap.init_bytes = LL_HEAP_SIZE;
 
-	return &ll_mem_resources.heap;
-}
+	if (ro->size)
+		ll_region_map(ro->base, ro->size, K_MEM_PARTITION_P_RO_U_RO);
 
-static void ll_heap_init(void)
-{
-	struct k_heap *heap = ll_heap_alloc();
-	struct k_mem_partition mem_partition;
-	int ret;
+	/* the kernel RW area and the heap are adjacent, map them together */
+	ll_region_map(rw->base, rw->size + LL_HEAP_SIZE, K_MEM_PARTITION_P_RW_U_RW);
 
-	if (!heap) {
-		tr_err(&ll_tr, "heap alloc fail");
-		k_panic();
-	}
-
-	/* Create memory partition for sch_data array */
-	mem_partition.start = (uintptr_t)sys_cache_cached_ptr_get(heap->heap.init_mem);
-	mem_partition.size = heap->heap.init_bytes;
-	mem_partition.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB;
-
-	ret = k_mem_domain_add_partition(&ll_mem_resources.mem_domain, &mem_partition);
-	tr_dbg(&ll_tr, "init ll heap %p, size %u (cached), ret %d",
-	       (void *)mem_partition.start, heap->heap.init_bytes, ret);
-	if (ret)
-		k_panic();
-
-#ifdef CONFIG_CACHE_HAS_MIRRORED_MEMORY_REGIONS
-	mem_partition.start = (uintptr_t)sys_cache_uncached_ptr_get(heap->heap.init_mem);
-	mem_partition.attr = K_MEM_PARTITION_P_RW_U_RW;
-	ret = k_mem_domain_add_partition(&ll_mem_resources.mem_domain, &mem_partition);
-	tr_dbg(&ll_tr, "init ll heap %p, size %u (uncached), ret %d",
-	       (void *)mem_partition.start, heap->heap.init_bytes, ret);
-	if (ret)
-		k_panic();
-#endif
+	tr_info(&ll_tr, "LL region: RO area %p %#zx, RW area %p %#zx, heap %p %#zx",
+		(void *)ro->base, ro->size, (void *)rw->base, rw->size, (void *)mem,
+		(size_t)LL_HEAP_SIZE);
 }
 
 void zephyr_ll_user_resources_init(void)
@@ -88,7 +126,7 @@ void zephyr_ll_user_resources_init(void)
 
 	k_mem_domain_init(&ll_mem_resources.mem_domain, 0, NULL);
 
-	ll_heap_init();
+	ll_region_init();
 
 	/* attach common partition to LL domain */
 	user_memory_attach_common_partition(zephyr_ll_mem_domain());

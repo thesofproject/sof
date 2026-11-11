@@ -166,15 +166,42 @@ config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
 	 shared between instances of the same module.
 
 config SOF_ZEPHYR_SYS_USER_HEAP_SIZE
-	hex "Size of the shared LL user-space heap"
+	hex "Size of the LL user-space memory region"
 	default 0x20000
 	depends on SOF_USERSPACE_LL
 	help
-	 The size of the shared heap used by the low-latency (LL) scheduler
-	 user-space thread. This heap is shared across all pipelines running
+	 The size of the memory region of the low-latency (LL) scheduler
+	 user-space threads: the shared LL user heap and the kernel-managed
+	 areas SOF_ZEPHYR_LL_KAREA_RW_SIZE and SOF_ZEPHYR_LL_KAREA_RO_SIZE.
+	 The heap is shared across all pipelines running
 	 on the LL thread and must be large enough to hold all host DMA
 	 buffers, chain DMA data, SG elements, and module adapter buffers
 	 for all simultaneously active pipelines.
+
+config SOF_ZEPHYR_LL_KAREA_RW_SIZE
+	hex "Size of the kernel-managed read-write area for LL user threads"
+	default 0x4000
+	depends on SOF_USERSPACE_LL
+	help
+	 Size of the area in the LL user memory region from which kernel
+	 code allocates objects that the LL and IPC user threads read and
+	 write. The kernel keeps the allocator state for this area in its
+	 own memory, so user threads cannot affect kernel allocations.
+	 The area is taken from SOF_ZEPHYR_SYS_USER_HEAP_SIZE. Must be a
+	 multiple of the MMU page size.
+
+config SOF_ZEPHYR_LL_KAREA_RO_SIZE
+	hex "Size of the kernel-managed read-only area for LL user threads"
+	default 0x1000
+	depends on SOF_USERSPACE_LL
+	help
+	 Size of the area in the LL user memory region from which kernel
+	 code allocates objects that the LL and IPC user threads may only
+	 read. The area is mapped read-only into the LL memory domain, so
+	 kernel code running in that domain, for example in a system call,
+	 cannot write it either. The area is taken from
+	 SOF_ZEPHYR_SYS_USER_HEAP_SIZE. Must be a multiple of the MMU page
+	 size.
 
 config SOF_USERSPACE_PROXY
 	bool "Use userspace proxy to support userspace modules"
