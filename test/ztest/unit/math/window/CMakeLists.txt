@@ -12,9 +12,6 @@ set(SOF_ROOT "${PROJECT_SOURCE_DIR}/../../../../..")
 target_include_directories(app PRIVATE
 	${SOF_ROOT}/zephyr/include
 	${SOF_ROOT}/src/include
-	# Reference windows are #included in place from the CMocka tree rather
-	# than copied, so both frameworks share identical data.
-	${SOF_ROOT}/test/cmocka/src/math/window
 )
 
 target_compile_definitions(app PRIVATE
