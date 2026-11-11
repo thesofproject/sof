@@ -48,14 +48,14 @@ void cpu_notify_state_exit(enum pm_state state);
  * from user mode. In supervisor context the generated wrapper inlines
  * the z_impl_cpu_get_id() body, so there is no overhead there.
  */
-#if defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION) && defined(CONFIG_USERSPACE)
 __syscall int cpu_get_id(void);
 #endif
 
 /* let the compiler optimise when in single core mode */
 #if CONFIG_MULTICORE && CONFIG_SMP
 
-#if defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION) && defined(CONFIG_USERSPACE)
 static inline int z_impl_cpu_get_id(void)
 {
 	return arch_proc_id();
@@ -92,7 +92,7 @@ int cpu_restore_secondary_cores(void);
 int cpu_secondary_cores_prepare_d0ix(void);
 #else
 
-#if defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION) && defined(CONFIG_USERSPACE)
 static inline int z_impl_cpu_get_id(void) { return 0; };
 #else
 static inline int cpu_get_id(void) { return 0; };
@@ -116,7 +116,7 @@ static inline int cpu_secondary_cores_prepare_d0ix(void) { return 0; };
 
 #endif /* CONFIG_MULTICORE && CONFIG_SMP */
 
-#if defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION) && defined(CONFIG_USERSPACE)
 #include <zephyr/syscalls/cpu.h>
 #endif
 

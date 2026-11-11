@@ -51,6 +51,12 @@ config HOST_DMA_IPC_POSITION_UPDATES
 	  by sending an IPC message whenever one period of audio is transferred.
 	  Most platforms provide more efficient ways to query the DMA status.
 
+config COMP_USB_AUDIO
+	bool "USB Audio streaming component"
+	default y if PLATFORM_RP2350
+	help
+	  Enable USB Audio Class 2 (UAC2) streaming component for SOF.
+
 config STATIC_PIPELINE
 	bool "Declarative Static Audio Pipeline Loader"
 	depends on IPC_MAJOR_4

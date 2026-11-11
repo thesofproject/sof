@@ -8,6 +8,10 @@ if(CONFIG_ZEPHYR_POSIX)
 	set(ARCH host)
 	set(PLATFORM "posix")
 	set(PLATFORM_HEADERS "posix")
+elseif(CONFIG_PLATFORM_RP2350)
+	set(ARCH host)
+	set(PLATFORM "rp2350")
+	set(PLATFORM_HEADERS "rp2350")
 else()
 	# firmware build supports only xtensa arch for now
 	set(ARCH xtensa)
@@ -184,6 +188,11 @@ zephyr_library_link_libraries(SOF)
 # SOF module init
 zephyr_library_named(modules_sof)
 
+if(TARGET zephyr_generated_headers)
+	add_dependencies(sof_kernel zephyr_generated_headers)
+	add_dependencies(modules_sof zephyr_generated_headers)
+endif()
+
 # Zephyr C++ code requires 14 or newer standard
 set_property(TARGET modules_sof PROPERTY CXX_STANDARD 17)
 
@@ -202,7 +211,7 @@ zephyr_include_directories(${SOF_SRC_PATH}/include/sof/audio/module_adapter/libr
 
 # XTOS duplicate in sof/scripts/misc.cmake; keep in sync
 macro(is_zephyr ret)
-	if(CONFIG_ZEPHYR_SOF_MODULE)
+	if(CONFIG_ZEPHYR_SOF_MODULE OR CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 		set(${ret} TRUE)
 	else()
 		set(${ret} FALSE)
@@ -518,6 +527,18 @@ if (CONFIG_SOC_ACP_7_X)
 	set(PLATFORM "acp_7_x")
 endif()
 
+if (CONFIG_PLATFORM_RP2350)
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/rp2350/platform.c
+		${SOF_PLATFORM_PATH}/rp2350/rp2350_pipeline_def.c
+		${SOF_PLATFORM_PATH}/rp2350/lib/clk.c
+		lib/dma.c
+	)
+
+	set(PLATFORM "rp2350")
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/rp2350/include)
+endif()
+
 if (CONFIG_SOC_FAMILY_MTK)
 	set(PLATFORM "mtk")
 
@@ -645,6 +666,7 @@ set(SOF_ROOT_BINARY_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 # This generated/ directory is shared with Zephyr.
 # PROJECT_BINARY_DIR is build/zephyr/
 set(GENERATED_DIRECTORY ${PROJECT_BINARY_DIR}/include/generated)
+zephyr_include_directories(${GENERATED_DIRECTORY})
 
 set(VERSION_H_PATH ${GENERATED_DIRECTORY}/sof_versions.h)
 

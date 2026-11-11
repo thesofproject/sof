@@ -8,6 +8,24 @@
 #include <sof/boot_test.h>
 #include <zephyr/logging/log.h>
 
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_RP2350)
+#include <zephyr/usb/usbd.h>
+#include <zephyr/usb/class/usbd_uac2.h>
+#include <zephyr/device.h>
+#include <sample_usbd.h>
+#include <rtos/sof.h>
+#include <sof/init.h>
+#include <sof/audio/pipeline/sof_static_pipeline.h>
+#if defined(CONFIG_COMP_BT_AUDIO)
+#include <sof/audio/bt_service.h>
+#endif
+#include <zephyr/drivers/gpio.h>
+#endif
+
+#if DT_NODE_EXISTS(DT_ALIAS(led0))
+static const struct gpio_dt_spec s_led0 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+#endif
+
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 /* define qemu boot tests if any qemu target is defined, add targets to end */
@@ -31,6 +49,12 @@ static int sof_app_main(void)
 {
 	int ret;
 
+#if DT_NODE_EXISTS(DT_ALIAS(led0))
+	if (s_led0.port && device_is_ready(s_led0.port)) {
+		gpio_pin_configure_dt(&s_led0, GPIO_OUTPUT_ACTIVE);
+	}
+#endif
+
 	LOG_INF("SOF on %s", CONFIG_BOARD);
 
 	/* sof_main is actually SOF initialization */
@@ -40,6 +64,33 @@ static int sof_app_main(void)
 	}
 
 	LOG_INF("SOF initialized");
+
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_TEENSY41) || defined(CONFIG_PLATFORM_RP2350)
+	/* Initialize static audio pipelines (EQ+DRC Playback & EQ Capture) */
+	sof_static_pipelines_init(sof_get());
+
+	/* Register UAC2 class callbacks before initializing USB stack */
+	const struct device *uac2_dev = DEVICE_DT_GET_ONE(zephyr_uac2);
+	if (device_is_ready(uac2_dev)) {
+		usbd_uac2_set_ops(uac2_dev, sof_get_uac2_ops(), NULL);
+	} else {
+		LOG_ERR("UAC2 device not ready");
+	}
+
+	/* Initialize USB device stack and UAC2 class */
+	struct usbd_context *sample_usbd = sample_usbd_init_device(NULL);
+	if (sample_usbd) {
+		usbd_enable(sample_usbd);
+		LOG_INF("SOF USB UAC2 device and static pipelines started");
+	} else {
+		LOG_ERR("Failed to initialize USB device context");
+	}
+
+#if defined(CONFIG_COMP_BT_AUDIO)
+	/* Initialize Bluetooth Audio Service and power on ESP32-C6 coprocessor */
+	bt_service_init();
+#endif
+#endif
 
 #ifdef CONFIG_ARCH_POSIX_LIBFUZZER
 	/* Workaround for an apparent timing bug in libfuzzer+asan.
@@ -100,8 +151,10 @@ void test_main(void)
 #endif
 }
 #else
-int main(void)
+int main(int argc, char *argv[])
 {
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
 	return sof_app_main();
 }
 #endif
