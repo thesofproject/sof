@@ -6,8 +6,11 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
+#include <rtos/alloc.h>
+#include <rtos/cache.h>
 #include <rtos/userspace_helper.h>
 
+#include <sof/common.h>
 #include <sof/schedule/ll_schedule_domain.h>
 
 LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
@@ -118,6 +121,73 @@ static void ll_region_init(void)
 	tr_info(&ll_tr, "LL region: RO area %p %#zx, RW area %p %#zx, heap %p %#zx",
 		(void *)ro->base, ro->size, (void *)rw->base, rw->size, (void *)mem,
 		(size_t)LL_HEAP_SIZE);
+}
+
+/* serialises allocations from the kernel-managed areas */
+static struct k_spinlock ll_karea_lock;
+
+void *zephyr_ll_karea_alloc(enum zephyr_ll_karea area, uint32_t flags, size_t bytes,
+			    size_t alignment)
+{
+	struct zephyr_ll_karea_state *ka;
+	k_spinlock_key_t key;
+	uintptr_t start;
+	void *ptr = NULL;
+
+	__ASSERT(!k_is_user_context(), "kernel context only");
+
+	if (area >= ZEPHYR_LL_KAREA_COUNT || !bytes)
+		return NULL;
+
+	ka = &ll_mem_resources.karea[area];
+
+	/* never share a cache line between objects with different aliases */
+	alignment = MAX(alignment, PLATFORM_DCACHE_ALIGN);
+	/* area bases are page aligned, so offsets keep alignments up to a page */
+	if (!is_power_of_2(alignment) || alignment > CONFIG_MM_DRV_PAGE_SIZE ||
+	    bytes > ka->size)
+		return NULL;
+	bytes = ROUND_UP(bytes, PLATFORM_DCACHE_ALIGN);
+
+	key = k_spin_lock(&ll_karea_lock);
+
+	/* offsets from the area base, all at most ka->size, cannot overflow */
+	start = ROUND_UP(ka->used, alignment);
+	if (start <= ka->size && bytes <= ka->size - start) {
+		ka->used = start + bytes;
+		ptr = ka->base + start;
+	}
+
+	k_spin_unlock(&ll_karea_lock, key);
+
+	if (!ptr) {
+		tr_err(&ll_tr, "kernel area %d full: %zu bytes requested, %zu of %zu used",
+		       area, bytes, ka->used, ka->size);
+		return NULL;
+	}
+
+	tr_dbg(&ll_tr, "kernel area %d: %zu bytes at %p, %zu of %zu used", area, bytes, ptr,
+	       ka->used, ka->size);
+
+	if (!(flags & SOF_MEM_FLAG_COHERENT))
+		ptr = (__sparse_force void *)sys_cache_cached_ptr_get(ptr);
+
+	return ptr;
+}
+
+bool zephyr_ll_karea_contains(enum zephyr_ll_karea area, const void *ptr, size_t bytes)
+{
+	const struct zephyr_ll_karea_state *ka;
+	uintptr_t start;
+
+	if (area >= ZEPHYR_LL_KAREA_COUNT)
+		return false;
+
+	ka = &ll_mem_resources.karea[area];
+	start = (uintptr_t)sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)ptr);
+
+	return start >= (uintptr_t)ka->base && bytes <= ka->size &&
+	       start - (uintptr_t)ka->base <= ka->size - bytes;
 }
 
 void zephyr_ll_user_resources_init(void)
