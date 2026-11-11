@@ -203,6 +203,16 @@ config SOF_ZEPHYR_LL_KAREA_RO_SIZE
 	 SOF_ZEPHYR_SYS_USER_HEAP_SIZE. Must be a multiple of the MMU page
 	 size.
 
+config SOF_ZEPHYR_LL_HEAP_KERNEL_TRACE
+	bool "Log LL user heap allocations made by kernel threads"
+	depends on SOF_USERSPACE_LL
+	help
+	 Log every allocation from and free to the LL user heap that a
+	 kernel thread makes, with its size and caller address. Kernel
+	 code is being moved off this heap, whose metadata user threads
+	 can write. Use this to find the remaining callers. Calls made by
+	 user threads, including through system calls, are not logged.
+
 config SOF_USERSPACE_PROXY
 	bool "Use userspace proxy to support userspace modules"
 	select SOF_USERSPACE_USE_DRIVER_HEAP
