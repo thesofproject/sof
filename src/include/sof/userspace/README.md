@@ -12,13 +12,13 @@ easy to maintain.
 
 ## Why this exists
 
-SOF supports several privilege configurations. On PTL (`intel_adsp_ace30_ptl`) the board
-config enables `CONFIG_USERSPACE` and `CONFIG_SOF_USERSPACE_PROXY`, running individual audio
-modules in isolated user threads via the proxy container. For Linux builds
-(`os_linux_overlay.conf`), `app/CMakeLists.txt` automatically includes
-`app/ll_userspace_overlay.conf` on Intel ACE3.x and newer targets (e.g. ptl, wcl, nvl), which
-additionally enables `CONFIG_SOF_USERSPACE_LL` so the entire LL pipeline and the module-facing
-IPC run in user threads. This is the standard Linux build configuration for these targets.
+SOF supports several privilege configurations. The default build targets the Linux SOF
+driver: on Intel ACE3.x and newer targets (e.g. ptl, wcl, nvl), `app/CMakeLists.txt`
+automatically includes `app/ll_userspace_overlay.conf`, which enables `CONFIG_USERSPACE` and
+`CONFIG_SOF_USERSPACE_LL` so the entire LL pipeline and the module-facing IPC run in user
+threads. With `app/internal_ci_overlay.conf` the LL userspace overlay is not included and, on
+PTL (`intel_adsp_ace30_ptl`), `CONFIG_SOF_USERSPACE_PROXY` is enabled instead, running
+individual audio modules in isolated user threads via the proxy container.
 The kernel keeps the OS/HAL, boot, drivers, and the syscall validators in both cases.
 
 The privilege boundary is real, but nothing in the source *layout* signals which side a given

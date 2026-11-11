@@ -156,6 +156,12 @@ jobs:
           - zephyr_revision: mnfst
             IPC_platforms: wcl imx95
 
+          # The default configuration targets Linux, also build the
+          # internal CI configuration (app/internal_ci_overlay.conf).
+          - zephyr_revision: mnfst
+            IPC_platforms: lnl ptl
+            config_overlay: internal_ci
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         # Download a full clone to fix `git describe`, sof_version.h and
@@ -232,6 +238,7 @@ jobs:
             --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings' \
             --cmake-args=--warn-uninitialized \
             --overlay=sof/app/configs/repro-build.conf \
+            ${{ matrix.config_overlay && format('--overlay=sof/app/{0}_overlay.conf', matrix.config_overlay) || '' }} \
             --no-tarball \
             ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
 
@@ -252,7 +259,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         if: always()
         with:
-          name: linux-build ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
+          name: linux-build ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}${{ matrix.config_overlay && format(' {0}', matrix.config_overlay) || '' }}
           if-no-files-found: error
           path: |
             build-sof-staging
