@@ -731,9 +731,9 @@ __cold static void ipc_user_init(void)
 {
 	struct ipc *ipc = ipc_get();
 	struct k_thread *audio_thread;
-	struct ipc_user *ipc_user = sof_heap_alloc(sof_sys_user_heap_get(),
-						   SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-						   sizeof(*ipc_user), 0);
+	struct ipc_user *ipc_user = zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW,
+							  SOF_MEM_FLAG_COHERENT,
+							  sizeof(*ipc_user), 0);
 	int ret, core;
 
 	if (!ipc_user) {
@@ -741,7 +741,7 @@ __cold static void ipc_user_init(void)
 		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 
-	/* sof_heap_alloc() does not zero, start with clean state (e.g. ppl_phase) */
+	/* the allocation is not zeroed, start with clean state (e.g. ppl_phase) */
 	memset(ipc_user, 0, sizeof(*ipc_user));
 
 	assert_can_be_cold();
@@ -866,8 +866,9 @@ __cold int ipc_init(struct sof *sof)
 
 	ipc = ipc_get();
 	memset(ipc, 0, sizeof(*ipc));
-	ipc->ll_alloc = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-				       sizeof(*ipc->ll_alloc), 0);
+	/* user threads use but must not change it, see the LL region README */
+	ipc->ll_alloc = zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RO, SOF_MEM_FLAG_COHERENT,
+					      sizeof(*ipc->ll_alloc), 0);
 	if (!ipc->ll_alloc) {
 		tr_err(&ipc_tr, "Unable to allocate IPC ll_alloc");
 		sof_panic(SOF_IPC_PANIC_IPC);
@@ -886,8 +887,13 @@ __cold int ipc_init(struct sof *sof)
 	sof->ipc = ipc;
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	ipc->comp_data = zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, SOF_MEM_FLAG_COHERENT,
+					       SOF_IPC_MSG_MAX_SIZE, 0);
+#else
 	ipc->comp_data = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 					SOF_IPC_MSG_MAX_SIZE, 0);
+#endif
 	if (!ipc->comp_data) {
 		tr_err(&ipc_tr, "Unable to allocate IPC component data");
 		sof_panic(SOF_IPC_PANIC_IPC);
