@@ -832,8 +832,41 @@ EXPORT_SYMBOL(rfree);
  * To match the fall-back SOF main heap all private heaps should also be in the
  * uncached address range.
  */
+#if CONFIG_SOF_ZEPHYR_LL_HEAP_KERNEL_TRACE
+/* Log use of the LL user heap by kernel threads, see the Kconfig help */
+static void ll_heap_kernel_trace(const char *op, struct k_heap *heap, const void *ptr,
+				 size_t bytes, const void *caller)
+{
+	struct k_thread *thread = k_current_get();
+
+	if (heap != zephyr_ll_user_heap() || (thread->base.user_options & K_USER))
+		return;
+
+	tr_warn(&zephyr_tr, "LL heap %s by kernel thread %s: %p %zu bytes, caller %p", op,
+		k_thread_name_get(thread) ? k_thread_name_get(thread) : "?", ptr, bytes, caller);
+}
+#else
+static inline void ll_heap_kernel_trace(const char *op, struct k_heap *heap, const void *ptr,
+					size_t bytes, const void *caller)
+{
+}
+#endif
+
+static void *sof_heap_alloc_impl(struct k_heap *heap, uint32_t flags, size_t bytes,
+				 size_t alignment);
+
 void *z_impl_sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 			    size_t alignment)
+{
+	void *ptr = sof_heap_alloc_impl(heap, flags, bytes, alignment);
+
+	ll_heap_kernel_trace("alloc", heap, ptr, bytes, __builtin_return_address(0));
+
+	return ptr;
+}
+
+static void *sof_heap_alloc_impl(struct k_heap *heap, uint32_t flags, size_t bytes,
+				 size_t alignment)
 {
 #if CONFIG_SOF_USERSPACE_USE_SHARED_HEAP
 	/*
@@ -875,6 +908,8 @@ void *z_impl_sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 
 void z_impl_sof_heap_free(struct k_heap *heap, void *addr)
 {
+	ll_heap_kernel_trace("free", heap, addr, 0, __builtin_return_address(0));
+
 	if (heap && addr && is_heap_pointer(heap, addr))
 		heap_free(heap, addr);
 	else
