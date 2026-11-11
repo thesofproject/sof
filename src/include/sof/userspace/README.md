@@ -155,6 +155,28 @@ The `zephyr/syscall/*.c` files hold the validators in one place per subsystem; t
 
 Most syscall declarations are gated by `#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)`; outside that guard (non-Zephyr host-test and ztest builds) the same name is a plain macro or inline calling `z_impl_*` directly. Non-userspace Zephyr builds (no `CONFIG_USERSPACE`) still use the `__syscall` declaration path, which Zephyr compiles to a direct `z_impl_*` call without the privilege-elevation trap.
 
+## LL memory region
+
+With `CONFIG_SOF_USERSPACE_LL`, the memory of the LL and IPC user threads is one region of
+`CONFIG_SOF_ZEPHYR_SYS_USER_HEAP_SIZE` bytes, allocated from the kernel heap at boot
+(`src/kernel/schedule/zephyr_ll_user.c`) and split into page-aligned parts:
+
+| Part | Mapping in the LL memory domain | Allocator |
+|------|---------------------------------|-----------|
+| Kernel RO area (`CONFIG_SOF_ZEPHYR_LL_KAREA_RO_SIZE`) | read-only | `zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RO, ...)` |
+| Kernel RW area (`CONFIG_SOF_ZEPHYR_LL_KAREA_RW_SIZE`) | read-write | `zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, ...)` |
+| LL user heap (the rest) | read-write | `sof_heap_alloc(sof_sys_user_heap_get(), ...)` |
+
+The kernel areas are for objects that kernel code creates and LL user threads access. Their
+allocator is a bump allocator with kernel-only state and no free, so use it for objects that
+live until the firmware is reset. The Xtensa MMU has one write permission for both rings, so
+the RO area is also read-only to kernel code running in the LL memory domain, such as system
+calls from LL threads: only kernel threads can write objects there.
+
+The LL user heap keeps its `sys_heap` metadata in user-writable memory. Kernel code is being
+moved off it; `CONFIG_SOF_ZEPHYR_LL_HEAP_KERNEL_TRACE` logs the remaining uses by kernel
+threads.
+
 ## Memory-partition markers
 
 User threads can only touch memory that is mapped into their memory domain. SOF exposes shared
