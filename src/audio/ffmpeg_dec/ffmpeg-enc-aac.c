@@ -45,6 +45,12 @@ static int ffmpeg_enc_aac_validate_params(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	uint32_t ch = codec_params->ch_in ? codec_params->ch_in : codec_params->ch_out;
 
+	if (codec_params->rate_control != 0 &&
+	    codec_params->rate_control != SND_RATECONTROLMODE_CONSTANTBITRATE) {
+		comp_err(dev, "unsupported AAC rate_control mode 0x%x",
+			 codec_params->rate_control);
+		return -ENOTSUP;
+	}
 	/* vo-aacenc writes the ADTS MPEG ID bit as 1 (MPEG-2 ADTS) unconditionally,
 	 * so only UNDEFINED and MP2ADTS can be honored accurately.
 	 */

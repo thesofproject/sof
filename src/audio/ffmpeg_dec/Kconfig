@@ -51,6 +51,14 @@ config FFMPEG_DEC_MP3
 	  MPEG-1/2 Layer III decoder. Enables --enable-decoder=mp3 and the
 	  mpegaudio parser in the libavcodec build. Uses the float math layer.
 
+config FFMPEG_DEC_ALAC
+	bool "ALAC decoder"
+	help
+	  Apple Lossless Audio Codec (ALAC) decoder. Pure 16/24-bit integer
+	  lossless decoder with no floating-point math dependency. Enables
+	  --enable-decoder=alac in the libavcodec build for compress playback
+	  streams requesting SND_AUDIOCODEC_ALAC.
+
 comment "FFmpeg encoders to build (footprint scales with selection)"
 
 config FFMPEG_ENC_MP3
@@ -71,11 +79,28 @@ config FFMPEG_ENC_AAC
 	  Selected at runtime for compress capture streams requesting
 	  SND_AUDIOCODEC_AAC.
 
+config FFMPEG_ENC_FLAC
+	bool "FLAC encoder (native libavcodec, fixed LPC)"
+	help
+	  Lossless FLAC encoder via native libavcodec flac encoder configured
+	  with fixed integer LPC predictors (FF_LPC_TYPE_FIXED, compression_level 1).
+	  Emits a self-contained native .flac stream ("fLaC" + STREAMINFO + frames).
+	  Selected at runtime for compress capture streams requesting
+	  SND_AUDIOCODEC_FLAC.
+
+config FFMPEG_ENC_ALAC
+	bool "ALAC encoder (native libavcodec, fixed LPC)"
+	help
+	  Apple Lossless Audio Codec (ALAC) encoder via native libavcodec alac
+	  encoder configured with fixed integer LPC prediction (compression_level 1).
+	  Selected at runtime for compress capture streams requesting
+	  SND_AUDIOCODEC_ALAC.
+
 # Selected automatically when any encoder is enabled. Gates compilation of the
 # runtime encode path (ffmpeg-encode.c).
 config FFMPEG_ENC
 	bool
-	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC
+	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC || FFMPEG_ENC_FLAC || FFMPEG_ENC_ALAC
 
 comment "FFmpeg audio filters to build (libavfilter)"
 	depends on IPC_MAJOR_4

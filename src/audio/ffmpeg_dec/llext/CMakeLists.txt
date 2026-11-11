@@ -9,6 +9,7 @@ if(CONFIG_COMP_FFMPEG_DEC_STUB)
 			../ffmpeg_dec-mp3.c
 			../ffmpeg_dec-aac.c
 			../ffmpeg_dec-opus.c
+			../ffmpeg_dec-alac.c
 			../ffmpeg_dec-stub.c
 		LIB openmodules
 	)
@@ -39,6 +40,9 @@ else()
 	if(CONFIG_FFMPEG_DEC_OPUS)
 		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-opus.c)
 	endif()
+	if(CONFIG_FFMPEG_DEC_ALAC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-alac.c)
+	endif()
 	# fastmathf provides the single-precision libm the codecs need AND sofm_log2f
 	# used by the shims' log10(); always built for the real (non-stub) backend.
 	list(APPEND ffmpeg_dec_srcs ../fastmathf.c)
@@ -68,6 +72,12 @@ else()
 		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-aac.c)
 		list(APPEND ffmpeg_dec_libs vo-aacenc)
 		list(APPEND ffmpeg_dec_libpaths "${VO_AACENC_INSTALL}/lib")
+	endif()
+	if(CONFIG_FFMPEG_ENC_FLAC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-flac.c)
+	endif()
+	if(CONFIG_FFMPEG_ENC_ALAC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-alac.c)
 	endif()
 
 	# Real libm (newlib double math) LAST so libav*/filter references resolve against it
