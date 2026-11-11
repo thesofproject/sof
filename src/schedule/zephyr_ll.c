@@ -491,7 +491,7 @@ int zephyr_ll_task_free(void *data, struct task *task)
 	zephyr_ll_task_sem_free(task);
 #endif
 	task->priv_data = NULL;
-	sof_heap_free(sch->heap, pdata);
+	zephyr_ll_free(pdata);
 	zephyr_ll_unlock(sch, &flags);
 
 	return 0;
@@ -528,10 +528,11 @@ int zephyr_ll_task_cancel(void *data, struct task *task)
 }
 
 #if CONFIG_SOF_USERSPACE_LL
+/* For tasks that kernel threads create at boot, which are never freed */
 struct task *zephyr_ll_task_alloc(void)
 {
-	struct task *task = sof_heap_alloc(zephyr_ll_user_heap(), SOF_MEM_FLAG_USER,
-					   sizeof(*task), sizeof(void *));
+	struct task *task = zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, 0, sizeof(*task),
+						  sizeof(void *));
 
 	if (task)
 		/* At least .priv_data must be NULL for zephyr_ll_task_init() */
@@ -619,8 +620,14 @@ int zephyr_ll_task_init(struct task *task,
 #if CONFIG_SOF_USERSPACE_LL
 	heap = zephyr_ll_user_heap();
 	alloc_flags = SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT;
+
+	/* the data of a boot task lives as long as the task */
+	if (zephyr_ll_in_karea(task, sizeof(*task)))
+		pdata = zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, SOF_MEM_FLAG_COHERENT,
+					      sizeof(*pdata), 0);
+	else
 #endif
-	pdata = sof_heap_alloc(heap, alloc_flags, sizeof(*pdata), 0);
+		pdata = sof_heap_alloc(heap, alloc_flags, sizeof(*pdata), 0);
 	if (!pdata) {
 		tr_err(&ll_tr, "alloc failed");
 		return -ENOMEM;
@@ -633,7 +640,7 @@ int zephyr_ll_task_init(struct task *task,
 #if CONFIG_DYNAMIC_OBJECTS
 	ret = zephyr_ll_task_sem_alloc(task);
 	if (ret < 0) {
-		sof_heap_free(heap, pdata);
+		zephyr_ll_free(pdata);
 		task->priv_data = NULL;
 		return ret;
 	}
