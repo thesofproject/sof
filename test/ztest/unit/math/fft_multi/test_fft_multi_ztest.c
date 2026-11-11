@@ -20,9 +20,8 @@
 
 #include "mod_alloc.h"
 
-/* Reference test vectors shared with the legacy CMocka test. They are
- * #included in place from the CMocka tree (added to the include path in
- * CMakeLists.txt) so the exact same fixed-point data is exercised.
+/* Reference test vectors were moved here from the legacy CMocka tree
+ * (test/cmocka/src/math/fft/) when that CMocka test was removed.
  */
 #include "ref_fft_multi_96_32.h"
 #include "ref_fft_multi_512_32.h"
