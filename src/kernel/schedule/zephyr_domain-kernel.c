@@ -52,10 +52,27 @@ K_THREAD_STACK_ARRAY_DEFINE(ll_sched_stack, CONFIG_CORE_COUNT, ZEPHYR_LL_STACK_S
 K_KERNEL_STACK_ARRAY_DEFINE(ll_sched_stack, CONFIG_CORE_COUNT, ZEPHYR_LL_STACK_SIZE);
 #endif
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+/*
+ * The Zephyr domain data is writable by LL user threads, which also have
+ * access to the timer and can set its user data. The timer IRQ therefore
+ * uses kernel-only copies of the domain pointer and of the per-core
+ * semaphores, set up by kernel code.
+ */
+static struct zephyr_domain *zephyr_domain_kptr;
+static struct k_sem *ll_thread_ksem[CONFIG_CORE_COUNT];
+#endif
+
 /* Timer callback: runs in timer IRQ context */
 static void zephyr_domain_timer_fn(struct k_timer *timer)
 {
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/* only used as an "is registered" flag, see zephyr_domain_kptr */
+	struct zephyr_domain *zephyr_domain = k_timer_user_data_get(timer) ?
+		zephyr_domain_kptr : NULL;
+#else
 	struct zephyr_domain *zephyr_domain = k_timer_user_data_get(timer);
+#endif
 	int core;
 
 	/*
@@ -74,8 +91,14 @@ static void zephyr_domain_timer_fn(struct k_timer *timer)
 	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
 		struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+		/* a forged handler only causes an extra or a missed tick */
+		if (dt->handler && ll_thread_ksem[core])
+			k_sem_give(ll_thread_ksem[core]);
+#else
 		if (dt->handler)
 			k_sem_give(dt->sem);
+#endif
 	}
 }
 
@@ -203,9 +226,11 @@ static struct k_thread *ll_thread_tid[CONFIG_CORE_COUNT];
 static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 				     struct task *task)
 {
-	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
+	/* kernel context: do not take the domain data from user memory */
+	struct zephyr_domain *zephyr_domain = zephyr_domain_kptr;
 	struct zephyr_domain_thread *dt;
 	char thread_name[] = "ll_thread0";
+	struct k_sem *sem;
 	k_tid_t thread;
 	int core = task->core;
 
@@ -223,14 +248,16 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 	dt->handler = NULL;
 	dt->arg = NULL;
 
-	dt->sem = k_object_alloc(K_OBJ_SEM);
-	if (!dt->sem) {
+	/* keep the handle in a local, dt is user-writable */
+	sem = k_object_alloc(K_OBJ_SEM);
+	if (!sem) {
 		tr_err(&ll_tr, "Failed to allocate semaphore for core %d", core);
 		return -ENOMEM;
 	}
 
 	/* 10 is rather random, we better not accumulate 10 missed timer interrupts */
-	k_sem_init(dt->sem, 0, 10);
+	k_sem_init(sem, 0, 10);
+	dt->sem = sem;
 
 	thread_name[sizeof(thread_name) - 2] = '0' + core;
 
@@ -242,7 +269,7 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 	thread = k_object_alloc(K_OBJ_THREAD);
 	if (!thread) {
 		tr_err(&ll_tr, "Failed to allocate thread object for core %d", core);
-		k_object_free(dt->sem);
+		k_object_free(sem);
 		dt->sem = NULL;
 		return -ENOMEM;
 	}
@@ -252,8 +279,9 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 			INT_TO_POINTER(core), NULL, CONFIG_LL_THREAD_PRIORITY,
 			K_USER, K_FOREVER);
 
-	/* record in the kernel-only table for syscall-context lookups */
+	/* record in the kernel-only tables for syscall-context lookups */
 	ll_thread_tid[core] = thread;
+	ll_thread_ksem[core] = sem;
 	sof_sysuser_thread_set(SOF_SYSUSER_LL, core, thread);
 	dt->ll_thread = thread;
 
@@ -263,7 +291,7 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 	k_thread_name_set(thread, thread_name);
 
 	k_mem_domain_add_thread(zephyr_ll_mem_domain(), thread);
-	k_thread_access_grant(thread, dt->sem, domain->lock, zephyr_domain->timer);
+	k_thread_access_grant(thread, sem, domain->lock, zephyr_domain->timer);
 	user_grant_dai_access_all(thread);
 	user_grant_dma_access_all(thread);
 	user_grant_uaol_access_all(thread);
@@ -300,7 +328,8 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 static void zephyr_domain_thread_free(struct ll_schedule_domain *domain,
 				      uint32_t num_tasks)
 {
-	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
+	/* kernel context: do not take the domain data from user memory */
+	struct zephyr_domain *zephyr_domain = zephyr_domain_kptr;
 	int core = cpu_get_id();
 	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 
@@ -322,16 +351,22 @@ static void zephyr_domain_thread_free(struct ll_schedule_domain *domain,
 
 	k_mutex_unlock(domain->lock);
 
-	if (dt->ll_thread) {
+	/* free the kernel-recorded objects, not the user-writable dt copies */
+	if (ll_thread_tid[core]) {
+		struct k_thread *thread = ll_thread_tid[core];
+
 		sof_sysuser_thread_set(SOF_SYSUSER_LL, core, NULL);
 		ll_thread_tid[core] = NULL;
-		k_thread_abort(dt->ll_thread);
-		k_object_free(dt->ll_thread);
+		k_thread_abort(thread);
+		k_object_free(thread);
 		dt->ll_thread = NULL;
 	}
 
-	if (dt->sem) {
-		k_object_free(dt->sem);
+	if (ll_thread_ksem[core]) {
+		struct k_sem *sem = ll_thread_ksem[core];
+
+		ll_thread_ksem[core] = NULL;
+		k_object_free(sem);
 		dt->sem = NULL;
 	}
 
@@ -445,6 +480,9 @@ struct ll_schedule_domain *zephyr_domain_init(int clk)
 #endif
 
 	ll_sch_domain_set_pdata(domain, zephyr_domain);
+#ifdef CONFIG_SOF_USERSPACE_LL
+	zephyr_domain_kptr = zephyr_domain;
+#endif
 
 	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
 #ifndef CONFIG_SOF_USERSPACE_LL
