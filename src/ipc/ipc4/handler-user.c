@@ -736,7 +736,7 @@ __cold static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 		if (ret < 0) {
 			comp_free(cdma_comp->cd);
 			list_item_del(&cdma_comp->list);
-			rfree(cdma_comp);
+			sof_heap_free(sof_sys_user_heap_get(), cdma_comp);
 			return IPC4_FAILURE;
 		}
 
