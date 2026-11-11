@@ -2,6 +2,5 @@
 
 add_subdirectory(fft)
 add_subdirectory(window)
-add_subdirectory(matrix)
 add_subdirectory(auditory)
 add_subdirectory(dct)
