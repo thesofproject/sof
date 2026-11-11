@@ -16,9 +16,8 @@
 #include <stdint.h>
 #include <math.h>
 
-/* Reference windows shared with the legacy CMocka test. They are #included
- * in place from the CMocka tree (added to the include path in CMakeLists.txt)
- * so the exact same fixed-point data is exercised.
+/* Reference windows were moved here from the legacy CMocka tree
+ * (test/cmocka/src/math/window/) when that CMocka test was removed.
  */
 #include "ref_window_rectangular.h"
 #include "ref_window_blackman.h"
