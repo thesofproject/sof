@@ -12,6 +12,9 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/schedule/schedule.h>
+#if CONFIG_SOF_USERSPACE_LL
+#include <sof/schedule/ll_schedule_domain.h>
+#endif
 #include <rtos/task.h>
 #include <ipc/topology.h>
 #include <errno.h>
@@ -25,6 +28,21 @@ extern struct tr_ctx sch_tr;
 /* Kernel part of the generic scheduler: scheduler registration. The rest is in
  * src/schedule/schedule.c
  */
+
+/*
+ * The scheduler descriptors of user schedulers, including their ops, are
+ * read by LL user threads but must not be written by them: put them in the
+ * kernel RO area of the LL memory region. They are created by kernel threads
+ * at boot and at secondary core bring-up and never freed.
+ */
+__cold static void *scheduler_alloc(struct k_heap *heap, size_t size)
+{
+#if CONFIG_SOF_USERSPACE_LL
+	if (heap)
+		return zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RO, 0, size, 0);
+#endif
+	return sof_heap_alloc(heap, SOF_MEM_FLAG_KERNEL, size, 0);
+}
 
 __cold static void scheduler_register(struct schedule_data *scheduler)
 {
@@ -40,7 +58,7 @@ __cold static void scheduler_register(struct schedule_data *scheduler)
 
 	if (!*sch) {
 		/* init schedulers list */
-		*sch = sof_heap_alloc(heap, 0, sizeof(**sch), 0);
+		*sch = scheduler_alloc(heap, sizeof(**sch));
 		if (!*sch) {
 			tr_err(&sch_tr, "allocation failed");
 			return;
@@ -50,6 +68,9 @@ __cold static void scheduler_register(struct schedule_data *scheduler)
 	}
 
 	list_item_append(&scheduler->list, &(*sch)->list);
+
+	if (heap)
+		arch_user_schedulers_publish();
 }
 
 __cold void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
@@ -66,7 +87,7 @@ __cold void scheduler_init(int type, const struct scheduler_ops *ops, void *data
 	    !ops->schedule_task_free)
 		return;
 
-	sch = sof_heap_alloc(heap, SOF_MEM_FLAG_KERNEL, sizeof(*sch), 0);
+	sch = scheduler_alloc(heap, sizeof(*sch));
 	if (!sch) {
 		tr_err(&sch_tr, "allocation failed");
 		sof_panic(SOF_IPC_PANIC_IPC);
