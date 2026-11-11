@@ -70,6 +70,19 @@ def test_cli_exit_status(tmp_path):
     assert res.returncode == 0, res.stdout + res.stderr
 
 
+def test_siggen_echo_reference_pin_formats(tmp_path):
+    out = build_topology(
+        tmp_path, "cavs-sdw.conf",
+        "PLATFORM=mtl,NUM_SDW_AMP_LINKS=1,SDW_DMIC=1,SDW_AMP_FEEDBACK=false,"
+        "SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,"
+        "SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,"
+        "COMPRESSED=true,SDW_JACK_ECHO_REF=true,SDW_ECHO_REF_DAI=true")
+    t = model.load(out)
+    assert t.widget("siggen.12.1") is not None
+    findings = checks.run(t, checks.Options(), selected={"F003"})
+    assert not [f.format() for f in findings if f.severity != checks.INFO]
+
+
 def test_kernel_schema_is_current():
     kernel = os.environ.get("KERNEL_TREE")
     if not kernel:

@@ -58,16 +58,47 @@ Rules are grouped in layers by how closely they follow kernel code:
 | L3 | `topology.c`, `ipc4-topology.c` setup | routes, pipelines, chain DMA, DAI types, pins, bytes controls, PCM binding |
 | L4 | `sof-audio.c` path walk, format selection | PCM formats vs. host copier formats (advisory) |
 
-Every finding names the rule and the kernel function it follows, e.g.
+`F003` checks each firmware route's actual output/input pin pair. Single-pin
+endpoints use pin 0; multi-pin endpoints require explicit bindings. Disjoint
+declared format sets produce an error naming both pins and their formats, and
+fail validation without `--werror`.
+Comparison requires matching rate, channel count and valid-bit depth, with
+sample types treated according to their declared representations. Signed
+integer alignment variants share a format for 16/20/24 valid bits; at 32/32,
+MSB, LSB and signed integer representations share the same full-width
+two's-complement format. Other integer layouts and non-integer representations
+remain distinct. `T008` also rejects unknown types, valid depths larger than
+their containers, unsigned integer other than 8/8, float other than 32/32, and
+A-law or mu-law other than 8/8. In SOF firmware, internal 24-bit MSB and LSB
+integer declarations both use the same DSP format; copier gateway conversion
+handles external alignment. The check validates declared format compatibility,
+not the behavior of a particular kernel version or the sample alignment
+performed at runtime. It does not validate container/layout compatibility
+between pins or simulate runtime format selection: overlapping sets only
+establish possible compatibility, not that every PCM configuration works.
+
+Unresolved pins or missing formats are informational (`-v`), not guessed.
+Mixer outputs share the module's output formats across pins. Undeclared
+secondary copier outputs are configured from the sink at bind time;
+they are not constrained to pin 0. Process output pins without declarations
+use the pin-0 fallback. Missing process extension formats remain covered by
+`W008`. Chain-DMA and DAPM-only routes are skipped. An unbound siggen input
+has no firmware route to check. Feature routes use widgets from `--base`.
+
+Every finding names the rule and the relevant kernel path it models. These
+references explain how topology objects and connections are interpreted; they
+do not make findings predictions about how a specific kernel version handles
+an invalid or incompatible topology. For example:
 
 ```
 foo.tplg: error: G001 route 'mixin.90.1' -> 'mixout.1.1': sink widget 'mixout.1.1' does not exist (kernel: snd_soc_dapm_add_routes, sof_route_load)
 ```
 
-Severities: `error` means the kernel fails to load the topology, or fails
-when the affected PCM is used. `warning` means a likely mistake, or a failure
-that depends on runtime state the validator cannot know. `info` lists
-observations (`-v`).
+Severities: `error` means the topology fails validation, usually because the
+kernel fails to load it or an affected PCM fails when used. `F003` also treats
+disjoint declared pin formats as errors, without simulating firmware behavior.
+`warning` means a likely mistake, or a failure that depends on runtime state the
+validator cannot know. `info` lists observations (`-v`).
 
 Not checked, because the data only exists on the target: firmware module
 UUIDs and module types from the firmware manifest, ACPI NHLT blobs, machine

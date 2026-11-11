@@ -5,6 +5,7 @@
 """One positive and at least one negative case per rule."""
 
 import struct
+import sys
 
 import pytest
 
@@ -270,11 +271,254 @@ def test_m001_manifest_tlv_overflow():
 def test_f002_pcm_format_without_host_format():
     t = playback_ssp()
     widget(t, "host-copier.0.playback").priv = module_tuples(
-        n_in=2, in_pins=0, ins=[in_format(), in_format(depth=16, valid=16)])
+        n_in=2, in_pins=0,
+        ins=[sample_type(in_format(), 1907, 0), in_format(depth=16, valid=16)])
     t.pcms[0].caps[0].formats = 1 << 10 | 1 << 14  # S32_LE and FLOAT_LE
     found = run(t.build())
     assert "F002" in rules(found, checks.WARNING)
     assert any("FLOAT_LE" in f.message for f in found if f.rule == "F002")
+    assert not any("S32_LE" in f.message for f in found if f.rule == "F002")
+
+
+def pin_connection(outs=None, ins=None, out_pins=1, in_pins=1,
+                   out_binding=None, in_binding=None, source_type="buffer"):
+    t = Topology()
+    t.pipeline(1)
+    outs = [out_format()] if outs is None else outs
+    ins = [in_format()] if ins is None else ins
+    t.widget("source", source_type, 1, module_tuples(
+        n_out=len(outs), out_pins=out_pins, outs=outs,
+        extra=[] if out_binding is None else
+        [(TupleType.STRING, [(414, peer)]) for peer in out_binding]))
+    t.widget("sink", "effect", 1, module_tuples(
+        n_in=len(ins), in_pins=in_pins, ins=ins,
+        extra=[] if in_binding is None else
+        [(TupleType.STRING, [(413, peer)]) for peer in in_binding]))
+    t.route("source", "sink")
+    return t
+
+
+def f003(t):
+    return [f for f in run(t.build()) if f.rule == "F003"]
+
+
+def test_f003_compatible_single_pins():
+    assert f003(pin_connection()) == []
+
+
+@pytest.mark.parametrize("change", [
+    {"rate": 16000}, {"channels": 1}, {"depth": 16, "valid": 16},
+])
+def test_f003_incompatible_single_pins(change):
+    found = f003(pin_connection(ins=[in_format(**change)]))
+    assert len(found) == 1 and found[0].severity == checks.ERROR
+    assert "output pin 0" in found[0].message and "input pin 0" in found[0].message
+
+
+def test_f003_checks_actual_input_binding_not_matching_other_pin():
+    t = pin_connection(outs=[out_format(channels=1)],
+                       ins=[in_format(in_pin=0), in_format(channels=1, in_pin=1)],
+                       in_pins=2, in_binding=["source", "other"])
+    assert len(f003(t)) == 1
+    assert f003(t)[0].severity == checks.ERROR
+    t = pin_connection(outs=[out_format(channels=1)],
+                       ins=[in_format(in_pin=0), in_format(channels=1, in_pin=1)],
+                       in_pins=2, in_binding=["other", "source"])
+    assert f003(t) == []
+
+
+def test_f003_checks_actual_output_binding():
+    t = pin_connection(outs=[out_format(out_pin=0), out_format(channels=1, out_pin=1)],
+                       out_pins=2, out_binding=["other", "sink"])
+    found = f003(t)
+    assert len(found) == 1 and "output pin 1" in found[0].message
+    assert found[0].severity == checks.ERROR
+
+
+@pytest.mark.parametrize("rate,expected", [(48000, None), (16000, checks.ERROR)])
+def test_f003_mixer_secondary_output_uses_shared_format(rate, expected):
+    t = pin_connection(source_type="mixer", out_pins=2,
+                       out_binding=["other", "sink"], ins=[in_format(rate=rate)])
+    found = f003(t)
+    if expected is None:
+        assert found == []
+    else:
+        assert len(found) == 1 and found[0].severity == expected
+
+
+def test_f003_mixer_secondary_output_uses_all_declared_formats():
+    t = pin_connection(source_type="mixer", out_pins=2,
+                       out_binding=["other", "sink"],
+                       outs=[out_format(), out_format(rate=16000, out_pin=1)],
+                       ins=[in_format(rate=16000)])
+    assert f003(t) == []
+
+
+def test_f003_format_overlap_is_not_a_mismatch():
+    assert f003(pin_connection(outs=[out_format(), out_format(rate=16000)])) == []
+
+
+@pytest.mark.parametrize("depth,valid,stype,mismatch", [
+    (32, 32, 4, True),   # float vs integer
+    (32, 32, 0, False),  # full-width MSB vs LSB integer
+    (32, 32, 2, False),  # full-width signed integer vs LSB integer
+    (64, 32, 0, True),   # padded MSB integer remains distinct
+    (32, 24, 0, False),  # internal sub-32-bit integer representation
+])
+def test_f003_declared_format_semantics(depth, valid, stype, mismatch):
+    fmt = sample_type(in_format(depth=depth, valid=valid), 1907, stype)
+    found = f003(pin_connection(outs=[out_format(depth=depth, valid=valid)], ins=[fmt]))
+    assert bool(found) == mismatch
+    assert all(f.severity == checks.ERROR for f in found)
+
+
+def sample_type(fmt, token, stype):
+    return (fmt[0], [(tok, (value & 0xffff) | (stype << 16) if tok == token else value)
+                     for tok, value in fmt[1]])
+
+
+@pytest.mark.parametrize("stype", [3, 4, 5, 6])
+def test_f003_normalization_does_not_hide_representation_mismatch(stype):
+    fmt = sample_type(in_format(depth=16, valid=16), 1907, stype)
+    found = f003(pin_connection(outs=[out_format(depth=16, valid=16)], ins=[fmt]))
+    assert len(found) == 1 and found[0].severity == checks.ERROR
+
+
+@pytest.mark.parametrize("depth,valid", [(16, 16), (32, 24), (24, 24), (32, 32)])
+def test_f003_equivalent_msb_lsb_integer_formats(depth, valid):
+    fmt = sample_type(in_format(depth=depth, valid=valid), 1907, 0)
+    assert f003(pin_connection(outs=[out_format(depth=depth, valid=valid)], ins=[fmt])) == []
+
+
+@pytest.mark.parametrize("depth,valid,stype,problem", [
+    (32, 24, 4, "float requires 32/32"),
+    (16, 16, 4, "float requires 32/32"),
+    (16, 16, 3, "unsigned integer requires 8/8"),
+    (32, 32, 3, "unsigned integer requires 8/8"),
+    (32, 32, 5, "A-law requires 8/8"),
+    (16, 16, 6, "mu-law requires 8/8"),
+    (16, 24, 1, "exceeds container depth"),
+    (32, 32, 7, "unknown sample type"),
+])
+@pytest.mark.parametrize("output", [False, True])
+def test_t008_rejects_invalid_sample_types(depth, valid, stype, problem, output):
+    if output:
+        fmt = sample_type(out_format(depth=depth, valid=valid), 1937, stype)
+        t = pin_connection(outs=[fmt])
+    else:
+        fmt = sample_type(in_format(depth=depth, valid=valid), 1907, stype)
+        t = pin_connection(ins=[fmt])
+    found = [f for f in run(t.build()) if f.rule == "T008"]
+    assert len(found) == 1 and found[0].severity == checks.ERROR
+    assert problem in found[0].message
+
+
+@pytest.mark.parametrize("depth,valid,stype", [
+    (8, 8, 3), (8, 8, 5), (8, 8, 6), (16, 16, 0), (16, 16, 1),
+    (32, 24, 0), (32, 24, 1), (32, 32, 1), (32, 32, 4),
+])
+def test_t008_accepts_valid_sample_types(depth, valid, stype):
+    fmt = sample_type(in_format(depth=depth, valid=valid), 1907, stype)
+    assert "T008" not in rules(run(pin_connection(ins=[fmt]).build()))
+
+
+def test_t008_checks_unknown_type_with_missing_depth():
+    fmt = sample_type(in_format(depth=0), 1907, 7)
+    found = [f for f in run(pin_connection(ins=[fmt]).build()) if f.rule == "T008"]
+    assert len(found) == 1 and "unknown sample type 7" in found[0].message
+
+
+def test_f003_both_endpoints_use_secondary_pins():
+    t = pin_connection(
+        outs=[out_format(out_pin=0), out_format(channels=1, out_pin=1)],
+        ins=[in_format(in_pin=0), in_format(channels=1, in_pin=1)],
+        out_pins=2, in_pins=2, out_binding=["other", "sink"],
+        in_binding=["other", "source"])
+    assert f003(t) == []
+
+
+def test_f003_input_binding_is_not_inferred_from_output_binding():
+    t = pin_connection(out_pins=2, in_pins=2, out_binding=["other", "sink"])
+    found = f003(t)
+    assert len(found) == 1 and found[0].severity == checks.INFO
+
+
+@pytest.mark.parametrize("incomplete", [
+    "missing_rate", "missing_depth", "zero_channels", "zero_valid_bits",
+])
+def test_f003_incomplete_format_is_not_a_mismatch(incomplete):
+    fmt = in_format()
+    if incomplete in ("missing_rate", "missing_depth"):
+        token = 1900 if incomplete == "missing_rate" else 1901
+        fmt = (fmt[0], [(tok, value) for tok, value in fmt[1] if tok != token])
+    elif incomplete == "zero_channels":
+        fmt = (fmt[0], [(tok, value & ~0xff if tok == 1907 else value) for tok, value in fmt[1]])
+    else:
+        fmt = (fmt[0], [(tok, value & ~(0xff << 8) if tok == 1907 else value)
+                        for tok, value in fmt[1]])
+    found = f003(pin_connection(ins=[fmt]))
+    assert len(found) == 1 and found[0].severity == checks.INFO
+
+
+def test_f003_unbound_pins_are_not_guessed():
+    found = f003(pin_connection(out_pins=2))
+    assert len(found) == 1 and found[0].severity == checks.INFO
+    assert "cannot statically resolve" in found[0].message
+
+
+def test_f003_copier_undeclared_secondary_output_is_runtime_defined():
+    found = f003(pin_connection(out_pins=2, out_binding=["other", "sink"],
+                                ins=[in_format(channels=1)]))
+    assert len(found) == 1 and found[0].severity == checks.INFO
+
+
+def test_f003_process_undeclared_secondary_output_uses_pin_zero():
+    found = f003(pin_connection(source_type="effect", out_pins=2,
+                                out_binding=["other", "sink"],
+                                ins=[in_format(channels=1)]))
+    assert len(found) == 1 and found[0].severity == checks.ERROR
+
+
+def test_f003_skips_chain_dma():
+    t = pin_connection(ins=[in_format(channels=1)])
+    widget(t, "pipeline.1").priv = tuples((TupleType.BOOL, [(209, 1)]))
+    assert f003(t) == []
+
+
+def test_f003_virtual_route_and_unbound_siggen_input():
+    t = Topology()
+    t.pipeline(1)
+    t.widget("virtual", "output", 1)
+    t.widget("siggen", "effect", 1, module_tuples())
+    t.widget("host", "aif_out", 1, module_tuples())
+    t.route("virtual", "siggen")
+    t.route("siggen", "host")
+    assert f003(t) == []
+
+
+def test_f003_feature_route_uses_base_pin_formats():
+    base = pin_connection(outs=[out_format(channels=1)])
+    feature = Topology()
+    feature.pipeline(2)
+    feature.widget("feature", "effect", 2, module_tuples())
+    feature.route("source", "feature")
+    t = model.build(binary.parse_bytes(feature.build()), "feature.tplg")
+    t.add_base(model.build(binary.parse_bytes(base.build()), "base.tplg"))
+    found = [f for f in checks.run(t, checks.Options()) if f.rule == "F003"]
+    assert len(found) == 1 and found[0].severity == checks.ERROR
+
+
+@pytest.mark.parametrize("topology,status,expected", [
+    (pin_connection(ins=[in_format(rate=16000)]), 1, "error: F003"),
+    (pin_connection(out_pins=2), 0, "info: F003"),
+    (pin_connection(), 0, "0 errors, 0 warnings, 0 info"),
+])
+def test_f003_cli_exit_status(tmp_path, monkeypatch, capsys, topology, status, expected):
+    path = tmp_path / "test.tplg"
+    path.write_bytes(topology.build())
+    monkeypatch.setattr(sys, "argv", ["tplg_validate.py", "--rules", "F003", "-v", str(path)])
+    assert tplg_validate.main() == status
+    assert expected in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("rule_id", [r.id for r in checks.load_rules()])
