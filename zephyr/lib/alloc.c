@@ -912,6 +912,19 @@ void z_impl_sof_heap_free(struct k_heap *heap, void *addr)
 {
 	ll_heap_kernel_trace("free", heap, addr, 0, __builtin_return_address(0));
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * The kernel-managed LL areas are inside a kernel heap block and are
+	 * never freed: passing such memory to rfree() would corrupt the
+	 * kernel heap.
+	 */
+	if (addr && (zephyr_ll_karea_contains(ZEPHYR_LL_KAREA_RW, addr, 1) ||
+		     zephyr_ll_karea_contains(ZEPHYR_LL_KAREA_RO, addr, 1))) {
+		tr_err(&zephyr_tr, "%p is in a kernel LL area, not freed", addr);
+		return;
+	}
+#endif
+
 	if (heap && addr && is_heap_pointer(heap, addr))
 		heap_free(heap, addr);
 	else
