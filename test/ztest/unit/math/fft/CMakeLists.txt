@@ -20,9 +20,6 @@ target_include_directories(app PRIVATE
 	${SOF_ROOT}/src/audio
 	${SOF_ROOT}/test/ztest/unit/common
 	${SOF_ROOT}/test/cmocka/include
-	# Reference test vectors are #included in place from the CMocka tree
-	# rather than copied, so both frameworks share identical data.
-	${SOF_ROOT}/test/cmocka/src/math/fft
 	${PROJECT_BINARY_DIR}/include/generated
 )
 

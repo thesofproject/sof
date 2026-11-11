@@ -27,9 +27,8 @@
 
 #include "mod_alloc.h"
 
-/* Reference test vectors shared with the legacy CMocka test. They are
- * #included in place from the CMocka tree (added to the include path in
- * CMakeLists.txt) so the exact same fixed-point data is exercised.
+/* input.h was moved here from the legacy CMocka tree
+ * (test/cmocka/src/math/fft/) when that CMocka test was removed.
  */
 #include "input.h"
 
