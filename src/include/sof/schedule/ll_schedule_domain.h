@@ -288,8 +288,9 @@ static inline struct ll_schedule_domain *domain_init
 	struct ll_schedule_domain *domain;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
-	domain = sof_heap_alloc(zephyr_ll_user_heap(), SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-				sizeof(*domain), sizeof(void *));
+	/* created at boot by kernel code and never freed */
+	domain = zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, SOF_MEM_FLAG_COHERENT,
+				       sizeof(*domain), 0);
 	if (domain)
 		memset(domain, 0, sizeof(*domain));
 #else
@@ -314,10 +315,8 @@ static inline struct ll_schedule_domain *domain_init
 #ifdef CONFIG_SOF_USERSPACE_LL
 	/* Allocate mutex dynamically for userspace access */
 	domain->lock = k_object_alloc(K_OBJ_MUTEX);
-	if (!domain->lock) {
-		sof_heap_free(zephyr_ll_user_heap(), domain);
+	if (!domain->lock)
 		return NULL;
-	}
 	k_mutex_init(domain->lock);
 #else
 	k_spinlock_init(&domain->lock);

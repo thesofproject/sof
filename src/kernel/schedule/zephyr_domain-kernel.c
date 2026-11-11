@@ -409,9 +409,8 @@ struct ll_schedule_domain *zephyr_domain_init(int clk)
 	}
 
 #if CONFIG_SOF_USERSPACE_LL
-	zephyr_domain = sof_heap_alloc(zephyr_ll_user_heap(),
-				       SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-				       sizeof(*zephyr_domain), sizeof(void *));
+	zephyr_domain = zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, SOF_MEM_FLAG_COHERENT,
+					      sizeof(*zephyr_domain), 0);
 	if (zephyr_domain)
 		memset(zephyr_domain, 0, sizeof(*zephyr_domain));
 #else
