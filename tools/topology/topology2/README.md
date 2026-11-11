@@ -26,6 +26,10 @@ link. Their copiers convert sample formats, not sample rates. Use 16 kHz when
 running these benchmarks; MFCC output carries feature data, not listenable
 audio.
 
+The HDA mix topology uses a 40 Hz capture high-pass at both 48 kHz and
+96 kHz. At 96 kHz it reuses the 20 Hz / 48 kHz coefficients, which have
+the same normalized cutoff.
+
 ## Key Advantages
 
 - **Object-Oriented Syntax**: Topology v2 allows for the definition of classes (`Class.Widget`, `Class.Pipeline`) and object instantiation, making the topology files much easier to read, maintain, and extend.
