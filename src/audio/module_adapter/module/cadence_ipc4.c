@@ -135,25 +135,34 @@ static int cadence_configure_mp3_enc_params(struct processing_module *mod)
 	return 0;
 }
 
+/** Configure AAC output and the external stream parameters needed for RAW input. */
 static int cadence_configure_aac_dec_params(struct processing_module *mod)
 {
 	struct cadence_codec_data *cd = module_get_private_data(mod);
 	struct module_config *setup_cfg = &cd->setup_cfg;
 	struct comp_dev *dev = mod->dev;
-	struct snd_codec *codec_params;
-	int bitstream_format = XA_AACDEC_EBITSTREAM_TYPE_AAC_ADTS;
+	const struct snd_codec *codec_params;
+	int bitstream_format;
+	int sample_rate;
+	int to_stereo;
 	int word_size;
 	int ret;
 
-	/* check bitstream format. Only MPEG-4 ADTS supported for now */
-	if (setup_cfg->avail) {
-		codec_params = (struct snd_codec *)cd->setup_cfg.data;
-		if (codec_params->format != SND_AUDIOSTREAMFORMAT_MP4ADTS) {
-			comp_err(dev, "Unsupported AAC format: %d", codec_params->format);
-			return -EINVAL;
-		}
-	} else {
+	if (!setup_cfg->avail) {
 		comp_err(dev, "No setup config available for AAC decoder");
+		return -EINVAL;
+	}
+
+	codec_params = setup_cfg->data;
+	switch (codec_params->format) {
+	case SND_AUDIOSTREAMFORMAT_MP4ADTS:
+		bitstream_format = XA_AACDEC_EBITSTREAM_TYPE_AAC_ADTS;
+		break;
+	case SND_AUDIOSTREAMFORMAT_RAW:
+		bitstream_format = XA_AACDEC_EBITSTREAM_TYPE_AAC_RAW;
+		break;
+	default:
+		comp_err(dev, "Unsupported AAC format: %d", codec_params->format);
 		return -EINVAL;
 	}
 
@@ -190,6 +199,30 @@ static int cadence_configure_aac_dec_params(struct processing_module *mod)
 			return ret;
 		}
 		comp_warn(dev, "applied param bitstream format return code: %#x", ret);
+	}
+
+	if (bitstream_format == XA_AACDEC_EBITSTREAM_TYPE_AAC_RAW) {
+		sample_rate = codec_params->sample_rate;
+		API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM,
+			 XA_AACDEC_CONFIG_PARAM_EXTERNAL_SAMPLERATE, &sample_rate, ret);
+		if (ret != LIB_NO_ERROR) {
+			if (LIB_IS_FATAL_ERROR(ret)) {
+				comp_err(dev, "failed to apply external sample rate: error: %#x", ret);
+				return ret;
+			}
+			comp_warn(dev, "applied external sample rate return code: %#x", ret);
+		}
+
+		to_stereo = codec_params->ch_out == 2;
+		API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM,
+			 XA_AACDEC_CONFIG_PARAM_TO_STEREO, &to_stereo, ret);
+		if (ret != LIB_NO_ERROR) {
+			if (LIB_IS_FATAL_ERROR(ret)) {
+				comp_err(dev, "failed to apply stereo output: error: %#x", ret);
+				return ret;
+			}
+			comp_warn(dev, "applied stereo output return code: %#x", ret);
+		}
 	}
 
 	return 0;
@@ -447,6 +480,26 @@ static int cadence_codec_prepare(struct processing_module *mod,
 	return 0;
 }
 
+/** Detect zero-filled host padding while draining RAW AAC. */
+static bool cadence_raw_aac_input_is_padding(struct processing_module *mod)
+{
+	struct cadence_codec_data *cd = module_get_private_data(mod);
+	struct module_data *codec = &mod->priv;
+	const uint8_t *input = codec->mpd.in_buff;
+	const struct snd_codec *codec_params = cd->setup_cfg.data;
+	uint32_t offset;
+
+	if (!mod->dev->expect_eos || cd->api_id != CADENCE_CODEC_AAC_DEC_ID ||
+	    !cd->setup_cfg.avail || codec_params->format != SND_AUDIOSTREAMFORMAT_RAW)
+		return false;
+
+	for (offset = 0; offset < codec->mpd.avail; offset++)
+		if (input[offset])
+			return false;
+
+	return true;
+}
+
 static int cadence_codec_process(struct processing_module *mod, struct sof_source **sources,
 				 int num_of_sources, struct sof_sink **sinks, int num_of_sinks)
 {
@@ -494,6 +547,8 @@ static int cadence_codec_process(struct processing_module *mod, struct sof_sourc
 	cadence_copy_data_from_buffer(codec->mpd.in_buff, src_ptr, codec->mpd.in_buff_size,
 				      src_bytes, source_buffer_start);
 	codec->mpd.avail = codec->mpd.in_buff_size;
+	if (cadence_raw_aac_input_is_padding(mod))
+		codec->mpd.avail = 0;
 
 	comp_dbg(dev, "cadence_codec_process() start");
 
