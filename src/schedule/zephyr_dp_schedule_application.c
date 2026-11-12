@@ -441,15 +441,25 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
  */
 void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 {
+	struct scheduler_dp_kick kicks[SCHEDULER_DP_KICK_MAX];
 	struct list_item *tlist;
 	struct task *curr_task;
 	struct task_dp_pdata *pdata;
+	unsigned int n = 0;
 
+	/*
+	 * The task list and task memory are writable by DP threads. This may
+	 * run in the LL user thread, see scheduler_dp_ll_post_tick(), so the
+	 * DP thread objects are only acted on by scheduler_dp_kick(), which
+	 * takes them from the kernel-only task records.
+	 */
 	list_for_item(tlist, &dp_sch->tasks) {
 		curr_task = container_of(tlist, struct task, list);
 		pdata = curr_task->priv_data;
 		struct processing_module *mod = pdata->mod;
 		bool trigger_task = false;
+		uint32_t flags = 0;
+		uint32_t deadline_cycles = 0;
 
 		/* decrease number of LL ticks/cycles left till the module reaches its deadline */
 		if (mod->dp_startup_delay && pdata->ll_cycles_to_start) {
@@ -466,7 +476,7 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 			/* trigger the task */
 			curr_task->state = SOF_TASK_STATE_RUNNING;
 			trigger_task = true;
-			k_event_post(pdata->event, DP_TASK_EVENT_PROCESS);
+			flags |= SCHEDULER_DP_KICK_PROCESS;
 		}
 
 		if (curr_task->state == SOF_TASK_STATE_RUNNING) {
@@ -496,10 +506,10 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 				/* calculate number of ticks */
 				deadline = deadline * (CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000);
 
-				/* add to "NOW", overflows are OK  */
-				deadline = dp_sch->last_ll_tick_timestamp + deadline;
-				if (trigger_task)
-					pdata->deadline_clock_ticks = deadline ? deadline : 1U;
+				/* calculate number of ticks, scheduler_dp_kick() adds "NOW" */
+				deadline_cycles = deadline *
+					(CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000);
+				flags |= SCHEDULER_DP_KICK_DEADLINE;
 
 				/* set in Zephyr. Note that it may be in past, it does not matter,
 				 * Zephyr still will schedule the thread with earlier deadline
@@ -508,7 +518,56 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 				k_thread_absolute_deadline_set(pdata->thread_id, deadline);
 			}
 		}
+
+		if (!flags)
+			continue;
+
+		kicks[n].task = curr_task;
+		kicks[n].flags = flags;
+		kicks[n].deadline = deadline_cycles;
+		if (++n == ARRAY_SIZE(kicks)) {
+			scheduler_dp_kick(kicks, n);
+			n = 0;
+		}
 	}
+
+	if (n)
+		scheduler_dp_kick(kicks, n);
+}
+
+int z_impl_scheduler_dp_kick(const struct scheduler_dp_kick *kicks, uint32_t count)
+{
+	struct scheduler_dp_task_kobj *kobj;
+	unsigned int core = cpu_get_id();
+	uint32_t now = k_cycle_get_32();
+	k_spinlock_key_t key;
+	int skipped = 0;
+	uint32_t i;
+
+	/* the record cannot be freed while dp_task_kobj_lock is held */
+	key = k_spin_lock(&dp_task_kobj_lock);
+
+	for (i = 0; i < count; i++) {
+		kobj = dp_task_kobj_find(kicks[i].task);
+		if (!kobj || kobj->core != core) {
+			skipped++;
+			continue;
+		}
+
+		/*
+		 * Overflows are OK. The deadline may be in the past, Zephyr
+		 * still schedules the thread with the earliest deadline first.
+		 */
+		if (kicks[i].flags & SCHEDULER_DP_KICK_DEADLINE)
+			k_thread_absolute_deadline_set(kobj->thread, now + kicks[i].deadline);
+
+		if (kicks[i].flags & SCHEDULER_DP_KICK_PROCESS)
+			k_event_post(kobj->event, DP_TASK_EVENT_PROCESS);
+	}
+
+	k_spin_unlock(&dp_task_kobj_lock, key);
+
+	return skipped;
 }
 
 /* Thread function called in component context, on target core */
@@ -1012,4 +1071,19 @@ void z_vrfy_scheduler_dp_internal_free(struct task *task)
 	K_OOPS(!scheduler_dp_internal_free_kobj(task, &kobj));
 }
 #include <zephyr/syscalls/scheduler_dp_internal_free_mrsh.c>
+
+int z_vrfy_scheduler_dp_kick(const struct scheduler_dp_kick *kicks, uint32_t count)
+{
+	struct scheduler_dp_kick kkicks[SCHEDULER_DP_KICK_MAX];
+
+	/* without user-space LL, only the kernel LL scheduler kicks DP tasks */
+	K_OOPS(!IS_ENABLED(CONFIG_SOF_USERSPACE_LL));
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_LL);
+
+	K_OOPS(K_SYSCALL_VERIFY(count <= ARRAY_SIZE(kkicks)));
+	K_OOPS(k_usermode_from_copy(kkicks, kicks, count * sizeof(kkicks[0])));
+
+	return z_impl_scheduler_dp_kick(kkicks, count);
+}
+#include <zephyr/syscalls/scheduler_dp_kick_mrsh.c>
 #endif /* CONFIG_USERSPACE */
