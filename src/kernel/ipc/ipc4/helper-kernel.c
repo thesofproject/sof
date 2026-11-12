@@ -145,7 +145,14 @@ __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *mo
 	}
 #endif
 
+#ifndef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * With CONFIG_SOF_USERSPACE_LL, the component list and its containers
+	 * are user memory: ipc4_init_module_instance() has the IPC user thread
+	 * add the component.
+	 */
 	ipc4_add_comp_dev(dev);
+#endif
 
 	comp_update_ibs_obs_cpc(dev);
 

@@ -269,6 +269,34 @@ __cold int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 		return IPC4_MOD_NOT_INITIALIZED;
 	}
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * The component container is allocated from the LL user heap, which
+	 * the kernel does not allocate from: let the IPC user thread of this
+	 * core add the component to the component list.
+	 */
+	int ret;
+
+	ipc_user_get()->init_dev = dev;
+	ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat, cpu_get_id());
+	if (ret) {
+		ipc_cmd_err(&ipc_tr, "error: failed to add module %x : %x: %d",
+			    (uint32_t)module_init->primary.r.module_id,
+			    (uint32_t)module_init->primary.r.instance_id, ret);
+		if (ret == -EAGAIN) {
+			/*
+			 * The IPC user thread did not finish in time and may
+			 * still add the component, so it cannot be freed here.
+			 * Withdraw it in case the thread has not taken it yet.
+			 */
+			ipc_user_get()->init_dev = NULL;
+			return IPC4_MOD_NOT_INITIALIZED;
+		}
+		comp_free(dev);
+		return IPC4_MOD_NOT_INITIALIZED;
+	}
+#endif
+
 	return 0;
 }
 
