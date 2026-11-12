@@ -173,6 +173,7 @@ target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/third_party/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/zephyr/include)
+target_include_directories(SOF INTERFACE ${PROJECT_BINARY_DIR}/include/generated)
 
 # Code that only runs in kernel mode, from src/kernel. It is built as a
 # library of its own so that it can later be given kernel-only include
@@ -186,6 +187,8 @@ zephyr_library_named(modules_sof)
 
 # Zephyr C++ code requires 14 or newer standard
 set_property(TARGET modules_sof PROPERTY CXX_STANDARD 17)
+target_link_libraries(modules_sof PUBLIC kernel)
+
 
 zephyr_include_directories(include)
 zephyr_include_directories(${ZEPHYR_BASE}/kernel/include)
@@ -202,7 +205,7 @@ zephyr_include_directories(${SOF_SRC_PATH}/include/sof/audio/module_adapter/libr
 
 # XTOS duplicate in sof/scripts/misc.cmake; keep in sync
 macro(is_zephyr ret)
-	if(CONFIG_ZEPHYR_SOF_MODULE)
+	if(CONFIG_ZEPHYR_SOF_MODULE OR CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 		set(${ret} TRUE)
 	else()
 		set(${ret} FALSE)
@@ -229,6 +232,41 @@ macro(sof_list_append_ifdef feature_toggle list)
     list(APPEND ${list} ${ARGN})
   endif()
 endmacro()
+
+# Setup SOF directories
+set(SOF_ROOT_SOURCE_DIRECTORY ${sof_top_dir})
+set(SOF_ROOT_BINARY_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# This generated/ directory is shared with Zephyr.
+# PROJECT_BINARY_DIR is build/zephyr/
+set(GENERATED_DIRECTORY ${PROJECT_BINARY_DIR}/include/generated)
+file(MAKE_DIRECTORY ${GENERATED_DIRECTORY})
+
+set(VERSION_H_PATH ${GENERATED_DIRECTORY}/sof_versions.h)
+
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+set(PYTHON3 "${Python3_EXECUTABLE}")
+set(PYTHON_EXECUTABLE "${Python3_EXECUTABLE}")
+
+if (NOT CONFIG_COMPILER_INLINE_FUNCTION_OPTION)
+target_compile_options(SOF INTERFACE -fno-inline-functions)
+endif()
+
+# SOF needs `typeof`, `__VA_ARGS__` and maybe other GNU C99
+# extensions. TODO other flags required ?
+target_compile_options(SOF INTERFACE $<$<COMPILE_LANGUAGE:C,ASM>: -std=gnu99>)
+
+# Toolchain info
+add_definitions(-DXCC_TOOLS_VERSION="${ZEPHYR_TOOLCHAIN_VARIANT}" -DCC_OPTIMIZE_FLAGS="${OPTIMIZATION_FLAG}")
+
+# create version information
+include(../scripts/cmake/version.cmake)
+
+include(../scripts/cmake/uuid-registry.cmake)
+add_dependencies(modules_sof uuid_reg_h)
+if(TARGET app)
+	add_dependencies(app uuid_reg_h)
+endif()
 
 # directories with auxiliary modules need to be listed first
 # - llext dependencies need to added to linkage first
@@ -637,35 +675,6 @@ target_link_libraries(SOF INTERFACE zephyr_interface)
 
 # Linker snippet for the UUID table
 zephyr_linker_sources("ROM_SECTIONS" uuid-snippet.ld)
-
-# Setup SOF directories
-set(SOF_ROOT_SOURCE_DIRECTORY ${sof_top_dir})
-set(SOF_ROOT_BINARY_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-# This generated/ directory is shared with Zephyr.
-# PROJECT_BINARY_DIR is build/zephyr/
-set(GENERATED_DIRECTORY ${PROJECT_BINARY_DIR}/include/generated)
-
-set(VERSION_H_PATH ${GENERATED_DIRECTORY}/sof_versions.h)
-
-find_package(Python3 COMPONENTS Interpreter)
-set(PYTHON3 "${Python3_EXECUTABLE}")
-
-if (NOT CONFIG_COMPILER_INLINE_FUNCTION_OPTION)
-target_compile_options(SOF INTERFACE -fno-inline-functions)
-endif()
-
-# SOF needs `typeof`, `__VA_ARGS__` and maybe other GNU C99
-# extensions. TODO other flags required ?
-target_compile_options(SOF INTERFACE $<$<COMPILE_LANGUAGE:C,ASM>: -std=gnu99>)
-
-# Toolchain info
-add_definitions(-DXCC_TOOLS_VERSION="${ZEPHYR_TOOLCHAIN_VARIANT}" -DCC_OPTIMIZE_FLAGS="${OPTIMIZATION_FLAG}")
-
-# create version information
-include(../scripts/cmake/version.cmake)
-
-include(../scripts/cmake/uuid-registry.cmake)
 
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)
