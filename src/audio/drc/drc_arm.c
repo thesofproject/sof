@@ -10,6 +10,8 @@
 #include <sof/math/exp_fcn.h>
 #include <sof/math/numbers.h>
 #include <sof/common.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -69,12 +71,13 @@ static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 /* Update detector average across 32 frames */
 void drc_update_detector_average(struct drc_state *state,
 				 const struct sof_drc_params *p,
-				 int nbyte,
-				 int nch)
+				 size_t nbyte,
+				 unsigned int nch)
 {
 	int32_t detector_average = state->detector_average;
 	int32_t abs_input_array[DRC_DIVISION_FRAMES];
-	int div_start, i, ch;
+	size_t div_start, i;
+	unsigned int ch;
 	const int16_t *sample16_p;
 	const int32_t *sample32_p;
 	int32_t gain;
@@ -82,7 +85,7 @@ void drc_update_detector_average(struct drc_state *state,
 	int32_t db_per_frame;
 	int32_t sat_release_rate;
 	int32_t tmp;
-	int is_release;
+	bool is_release;
 
 	if (state->pre_delay_write_index == 0)
 		div_start = CONFIG_DRC_MAX_PRE_DELAY_FRAMES - DRC_DIVISION_FRAMES;
@@ -169,8 +172,8 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
 	int32_t scaled_desired_gain;
 	int32_t eff_atten_diff_db;
 	int32_t lshift;
-	int is_releasing;
-	int is_bad_db;
+	bool is_releasing;
+	bool is_bad_db;
 
 	scaled_desired_gain = drc_asin_fixed(state->detector_average);
 
@@ -235,21 +238,22 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
 /* Compress output across 4-frame unrolled iterations */
 void drc_compress_output(struct drc_state *state,
 			 const struct sof_drc_params *p,
-			 int nbyte,
-			 int nch)
+			 size_t nbyte,
+			 unsigned int nch)
 {
-	const int div_start = state->pre_delay_read_index;
-	const int count = DRC_DIVISION_FRAMES >> 2;
+	const size_t div_start = state->pre_delay_read_index;
+	const size_t count = DRC_DIVISION_FRAMES >> 2;
 	int32_t x[4];
 	int32_t c, base, r, r2, r4;
 	int32_t post_warp_compressor_gain;
 	int32_t total_gain;
 	int32_t tmp;
-	int i, j, ch, inc;
+	size_t i, j, inc;
+	unsigned int ch;
 	int16_t *sample16_p;
 	int32_t *sample32_p;
 	int32_t lshift;
-	const int is_2byte = (nbyte == 2);
+	const bool is_2byte = (nbyte == 2);
 
 	if (state->envelope_rate < ONE_Q30) {
 		/* Attack mode */
