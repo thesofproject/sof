@@ -15,6 +15,9 @@ set(base_files
 add_subdirectory(buffers)
 add_subdirectory(pcm_converter)
 add_subdirectory(pipeline)
+add_local_sources_ifdef(CONFIG_COMP_USB_AUDIO sof usb_audio.c)
+add_local_sources_ifdef(CONFIG_COMP_BT_AUDIO sof bt_audio.c bt_service.c)
+add_local_sources_ifdef(CONFIG_COMP_I2S_AUDIO sof i2s_audio.c)
 
 # directories and files included conditionally (alphabetical order)
 if(CONFIG_COMP_ARIA)
