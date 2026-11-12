@@ -50,6 +50,31 @@ void scheduler_dp_unlock(unsigned int key)
 	k_sem_give(&dp_lock[key]);
 }
 
+#if CONFIG_SOF_USERSPACE_APPLICATION && CONFIG_SOF_USERSPACE_LL
+/* Runs in the LL user thread, see scheduler_dp_ll_post_tick() documentation */
+void scheduler_dp_ll_post_tick(void)
+{
+	struct scheduler_dp_data *dp_sch = scheduler_get_user_data(SOF_SCHEDULE_DP);
+	unsigned int lock_key;
+
+	/*
+	 * The LL thread is granted the DP lock when the first DP task of its
+	 * core is created, so there is nothing to do and no access before.
+	 */
+	if (!dp_sch || list_is_empty(&dp_sch->tasks))
+		return;
+
+	lock_key = scheduler_dp_lock(cpu_get_id());
+	scheduler_dp_recalculate(dp_sch);
+	scheduler_dp_unlock(lock_key);
+}
+#else
+void scheduler_dp_ll_post_tick(void)
+{
+	scheduler_dp_ll_tick();
+}
+#endif /* CONFIG_SOF_USERSPACE_APPLICATION && CONFIG_SOF_USERSPACE_LL */
+
 #if CONFIG_SOF_USERSPACE_APPLICATION
 int scheduler_dp_task_cancel(void *data, struct task *task)
 {
