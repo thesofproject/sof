@@ -50,6 +50,7 @@
 #include <ipc4/module.h>
 #include <ipc4/error_status.h>
 #include <sof/lib_manager.h>
+#include <sof/platform.h>
 #include <sof/tlv.h>
 
 #include <errno.h>
@@ -1444,6 +1445,21 @@ static const struct comp_driver *ipc4_get_fuzzer_drv(uint32_t module_id)
 }
 #endif /* defined(CONFIG_ARCH_POSIX_LIBFUZZER) && !defined(RIMAGE_MANIFEST) */
 
+#if CONFIG_IMX && !defined(RIMAGE_MANIFEST)
+/* i.MX: the module table is linked into the image, module ID == table index */
+static const struct comp_driver *ipc4_get_imx_drv(uint32_t module_id)
+{
+	const struct sof_man_module *mod = platform_ipc4_get_module(module_id);
+
+	if (!mod) {
+		tr_err(&comp_tr, "Error: module id %u out of bounds.", module_id);
+		return NULL;
+	}
+
+	return ipc4_get_drv(&mod->uuid);
+}
+#endif /* CONFIG_IMX && !defined(RIMAGE_MANIFEST) */
+
 /*
  * Called from
  * - ipc4_get_large_config_module_instance()
@@ -1463,6 +1479,8 @@ __cold const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 	desc = (const struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
 #elif defined(CONFIG_ARCH_POSIX_LIBFUZZER)
 	return ipc4_get_fuzzer_drv(module_id);
+#elif CONFIG_IMX
+	return ipc4_get_imx_drv(module_id);
 #else
 	/* Non-rimage platforms have no component facility yet.
 	 * This needs to move to the platform layer.

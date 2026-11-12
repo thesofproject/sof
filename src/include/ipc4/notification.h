@@ -46,6 +46,7 @@ enum sof_ipc4_notification_type {
 	SOF_IPC4_PROBE_DATA_AVAILABLE		= 14, /**< Probe extraction buffer contains recorded audio. */
 	SOF_IPC4_WATCHDOG_TIMEOUT		= 15, /**< Watchdog timer timeout interrupt on DSP core. */
 	SOF_IPC4_MANAGEMENT_SERVICE		= 16, /**< System management service event notification. */
+	SOF_IPC4_IMX_HOST_PERIOD_ELAPSED	= 200, /**< Vendor (NXP i.MX): host period elapsed. */
 };
 
 /**
@@ -332,5 +333,8 @@ bool z_impl_send_resource_notif(uint32_t resource_id, uint32_t event_type,
 #define send_resource_notif z_impl_send_resource_notif
 
 #endif
+
+/* Vendor (NXP i.MX): notify the host that one host period has elapsed. */
+bool send_host_period_elapsed_notif_msg(uint32_t gtw_id);
 
 #endif /* __IPC4_NOTIFICATION_H__ */

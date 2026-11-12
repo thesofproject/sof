@@ -85,6 +85,11 @@ enum ipc4_connector_node_id_type {
 	ipc4_spi_output_class = 25,
 	/** SPI hardware gateway input. */
 	ipc4_spi_input_class = 26,
+
+	/** i.MX SAI link output */
+	ipc4_sai_link_output_class = 28,
+	/** i.MX SAI link input */
+	ipc4_sai_link_input_class = 29,
 	/** Sentinel marking maximum connector node ID type. */
 	ipc4_max_connector_node_id_type
 };
@@ -134,6 +139,26 @@ union ipc4_gateway_attributes {
 		uint32_t _rsvd : 30;              /**< Reserved bits. */
 	} bits; /**< Bitfield access structure. */
 } __attribute__((packed, aligned(4)));
+
+/* Generic default-gateway attributes prefix. Mirrors the kernel struct. */
+struct sof_ipc4_gtw_attributes {
+	uint32_t lp_buffer_alloc : 1;
+	uint32_t alloc_from_reg_file : 1;
+	uint32_t rsvd : 30;
+} __attribute__((packed, aligned(4)));
+
+/* i.MX host PCM buffer TLV; matches kernel SOF_IPC4_GTW_IMX_HOST_CONFIG_ID */
+#define GTW_IMX_HOST_CONFIG_ID 0x2001
+
+struct sof_ipc4_imx_host_config {
+	uint32_t phy_addr;
+	uint32_t dma_buffer_size;
+	/* ALSA period size; one period-elapsed notification per this many bytes */
+	uint32_t host_period_bytes;
+} __attribute__((packed, aligned(4)));
+
+/* i.MX SAI config TLV (struct sof_ipc_dai_config) */
+#define GTW_IMX_DAI_CONFIG_ID 0x2000
 
 /**
  * \brief Generic gateway configuration blob container.

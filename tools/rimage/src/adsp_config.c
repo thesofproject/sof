@@ -2011,7 +2011,9 @@ static int parse_module(const toml_table_t *toml, struct parse_ctx *pctx,
 	return 0;
 }
 
-static int parse_adsp_config_v1_0(const toml_table_t *toml, struct image *image)
+/* v1.0 and v1.1: simple image, v1.1 adds an ext-manifest writer */
+static int parse_adsp_config_simple(const toml_table_t *toml, struct image *image,
+				    int (*write_ext_man)(struct image *image))
 {
 	struct adsp *out = image->adsp;
 	bool verbose = image->verbose;
@@ -2029,6 +2031,7 @@ static int parse_adsp_config_v1_0(const toml_table_t *toml, struct image *image)
 
 	/* assign correct write functions */
 	out->write_firmware = simple_write_firmware;
+	out->write_firmware_ext_man = write_ext_man;
 	out->write_firmware_meu = NULL;
 
 	/* check everything parsed */
@@ -2037,6 +2040,17 @@ static int parse_adsp_config_v1_0(const toml_table_t *toml, struct image *image)
 		return ret;
 
 	return 0;
+}
+
+static int parse_adsp_config_v1_0(const toml_table_t *toml, struct image *image)
+{
+	return parse_adsp_config_simple(toml, image, NULL);
+}
+
+/* i.MX IPC4: v1.0 plus an unsigned ext-manifest v4 prefix */
+static int parse_adsp_config_v1_1(const toml_table_t *toml, struct image *image)
+{
+	return parse_adsp_config_simple(toml, image, ext_man_write_imx_ipc4);
 }
 
 static int parse_adsp_config_v1_5(const toml_table_t *toml, struct image *image)
@@ -2310,6 +2324,7 @@ static const struct config_parser *find_config_parser(int64_t version[2])
 	/* list of supported configuration version with handler to parser */
 	static const struct config_parser parsers[] = {
 		{1, 0, parse_adsp_config_v1_0},
+		{1, 1, parse_adsp_config_v1_1},
 		{1, 5, parse_adsp_config_v1_5},
 		{1, 8, parse_adsp_config_v1_8},
 		{2, 5, parse_adsp_config_v2_5},

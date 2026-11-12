@@ -331,6 +331,23 @@ if (CONFIG_SOC_MIMX8QM6_ADSP OR CONFIG_SOC_MIMX8QX6_ADSP)
 	)
 
 	set(PLATFORM "imx8")
+
+	# IPC4 rimage target; FORCE since board.cmake already set it.
+	# imx8 (QM) and imx8x (QXP) use distinct targets.
+	if (CONFIG_IPC_MAJOR_4)
+		if (CONFIG_SOC_MIMX8QX6_ADSP)
+			set(rimage_ipc4_target imx8x_ipc4)
+		else()
+			set(rimage_ipc4_target imx8_ipc4)
+		endif()
+		set(RIMAGE_TARGET ${rimage_ipc4_target} CACHE STRING "rimage target" FORCE)
+		set(CACHED_RIMAGE_TARGET ${rimage_ipc4_target} CACHE STRING
+		    "Selected rimage target" FORCE)
+
+		# keep .module from --gc-sections
+		zephyr_linker_sources(DATA_SECTIONS
+			${sof_top_dir}/src/platform/imx8/linker/module-section.ld)
+	endif()
 endif()
 
 if (CONFIG_SOC_MIMX8ML8_ADSP)
@@ -350,6 +367,17 @@ if (CONFIG_SOC_MIMX8ML8_ADSP)
 	)
 
 	set(PLATFORM "imx8m")
+
+	# IPC4 rimage target; FORCE since board.cmake already set it
+	if (CONFIG_IPC_MAJOR_4)
+		set(RIMAGE_TARGET imx8m_ipc4 CACHE STRING "rimage target" FORCE)
+		set(CACHED_RIMAGE_TARGET imx8m_ipc4 CACHE STRING
+		    "Selected rimage target" FORCE)
+
+		# keep .module from --gc-sections; ROM_SECTIONS so it is loaded
+		zephyr_linker_sources(ROM_SECTIONS
+			${sof_top_dir}/src/platform/imx8m/linker/module-section.ld)
+	endif()
 endif()
 
 if (CONFIG_SOC_MIMX8ML8_M7)
@@ -397,6 +425,17 @@ if (CONFIG_SOC_MIMX8UD7_ADSP)
 	)
 
 	set(PLATFORM "imx8ulp")
+
+	# IPC4 rimage target; FORCE since board.cmake already set it
+	if (CONFIG_IPC_MAJOR_4)
+		set(RIMAGE_TARGET imx8ulp_ipc4 CACHE STRING "rimage target" FORCE)
+		set(CACHED_RIMAGE_TARGET imx8ulp_ipc4 CACHE STRING
+		    "Selected rimage target" FORCE)
+
+		# keep .module from --gc-sections
+		zephyr_linker_sources(DATA_SECTIONS
+			${sof_top_dir}/src/platform/imx8ulp/linker/module-section.ld)
+	endif()
 endif()
 
 if (CONFIG_SOC_MIMX9352_A55)
@@ -447,6 +486,17 @@ if (CONFIG_SOC_MIMX9596_M7)
 			   DEPENDS ${CMAKE_BINARY_DIR}/zephyr/${KERNEL_ELF_NAME})
 
 	board_set_rimage_target(imx95)
+
+	# IPC4 rimage target; FORCE since board.cmake already set it
+	if (CONFIG_IPC_MAJOR_4)
+		set(RIMAGE_TARGET imx95_ipc4 CACHE STRING "rimage target" FORCE)
+		set(CACHED_RIMAGE_TARGET imx95_ipc4 CACHE STRING
+		    "Selected rimage target" FORCE)
+
+		# keep .module from --gc-sections
+		zephyr_linker_sources(DATA_SECTIONS
+			${sof_top_dir}/src/platform/imx95/linker/module-section.ld)
+	endif()
 endif()
 
 # AMD RMB platforms

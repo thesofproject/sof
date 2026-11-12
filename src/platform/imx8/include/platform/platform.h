@@ -53,11 +53,15 @@ struct timer;
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
 
+#if !CONFIG_IPC_MAJOR_4
+/* IPC4 defines SRAM_REG_FW_STATUS elsewhere; only IPC3 uses this fixed offset */
 #define SRAM_REG_FW_STATUS     0x4
+#endif
 
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)
 {
+#if !CONFIG_IPC_MAJOR_4
 	/* Store the error code in the debug box so the
 	 * application processor can pick it up. Takes up 4 bytes
 	 * from the debug box.
@@ -66,6 +70,7 @@ static inline void platform_panic(uint32_t p)
 
 	/* Notify application processor */
 	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GCR, IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1), 0);
+#endif
 }
 
 /**

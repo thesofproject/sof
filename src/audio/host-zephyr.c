@@ -1035,8 +1035,11 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 
 	/* TODO: should be taken from DMA */
 	if (hd->host.elem_array.count) {
-		period_bytes *= period_count;
-		period_count = 1;
+		/* i.MX software DMA copies one element per LL tick; keep the ring */
+		if (!(IS_ENABLED(CONFIG_IMX) && hd->host.elem_array.count == 1)) {
+			period_bytes *= period_count;
+			period_count = 1;
+		}
 	}
 
 	/* calculate DMA buffer size */
@@ -1300,7 +1303,7 @@ void host_common_reset(struct host_data *hd, uint16_t state)
 
 	/* reset buffer pointers */
 	hd->local_pos = 0;
-#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
+#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES || CONFIG_IMX
 	hd->report_pos = 0;
 #endif
 	hd->total_data_processed = 0;

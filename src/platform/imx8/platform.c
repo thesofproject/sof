@@ -18,6 +18,7 @@
 
 struct sof;
 
+#if !CONFIG_IPC_MAJOR_4
 static const struct sof_ipc_fw_ready ready
 	__section(".fw_ready") = {
 	.hdr = {
@@ -108,9 +109,13 @@ const struct ext_man_windows xsram_window
 		},
 	}
 };
+#endif /* !CONFIG_IPC_MAJOR_4 */
 
 int platform_boot_complete(uint32_t boot_message)
 {
+#if CONFIG_IPC_MAJOR_4
+	return imx_ipc4_boot_complete(boot_message);
+#else
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
 
 	/* now interrupt host to tell it we are done booting */
@@ -123,6 +128,7 @@ int platform_boot_complete(uint32_t boot_message)
 	/* clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ); */
 
 	return 0;
+#endif
 }
 
 int platform_init(struct sof *sof)

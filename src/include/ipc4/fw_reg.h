@@ -159,6 +159,9 @@ union ipc4_rom_info {
 /** \brief Number of GPDMA LLP reading slots in firmware register table. */
 #define IPC4_MAX_LLP_GPDMA_READING_SLOTS 24
 
+/** \brief Number of host DMA byte counter slots in firmware register table. */
+#define IPC4_MAX_HOST_BYTE_CNT_SLOTS 2
+
 /** \brief Number of Aggregated SoundWire reading slots in firmware register table. */
 #define IPC4_MAX_LLP_SNDW_READING_SLOTS 16
 
@@ -179,7 +182,8 @@ struct ipc4_fw_registers {
 	union ipc4_rom_info rom_info;  /**< ROM version and load capabilities (at offset 0x18). */
 	uint32_t abi_ver;              /**< Layout version (IPC4_FW_REGS_ABI_VER at offset 0x1C). */
 	uint8_t slave_core_sts[IPC4_MAX_SUPPORTED_ADSP_CORES]; /**< Status byte per secondary core. */
-	uint32_t rsvd2[6];             /**< Reserved padding. */
+	uint32_t rsvd2[2];             /**< Reserved padding. */
+	uint64_t host_byte_cnt[IPC4_MAX_HOST_BYTE_CNT_SLOTS]; /**< Host DMA byte counter per host gateway. */
 	struct ipc4_pipeline_registers pipeline_regs[IPC4_MAX_PIPELINE_REG_SLOTS]; /**< Pipeline LPIB offsets. */
 	struct ipc4_peak_volume_regs peak_vol_regs[IPC4_MAX_PEAK_VOL_REG_SLOTS];   /**< Peak meter telemetry. */
 	struct ipc4_llp_reading_slot llp_gpdma_reading_slots[IPC4_MAX_LLP_GPDMA_READING_SLOTS]; /**< GPDMA LLP readings. */
