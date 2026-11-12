@@ -42,7 +42,7 @@ endfunction()
 
 # Zephyr duplicate in sof/zephyr/CMakeLists.txt; keep in sync
 macro(is_zephyr ret)
-	if(CONFIG_ZEPHYR_SOF_MODULE)
+	if(CONFIG_ZEPHYR_SOF_MODULE OR CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 		set(${ret} TRUE)
 	else()
 		set(${ret} FALSE)
