@@ -522,6 +522,41 @@ int scheduler_dp_task_ipc_params(const struct processing_module *mod, struct k_e
 	return 0;
 }
 
+int z_impl_scheduler_dp_kick(const struct scheduler_dp_kick *kicks, uint32_t count)
+{
+	struct scheduler_dp_task_kobj *kobj;
+	unsigned int core = cpu_get_id();
+	uint32_t now = k_cycle_get_32();
+	k_spinlock_key_t key;
+	int skipped = 0;
+	uint32_t i;
+
+	/* the record cannot be freed while dp_task_kobj_lock is held */
+	key = k_spin_lock(&dp_task_kobj_lock);
+
+	for (i = 0; i < count; i++) {
+		kobj = dp_task_kobj_find(kicks[i].task);
+		if (!kobj || kobj->core != core) {
+			skipped++;
+			continue;
+		}
+
+		/*
+		 * Overflows are OK. The deadline may be in the past, Zephyr
+		 * still schedules the thread with the earliest deadline first.
+		 */
+		if (kicks[i].flags & SCHEDULER_DP_KICK_DEADLINE)
+			k_thread_absolute_deadline_set(kobj->thread, now + kicks[i].deadline);
+
+		if (kicks[i].flags & SCHEDULER_DP_KICK_PROCESS)
+			k_event_post(kobj->event, DP_TASK_EVENT_PROCESS);
+	}
+
+	k_spin_unlock(&dp_task_kobj_lock, key);
+
+	return skipped;
+}
+
 #ifdef CONFIG_USERSPACE
 #include <zephyr/internal/syscall_handler.h>
 #include <sof/userspace/syscall_caller.h>
@@ -587,4 +622,19 @@ void z_vrfy_scheduler_dp_internal_free(struct task *task)
 	K_OOPS(!scheduler_dp_internal_free_kobj(task, &kobj));
 }
 #include <zephyr/syscalls/scheduler_dp_internal_free_mrsh.c>
+
+int z_vrfy_scheduler_dp_kick(const struct scheduler_dp_kick *kicks, uint32_t count)
+{
+	struct scheduler_dp_kick kkicks[SCHEDULER_DP_KICK_MAX];
+
+	/* without user-space LL, only the kernel LL scheduler kicks DP tasks */
+	K_OOPS(!IS_ENABLED(CONFIG_SOF_USERSPACE_LL));
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_LL);
+
+	K_OOPS(K_SYSCALL_VERIFY(count <= ARRAY_SIZE(kkicks)));
+	K_OOPS(k_usermode_from_copy(kkicks, kicks, count * sizeof(kkicks[0])));
+
+	return z_impl_scheduler_dp_kick(kkicks, count);
+}
+#include <zephyr/syscalls/scheduler_dp_kick_mrsh.c>
 #endif /* CONFIG_USERSPACE */
