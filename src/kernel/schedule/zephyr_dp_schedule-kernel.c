@@ -217,6 +217,12 @@ static enum task_state scheduler_dp_ll_tick_dummy(void *data)
  * needed 1.2ms for processing - but the example would be too complicated)
  */
 
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+#include <sof/userspace/syscall_caller.h>
+#endif
+
+#if !(CONFIG_SOF_USERSPACE_APPLICATION && CONFIG_SOF_USERSPACE_LL)
 void z_impl_scheduler_dp_ll_tick(void)
 {
 	unsigned int lock_key;
@@ -238,8 +244,6 @@ void z_impl_scheduler_dp_ll_tick(void)
 }
 
 #ifdef CONFIG_USERSPACE
-#include <zephyr/internal/syscall_handler.h>
-#include <sof/userspace/syscall_caller.h>
 void z_vrfy_scheduler_dp_ll_tick(void)
 {
 	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_LL);
@@ -248,6 +252,7 @@ void z_vrfy_scheduler_dp_ll_tick(void)
 }
 #include <zephyr/syscalls/scheduler_dp_ll_tick_mrsh.c>
 #endif
+#endif /* !(CONFIG_SOF_USERSPACE_APPLICATION && CONFIG_SOF_USERSPACE_LL) */
 
 void z_impl_scheduler_dp_check_deadline(uint16_t core, uint32_t deadline_clock_ticks)
 {
