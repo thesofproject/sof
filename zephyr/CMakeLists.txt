@@ -8,6 +8,10 @@ if(CONFIG_ZEPHYR_POSIX)
 	set(ARCH host)
 	set(PLATFORM "posix")
 	set(PLATFORM_HEADERS "posix")
+elseif(CONFIG_PLATFORM_NORDIC)
+	set(ARCH host)
+	set(PLATFORM "nordic")
+	set(PLATFORM_HEADERS "nordic")
 else()
 	# firmware build supports only xtensa arch for now
 	set(ARCH xtensa)
@@ -451,6 +455,27 @@ if (CONFIG_SOC_MIMX9352_A55)
 	)
 
 	set(PLATFORM "imx93_a55")
+endif()
+
+if (CONFIG_PLATFORM_NORDIC)
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/nordic/platform.c
+		${SOF_PLATFORM_PATH}/nordic/lib/clk.c
+		lib/dma.c
+	)
+
+	if (CONFIG_PLATFORM_NRF54L15)
+		zephyr_library_sources(
+			${SOF_PLATFORM_PATH}/nordic/nrf54l15_pipeline_def.c
+		)
+	elseif (CONFIG_PLATFORM_NRF54LM20)
+		zephyr_library_sources(
+			${SOF_PLATFORM_PATH}/nordic/nrf54lm20_pipeline_def.c
+		)
+	endif()
+
+	set(PLATFORM "nordic")
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/nordic/include)
 endif()
 
 if (CONFIG_SOC_MIMX9596_M7)

@@ -36,6 +36,8 @@
 #else
 #if defined(CONFIG_LIBRARY) || defined(CONFIG_ZEPHYR_POSIX)
 #define DCACHE_LINE_SIZE 64
+#elif defined(CONFIG_PLATFORM_NORDIC)
+#define DCACHE_LINE_SIZE 32
 #else
 #error "Invalid cache configuration."
 #endif /* defined(CONFIG_LIBRARY) || defined(CONFIG_ZEPHYR_POSIX) */
