@@ -56,7 +56,14 @@ static int pipeline_comp_xrun(struct comp_dev *current,
 
 #endif /* CONFIG_IPC_MAJOR_3 */
 
-#if NO_XRUN_RECOVERY
+#if CONFIG_STATIC_PIPELINE
+/* Standalone static pipelines: clear xrun_bytes and continue streaming without host IPC reset */
+int pipeline_xrun_recover(struct pipeline *p)
+{
+	p->xrun_bytes = 0;
+	return 0;
+}
+#elif NO_XRUN_RECOVERY
 /* recover the pipeline from a XRUN condition */
 int pipeline_xrun_recover(struct pipeline *p)
 {

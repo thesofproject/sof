@@ -71,3 +71,12 @@ config TWB_IPC_TASK
 	depends on ZEPHYR_TWB_SCHEDULER
 	help
 	  Switch IPC task to TWB scheduler.
+
+config ZEPHYR_DOMAIN_AUDIO_TIMER
+	bool "Drive Zephyr LL timer domain from DAI DMA period interrupts"
+	default n
+	help
+	  Select this on platforms where the system tick timer and the audio
+	  PLL are derived from asynchronous clock sources. When an audio DAI
+	  DMA stream is active, DMA period completion interrupts wake the LL
+	  scheduler thread directly and k_timer ticks are suppressed.
