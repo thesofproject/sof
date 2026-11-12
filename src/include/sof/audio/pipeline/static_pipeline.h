@@ -799,6 +799,17 @@ int sof_static_kcontrol_get_by_uac2(uint8_t entity_id, uint8_t channel, int32_t 
  */
 int sof_static_pipeline_trigger_by_uac2_term(uint8_t terminal_id, bool start);
 
+#if defined(CONFIG_USBD_AUDIO2_CLASS) && defined(CONFIG_COMP_USB_AUDIO)
+struct uac2_ops;
+
+/**
+ * \brief Retrieve standard Zephyr USB Audio Class 2.0 (UAC2) callback operations
+ *        bridging USB streaming and Feature Unit requests to the active static topology.
+ * \return Pointer to static struct uac2_ops descriptor.
+ */
+const struct uac2_ops *sof_static_uac2_get_ops(void);
+#endif
+
 /**
  * \brief Start a static pipeline by pipeline ID.
  *

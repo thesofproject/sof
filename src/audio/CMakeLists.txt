@@ -155,6 +155,7 @@ endif()
 ### Common files
 
 sof_list_append_ifdef(CONFIG_COMP_BLOB base_files data_blob.c)
+sof_list_append_ifdef(CONFIG_COMP_USB_AUDIO base_files usb_audio.c)
 
 ### (end of common files)
 
