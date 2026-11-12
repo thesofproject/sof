@@ -228,6 +228,25 @@ static enum task_state scheduler_dp_ll_tick_dummy(void *data)
  * needed 1.2ms for processing - but the example would be too complicated)
  */
 
+#if CONFIG_SOF_USERSPACE_APPLICATION && CONFIG_SOF_USERSPACE_LL
+/* Runs in the LL user thread, see scheduler_dp_ll_post_tick() documentation */
+void scheduler_dp_ll_post_tick(void)
+{
+	struct scheduler_dp_data *dp_sch = scheduler_get_user_data(SOF_SCHEDULE_DP);
+	unsigned int lock_key;
+
+	/*
+	 * The LL thread is granted the DP lock when the first DP task of its
+	 * core is created, so there is nothing to do and no access before.
+	 */
+	if (!dp_sch || list_is_empty(&dp_sch->tasks))
+		return;
+
+	lock_key = scheduler_dp_lock(cpu_get_id());
+	scheduler_dp_recalculate(dp_sch);
+	scheduler_dp_unlock(lock_key);
+}
+#else
 void z_impl_scheduler_dp_ll_tick(void)
 {
 	unsigned int lock_key;
@@ -275,6 +294,13 @@ void z_vrfy_scheduler_dp_check_deadline(uint16_t core, uint32_t deadline_clock_t
 }
 #include <zephyr/syscalls/scheduler_dp_check_deadline_mrsh.c>
 #endif
+
+void scheduler_dp_ll_post_tick(void)
+{
+	scheduler_dp_ll_tick();
+}
+
+#endif /* CONFIG_SOF_USERSPACE_APPLICATION && CONFIG_SOF_USERSPACE_LL */
 
 #if CONFIG_SOF_USERSPACE_APPLICATION
 static int scheduler_dp_task_cancel(void *data, struct task *task)

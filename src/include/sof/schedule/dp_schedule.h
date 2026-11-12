@@ -86,8 +86,10 @@ __syscall void scheduler_dp_internal_free(struct task *task);
 /**
  * @brief Tick notification from the Low-Latency (LL) timer domain to the DP scheduler.
  *
- * Invoked on each core after all LL tasks complete. Evaluates readiness for all
- * queued DP tasks, updates their absolute deadlines, and signals worker threads.
+ * Evaluates readiness for all queued DP tasks, updates their absolute
+ * deadlines, and signals worker threads. Not available with
+ * CONFIG_SOF_USERSPACE_APPLICATION and CONFIG_SOF_USERSPACE_LL, see
+ * scheduler_dp_ll_post_tick().
  */
 __syscall void scheduler_dp_ll_tick(void);
 
@@ -136,6 +138,17 @@ static inline void scheduler_dp_check_deadline(uint16_t core, uint32_t deadline_
 	(void)deadline_clock_ticks;
 }
 #endif
+
+/**
+ * @brief Run the DP scheduler after an LL tick.
+ *
+ * Called by the LL scheduler on each core after all LL tasks complete. With
+ * CONFIG_SOF_USERSPACE_APPLICATION and CONFIG_SOF_USERSPACE_LL, the DP task
+ * memory is writable by the DP threads, so the calculation runs in the calling
+ * LL user thread, and only its results are passed to the kernel with
+ * scheduler_dp_kick(). Otherwise this calls scheduler_dp_ll_tick().
+ */
+void scheduler_dp_ll_post_tick(void);
 
 /**
  * @brief Extract telemetry information about Data Processing scheduler tasks.

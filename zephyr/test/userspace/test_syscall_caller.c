@@ -103,7 +103,10 @@ static void user_function(void *p1, void *p2, void *p3)
 		zassert_equal(ipc_wait_for_compound_msg(), 0);
 		return;
 	case CALLER_IPC_LL_SYSCALL:
-#if CONFIG_ZEPHYR_DP_SCHEDULER
+#if CONFIG_ZEPHYR_DP_SCHEDULER && CONFIG_SOF_USERSPACE_APPLICATION
+		(void)scheduler_dp_kick(NULL, 0);
+		break;
+#elif CONFIG_ZEPHYR_DP_SCHEDULER
 		scheduler_dp_ll_tick();
 		break;
 #else
