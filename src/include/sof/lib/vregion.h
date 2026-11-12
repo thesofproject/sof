@@ -213,7 +213,9 @@ bool vregion_pinned_get(struct vregion *vr);
  */
 int vregion_pinned_put(struct vregion *vr);
 
+#if defined(CONFIG_USERSPACE)
 #include <zephyr/syscalls/vregion.h>
+#endif
 
 #else
 

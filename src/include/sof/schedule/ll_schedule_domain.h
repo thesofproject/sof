@@ -530,6 +530,11 @@ struct ll_schedule_domain *zephyr_domain_init(int clk);
 
 #define timer_domain_init(timer, clk) zephyr_domain_init(clk)
 
+#ifdef CONFIG_ZEPHYR_DOMAIN_AUDIO_TIMER
+void zephyr_domain_audio_timer_cb(void);
+bool dai_zephyr_has_active_audio_domain(void);
+#endif
+
 #ifdef CONFIG_SOF_USERSPACE_LL
 /**
  * @brief Retrieve the Zephyr domain thread TID for the domain on the current core.
@@ -557,8 +562,7 @@ struct k_mem_domain *zephyr_ll_mem_domain(void);
  */
 struct k_thread *zephyr_ll_domain_thread(void);
 #endif /* CONFIG_SOF_USERSPACE_LL */
-
-#ifdef CONFIG_SOF_FULL_ZEPHYR_APPLICATION
+#if defined(CONFIG_USERSPACE) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 /**
  * @brief Allocate a completion semaphore for a Low-Latency task.
  * @param[in,out] task Target task.

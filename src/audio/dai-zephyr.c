@@ -64,6 +64,32 @@
 
 static const struct comp_driver comp_dai;
 
+#ifdef CONFIG_ZEPHYR_DOMAIN_AUDIO_TIMER
+#include <sof/schedule/ll_schedule_domain.h>
+
+static struct comp_dev *s_active_sched_dai;
+
+bool dai_zephyr_has_active_audio_domain(void)
+{
+	return s_active_sched_dai != NULL;
+}
+
+static void dai_zephyr_dma_period_cb(const struct device *dma_dev, void *user_data,
+				     uint32_t channel, int status)
+{
+	struct comp_dev *dev = user_data;
+
+	ARG_UNUSED(dma_dev);
+	ARG_UNUSED(channel);
+	ARG_UNUSED(status);
+
+	if (dev != s_active_sched_dai)
+		return;
+
+	zephyr_domain_audio_timer_cb();
+}
+#endif
+
 LOG_MODULE_REGISTER(dai_comp, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(dai);
@@ -158,7 +184,8 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	cfg.dai_index = common_config->dai_index;
 	is_blob = common_config->is_config_blob;
 	cfg.format = common_config->format;
-	cfg.options = is_blob ? 0 : sof_cfg->flags;
+	cfg.options = (is_blob || !spec_config || size < SOF_DAI_CONFIG_HW_SPEC_OFFSET) ?
+		0 : sof_cfg->flags;
 	cfg.rate = common_config->sampling_frequency;
 
 	switch (common_config->type) {
@@ -186,15 +213,23 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		break;
 	case SOF_DAI_IMX_SAI:
 		cfg.type = DAI_IMX_SAI;
-		cfg_params = &sof_cfg->sai;
+		cfg_params = (size >= sizeof(struct sof_ipc_dai_config)) ?
+			(is_blob ? spec_config : &sof_cfg->sai) : NULL;
 		break;
 	case SOF_DAI_IMX_ESAI:
 		cfg.type = DAI_IMX_ESAI;
-		cfg_params = &sof_cfg->esai;
+		cfg_params = (size >= sizeof(struct sof_ipc_dai_config)) ?
+			(is_blob ? spec_config : &sof_cfg->esai) : NULL;
 		break;
 	case SOF_DAI_IMX_MICFIL:
 		cfg.type = DAI_IMX_MICFIL;
-		cfg_params = &sof_cfg->micfil;
+		cfg_params = (size >= sizeof(struct sof_ipc_dai_config)) ?
+			(is_blob ? spec_config : &sof_cfg->micfil) : NULL;
+		break;
+	case SOF_DAI_IMX_SPDIF:
+		cfg.type = DAI_IMX_SPDIF;
+		cfg_params = (size >= sizeof(struct sof_ipc_dai_config)) ?
+			(is_blob ? spec_config : &sof_cfg->spdif) : NULL;
 		break;
 	case SOF_DAI_AMD_DMIC:
 		cfg.type = DAI_AMD_DMIC;
@@ -237,10 +272,23 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	}
 
 	if (!is_blob) {
-		if (size < SOF_DAI_CONFIG_HW_SPEC_OFFSET)
-			return -EINVAL;
+		switch (common_config->type) {
+		case SOF_DAI_IMX_SAI:
+		case SOF_DAI_IMX_SPDIF:
+		case SOF_DAI_IMX_ESAI:
+		case SOF_DAI_IMX_MICFIL:
+			if (size >= SOF_DAI_CONFIG_HW_SPEC_OFFSET)
+				dai_cfg_size -= SOF_DAI_CONFIG_HW_SPEC_OFFSET;
+			else
+				dai_cfg_size = size;
+			break;
+		default:
+			if (size < SOF_DAI_CONFIG_HW_SPEC_OFFSET)
+				return -EINVAL;
 
-		dai_cfg_size -= SOF_DAI_CONFIG_HW_SPEC_OFFSET;
+			dai_cfg_size -= SOF_DAI_CONFIG_HW_SPEC_OFFSET;
+			break;
+		}
 	}
 
 	return dai_config_set(dev, &cfg, cfg_params, dai_cfg_size);
@@ -828,6 +876,10 @@ __cold static void dai_free(struct comp_dev *dev)
 
 	/* heap is NULL to match what is passed in dai_new() */
 	sof_heap_free(NULL, dd);
+#ifdef CONFIG_ZEPHYR_DOMAIN_AUDIO_TIMER
+	if (s_active_sched_dai == dev)
+		s_active_sched_dai = NULL;
+#endif
 	comp_free_device(dev);
 }
 
@@ -929,7 +981,11 @@ static int dai_get_dma_slot(struct dai_data *dd, struct comp_dev *dev, uint32_t 
 	case DAI_IMX_SAI:
 	case DAI_IMX_ESAI:
 	case DAI_IMX_MICFIL:
-		*slot = (hs & GENMASK(15, 8)) >> 8;
+	case DAI_IMX_SPDIF:
+		if (hs & GENMASK(15, 8))
+			*slot = (hs & GENMASK(15, 8)) >> 8;
+		else
+			*slot = hs;
 		break;
 	default:
 		*slot = hs;
@@ -1055,6 +1111,7 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 		comp_err(dev, "dma_cfg allocation failed");
 		return -ENOMEM;
 	}
+	memset(dma_cfg, 0, sizeof(*dma_cfg));
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		dma_cfg->channel_direction = MEMORY_TO_PERIPHERAL;
@@ -1064,15 +1121,24 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 	dma_cfg->source_data_size = config->src_width;
 	dma_cfg->dest_data_size = config->dest_width;
 
-	if (config->burst_elems)
+	if (dd->dai->type == SOF_DAI_IMX_SAI)
+		dma_cfg->source_burst_length = 16 * config->src_width;
+	else if (dd->dai->type == SOF_DAI_IMX_SPDIF)
+		dma_cfg->source_burst_length = 8;
+	else if (config->burst_elems)
 		dma_cfg->source_burst_length = config->burst_elems;
 	else
 		dma_cfg->source_burst_length = 8;
 
 	dma_cfg->dest_burst_length = dma_cfg->source_burst_length;
 	dma_cfg->cyclic = config->cyclic;
+#ifdef CONFIG_ZEPHYR_DOMAIN_AUDIO_TIMER
+	dma_cfg->user_data = dev;
+	dma_cfg->dma_callback = dai_zephyr_dma_period_cb;
+#else
 	dma_cfg->user_data = NULL;
 	dma_cfg->dma_callback = NULL;
+#endif
 	dma_cfg->block_count = config->elem_array.count;
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		dma_cfg->dma_slot = config->dest_dev;
@@ -1087,6 +1153,12 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 		comp_err(dev, "dma_block_config allocation failed");
 		return -ENOMEM;
 	}
+	memset(dma_block_cfg, 0, sizeof(struct dma_block_config) * dma_cfg->block_count);
+
+	const bool is_imx_dai = (dd->dai->type == SOF_DAI_IMX_SAI ||
+				 dd->dai->type == SOF_DAI_IMX_SPDIF ||
+				 dd->dai->type == SOF_DAI_IMX_ESAI ||
+				 dd->dai->type == SOF_DAI_IMX_MICFIL);
 
 	dma_cfg->head_block = dma_block_cfg;
 	for (i = 0; i < dma_cfg->block_count; i++) {
@@ -1097,15 +1169,29 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 				local_to_host(config->elem_array.elems[i].src);
 			dma_block_cfg->dest_address =
 				config->elem_array.elems[i].dest;
-			dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_DECREMENT;
-			dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_INCREMENT;
+			if (is_imx_dai) {
+				dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_INCREMENT;
+				dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_NO_CHANGE;
+				if (dma_cfg->block_count > 1)
+					dma_block_cfg->source_gather_en = 1;
+			} else {
+				dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_DECREMENT;
+				dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_INCREMENT;
+			}
 		} else {
 			dma_block_cfg->source_address =
 				config->elem_array.elems[i].src;
 			dma_block_cfg->dest_address =
 				local_to_host(config->elem_array.elems[i].dest);
-			dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_INCREMENT;
-			dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_DECREMENT;
+			if (is_imx_dai) {
+				dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_NO_CHANGE;
+				dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_INCREMENT;
+				if (dma_cfg->block_count > 1)
+					dma_block_cfg->dest_scatter_en = 1;
+			} else {
+				dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_INCREMENT;
+				dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_DECREMENT;
+			}
 		}
 		prev = dma_block_cfg;
 		prev->next_block = ++dma_block_cfg;
@@ -1501,9 +1587,16 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
+			if (dd->z_config)
+				sof_dma_config(dd->dma, dd->chan_index, dd->z_config);
 			ret = dai_dma_start(dd);
 			if (ret < 0)
 				return ret;
+
+#ifdef CONFIG_ZEPHYR_DOMAIN_AUDIO_TIMER
+			if (!s_active_sched_dai)
+				s_active_sched_dai = dev;
+#endif
 
 			/* start the DAI */
 			dai_trigger_op(dd->dai, cmd, dev->direction);
@@ -1544,6 +1637,9 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		if (!(dd->dai->dma_caps & SOF_DMA_CAP_HDA))
 			audio_stream_reset(&dd->dma_buffer->stream);
 
+#if CONFIG_STATIC_PIPELINE
+		dd->xrun = 0;
+#endif
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* recover valid start position */
@@ -1559,6 +1655,11 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 			ret = dai_dma_start(dd);
 			if (ret < 0)
 				return ret;
+
+#ifdef CONFIG_ZEPHYR_DOMAIN_AUDIO_TIMER
+			if (!s_active_sched_dai)
+				s_active_sched_dai = dev;
+#endif
 
 			/* start the DAI */
 			dai_trigger_op(dd->dai, cmd, dev->direction);
@@ -1576,6 +1677,10 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		COMPILER_FALLTHROUGH;
 	case COMP_TRIGGER_STOP:
 		comp_dbg(dev, "STOP");
+#ifdef CONFIG_ZEPHYR_DOMAIN_AUDIO_TIMER
+		if (s_active_sched_dai == dev)
+			s_active_sched_dai = NULL;
+#endif
 /*
  * Some platforms cannot just simple disable
  * DMA channel during the transfer,
@@ -1598,6 +1703,10 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		break;
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "PAUSE");
+#ifdef CONFIG_ZEPHYR_DOMAIN_AUDIO_TIMER
+		if (s_active_sched_dai == dev)
+			s_active_sched_dai = NULL;
+#endif
 #if CONFIG_COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
 		ret = dai_dma_suspend(dd);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
@@ -1616,7 +1725,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		break;
 	}
 
-#ifdef CONFIG_IPC_MAJOR_3
+#if defined(CONFIG_IPC_MAJOR_3) || defined(CONFIG_STATIC_PIPELINE)
 	/* TODO: investigate why making this IPC version-agnostic
 	 * breaks some Intel tests and check if doing so would be
 	 * possible (or even make sense) on Intel platforms.
@@ -1625,7 +1734,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 	 */
 	if (!ret)
 		ret = comp_set_state(dev, cmd);
-#endif /* CONFIG_IPC_MAJOR_3 */
+#endif /* CONFIG_IPC_MAJOR_3 || CONFIG_STATIC_PIPELINE */
 	if (!ret)
 		telemetry_update_dai_hot(dd, dev);
 
@@ -1862,14 +1971,15 @@ static void set_new_local_buffer(struct dai_data *dd, struct comp_dev *dev)
 	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dd->dma_buffer->stream);
 	uint32_t local_fmt;
 
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dd->local_buffer = comp_dev_get_first_data_producer(dev);
-	else
+		local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
+		dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
+	} else {
 		dd->local_buffer = comp_dev_get_first_data_consumer(dev);
-
-	local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
-
-	dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
+		local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
+		dd->process = pcm_get_conversion_function(dma_fmt, local_fmt);
+	}
 
 	if (!dd->process) {
 		comp_err(dev, "converter function NULL: local fmt %d dma fmt %d\n",

@@ -65,6 +65,8 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 	case SOF_DAI_IMX_SAI:
 		COMPILER_FALLTHROUGH;
 	case SOF_DAI_IMX_ESAI:
+		COMPILER_FALLTHROUGH;
+	case SOF_DAI_IMX_SPDIF:
 		handshake = dai_get_handshake(dd->dai, dai->direction,
 					      dd->stream_id);
 /* TODO: remove this when transition to native drivers is complete on all NXP platforms */

@@ -451,4 +451,11 @@ config DAI_VERBOSE_GLITCH_WARNINGS
 	  always emit a warning. This option useful to debug issues with
 	  DAI DMA operation and issues with low-latency scheduling.
 
+config COMP_USB_AUDIO
+	bool "USB Audio Class 2.0 host endpoint component"
+	default n
+	help
+	  Select for USB Audio Class 2.0 (UAC2) streaming host endpoint
+	  component in standalone Zephyr audio pipelines.
+
 endmenu
