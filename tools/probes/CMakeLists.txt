@@ -20,4 +20,4 @@ target_include_directories(sof-probes PRIVATE
 	"../../posix/include"
 )
 
-install(TARGETS sof-probes DESTINATION bin)
+install(TARGETS sof-probes DESTINATION "${CMAKE_INSTALL_BINDIR}")

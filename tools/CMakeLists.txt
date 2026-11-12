@@ -19,6 +19,10 @@ endif()
 
 set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}/..")
 
+# Standard install directories (CMAKE_INSTALL_BINDIR, ...), overridable
+# by distribution builds.
+include(GNUInstallDirs)
+
 # Most (too) verbose, keep this one first (assuming -j1)
 add_subdirectory(topology)
 # Includes test/topology/

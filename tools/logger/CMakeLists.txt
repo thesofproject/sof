@@ -43,4 +43,4 @@ target_include_directories(sof-logger PRIVATE
 	"${SOF_ROOT_SOURCE_DIRECTORY}"
 )
 
-install(TARGETS sof-logger DESTINATION bin)
+install(TARGETS sof-logger DESTINATION "${CMAKE_INSTALL_BINDIR}")
