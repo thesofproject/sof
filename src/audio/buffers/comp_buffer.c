@@ -192,9 +192,14 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 		sof_heap_free(sof_sys_user_heap_get(), buffer->stream.addr);
 
 	if (alloc && alloc->vreg) {
-		vregion_free(alloc->vreg, buffer);
-		if (!vregion_put(alloc->vreg))
-			sof_heap_free(alloc->heap, alloc);
+		struct vregion *vreg = alloc->vreg;
+
+		/*
+		 * The alloc ctx of a DP module is in its vregion, which the
+		 * last vregion_put() frees, together with the ctx.
+		 */
+		vregion_free(vreg, buffer);
+		vregion_put(vreg);
 	} else {
 		sof_heap_free(alloc ? alloc->heap : NULL, buffer);
 	}
