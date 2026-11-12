@@ -187,9 +187,23 @@ live until the firmware is reset. The Xtensa MMU has one write permission for bo
 the RO area is also read-only to kernel code running in the LL memory domain, such as system
 calls from LL threads: only kernel threads can write objects there.
 
+Objects in the kernel areas:
+
+- RO: the user scheduler list heads and descriptors (`struct schedule_data`, including the
+  scheduler ops), and the LL allocation context `ipc->ll_alloc`. Kernel code finds the user
+  scheduler lists through a kernel-only copy of the per-core list heads.
+- RW: `struct ipc_user`, the IPC data buffer `ipc->comp_data`, the LL scheduler state
+  (`struct zephyr_ll`), the LL scheduling domain and its Zephyr domain data, the DP scheduler
+  data, and the LL tasks that kernel threads create at boot together with their task data.
+
+The LL timer interrupt and the LL thread setup and teardown use kernel-only copies of the
+domain data pointer, the per-core semaphores and the LL threads, not the user-writable domain
+data.
+
 The LL user heap keeps its `sys_heap` metadata in user-writable memory. Kernel code is being
 moved off it; `CONFIG_SOF_ZEPHYR_LL_HEAP_KERNEL_TRACE` logs the remaining uses by kernel
-threads.
+threads. Kernel code still follows some pointers stored in user-writable memory, for example
+`task->sch` and the domain `ops`.
 
 ## Memory-partition markers
 
