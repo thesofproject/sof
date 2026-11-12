@@ -1104,8 +1104,17 @@ int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
 			 * init_drv = original kernel pointer
 			 */
 			const struct comp_driver *drv = ipc_user->init_drv;
+			struct comp_dev *kdev = ipc_user->init_dev;
 
 			ipc_user->init_drv = NULL;
+			ipc_user->init_dev = NULL;
+
+			/* created by the kernel (DP module), only add it here */
+			if (kdev) {
+				result = ipc4_add_comp_dev(kdev);
+				break;
+			}
+
 			if (!drv) {
 				result = IPC4_MOD_NOT_INITIALIZED;
 				break;

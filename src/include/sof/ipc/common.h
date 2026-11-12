@@ -115,6 +115,11 @@ struct ipc_user {
 	/** @brief Original kernel driver pointer for restoring dev->drv after create */
 	const struct comp_driver *init_drv;
 	/**
+	 * @brief Component created by the kernel, for the user thread to add
+	 * to the component list (DP modules), see ipc4_init_module_instance()
+	 */
+	struct comp_dev *init_dev;
+	/**
 	 * @brief User-accessible copy of comp_driver + tr_ctx for create().
 	 *
 	 * The comp_driver and tr_ctx structs reside in kernel memory
