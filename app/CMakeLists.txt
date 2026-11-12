@@ -22,11 +22,42 @@ endif()
 find_package(Zephyr HINTS $ENV{ZEPHYR_BASE})
 project(sample_sof)
 
+if(NOT ZEPHYR_SOF_MODULE)
+  add_subdirectory(../zephyr sof_zephyr)
+endif()
+
 target_sources(app PRIVATE
     src/main.c
   )
 
+target_sources_ifdef(CONFIG_USB_DEVICE_STACK_NEXT app PRIVATE
+    src/usbd_init.c
+  )
+
 zephyr_library_include_directories(app PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/arch/xtensa/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/include
   )
+
+if(CONFIG_XTENSA)
+  zephyr_library_include_directories(app PUBLIC
+      ${CMAKE_CURRENT_SOURCE_DIR}/../src/arch/xtensa/include
+    )
+endif()
+
+if(CONFIG_SOF_FULL_ZEPHYR_APPLICATION AND NOT CONFIG_XTENSA)
+  target_include_directories(app PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/src
+      ${CMAKE_CURRENT_SOURCE_DIR}/../zephyr/include
+      ${CMAKE_CURRENT_SOURCE_DIR}/../src/platform/${PLATFORM}/include
+      ${PROJECT_BINARY_DIR}/include/generated
+    )
+
+  target_link_libraries(app PRIVATE SOF -Wl,--start-group modules_sof sof_kernel -Wl,--end-group)
+  if(TARGET uuid_reg_h)
+    add_dependencies(app uuid_reg_h modules_sof sof_kernel)
+  endif()
+endif()
+
+if(COMMAND sof_append_relative_path_definitions)
+  sof_append_relative_path_definitions(app)
+endif()
