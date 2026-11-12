@@ -8,6 +8,15 @@
 #include <sof/boot_test.h>
 #include <zephyr/logging/log.h>
 
+#if defined(CONFIG_PLATFORM_TEENSY41)
+#include <zephyr/device.h>
+#include <zephyr/usb/usbd.h>
+#include <zephyr/usb/class/usbd_uac2.h>
+#include <sample_usbd.h>
+#include <sof/platform.h>
+#include <sof/audio/pipeline/static_pipeline.h>
+#endif
+
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 /* define qemu boot tests if any qemu target is defined, add targets to end */
@@ -40,6 +49,31 @@ static int sof_app_main(void)
 	}
 
 	LOG_INF("SOF initialized");
+
+#if defined(CONFIG_PLATFORM_TEENSY41)
+	ret = sof_static_topology_init(&g_teensy41_static_topology);
+	if (ret < 0) {
+		LOG_ERR("Static topology initialization failed: %d", ret);
+		return ret;
+	}
+
+	const struct device *uac2_dev = DEVICE_DT_GET_ONE(zephyr_uac2);
+
+	if (device_is_ready(uac2_dev)) {
+		usbd_uac2_set_ops(uac2_dev, sof_static_uac2_get_ops(), NULL);
+	} else {
+		LOG_ERR("UAC2 device not ready");
+	}
+
+	struct usbd_context *sample_usbd = sample_usbd_init_device(NULL);
+
+	if (sample_usbd) {
+		usbd_enable(sample_usbd);
+		LOG_INF("SOF USB UAC2 device and static pipelines started");
+	} else {
+		LOG_ERR("Failed to initialize USB device context");
+	}
+#endif
 
 #ifdef CONFIG_ARCH_POSIX_LIBFUZZER
 	/* Workaround for an apparent timing bug in libfuzzer+asan.
