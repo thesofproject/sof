@@ -196,6 +196,11 @@ Objects in the kernel areas:
   (`struct zephyr_ll`), the LL scheduling domain and its Zephyr domain data, the DP scheduler
   data, and the LL tasks that kernel threads create at boot together with their task data.
 
+DP modules are created by kernel code, but their allocation context, pin format arrays and
+configuration buffers are in the module's own vregion, released with it, and the IPC user
+thread adds the component to the component list. So creating a DP module does not allocate
+from the LL user heap in kernel code.
+
 The LL timer interrupt and the LL thread setup and teardown use kernel-only copies of the
 domain data pointer, the per-core semaphores and the LL threads, not the user-writable domain
 data.
