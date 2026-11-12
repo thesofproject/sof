@@ -142,7 +142,17 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 	if (use_ppl_alloc) {
 		alloc = ppl_alloc;
 	} else {
-		alloc = sof_heap_alloc(mod_heap, flags, sizeof(*alloc), 0);
+		/*
+		 * A DP module keeps its allocation context in its own vregion,
+		 * so it is released with the vregion, and the kernel, which
+		 * creates DP modules, does not allocate it from the LL user heap.
+		 */
+		if (!mod_vreg)
+			alloc = sof_heap_alloc(mod_heap, flags, sizeof(*alloc), 0);
+		else if (flags & SOF_MEM_FLAG_COHERENT)
+			alloc = vregion_alloc_coherent(mod_vreg, sizeof(*alloc));
+		else
+			alloc = vregion_alloc(mod_vreg, sizeof(*alloc));
 		if (!alloc)
 			goto ealloc;
 
@@ -179,7 +189,7 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 	return mod;
 
 edev:
-	if (!use_ppl_alloc)
+	if (!use_ppl_alloc && !mod_vreg)
 		sof_heap_free(mod_heap, alloc);
 ealloc:
 	if (mod_vreg)
@@ -215,13 +225,12 @@ __cold static void module_adapter_mem_free(struct processing_module *mod)
 		vregion_put(alloc->vreg);
 	} else if (alloc->vreg) {
 		/*
-		 * This is DP userpsace case
-		 * Only remove the alloc ctx, if vreg was freed. If it was not
-		 * the DP userspace thread is still holding a reference to it,
-		 * and will free alloc ctx eventually.
+		 * This is the DP userspace case. The alloc ctx is in the
+		 * vregion and is freed with it when the last reference, which
+		 * can be held by a buffer of the module, is put. Do not access
+		 * it after this.
 		 */
-		if (!vregion_put(alloc->vreg))
-			sof_heap_free(alloc->heap, alloc);
+		vregion_put(alloc->vreg);
 	} else {
 		sof_heap_free(alloc->heap, alloc);
 	}
