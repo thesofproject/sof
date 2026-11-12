@@ -176,6 +176,14 @@ struct processing_module {
 	 * the offsets of the fields above.
 	 */
 	uint32_t runtime_params_size;
+
+	/* configuration staging buffer of a DP module, kept for the next
+	 * request, see module_set_configuration()
+	 */
+	void *cfg_staging;
+	size_t cfg_staging_size;
+	/* allocated size of priv.cfg.data, see module_load_config() */
+	size_t cfg_data_size;
 #endif /* SOF_MODULE_PRIVATE */
 };
 
