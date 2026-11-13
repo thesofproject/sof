@@ -325,6 +325,7 @@ void eq_iir_pass(struct processing_module *mod, const struct cir_buf_source *sou
 	const uint8_t *src = source->ptr;
 	uint8_t *dst = sink->ptr;
 	size_t bytes = frames * cd->frame_bytes;
+	int ret;
 
 	while (bytes) {
 		size_t src_contiguous = (const uint8_t *)source->buf_end - src;
@@ -337,7 +338,8 @@ void eq_iir_pass(struct processing_module *mod, const struct cir_buf_source *sou
 			continue;
 		}
 
-		assert(!memcpy_s(dst, dst_contiguous, src, copy));
+		ret = memcpy_s(dst, dst_contiguous, src, copy);
+		assert(!ret);
 		bytes -= copy;
 		src = source_cir_buf_wrap(src + copy, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst + copy, sink->buf_start, sink->buf_end);
