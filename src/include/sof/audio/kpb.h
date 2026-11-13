@@ -37,7 +37,12 @@ struct comp_dev *get_wov_detector_comp(uint32_t ppl_id);
 #define KPB_MAX_BUFFER_SIZE(sw, channels_number) ((KPB_SAMPLNG_FREQUENCY / 1000) * \
 	(KPB_SAMPLE_CONTAINER_SIZE(sw) / 8) * KPB_MAX_BUFF_TIME * \
 	 (channels_number))
+#ifdef CONFIG_KPB_MAX_NO_OF_CLIENTS
 #define KPB_MAX_NO_OF_CLIENTS CONFIG_KPB_MAX_NO_OF_CLIENTS
+#else
+/* header is also included by detectors in builds without KPB */
+#define KPB_MAX_NO_OF_CLIENTS 4
+#endif
 #define KPB_MAX_SINK_CNT (1 + KPB_MAX_NO_OF_CLIENTS)
 #define KPB_NO_OF_HISTORY_BUFFERS 2 /**< no of internal buffers */
 #define KPB_ALLOCATION_STEP 0x100

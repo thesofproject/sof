@@ -387,9 +387,9 @@ static int kpb_bind(struct comp_dev *dev, const struct bind_info *bind_data)
 		sink_buf_id = buf_get_id(sink);
 
 		if (sink_buf_id == buf_id) {
-			struct comp_dev *sc = comp_buffer_get_sink_component(sink);
 			comp_dbg(dev, "kpb_bind: buf_id=%d sink_comp=0x%x -> %s",
-				 buf_id, sc ? dev_comp_id(sc) : 0, sink_buf_id == 0 ? "sel_sink" : "host_sink");
+				 buf_id, dev_comp_id(comp_buffer_get_sink_component(sink)),
+				 sink_buf_id == 0 ? "sel_sink" : "host_sink");
 			if (sink_buf_id == 0)
 				kpb->sel_sink = sink;
 			else
@@ -920,6 +920,10 @@ static int kpb_prepare(struct comp_dev *dev)
 #endif /* CONFIG_AMS */
 
 	if (ret < 0) {
+#ifndef CONFIG_AMS
+		notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
+		notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_CTRL);
+#endif
 		kpb_free_history_buffer(kpb->hd.c_hb);
 		kpb->hd.c_hb = NULL;
 		return -ENOMEM;
@@ -975,8 +979,6 @@ static int kpb_prepare(struct comp_dev *dev)
 	 * NOTE! We assume here that channel selector component device
 	 * is connected to the KPB sinks as well as host device.
 	 */
-	struct comp_buffer *sink;
-
 	comp_dev_for_each_consumer(dev, sink) {
 		enum sof_comp_type type;
 
@@ -1165,6 +1167,11 @@ static int kpb_reset(struct comp_dev *dev)
 			kpb_reset_history_buffer(kpb->hd.c_hb);
 		}
 
+#ifndef CONFIG_AMS
+		/* Unregister KPB from notifications */
+		notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
+		notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_CTRL);
+#endif
 		/* Finally KPB is ready after reset */
 		kpb_change_state(kpb, KPB_STATE_PREPARING);
 
@@ -1465,7 +1472,7 @@ static int kpb_copy(struct comp_dev *dev)
 
 			struct comp_dev *wov_comp = sink ? comp_buffer_get_sink_component(sink) : NULL;
 			if (wov_comp) {
-				comp_dbg(dev, "kpb_copy: produced=%u bytes, triggering wov=0x%x",
+				comp_dbg(dev, "kpb_copy: produced=%zu bytes, triggering wov=0x%x",
 					 copy_bytes, dev_comp_id(wov_comp));
 				comp_copy(wov_comp);
 			} else {
