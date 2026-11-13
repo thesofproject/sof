@@ -156,8 +156,12 @@ static int cadence_configure_aac_dec_params(struct processing_module *mod)
 
 	codec_params = setup_cfg->data;
 	switch (codec_params->format) {
+	case SND_AUDIOSTREAMFORMAT_MP2ADTS:
 	case SND_AUDIOSTREAMFORMAT_MP4ADTS:
 		bitstream_format = XA_AACDEC_EBITSTREAM_TYPE_AAC_ADTS;
+		break;
+	case SND_AUDIOSTREAMFORMAT_ADIF:
+		bitstream_format = XA_AACDEC_EBITSTREAM_TYPE_AAC_ADIF;
 		break;
 	case SND_AUDIOSTREAMFORMAT_RAW:
 		bitstream_format = XA_AACDEC_EBITSTREAM_TYPE_AAC_RAW;
