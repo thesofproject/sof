@@ -151,8 +151,8 @@ static void eq_iir_s32_s16_pass(struct processing_module *mod,
 			y++;
 		}
 		remaining_samples -= n;
-		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
-		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+		x = source_cir_buf_wrap(x, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
@@ -181,8 +181,8 @@ static void eq_iir_s32_s24_pass(struct processing_module *mod,
 			y++;
 		}
 		remaining_samples -= n;
-		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
-		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+		x = source_cir_buf_wrap(x, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
