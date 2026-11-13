@@ -674,7 +674,7 @@ if (NOT CONFIG_COMPILER_INLINE_FUNCTION_OPTION)
 target_compile_options(SOF INTERFACE -fno-inline-functions)
 endif()
 
-if (ARCH STREQUAL "xtensa")
+if (CONFIG_XTENSA)
 target_compile_options(SOF INTERFACE -mlongcalls)
 zephyr_compile_options(-mtext-section-literals)
 endif()
