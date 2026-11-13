@@ -104,6 +104,7 @@ manifest:
           - lz4
           - tinycrypt
           - cmsis_6
+          - liblc3
 
   self:
     # Changes to submanifests/*.yml files _are_ effective; these have no

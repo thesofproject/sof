@@ -451,4 +451,6 @@ config DAI_VERBOSE_GLITCH_WARNINGS
 	  always emit a warning. This option useful to debug issues with
 	  DAI DMA operation and issues with low-latency scheduling.
 
+rsource "bt_codec/Kconfig"
+
 endmenu
