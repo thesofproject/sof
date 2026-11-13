@@ -51,6 +51,8 @@ sequenceDiagram
 
 Connection establishes buffer relationships (`comp_buffer`) connecting the component sources and sinks to the rest of the generic pipeline graph.
 
+Each connected buffer takes a slot in `mod->sinks[]` or `mod->sources[]`, which hold `CONFIG_MODULE_MAX_CONNECTIONS` entries each. A bind (IPC4) or prepare (IPC3) that would need more slots fails with `-EINVAL`.
+
 ```mermaid
 sequenceDiagram
     participant Pipe as Pipeline
