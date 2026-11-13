@@ -107,7 +107,7 @@ The DP scheduler (`zephyr_dp_schedule.c`) manages asynchronous, compute-heavy ta
 ### Architecture
 
 -   **Separate Threads**: Unlike LL which multiplexes tasks inside a single thread, **each DP task is assigned its own Zephyr thread**.
--   **Wakeup Mechanism**: DP scheduling is evaluated at the end of each LL tick (`scheduler_dp_recalculate()`).
+-   **Wakeup Mechanism**: DP scheduling is evaluated at the end of each LL tick (`scheduler_dp_recalculate()`). With user-space LL and DP, this runs in the LL user thread and the kernel applies the results with `scheduler_dp_kick()`.
 -   **Readiness**: It checks if a component has sufficient data across its sinks and sources. If so, it transitions to `RUNNING` and signals the individual DP thread via a Zephyr Event object.
 -   **Deadlines**: Once ready, the DP thread computes its deadline absolute timestamp (`module_get_deadline()`) and calls `k_thread_absolute_deadline_set()`, submitting to the Zephyr kernel's EDF scheduler.
 

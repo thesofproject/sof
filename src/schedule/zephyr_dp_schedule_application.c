@@ -158,7 +158,7 @@ struct scheduler_dp_task_memory {
  * into the DP thread's memory domain, and is also writable by the LL and IPC
  * user threads. Freeing must therefore never use the pointers stored there:
  * scheduler_dp_internal_free() takes them from this record instead. The task
- * pointer is only used as a lookup key.
+ * and module pointers are only used as lookup keys.
  */
 struct scheduler_dp_task_kobj {
 	struct list_item list;
@@ -166,9 +166,12 @@ struct scheduler_dp_task_kobj {
 	struct processing_module *mod;
 	struct k_event *event;
 	struct k_thread *thread;
+	struct ipc4_flat *flat;		/* IPC parameter area in task memory */
+	void *config_data;		/* LARGE_CONFIG_GET reply buffer in task memory */
 	struct k_mem_domain *mdom;
 	struct k_mem_partition mpart[SOF_DP_PART_TYPE_COUNT];
 	uint32_t comp_id;
+	uint16_t core;
 	uint32_t gen;			/* unique per record, see dp_task_kobj_take() */
 };
 
@@ -199,6 +202,29 @@ static struct scheduler_dp_task_kobj *dp_task_kobj_find(const struct task *task)
 	}
 
 	return NULL;
+}
+
+/* Copy the record for @mod to @copy */
+static bool dp_task_kobj_peek_mod(const struct processing_module *mod,
+				  struct scheduler_dp_task_kobj *copy)
+{
+	k_spinlock_key_t key = k_spin_lock(&dp_task_kobj_lock);
+	struct scheduler_dp_task_kobj *kobj;
+	struct list_item *item;
+	bool found = false;
+
+	list_for_item(item, &dp_task_kobj_list) {
+		kobj = container_of(item, struct scheduler_dp_task_kobj, list);
+		if (kobj->mod == mod) {
+			*copy = *kobj;
+			found = true;
+			break;
+		}
+	}
+
+	k_spin_unlock(&dp_task_kobj_lock, key);
+
+	return found;
 }
 
 /* Copy the record for @task to @copy without unlinking it */
@@ -322,14 +348,41 @@ static void ipc_thread_unflatten_run(struct processing_module *pmod, struct ipc4
 int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 			    union scheduler_dp_thread_ipc_param *param)
 {
+	const void *config_data;
+	struct k_event *event;
+	struct ipc4_flat *flat;
+	unsigned int core;
+	int ret;
+
 	if (!pmod) {
 		tr_err(&dp_tr, "no thread module");
 		return -EINVAL;
 	}
 
-	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
-	unsigned int core = pmod->dev->task->core;
-	int ret;
+	if (k_is_user_context()) {
+		struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
+
+		event = pdata->event;
+		flat = pdata->flat;
+		config_data = NULL;
+		core = pmod->dev->task->core;
+	} else {
+		/*
+		 * The module and its task memory are writable by user threads,
+		 * so the kernel takes the DP task objects from its own record.
+		 */
+		struct scheduler_dp_task_kobj kobj;
+
+		if (!dp_task_kobj_peek_mod(pmod, &kobj)) {
+			tr_err(&dp_tr, "no DP task for module");
+			return -EINVAL;
+		}
+
+		event = kobj.event;
+		flat = kobj.flat;
+		config_data = kobj.config_data;
+		core = kobj.core;
+	}
 
 	if (cmd == SOF_IPC4_MOD_INIT_INSTANCE) {
 		/* Wait for the DP thread to start */
@@ -343,11 +396,11 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 	unsigned int lock_key = scheduler_dp_lock(core);
 
 	/* IPCs are serialised */
-	pdata->flat->ret = -ENOSYS;
+	flat->ret = -ENOSYS;
 
-	ret = ipc_thread_flatten(cmd, param, pdata->flat);
+	ret = ipc_thread_flatten(cmd, param, flat);
 	if (!ret)
-		k_event_post(pdata->event, DP_TASK_EVENT_IPC);
+		k_event_post(event, DP_TASK_EVENT_IPC);
 
 	scheduler_dp_unlock(lock_key);
 
@@ -361,14 +414,26 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 		return ret;
 	}
 
-	if (!pdata->flat->ret && cmd == SOF_IPC4_MOD_LARGE_CONFIG_GET) {
-		/* A single case of returning data */
-		param->get_config.data_offset_size = pdata->flat->get_config.data_offset_size;
+	ret = flat->ret;
+	if (!ret && cmd == SOF_IPC4_MOD_LARGE_CONFIG_GET) {
+		/*
+		 * A single case of returning data. The kernel only copies from
+		 * the buffer in its record, which is NULL if the module had no
+		 * get_configuration at init. User threads use the pointer set by
+		 * the DP thread, they cannot read more through it than they can
+		 * read anyway.
+		 */
+		if (k_is_user_context())
+			config_data = flat->get_config.data;
+		if (!config_data)
+			return -EINVAL;
+
+		param->get_config.data_offset_size = flat->get_config.data_offset_size;
 		return memcpy_s(param->get_config.data, SOF_IPC_MSG_MAX_SIZE,
-				pdata->flat->get_config.data, param->get_config.fragment_size);
+				config_data, param->get_config.fragment_size);
 	}
 
-	return pdata->flat->ret;
+	return ret;
 }
 
 /* Go through all DP tasks and recalculate their readiness and deadlines
@@ -376,15 +441,25 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
  */
 void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 {
+	struct scheduler_dp_kick kicks[SCHEDULER_DP_KICK_MAX];
 	struct list_item *tlist;
 	struct task *curr_task;
 	struct task_dp_pdata *pdata;
+	unsigned int n = 0;
 
+	/*
+	 * The task list and task memory are writable by DP threads. This may
+	 * run in the LL user thread, see scheduler_dp_ll_post_tick(), so the
+	 * DP thread objects are only acted on by scheduler_dp_kick(), which
+	 * takes them from the kernel-only task records.
+	 */
 	list_for_item(tlist, &dp_sch->tasks) {
 		curr_task = container_of(tlist, struct task, list);
 		pdata = curr_task->priv_data;
 		struct processing_module *mod = pdata->mod;
 		bool trigger_task = false;
+		uint32_t flags = 0;
+		uint32_t deadline_cycles = 0;
 
 		/* decrease number of LL ticks/cycles left till the module reaches its deadline */
 		if (mod->dp_startup_delay && pdata->ll_cycles_to_start) {
@@ -401,7 +476,7 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 			/* trigger the task */
 			curr_task->state = SOF_TASK_STATE_RUNNING;
 			trigger_task = true;
-			k_event_post(pdata->event, DP_TASK_EVENT_PROCESS);
+			flags |= SCHEDULER_DP_KICK_PROCESS;
 		}
 
 		if (curr_task->state == SOF_TASK_STATE_RUNNING) {
@@ -431,10 +506,10 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 				/* calculate number of ticks */
 				deadline = deadline * (CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000);
 
-				/* add to "NOW", overflows are OK  */
-				deadline = dp_sch->last_ll_tick_timestamp + deadline;
-				if (trigger_task)
-					pdata->deadline_clock_ticks = deadline ? deadline : 1U;
+				/* calculate number of ticks, scheduler_dp_kick() adds "NOW" */
+				deadline_cycles = deadline *
+					(CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000);
+				flags |= SCHEDULER_DP_KICK_DEADLINE;
 
 				/* set in Zephyr. Note that it may be in past, it does not matter,
 				 * Zephyr still will schedule the thread with earlier deadline
@@ -443,7 +518,105 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 				k_thread_absolute_deadline_set(pdata->thread_id, deadline);
 			}
 		}
+
+		if (!flags)
+			continue;
+
+		kicks[n].task = curr_task;
+		kicks[n].flags = flags;
+		kicks[n].deadline = deadline_cycles;
+		if (++n == ARRAY_SIZE(kicks)) {
+			scheduler_dp_kick(kicks, n);
+			n = 0;
+		}
 	}
+
+	if (n)
+		scheduler_dp_kick(kicks, n);
+}
+
+unsigned int scheduler_dp_task_count(unsigned int core)
+{
+	k_spinlock_key_t key = k_spin_lock(&dp_task_kobj_lock);
+	struct scheduler_dp_task_kobj *kobj;
+	struct list_item *item;
+	unsigned int count = 0;
+
+	/*
+	 * Task memory is only freed after its record is unlinked, so it can be
+	 * read here. Only the state value is used, no pointers from it: a
+	 * forged state only changes whether that task is counted.
+	 */
+	list_for_item(item, &dp_task_kobj_list) {
+		kobj = container_of(item, struct scheduler_dp_task_kobj, list);
+		if (kobj->core == core && task_is_active(kobj->task))
+			count++;
+	}
+
+	k_spin_unlock(&dp_task_kobj_lock, key);
+
+	return count;
+}
+
+#if CONFIG_SOF_BOOT_TEST_STANDALONE
+/* Add a DP task record for zephyr/test/userspace/test_dp_kick.c */
+int scheduler_dp_test_record_add(struct task *task, struct k_event *event,
+				 struct k_thread *thread, uint16_t core)
+{
+	struct scheduler_dp_task_kobj *kobj = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+						      sizeof(*kobj));
+
+	if (!kobj)
+		return -ENOMEM;
+
+	kobj->task = task;
+	kobj->event = event;
+	kobj->thread = thread;
+	kobj->core = core;
+	dp_task_kobj_add(kobj);
+
+	return 0;
+}
+
+void scheduler_dp_test_record_del(struct task *task)
+{
+	rfree(dp_task_kobj_take(task, NULL));
+}
+#endif
+
+int z_impl_scheduler_dp_kick(const struct scheduler_dp_kick *kicks, uint32_t count)
+{
+	struct scheduler_dp_task_kobj *kobj;
+	unsigned int core = cpu_get_id();
+	uint32_t now = k_cycle_get_32();
+	k_spinlock_key_t key;
+	int skipped = 0;
+	uint32_t i;
+
+	/* the record cannot be freed while dp_task_kobj_lock is held */
+	key = k_spin_lock(&dp_task_kobj_lock);
+
+	for (i = 0; i < count; i++) {
+		kobj = dp_task_kobj_find(kicks[i].task);
+		if (!kobj || kobj->core != core) {
+			skipped++;
+			continue;
+		}
+
+		/*
+		 * Overflows are OK. The deadline may be in the past, Zephyr
+		 * still schedules the thread with the earliest deadline first.
+		 */
+		if (kicks[i].flags & SCHEDULER_DP_KICK_DEADLINE)
+			k_thread_absolute_deadline_set(kobj->thread, now + kicks[i].deadline);
+
+		if (kicks[i].flags & SCHEDULER_DP_KICK_PROCESS)
+			k_event_post(kobj->event, DP_TASK_EVENT_PROCESS);
+	}
+
+	k_spin_unlock(&dp_task_kobj_lock, key);
+
+	return skipped;
 }
 
 /* Thread function called in component context, on target core */
@@ -702,6 +875,7 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 	kobj->task = ptask;
 	kobj->mod = mod;
+	kobj->core = core;
 	comp_id = mod->dev->ipc_config.id;
 	kobj->comp_id = comp_id;
 
@@ -714,8 +888,10 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 		}
 	}
 	pdata->ipc_config_data = ipc_config_data;
+	kobj->config_data = ipc_config_data;
 
-	pdata->flat = &task_memory->flat;
+	kobj->flat = &task_memory->flat;
+	pdata->flat = kobj->flat;
 
 	kobj->event = k_object_alloc(K_OBJ_EVENT);
 	if (!kobj->event) {
@@ -944,4 +1120,19 @@ void z_vrfy_scheduler_dp_internal_free(struct task *task)
 	K_OOPS(!scheduler_dp_internal_free_kobj(task, &kobj));
 }
 #include <zephyr/syscalls/scheduler_dp_internal_free_mrsh.c>
+
+int z_vrfy_scheduler_dp_kick(const struct scheduler_dp_kick *kicks, uint32_t count)
+{
+	struct scheduler_dp_kick kkicks[SCHEDULER_DP_KICK_MAX];
+
+	/* without user-space LL, only the kernel LL scheduler kicks DP tasks */
+	K_OOPS(!IS_ENABLED(CONFIG_SOF_USERSPACE_LL));
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_LL);
+
+	K_OOPS(K_SYSCALL_VERIFY(count <= ARRAY_SIZE(kkicks)));
+	K_OOPS(k_usermode_from_copy(kkicks, kicks, count * sizeof(kkicks[0])));
+
+	return z_impl_scheduler_dp_kick(kkicks, count);
+}
+#include <zephyr/syscalls/scheduler_dp_kick_mrsh.c>
 #endif /* CONFIG_USERSPACE */

@@ -86,8 +86,10 @@ __syscall void scheduler_dp_internal_free(struct task *task);
 /**
  * @brief Tick notification from the Low-Latency (LL) timer domain to the DP scheduler.
  *
- * Invoked on each core after all LL tasks complete. Evaluates readiness for all
- * queued DP tasks, updates their absolute deadlines, and signals worker threads.
+ * Evaluates readiness for all queued DP tasks, updates their absolute
+ * deadlines, and signals worker threads. Not available with
+ * CONFIG_SOF_USERSPACE_APPLICATION and CONFIG_SOF_USERSPACE_LL, see
+ * scheduler_dp_ll_post_tick().
  */
 __syscall void scheduler_dp_ll_tick(void);
 
@@ -98,6 +100,36 @@ __syscall void scheduler_dp_ll_tick(void);
  * @param[in] deadline_clock_ticks Absolute hardware cycle deadline of the run.
  */
 __syscall void scheduler_dp_check_deadline(uint16_t core, uint32_t deadline_clock_ticks);
+
+/** @brief scheduler_dp_kick flag: signal the DP thread to process data */
+#define SCHEDULER_DP_KICK_PROCESS	BIT(0)
+/** @brief scheduler_dp_kick flag: set the DP thread deadline */
+#define SCHEDULER_DP_KICK_DEADLINE	BIT(1)
+
+/** @brief Maximum number of entries passed to one scheduler_dp_kick() call */
+#define SCHEDULER_DP_KICK_MAX		8
+
+/** @brief Result of the DP readiness and deadline calculation for one task */
+struct scheduler_dp_kick {
+	const struct task *task;	/**< DP task, only used to look up its record */
+	uint32_t flags;			/**< SCHEDULER_DP_KICK_* */
+	uint32_t deadline;		/**< deadline in cycles from now */
+};
+
+/**
+ * @brief Apply DP readiness and deadline results to the DP threads.
+ *
+ * The DP thread kernel objects are looked up from the kernel-only DP task
+ * records, never from DP task memory. Entries for unknown tasks and for
+ * tasks of other cores are skipped. Only the LL user thread may call this,
+ * or the LL scheduler in kernel mode without CONFIG_SOF_USERSPACE_LL.
+ *
+ * @param[in] kicks Array of results.
+ * @param[in] count Number of entries, at most SCHEDULER_DP_KICK_MAX.
+ * @return Number of skipped entries.
+ */
+__syscall int scheduler_dp_kick(const struct scheduler_dp_kick *kicks, uint32_t count);
+
 #include <zephyr/syscalls/dp_schedule.h>
 #else
 static inline void scheduler_dp_check_deadline(uint16_t core, uint32_t deadline_clock_ticks)
@@ -105,6 +137,24 @@ static inline void scheduler_dp_check_deadline(uint16_t core, uint32_t deadline_
 	(void)core;
 	(void)deadline_clock_ticks;
 }
+#endif
+
+/**
+ * @brief Run the DP scheduler after an LL tick.
+ *
+ * Called by the LL scheduler on each core after all LL tasks complete. With
+ * CONFIG_SOF_USERSPACE_APPLICATION and CONFIG_SOF_USERSPACE_LL, the DP task
+ * memory is writable by the DP threads, so the calculation runs in the calling
+ * LL user thread, and only its results are passed to the kernel with
+ * scheduler_dp_kick(). Otherwise this calls scheduler_dp_ll_tick().
+ */
+void scheduler_dp_ll_post_tick(void);
+
+#if CONFIG_SOF_BOOT_TEST_STANDALONE && CONFIG_SOF_USERSPACE_APPLICATION
+/* Test hooks: add and remove kernel-only DP task records without a DP task */
+int scheduler_dp_test_record_add(struct task *task, struct k_event *event,
+				 struct k_thread *thread, uint16_t core);
+void scheduler_dp_test_record_del(struct task *task);
 #endif
 
 /**

@@ -228,6 +228,25 @@ static enum task_state scheduler_dp_ll_tick_dummy(void *data)
  * needed 1.2ms for processing - but the example would be too complicated)
  */
 
+#if CONFIG_SOF_USERSPACE_APPLICATION && CONFIG_SOF_USERSPACE_LL
+/* Runs in the LL user thread, see scheduler_dp_ll_post_tick() documentation */
+void scheduler_dp_ll_post_tick(void)
+{
+	struct scheduler_dp_data *dp_sch = scheduler_get_user_data(SOF_SCHEDULE_DP);
+	unsigned int lock_key;
+
+	/*
+	 * The LL thread is granted the DP lock when the first DP task of its
+	 * core is created, so there is nothing to do and no access before.
+	 */
+	if (!dp_sch || list_is_empty(&dp_sch->tasks))
+		return;
+
+	lock_key = scheduler_dp_lock(cpu_get_id());
+	scheduler_dp_recalculate(dp_sch);
+	scheduler_dp_unlock(lock_key);
+}
+#else
 void z_impl_scheduler_dp_ll_tick(void)
 {
 	unsigned int lock_key;
@@ -275,6 +294,13 @@ void z_vrfy_scheduler_dp_check_deadline(uint16_t core, uint32_t deadline_clock_t
 }
 #include <zephyr/syscalls/scheduler_dp_check_deadline_mrsh.c>
 #endif
+
+void scheduler_dp_ll_post_tick(void)
+{
+	scheduler_dp_ll_tick();
+}
+
+#endif /* CONFIG_SOF_USERSPACE_APPLICATION && CONFIG_SOF_USERSPACE_LL */
 
 #if CONFIG_SOF_USERSPACE_APPLICATION
 static int scheduler_dp_task_cancel(void *data, struct task *task)
@@ -409,16 +435,35 @@ __cold int scheduler_dp_init(void)
 
 void scheduler_get_task_info_dp(struct scheduler_props *scheduler_props, uint32_t *data_off_size)
 {
-	unsigned int lock_key;
-
 	scheduler_props->processing_domain = COMP_PROCESSING_DOMAIN_DP;
+#if CONFIG_SOF_USERSPACE_APPLICATION
+	/*
+	 * The task list links are in DP task memory, which DP threads can
+	 * write. Count the kernel-only task records instead of walking it.
+	 */
+	struct task_props *task_props = (struct task_props *)(scheduler_props + 1);
+	unsigned int count = scheduler_dp_task_count(cpu_get_id());
+	unsigned int i;
+
+	scheduler_props->core_id = cpu_get_id();
+	scheduler_props->task_count = count;
+	*data_off_size += sizeof(*scheduler_props);
+
+	for (i = 0; i < count; i++) {
+		task_props[i].task_id = 0;
+		task_props[i].module_instance_count = 0;
+		*data_off_size += sizeof(*task_props);
+	}
+#else
 #if CONFIG_SOF_USERSPACE_LL
 	struct scheduler_dp_data *dp_sch = scheduler_get_user_data(SOF_SCHEDULE_DP);
 #else
 	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
 #endif
+	unsigned int lock_key;
 
 	lock_key = scheduler_dp_lock(cpu_get_id());
 	scheduler_get_task_info(scheduler_props, data_off_size,  &dp_sch->tasks);
 	scheduler_dp_unlock(lock_key);
+#endif
 }
