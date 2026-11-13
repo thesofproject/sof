@@ -64,19 +64,19 @@ static int32_t flag_process(struct dax_adapter_data *adapter_data,
 			    enum dax_flag_opt_mode opt_mode)
 {
 #ifdef __ZEPHYR__
-	int32_t bit = ffs(flag) - 1;
+	atomic_val_t mask = (atomic_val_t)flag;
 
 	switch (opt_mode) {
 	case DAX_FLAG_READ:
-		return atomic_test_bit(&adapter_data->proc_flags, bit);
+		return (atomic_get(&adapter_data->proc_flags) & mask) != 0;
 	case DAX_FLAG_SET:
-		atomic_set_bit(&adapter_data->proc_flags, bit);
+		atomic_or(&adapter_data->proc_flags, mask);
 		break;
 	case DAX_FLAG_CLEAR:
-		atomic_clear_bit(&adapter_data->proc_flags, bit);
+		atomic_and(&adapter_data->proc_flags, ~mask);
 		break;
 	case DAX_FLAG_READ_AND_CLEAR:
-		return atomic_test_and_clear_bit(&adapter_data->proc_flags, bit);
+		return (atomic_and(&adapter_data->proc_flags, ~mask) & mask) != 0;
 	default:
 		break;
 	}
