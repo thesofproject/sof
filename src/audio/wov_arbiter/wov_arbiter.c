@@ -783,7 +783,9 @@ static int wov_arb_get_large_config(struct comp_dev *dev,
 static const struct comp_driver wov_arbiter_drv = {
 	.type  = SOF_COMP_KEYWORD_DETECT,
 	.uid   = SOF_RT_UUID(wov_arbiter_uuid),
+#if !CONFIG_ZEPHYR_LOG
 	.tctx  = &wov_arbiter_tr,
+#endif
 	.ops   = {
 		.create            = wov_arb_new,
 		.free              = wov_arb_free,
