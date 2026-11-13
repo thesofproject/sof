@@ -37,6 +37,16 @@ set(WEBRTC_NS_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/webrtc-ns-install"
 
 set(_ns_src "${SOF_WEBRTC_APM_SRC_DIR}/webrtc")
 
+if("${ARCH}" STREQUAL "xtensa")
+  if(CONFIG_LLEXT_BUILD_PIC)
+    set(_ns_arch_cflags "-fPIC -mlongcalls -mtext-section-literals")
+  else()
+    set(_ns_arch_cflags "-fno-pic -fno-pie -mlongcalls -mtext-section-literals")
+  endif()
+else()
+  set(_ns_arch_cflags "-fPIC")
+endif()
+
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/webrtc-ns-build.sh"
 "#!/bin/sh
 set -e
@@ -46,7 +56,7 @@ OBJ=${CMAKE_CURRENT_BINARY_DIR}/webrtc-ns-obj
 
 mkdir -p \"$OBJ\" \"$INST/lib\" \"$INST/include\"
 
-CFLAGS=\"-O2 -fPIC -DWEBRTC_ARCH_32_BITS= -DWEBRTC_ARCH_LITTLE_ENDIAN= -I${SOF_WEBRTC_APM_SRC_DIR} -I$SRC/modules/audio_processing/ns/include -Dmalloc=webrtc_ns_malloc -Dcalloc=webrtc_ns_calloc -Dfree=webrtc_ns_free\"
+CFLAGS=\"-O2 ${_ns_arch_cflags} -DNDEBUG -DWEBRTC_ARCH_32_BITS= -DWEBRTC_ARCH_LITTLE_ENDIAN= -I${SOF_WEBRTC_APM_SRC_DIR} -I$SRC/modules/audio_processing/ns/include -Dmalloc=webrtc_ns_malloc -Dcalloc=webrtc_ns_calloc -Dfree=webrtc_ns_free\"
 
 SRCS=\"
   $SRC/modules/audio_processing/ns/noise_suppression.c
