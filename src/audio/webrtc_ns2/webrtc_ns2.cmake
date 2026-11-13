@@ -34,6 +34,16 @@ set(WEBRTC_NS2_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/rnnoise-install"
 set(_rnn_src "${SOF_RNNOISE_SRC_DIR}/src")
 set(_rnn_inc "${SOF_RNNOISE_SRC_DIR}/include")
 
+if("${ARCH}" STREQUAL "xtensa")
+  if(CONFIG_LLEXT_BUILD_PIC)
+    set(_rnn_arch_cflags "-fPIC -mlongcalls -mtext-section-literals")
+  else()
+    set(_rnn_arch_cflags "-fno-pic -fno-pie -mlongcalls -mtext-section-literals")
+  endif()
+else()
+  set(_rnn_arch_cflags "-fPIC")
+endif()
+
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/rnnoise-build.sh"
 "#!/bin/sh
 set -e
@@ -44,7 +54,7 @@ OBJ=${CMAKE_CURRENT_BINARY_DIR}/rnnoise-obj
 
 mkdir -p \"$OBJ\" \"$INST/lib\" \"$INST/include\"
 
-CFLAGS=\"-O2 -fPIC -I$SRC -I$INC -DOUTSIDE_SPEEX -DRANDOM_PREFIX=rnn -DFLOAT_APPROX\"
+CFLAGS=\"-O2 ${_rnn_arch_cflags} -DNDEBUG -I$SRC -I$INC -DOUTSIDE_SPEEX -DRANDOM_PREFIX=rnn -DFLOAT_APPROX\"
 
 # Core RNNoise sources (excludes dump_features.c and train-only files).
 SRCS=\"
