@@ -26,3 +26,24 @@ foreach(tplg ${TPLGS})
 	add_custom_target(topology2_dev_${output} DEPENDS ${tplg2_outputs})
 	add_dependencies(topology2_dev topology2_dev_${output})
 endforeach()
+
+foreach(link ${SYMLINKS})
+	list(LENGTH link length)
+	if(NOT length EQUAL 2)
+		message(FATAL_ERROR "SYMLINKS entry '${link}' must have exactly 2 elements (link_name;link_target), got ${length}")
+	endif()
+
+	list(GET link 0 link_name)
+	list(GET link 1 link_target)
+
+	add_custom_command(
+		OUTPUT ${link_name}.tplg
+		COMMAND ${CMAKE_COMMAND} -E create_symlink "${link_target}.tplg" "${link_name}.tplg"
+		DEPENDS ${link_target}.tplg
+		VERBATIM
+	)
+
+	add_custom_target(topology2_dev_${link_name} DEPENDS ${link_name}.tplg)
+	add_dependencies(topology2_dev_${link_name} topology2_dev_${link_target})
+	add_dependencies(topology2_dev topology2_dev_${link_name})
+endforeach()
