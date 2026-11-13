@@ -191,7 +191,7 @@ static int setup_test_case(void **state)
 	dummy_pipe = test_malloc(sizeof(*dummy_pipe));
 	if (!dummy_pipe)
 		return -ENOMEM;
-	dummy_pipe->expect_eos = false;
+	dev->expect_eos = false;
 	dev->pipeline = dummy_pipe;
 
 	mod = comp_mod(dev);
