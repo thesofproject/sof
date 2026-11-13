@@ -178,3 +178,7 @@ else() ### library, e.g. testbench ###
 		)
 	endif()
 endif()
+
+if(CONFIG_COMP_BT_CODEC)
+	add_subdirectory(bt_codec)
+endif()

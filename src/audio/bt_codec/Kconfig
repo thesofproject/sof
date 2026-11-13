@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_BT_CODEC
+	bool "Bluetooth Transparent Mode DSP Codec components (LC3, mSBC, G.722, SB4)"
+	depends on COMP_MODULE_ADAPTER && IPC_MAJOR_4
+	help
+	  Select to include Bluetooth Transparent Mode (0x03) DSP audio codec
+	  offload components for SSP2-BT playback and capture pipelines.
+	  Provides bt_lc3 (Zephyr liblc3 7.5 ms codec), bt_msbc (Bluetooth HFP
+	  H2-framed mSBC), bt_g722 (ITU-T Rec. G.722 SB-ADPCM), and bt_sb4
+	  (experimental 4-band tree-QMF subband ADPCM).
