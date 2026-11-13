@@ -125,6 +125,15 @@ set(TPLGS
 	"sof-acp_7_x_sdw\;sof-acp7x-rt721-l0"
 	"sof-acp_7_x_i2s\;sof-acp7x"
 	"sof-acp_7_x_i2s_24bit\;sof-acp7x-24bit"
+	"sof-acp7f-rt721-l0\;sof-acp7f-rt721-l0"
+	"sof-acp7f-rt721-l0\;sof-acp7f-rt722-l0"
+	"sof-acp7f-rt721-l0-rt1320-l1\;sof-acp7f-cs42l45-l0u0-cs35l63x2-l1u13"
+	"sof-acp7f-jack-l0-id0\;sof-acp7f-jack-l0-id0"
+	"sof-acp7f-jack-l1-id0\;sof-acp7f-jack-l1-id0"
+	"sof-acp7f-1amp-l0-id2\;sof-acp7f-1amp-l0-id2"
+	"sof-acp7f-1amp-l1-id2\;sof-acp7f-1amp-l1-id2"
+	"sof-acp7f-mic-l0-id4\;sof-acp7f-mic-l0-id4"
+	"sof-acp7f-mic-l1-id4\;sof-acp7f-mic-l1-id4"
 )
 
 # This empty 'production/' source subdirectory exists only to create the
