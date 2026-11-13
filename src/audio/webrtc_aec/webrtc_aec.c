@@ -313,7 +313,8 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 
 #ifdef CONFIG_IPC_MAJOR_4
 	/* Apply reference format override from topology pin descriptor. */
-	if (cd->ref_src >= 0)
+	if (cd->ref_src >= 0 && mod->priv.cfg.nb_input_pins > 1 &&
+	    mod->priv.cfg.input_pins)
 		ipc4_update_source_format(sources[cd->ref_src],
 					  &mod->priv.cfg.input_pins[1].audio_fmt);
 #endif
