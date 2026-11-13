@@ -62,18 +62,6 @@ void ipc_build_comp_event(struct sof_ipc_comp_event *event, uint32_t type,
 	event->src_comp_id = id;
 }
 
-bool ipc_trigger_trace_xfer(uint32_t avail)
-{
-	return true;
-}
-
-void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
-{
-	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_TRACE_MSG |
-		SOF_IPC_TRACE_DMA_POSITION;
-	posn->rhdr.hdr.size = sizeof(*posn);
-}
-
 static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();

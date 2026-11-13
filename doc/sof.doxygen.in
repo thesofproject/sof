@@ -45,7 +45,6 @@ PREDEFINED	 = "__attribute__(x)= " \
 		   "CONFIG_FORMAT_S16LE=1" \
 		   "CONFIG_FORMAT_S32LE=1" \
 		   "CONFIG_FORMAT_S24LE=1" \
-		   "CONFIG_TRACE=1" \
 		   "CONFIG_IPC4=1" \
 		   "CONFIG_IPC3=1" \
 		   "CONFIG_IPC_MAJOR_4=1" \

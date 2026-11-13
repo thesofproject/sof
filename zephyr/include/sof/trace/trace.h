@@ -31,8 +31,7 @@ uint64_t platform_timer_get(struct timer *timer);
 
 /*
  * Override SOF mtrace_printf() macro for now to support Zephyr's shared
- * memory logger. Note the DMA trace can be copied to the shared memory
- * too thanks to CONFIG_TRACEM.
+ * memory logger.
  */
 #undef mtrace_printf
 

@@ -40,7 +40,6 @@ src/include/sof/drivers/*
 src/include/sof/platform.h
 src/include/sof/llext_manager.h
 src/include/sof/ipc/driver.h
-src/include/sof/trace/dma-trace.h
 src/include/sof/lib/agent.h
 src/include/sof/lib/cpu-clk-manager.h
 src/include/sof/lib/mailbox.h
