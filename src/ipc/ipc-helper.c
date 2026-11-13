@@ -311,9 +311,24 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 
 	/* check state: if not ready, stop and reset to release resources before freeing */
 	if (icd->cd->state != COMP_STATE_READY) {
-		if (icd->cd->state == COMP_STATE_ACTIVE)
+		struct pipeline *p = icd->cd->pipeline;
+		int ret;
+
+		if (icd->cd->state == COMP_STATE_ACTIVE) {
+			/* the pipeline task would otherwise keep running on freed components */
+			if (p && p->status == COMP_STATE_ACTIVE && cpu_is_me(p->core)) {
+				pipeline_schedule_cancel(p);
+				p->status = COMP_STATE_PAUSED;
+			}
 			comp_trigger(icd->cd, COMP_TRIGGER_STOP);
-		comp_reset(icd->cd);
+		}
+
+		ret = comp_reset(icd->cd);
+		if (ret) {
+			tr_err(&ipc_tr, "comp id: 0x%x reset failed %d, cannot be freed",
+			       comp_id, ret);
+			return ret < 0 ? ret : -EBUSY;
+		}
 		comp_set_state(icd->cd, COMP_TRIGGER_RESET);
 	}
 
