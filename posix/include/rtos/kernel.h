@@ -36,6 +36,11 @@ static inline bool thread_is_userspace(struct k_thread *thread)
 	return false;
 }
 
+static inline bool k_is_in_isr(void)
+{
+	return false;
+}
+
 static inline void k_sleep(k_timeout_t timeout)
 {
 	wait_delay(timeout.ticks);
