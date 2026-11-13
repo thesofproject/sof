@@ -1,7 +1,7 @@
 Read this section if there are some SPDX warnings above.
-Adding correct SPDX headers to new files can be tricky because:
+Pleasing checkpatch is hard when adding new files because:
 
-- a different SPDX style is expected for .c versus .h files.
+- checkpatch requests a different SPDX style for .c versus .h files.
   This is because some .h files are included in linker scripts or
   assembly code.
 - Some SOF reviewers reject C99 comments starting with //
