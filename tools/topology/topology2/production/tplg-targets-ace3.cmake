@@ -108,15 +108,6 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt722-4ch.bin,DMIC0_ENHANCED_CAPTURE=true,\
 EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
-"cavs-sdw\;sof-ptl-rt722-4ch-bt\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
-PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,\
-SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
-SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
-PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt722-4ch-bt.bin,DMIC0_ENHANCED_CAPTURE=true,\
-EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default,\
-BT_PCM_ID=20,BT_ID=10,BT_PCM_NAME=Bluetooth,ADD_BT=true,\
-BT_PB_HOST_PIPELINE_ID=200,BT_PB_DAI_PIPELINE_ID=201,BT_CP_HOST_PIPELINE_ID=202,BT_CP_DAI_PIPELINE_ID=203"
-
 "cavs-sdw\;sof-ptl-rt722-2ch\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=2,\
 PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
@@ -360,13 +351,10 @@ HEADSET_CODEC=false,HDMI_IN_CAPTURE=false,BT_ID=2,PREPROCESS_PLUGINS=nhlt,\
 NHLT_BIN=nhlt-sof-ptl-ssp2-bt-id2.bin"
 
 #BT_ID=8, 10 for sdw_sof machine
-"cavs-sdw\;sof-ptl-ssp2-bt-id8\;PLATFORM=ptl,ADD_BT=true,SDW_JACK=false,NUM_HDMIS=0,\
+"cavs-sdw\;sof-ptl-ssp2-bt-id8\;PLATFORM=ptl,ADD_BT=true,BT_DEEP_BUFFER=true,SDW_JACK=false,NUM_HDMIS=0,\
 HEADSET_CODEC=false,HDMI_IN_CAPTURE=false,BT_ID=8,BT_PCM_ID=20,BT_PCM_NAME=Bluetooth,\
-BT_CP_HOST_PIPELINE_ID=201,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-ssp2-bt-id8.bin"
-
-"cavs-sdw\;sof-ptl-ssp2-bt-id10\;PLATFORM=ptl,ADD_BT=true,SDW_JACK=false,NUM_HDMIS=0,\
-HEADSET_CODEC=false,HDMI_IN_CAPTURE=false,BT_ID=10,BT_PCM_ID=20,BT_PCM_NAME=Bluetooth,\
-BT_CP_HOST_PIPELINE_ID=201,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-ssp2-bt-id10.bin"
+BT_PB_HOST_PIPELINE_ID=200,BT_PB_DAI_PIPELINE_ID=201,BT_CP_HOST_PIPELINE_ID=202,BT_CP_DAI_PIPELINE_ID=203,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-ssp2-bt-id8.bin"
 )
 
 list(APPEND SYMLINKS
@@ -379,5 +367,4 @@ list(APPEND SYMLINKS
 "sof-wcl-dmic-4ch-id3\;sof-ptl-dmic-4ch-id3"
 "sof-wcl-dmic-4ch-id4\;sof-ptl-dmic-4ch-id4"
 "sof-wcl-dmic-4ch-id5\;sof-ptl-dmic-4ch-id5"
-"sof-wcl-rt722-4ch-bt\;sof-ptl-rt722-4ch-bt"
 )
