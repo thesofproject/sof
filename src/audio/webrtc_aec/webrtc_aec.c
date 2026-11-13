@@ -168,6 +168,67 @@ static void s16_to_sink(struct sof_sink *dst, int16_t src[][WEBRTC_AEC_FIFO_FRAM
 	sink_commit_buffer(dst, nbytes);
 }
 
+static void src_drop_frames(struct sof_source *src, int frames)
+{
+	size_t frame_bytes = source_get_frame_bytes(src);
+	const void *data_ptr, *buf_start;
+	size_t buf_size, nbytes;
+
+	if (frames <= 0 || !frame_bytes)
+		return;
+
+	nbytes = (size_t)frames * frame_bytes;
+	if (!source_get_data(src, nbytes, &data_ptr, &buf_start, &buf_size))
+		source_release_data(src, nbytes);
+}
+
+static void webrtc_aec_resolve_sources(struct sof_source **sources, int num_of_sources,
+				       struct sof_sink **sinks, int num_of_sinks,
+				       int *mic_idx, int *ref_idx)
+{
+	*mic_idx = 0;
+	*ref_idx = -1;
+
+	if (num_of_sources <= 1)
+		return;
+
+#ifdef CONFIG_IPC_MAJOR_4
+	{
+		uint32_t q0 = IPC4_SINK_QUEUE_ID(source_get_id(sources[0]));
+		uint32_t q1 = IPC4_SINK_QUEUE_ID(source_get_id(sources[1]));
+
+		if (q0 != q1) {
+			if (q0 == 0) {
+				*mic_idx = 0;
+				*ref_idx = 1;
+			} else {
+				*mic_idx = 1;
+				*ref_idx = 0;
+			}
+			return;
+		}
+	}
+#endif
+
+	if (num_of_sinks > 0) {
+		if (source_get_pipeline_id(sources[0]) == sink_get_pipeline_id(sinks[0]) &&
+		    source_get_pipeline_id(sources[1]) != sink_get_pipeline_id(sinks[0])) {
+			*mic_idx = 0;
+			*ref_idx = 1;
+			return;
+		}
+		if (source_get_pipeline_id(sources[1]) == sink_get_pipeline_id(sinks[0]) &&
+		    source_get_pipeline_id(sources[0]) != sink_get_pipeline_id(sinks[0])) {
+			*mic_idx = 1;
+			*ref_idx = 0;
+			return;
+		}
+	}
+
+	*mic_idx = 0;
+	*ref_idx = 1;
+}
+
 /* ----------------------------------------------------------------
  * module_interface operations
  * ---------------------------------------------------------------- */
@@ -226,21 +287,8 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
-	if (num_of_sources == 1) {
-		cd->mic_src = 0;
-		cd->ref_src = -1;
-	} else if (source_get_pipeline_id(sources[0]) == sink_get_pipeline_id(sinks[0]) &&
-	    source_get_pipeline_id(sources[1]) != sink_get_pipeline_id(sinks[0])) {
-		cd->mic_src = 0;
-		cd->ref_src = 1;
-	} else if (source_get_pipeline_id(sources[1]) == sink_get_pipeline_id(sinks[0]) &&
-		   source_get_pipeline_id(sources[0]) != sink_get_pipeline_id(sinks[0])) {
-		cd->mic_src = 1;
-		cd->ref_src = 0;
-	} else {
-		cd->mic_src = 0;
-		cd->ref_src = 1;
-	}
+	webrtc_aec_resolve_sources(sources, num_of_sources, sinks, num_of_sinks,
+				   &cd->mic_src, &cd->ref_src);
 
 	mic_fmt  = source_get_frm_fmt(sources[cd->mic_src]);
 	mic_rate = source_get_rate(sources[cd->mic_src]);
@@ -344,29 +392,52 @@ static int webrtc_aec_process(struct processing_module *mod,
 			      struct sof_sink **sinks, int num_of_sinks)
 {
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
-	struct sof_source *mic = sources[cd->mic_src];
-	struct sof_source *ref = cd->ref_src >= 0 ? sources[cd->ref_src] : NULL;
-	struct sof_sink   *out = sinks[0];
-	int fmic = (int)source_get_data_frames_available(mic);
-	int fref = ref ? (int)source_get_data_frames_available(ref) : 0;
-	int n, drain, c;
+	struct sof_source *mic;
+	struct sof_source *ref;
+	struct sof_sink   *out;
+	int mic_idx, ref_idx;
+	int fmic, fref, n, drain, c;
+	bool ref_s32;
 
-	if (fmic <= 0)
+	if (num_of_sources < 1 || num_of_sinks < 1)
 		return 0;
 
-	/* Cap to available space in input accumulation buffers */
+	webrtc_aec_resolve_sources(sources, num_of_sources, sinks, num_of_sinks,
+				   &mic_idx, &ref_idx);
+	cd->mic_src = mic_idx;
+	cd->ref_src = ref_idx;
+
+	mic = sources[mic_idx];
+	ref = ref_idx >= 0 ? sources[ref_idx] : NULL;
+	out = sinks[0];
+	fmic = (int)source_get_data_frames_available(mic);
+	fref = ref ? (int)source_get_data_frames_available(ref) : 0;
+
+	/* Cap to available space in input accumulation and output sink buffers */
 	n = MIN(fmic, WEBRTC_AEC_FIFO_FRAMES - cd->buffered_in_frames);
-	if (n <= 0)
+	n = MIN(n, (int)sink_get_free_frames(out));
+	if (n <= 0) {
+		if (ref && fref > 0) {
+			size_t fb = source_get_frame_bytes(ref);
+			int keep = fb ? (int)(source_get_min_available(ref) / fb) : 0;
+
+			if (fref > keep)
+				src_drop_frames(ref, fref - keep);
+		}
 		return 0;
+	}
 
 	/* Convert mic input to per-channel S16 */
 	src_to_s16(mic, n, cd->mic_buf, cd->buffered_in_frames, cd->channels, cd->is_s32);
 
 	/* Convert ref input to per-channel S16; if starved/silent, fill with silence */
+	ref_s32 = ref ? (source_get_frm_fmt(ref) == SOF_IPC_FRAME_S32_LE) : cd->is_s32;
 	if (fref >= n) {
-		src_to_s16(ref, n, cd->ref_buf, cd->buffered_in_frames, cd->channels, cd->is_s32);
+		if (fref > n)
+			src_drop_frames(ref, fref - n);
+		src_to_s16(ref, n, cd->ref_buf, cd->buffered_in_frames, cd->channels, ref_s32);
 	} else if (fref > 0) {
-		src_to_s16(ref, fref, cd->ref_buf, cd->buffered_in_frames, cd->channels, cd->is_s32);
+		src_to_s16(ref, fref, cd->ref_buf, cd->buffered_in_frames, cd->channels, ref_s32);
 		for (c = 0; c < cd->channels; c++)
 			memset(&cd->ref_buf[c][cd->buffered_in_frames + fref], 0,
 			       (size_t)(n - fref) * sizeof(int16_t));
@@ -649,17 +720,27 @@ static bool webrtc_aec_is_ready_to_process(struct processing_module *mod,
 					   int num_of_sinks)
 {
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
-	struct sof_source *mic;
+	struct sof_source *mic, *ref;
 	struct sof_sink *out;
+	int mic_idx, ref_idx;
 
-	if (!cd || !cd->configured || num_of_sources <= cd->mic_src || num_of_sinks < 1)
+	if (!cd || !cd->configured || num_of_sources < 1 || num_of_sinks < 1)
 		return false;
 
-	mic = sources[cd->mic_src];
+	webrtc_aec_resolve_sources(sources, num_of_sources, sinks, num_of_sinks,
+				   &mic_idx, &ref_idx);
+	mic = sources[mic_idx];
+	ref = ref_idx >= 0 ? sources[ref_idx] : NULL;
 	out = sinks[0];
 
-	return source_get_data_available(mic) >= source_get_min_available(mic) &&
-	       sink_get_free_size(out) >= sink_get_min_free_space(out);
+	if (source_get_data_available(mic) >= source_get_min_available(mic) &&
+	    sink_get_free_size(out) >= sink_get_min_free_space(out))
+		return true;
+
+	if (ref && source_get_data_available(ref) >= 2 * source_get_min_available(ref))
+		return true;
+
+	return false;
 }
 
 static const struct module_interface webrtc_aec_interface = {
