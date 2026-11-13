@@ -12,6 +12,7 @@
 #include <sof/list.h>
 #include <rtos/spinlock.h>
 #include <rtos/sof.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 /* notifier target core masks */
@@ -21,6 +22,17 @@
 
 /** \brief Notifier flags. */
 #define NOTIFIER_FLAG_AGGREGATE		BIT(0)
+
+/**
+ * \brief NOTIFIER_ID_D0IX_STATE payload.
+ *
+ * Raised when the host changes the DSP D0 substate via SOF_IPC4_MOD_SET_D0IX.
+ * Components that must keep working while the host is in S0iX can use this to
+ * tell "host asleep, DSP still running" from normal operation.
+ */
+struct d0ix_state_notif {
+	bool entering;	/**< true: entering D0i3, false: returning to D0i0 */
+};
 
 enum notify_id {
 	NOTIFIER_ID_CPU_FREQ = 0,		/* struct clock_notify_data * */
@@ -33,6 +45,7 @@ enum notify_id {
 	NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE,	/* struct mic_privacy_settings * */
 	NOTIFIER_ID_WOV_DETECT,		/* struct wov_detect_notif *: keyword detected */
 	NOTIFIER_ID_WOV_CTRL,			/* struct wov_ctrl_notif *: pause/resume detectors */
+	NOTIFIER_ID_D0IX_STATE,		/* struct d0ix_state_notif *: host D0i3 entry/exit */
 	NOTIFIER_ID_COUNT
 };
 

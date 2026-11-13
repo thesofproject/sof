@@ -24,3 +24,26 @@ config COMP_MFCC
 	  The characteristic of the audio features are defined in the binary
 	  control blob. Directory tools/tune/mfcc contains a tool to create
 	  the configurations.
+
+if COMP_MFCC
+
+config COMP_MFCC_PCAN
+	bool "Enable PCAN (Per-Channel AGC Normalization) in MFCC"
+	default n
+	select MATH_PCAN
+	help
+	  Select to build MFCC with PCAN (Per-Channel Automatic Gain Control
+	  Normalization) support on the Mel filterbank energies. PCAN performs
+	  dynamic per-channel gain control and piecewise polynomial root
+	  compression to suppress stationary noise and enhance transients,
+	  producing normalized features suitable for direct int8 quantization
+	  downstream (e.g. microWakeWord). The topology PCAN configuration
+	  fields are ignored when this option is disabled.
+
+config COMP_MFCC_DEBUG_TRACE
+	bool "Verbose per-process debug traces in MFCC"
+	default n
+	help
+	  Enable MFCC per-process debug prints in the hot path.
+
+endif # COMP_MFCC

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iterator>
+#include <new>
 
 #include "tensorflow/lite/core/c/common.h"
 #include "tensorflow/lite/micro/micro_allocator.h"
@@ -14,9 +15,21 @@
 #include "tensorflow/lite/micro/micro_resource_variable.h"
 #include "mww_model.h"
 
-#include "mww_model_data.h"
-#include "mww_model_data_banana.h"
+#if CONFIG_COMP_MWW_MODEL_HI_INTEL
+#include "mww_model_data_hi_intel.h"
+#elif CONFIG_COMP_MWW_MODEL_HEY_JARVIS
+#include "mww_model_data_hey_jarvis.h"
+#elif CONFIG_COMP_MWW_MODEL_STRAWBERRY
+#include "mww_model_data_strawberry.h"
+#elif CONFIG_COMP_MWW_MODEL_ORANGE
 #include "mww_model_data_orange.h"
+#elif CONFIG_COMP_MWW_MODEL_BANANA
+#include "mww_model_data_banana.h"
+#else
+#include "mww_model_data_strawberry.h"
+#include "mww_model_data_hi_intel.h"
+#include "mww_model_data_orange.h"
+#endif
 
 static constexpr int kFeatureSize = MWW_FEATURE_SIZE;
 static constexpr int kFeatureElementCount = MWW_FEATURE_ELEM_COUNT;
@@ -29,6 +42,89 @@ static constexpr size_t kArenaSize = 98304;
 alignas(16) static uint8_t g_arenas[kMaxSlots][kArenaSize];
 
 using MwwOpResolver = tflite::MicroMutableOpResolver<14>;
+alignas(alignof(MwwOpResolver)) static uint8_t g_op_resolver_storage[kMaxSlots][sizeof(MwwOpResolver)];
+alignas(alignof(tflite::MicroInterpreter)) static uint8_t g_interpreter_storage[kMaxSlots][sizeof(tflite::MicroInterpreter)];
+
+#ifdef MWW_PROFILE
+#include "tensorflow/lite/micro/micro_profiler_interface.h"
+
+static inline uint32_t mww_ccount(void)
+{
+	uint32_t c;
+
+	__asm__ volatile("rsr.ccount %0" : "=a"(c));
+	return c;
+}
+
+/* Accumulates cycles per operator invoke-order index. The first inference
+ * after a reset also runs the CALL_ONCE init subgraph, which shifts the
+ * indices, so it is discarded.
+ */
+class MwwProfiler : public tflite::MicroProfilerInterface {
+public:
+	static constexpr int kMaxEvents = 64;
+
+	uint32_t BeginEvent(const char *tag) override
+	{
+		if (idx_ >= kMaxEvents)
+			return kMaxEvents;
+		tags_[idx_] = tag;
+		start_[idx_] = mww_ccount();
+		return idx_++;
+	}
+
+	void EndEvent(uint32_t handle) override
+	{
+		if (handle < kMaxEvents)
+			cur_[handle] = mww_ccount() - start_[handle];
+	}
+
+	void InvokeDone()
+	{
+		if (warm_) {
+			for (int i = 0; i < idx_; i++)
+				sum_[i] += cur_[i];
+			num_events_ = idx_;
+			invokes_++;
+		}
+		warm_ = true;
+		idx_ = 0;
+	}
+
+	void Reset()
+	{
+		for (int i = 0; i < kMaxEvents; i++)
+			sum_[i] = 0;
+		idx_ = 0;
+		num_events_ = 0;
+		invokes_ = 0;
+		warm_ = false;
+	}
+
+	uint32_t Get(int i, const char **tag, uint32_t *avg) const
+	{
+		if (i < 0 || i >= num_events_ || !invokes_)
+			return 0;
+		*tag = tags_[i];
+		*avg = (uint32_t)(sum_[i] / invokes_);
+		return invokes_;
+	}
+
+private:
+	const char *tags_[kMaxEvents] = {};
+	uint32_t start_[kMaxEvents] = {};
+	uint32_t cur_[kMaxEvents] = {};
+	uint64_t sum_[kMaxEvents] = {};
+	int idx_ = 0;
+	int num_events_ = 0;
+	uint32_t invokes_ = 0;
+	bool warm_ = false;
+};
+
+/* Placement storage: a static object with a destructor would need atexit(). */
+alignas(MwwProfiler) static uint8_t g_profiler_storage[kMaxSlots][sizeof(MwwProfiler)];
+static MwwProfiler *g_profilers[kMaxSlots];
+#endif
 
 struct mww_instance {
 	uint8_t slot_id;
@@ -72,6 +168,32 @@ static int RegisterOps(MwwOpResolver *op_resolver) {
 
 const unsigned char *MWW_GetDefaultModel(uint8_t slot_id, size_t *size)
 {
+#if CONFIG_COMP_MWW_MODEL_HI_INTEL
+	(void)slot_id;
+	if (size)
+		*size = mww_model_data_hi_intel_size;
+	return mww_model_data_hi_intel;
+#elif CONFIG_COMP_MWW_MODEL_HEY_JARVIS
+	(void)slot_id;
+	if (size)
+		*size = mww_model_data_hey_jarvis_size;
+	return mww_model_data_hey_jarvis;
+#elif CONFIG_COMP_MWW_MODEL_STRAWBERRY
+	(void)slot_id;
+	if (size)
+		*size = mww_model_data_strawberry_size;
+	return mww_model_data_strawberry;
+#elif CONFIG_COMP_MWW_MODEL_ORANGE
+	(void)slot_id;
+	if (size)
+		*size = mww_model_data_orange_size;
+	return mww_model_data_orange;
+#elif CONFIG_COMP_MWW_MODEL_BANANA
+	(void)slot_id;
+	if (size)
+		*size = mww_model_data_banana_size;
+	return mww_model_data_banana;
+#else
 	switch (slot_id) {
 	case 0:
 		if (size)
@@ -79,14 +201,15 @@ const unsigned char *MWW_GetDefaultModel(uint8_t slot_id, size_t *size)
 		return mww_model_data_strawberry;
 	case 1:
 		if (size)
-			*size = mww_model_data_banana_size;
-		return mww_model_data_banana;
+			*size = mww_model_data_hi_intel_size;
+		return mww_model_data_hi_intel;
 	case 2:
 	default:
 		if (size)
 			*size = mww_model_data_orange_size;
 		return mww_model_data_orange;
 	}
+#endif
 }
 
 int MWW_SetModel(struct mww_classify *mwc, const unsigned char *model_tflite, size_t model_size)
@@ -102,10 +225,7 @@ int MWW_SetModel(struct mww_classify *mwc, const unsigned char *model_tflite, si
 	inst->slot_id = slot;
 	mwc->instance = inst;
 
-	if (!model_tflite || model_size == 0)
-		model_tflite = MWW_GetDefaultModel(slot, &model_size);
-
-	if (!model_tflite) {
+	if (!model_tflite || model_size == 0) {
 		mwc->error = "no model provided";
 		return -EINVAL;
 	}
@@ -127,15 +247,20 @@ int MWW_InitOps(struct mww_classify *mwc)
 	struct mww_instance *inst = static_cast<struct mww_instance *>(mwc->instance);
 	uint8_t slot = inst->slot_id;
 
-	inst->op_resolver = new MwwOpResolver();
-	if (!inst->op_resolver) {
-		mwc->error = "op_resolver alloc failed (OOM)";
-		return -ENOMEM;
+	if (inst->interpreter) {
+		inst->interpreter->~MicroInterpreter();
+		inst->interpreter = nullptr;
 	}
+	if (inst->op_resolver) {
+		inst->op_resolver->~MwwOpResolver();
+		inst->op_resolver = nullptr;
+	}
+
+	inst->op_resolver = new (&g_op_resolver_storage[slot]) MwwOpResolver();
 
 	if (RegisterOps(inst->op_resolver) != 0) {
 		mwc->error = "register ops failed";
-		delete inst->op_resolver;
+		inst->op_resolver->~MwwOpResolver();
 		inst->op_resolver = nullptr;
 		return -EINVAL;
 	}
@@ -146,7 +271,7 @@ int MWW_InitOps(struct mww_classify *mwc)
 	inst->allocator = tflite::MicroAllocator::Create(inst->arena, inst->arena_size);
 	if (!inst->allocator) {
 		mwc->error = "allocator alloc failed (OOM)";
-		delete inst->op_resolver;
+		inst->op_resolver->~MwwOpResolver();
 		inst->op_resolver = nullptr;
 		return -ENOMEM;
 	}
@@ -154,24 +279,29 @@ int MWW_InitOps(struct mww_classify *mwc)
 	inst->resource_variables = tflite::MicroResourceVariables::Create(inst->allocator, kNumResourceVariables);
 	if (!inst->resource_variables) {
 		mwc->error = "resource_variables alloc failed (OOM)";
-		delete inst->op_resolver;
+		inst->op_resolver->~MwwOpResolver();
 		inst->op_resolver = nullptr;
 		return -ENOMEM;
 	}
 
-	inst->interpreter = new tflite::MicroInterpreter(inst->model, *inst->op_resolver,
-							  inst->allocator, inst->resource_variables);
-	if (!inst->interpreter) {
-		mwc->error = "interpreter alloc failed (OOM)";
-		delete inst->op_resolver;
-		inst->op_resolver = nullptr;
-		return -ENOMEM;
-	}
+#ifdef MWW_PROFILE
+	if (!g_profilers[slot])
+		g_profilers[slot] = new (&g_profiler_storage[slot]) MwwProfiler();
+	g_profilers[slot]->Reset();
+	inst->interpreter = new (&g_interpreter_storage[slot])
+		tflite::MicroInterpreter(inst->model, *inst->op_resolver,
+					 inst->allocator, inst->resource_variables,
+					 g_profilers[slot]);
+#else
+	inst->interpreter = new (&g_interpreter_storage[slot])
+		tflite::MicroInterpreter(inst->model, *inst->op_resolver,
+					 inst->allocator, inst->resource_variables);
+#endif
 
 	if (inst->interpreter->AllocateTensors() != kTfLiteOk) {
 		mwc->error = "interpreter tensor allocate failed";
-		delete inst->interpreter;
-		delete inst->op_resolver;
+		inst->interpreter->~MicroInterpreter();
+		inst->op_resolver->~MwwOpResolver();
 		inst->interpreter = nullptr;
 		inst->op_resolver = nullptr;
 		return -EINVAL;
@@ -202,8 +332,11 @@ int MWW_InitOps(struct mww_classify *mwc)
 		return -EINVAL;
 	}
 
-	mwc->input_scale = inst->input->params.scale;
-	mwc->input_zero_point = inst->input->params.zero_point;
+	/* LOGISTIC output scale is fixed to 1/256, so raw - zero_point is Q0.8 */
+	if (inst->output->params.zero_point != (inst->output->type == kTfLiteInt8 ? -128 : 0)) {
+		mwc->error = "output tensor is not a logistic probability";
+		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -215,9 +348,6 @@ int MWW_ProcessClassify(struct mww_classify *mwc)
 
 	struct mww_instance *inst = static_cast<struct mww_instance *>(mwc->instance);
 
-	float output_scale = inst->output->params.scale;
-	int output_zero_point = inst->output->params.zero_point;
-
 	std::copy_n(mwc->audio_features, kFeatureElementCount,
 		    tflite::GetTensorData<int8_t>(inst->input));
 
@@ -225,23 +355,16 @@ int MWW_ProcessClassify(struct mww_classify *mwc)
 		mwc->error = "invoke failed";
 		return -EINVAL;
 	}
+#ifdef MWW_PROFILE
+	g_profilers[inst->slot_id]->InvokeDone();
+#endif
 
-	float raw_val;
-	if (inst->output->type == kTfLiteInt8) {
-		int8_t val = tflite::GetTensorData<int8_t>(inst->output)[0];
-		raw_val = static_cast<float>(val);
-		mwc->raw_output = val;
-	} else {
-		uint8_t val = tflite::GetTensorData<uint8_t>(inst->output)[0];
-		raw_val = static_cast<float>(val);
-		mwc->raw_output = val;
-	}
+	if (inst->output->type == kTfLiteInt8)
+		mwc->raw_output = tflite::GetTensorData<int8_t>(inst->output)[0];
+	else
+		mwc->raw_output = tflite::GetTensorData<uint8_t>(inst->output)[0];
 
-	mwc->probability = (raw_val - output_zero_point) * output_scale;
-	if (mwc->probability < 0.0f)
-		mwc->probability = 0.0f;
-	else if (mwc->probability > 1.0f)
-		mwc->probability = 1.0f;
+	mwc->prob_q8 = mwc->raw_output - inst->output->params.zero_point;
 
 	return 0;
 }
@@ -254,7 +377,32 @@ int MWW_Reset(struct mww_classify *mwc)
 	struct mww_instance *inst = static_cast<struct mww_instance *>(mwc->instance);
 	if (inst->resource_variables)
 		inst->resource_variables->ResetAll();
+#ifdef MWW_PROFILE
+	if (g_profilers[inst->slot_id])
+		g_profilers[inst->slot_id]->Reset();
+#endif
 	return 0;
+}
+
+uint32_t MWW_ProfileGet(struct mww_classify *mwc, int idx, const char **tag,
+			uint32_t *avg_cycles)
+{
+#ifdef MWW_PROFILE
+	if (!mwc || !mwc->instance || !tag || !avg_cycles)
+		return 0;
+
+	struct mww_instance *inst = static_cast<struct mww_instance *>(mwc->instance);
+
+	if (!g_profilers[inst->slot_id])
+		return 0;
+	return g_profilers[inst->slot_id]->Get(idx, tag, avg_cycles);
+#else
+	(void)mwc;
+	(void)idx;
+	(void)tag;
+	(void)avg_cycles;
+	return 0;
+#endif
 }
 
 void MWW_Free(struct mww_classify *mwc)
@@ -263,10 +411,14 @@ void MWW_Free(struct mww_classify *mwc)
 		return;
 
 	struct mww_instance *inst = static_cast<struct mww_instance *>(mwc->instance);
-	delete inst->interpreter;
-	delete inst->op_resolver;
-	inst->interpreter = nullptr;
-	inst->op_resolver = nullptr;
+	if (inst->interpreter) {
+		inst->interpreter->~MicroInterpreter();
+		inst->interpreter = nullptr;
+	}
+	if (inst->op_resolver) {
+		inst->op_resolver->~MwwOpResolver();
+		inst->op_resolver = nullptr;
+	}
 	inst->allocator = nullptr;
 	inst->resource_variables = nullptr;
 	inst->model = nullptr;

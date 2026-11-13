@@ -12,26 +12,32 @@
 # Output layout:
 #   <feat_root>/<label>/<file>.raw     # SOF mel40 hop records
 #
-# Each hop record is 184 bytes (matches the on-device wire format):
-#   24 bytes  struct mfcc_data_header  (magic, frame_number, reserved,
-#                                       energy, noise_energy, vad_flag)
-#   40 x int32_t   Q9.23 mel-log values
+# Each hop record is:
+#   Non-PCAN mode (184 bytes):
+#     24 bytes  struct mfcc_data_header  (magic, frame_number, reserved,
+#                                         energy, noise_energy, vad_flag)
+#     40 x int32_t   Q9.23 mel-log values
+#   PCAN mode (64 bytes):
+#     24 bytes  struct mfcc_data_header
+#     40 x int8_t    PCAN normalized values
 #
 # Requirements:
 #   - $SOF_WORKSPACE points at the parent of the sof tree (or workspace root)
 #   - sof-testbench4 built at tools/testbench/build_testbench/install/bin/
-#   - sof-hda-benchmark-mfccmel40_10ms{16,24,32}.tplg built (development target)
+#   - sof-hda-benchmark-mfccmel40_10ms{16,24,32}.tplg or
+#     sof-hda-benchmark-mfccmel40_10ms_pcan{16,24,32}.tplg built
 #   - sox on PATH
 
 set -e
 
 usage() {
 	cat >&2 <<EOF
-Usage: $0 <wav_root> <feat_root> [--format S16|S24|S32] [--tplg <path>]
+Usage: $0 <wav_root> <feat_root> [--format S16|S24|S32] [--pcan] [--tplg <path>]
 
   wav_root    Directory containing <label>/*.wav (recursed one level).
   feat_root   Output root; <label>/ subdirs are created as needed.
   --format    Testbench sample container (S16, S24, S32). Default S32.
+  --pcan      Extract 8-bit PCAN normalized features (64-byte hops).
   --tplg      Explicit path to benchmark topology file.
 EOF
 	exit 1
@@ -43,6 +49,7 @@ WAV_ROOT="$1"
 FEAT_ROOT="$2"
 FORMAT="S32"
 CUSTOM_TPLG=""
+PCAN_MODE=0
 
 shift 2
 while [ $# -gt 0 ]; do
@@ -50,6 +57,10 @@ while [ $# -gt 0 ]; do
 		--format)
 			FORMAT="$2"
 			shift 2
+			;;
+		--pcan)
+			PCAN_MODE=1
+			shift 1
 			;;
 		--tplg)
 			CUSTOM_TPLG="$2"
@@ -82,6 +93,8 @@ fi
 TESTBENCH="${SOF_WORKSPACE}/sof/tools/testbench/build_testbench/install/bin/sof-testbench4"
 if [[ -n "$CUSTOM_TPLG" ]]; then
 	TPLG="$CUSTOM_TPLG"
+elif [[ "$PCAN_MODE" -eq 1 ]]; then
+	TPLG="${SOF_WORKSPACE}/sof/tools/build_tools/topology/topology2/development/sof-hda-benchmark-mfccmel40_10ms_pcan${SF}.tplg"
 else
 	TPLG="${SOF_WORKSPACE}/sof/tools/build_tools/topology/topology2/development/sof-hda-benchmark-mfccmel40_10ms${SF}.tplg"
 fi
@@ -140,15 +153,17 @@ process_wav() {
 
 	# Retain only the trailing second-half hops where VAD noise floor is fully settled
 	if [[ "$orig_hops" -gt 0 ]]; then
-		python3 - "$raw_out" "$orig_hops" <<'PYEOF'
+		python3 - "$raw_out" "$orig_hops" "$PCAN_MODE" <<'PYEOF'
 import sys
 import numpy as np
 
 raw_path = sys.argv[1]
 orig_hops = int(sys.argv[2])
+pcan_mode = int(sys.argv[3])
 
+hop_size = 64 if pcan_mode else 184
 data = np.fromfile(raw_path, dtype=np.uint8)
-if data.size >= 184:
+if data.size >= hop_size:
     u32 = data[: (data.size // 4) * 4].view(np.uint32)
     pos = np.flatnonzero(u32 == 0x6D666363) * 4
     if len(pos) > orig_hops:
@@ -178,5 +193,9 @@ done
 
 echo "-----------------------------------------------------------------"
 echo "Emitted ${total} mel40 feature files under ${FEAT_ROOT}"
-echo "Format per hop: 24-byte mfcc_data_header + 40 x int32 Q9.23 = 184 bytes"
+if [[ "$PCAN_MODE" -eq 1 ]]; then
+	echo "Format per hop: 24-byte mfcc_data_header + 40 x int8 PCAN = 64 bytes"
+else
+	echo "Format per hop: 24-byte mfcc_data_header + 40 x int32 Q9.23 = 184 bytes"
+fi
 echo "-----------------------------------------------------------------"

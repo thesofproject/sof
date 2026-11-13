@@ -154,7 +154,7 @@ add_library(mww_tflm_lib STATIC
 	${TFLM_PATH}/tensorflow/lite/micro/micro_utils.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter.cc
 	../mww_model_data.cc
-	../mww_model_data_banana.cc
+	../mww_model_data_hi_intel.cc
 	../mww_model_data_orange.cc
 	../mww_model.cc
 )
@@ -191,6 +191,7 @@ target_compile_options(mww_tflm_lib PRIVATE
 	# ET_DYN/PIC LLEXT.
 	-DTF_LITE_STRIP_ERROR_STRINGS
 	-DNDEBUG
+	-imacros ${AUTOCONF_H}
 )
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|Xtensa" OR CMAKE_C_COMPILER MATCHES "xt-clang")

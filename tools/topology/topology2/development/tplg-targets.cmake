@@ -18,6 +18,10 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec.bin,\
 SSP1_PCM_CORE_ID=0,SSP2_PCM_CORE_ID=0,\
 SSP0_MIXER_2LEVEL=1,PLATFORM=tgl"
 
+# Lean SSP0 NoCodec WoV topology for TGL
+"cavs-nocodec-wov\;sof-tgl-nocodec-wov\;PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-tgl-nocodec-wov.bin,PLATFORM=tgl"
+
 # multicore disabled due to SOF issue #8942
 "cavs-nocodec\;sof-adl-nocodec\;NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 SSP1_PCM_CORE_ID=0,SSP2_PCM_CORE_ID=0,\
@@ -63,6 +67,10 @@ NHLT_BIN=nhlt-sof-lnl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000
 # SSP topology for PTL, includes Data Processing SRC
 "cavs-nocodec\;sof-ptl-nocodec\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin,SRC_DOMAIN=DP"
+
+# Lean SSP0 NoCodec WoV topology for PTL
+"cavs-nocodec-wov\;sof-ptl-nocodec-wov\;PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-nocodec-wov.bin,PLATFORM=ptl"
 
 # SSP topology for PTL with 96 kHz DMIC
 "cavs-nocodec\;sof-ptl-nocodec-dmic-4ch-96k\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
@@ -395,6 +403,26 @@ PDM1_MIC_B_ENABLE=1,DMIC0_PCM_ID=99,PREPROCESS_PLUGINS=nhlt,NUM_HDMIS=4,\
 NHLT_BIN=nhlt-sof-adl-max98357a-rt5682.bin,SPK_ID=7,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
 INCLUDE_BT_OFFLOAD=false,DEEP_BUF_SPK=true,SPEAKER_CODEC_NAME=SSP2-Codec,SPEAKER_SSP_DAI_INDEX=2"
 
+# Google Brya with raw dmic16k 4ch passthrough capture (no ECNS) for mic diagnostics
+"cavs-rt5682\;sof-adl-max98357a-rt5682-dmic16k\;PLATFORM=adl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
+PDM1_MIC_B_ENABLE=1,DMIC0_PCM_ID=99,DMIC1_ENABLE=passthrough,PREPROCESS_PLUGINS=nhlt,NUM_HDMIS=4,\
+NHLT_BIN=nhlt-sof-adl-max98357a-rt5682-dmic16k.bin,SPK_ID=7,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
+INCLUDE_BT_OFFLOAD=false,DEEP_BUF_SPK=true,SPEAKER_CODEC_NAME=SSP2-Codec,SPEAKER_SSP_DAI_INDEX=2"
+
+# Google Brya with integrated multi-slot WoV feature on PDM DMICs
+"cavs-rt5682\;sof-adl-max98357a-rt5682-wov-multi\;PLATFORM=adl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
+PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,NUM_HDMIS=4,DMIC_WOV_DAI_CHANNELS=4,\
+NHLT_BIN=nhlt-sof-adl-max98357a-rt5682-wov-multi.bin,SPK_ID=7,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
+INCLUDE_BT_OFFLOAD=false,DEEP_BUF_SPK=true,SPEAKER_CODEC_NAME=SSP2-Codec,SPEAKER_SSP_DAI_INDEX=2,\
+INCLUDE_WOV=multi"
+
+# Google Brya with multi-slot WoV feature on PDM0 stereo DMIC only
+"cavs-rt5682\;sof-adl-max98357a-rt5682-2ch-wov-multi\;PLATFORM=adl,NUM_DMICS=2,\
+PREPROCESS_PLUGINS=nhlt,NUM_HDMIS=4,DMIC_WOV_DAI_CHANNELS=2,\
+NHLT_BIN=nhlt-sof-adl-max98357a-rt5682-2ch-wov-multi.bin,SPK_ID=7,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
+INCLUDE_BT_OFFLOAD=false,DEEP_BUF_SPK=true,SPEAKER_CODEC_NAME=SSP2-Codec,SPEAKER_SSP_DAI_INDEX=2,\
+INCLUDE_WOV=multi"
+
 # RT721 eval board with PCH-DMIC, sof_sdw_quirk_table with SOC_SDW_PCH_DMIC
 # Enable FLOAT_LE and U8 PCM formats
 "cavs-sdw\;sof-ptl-rt721-4ch-allfmt\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
@@ -528,5 +556,11 @@ COMPRESSED_1=true,COMPRESSED_2=false"
 
 "cavs-sdw\;sof-sdca-amp-compr\;SDW_JACK=false,NUM_HDMIS=0,COMPRESSED=true,\
 COMPRESSED_1=false,COMPRESSED_2=true"
+
+# SoundWire WoV topology on PTL (RT713 on L3, RT1320 on L12)
+"cavs-sdw\;sof-ptl-rt713-l3-rt1320-l12-wov\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=2,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+SDW_DMIC_WOV_SINGLE=true"
 
 )
