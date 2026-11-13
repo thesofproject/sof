@@ -330,12 +330,14 @@ __cold static int ipc4_module_process_d0ix(struct ipc4_message_request *ipc4)
 	 * prevent_power_gating is set on the way back to D0i0 and clear when the
 	 * host allows the DSP to power gate, i.e. when the host is going to sleep.
 	 */
-	struct d0ix_state_notif notif = {
-		.entering = !d0ix.extension.r.prevent_power_gating,
-	};
+	/* never modified, remote cores may read them after a blocking IDC timeout */
+	static struct d0ix_state_notif notif_enter = { .entering = true };
+	static struct d0ix_state_notif notif_exit = { .entering = false };
+	struct d0ix_state_notif *notif = d0ix.extension.r.prevent_power_gating ?
+					 &notif_exit : &notif_enter;
 
 	notifier_event(NULL, NOTIFIER_ID_D0IX_STATE, NOTIFIER_TARGET_CORE_ALL_MASK,
-		       &notif, sizeof(notif));
+		       notif, sizeof(*notif));
 
 	return 0;
 }
