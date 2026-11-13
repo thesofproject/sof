@@ -88,8 +88,17 @@ void notifier_notify_remote(void);
 /* data_size is required to manage cache coherency for notifications
  * across cores.
  */
-void notifier_event(const void *caller_id, enum notify_id event_type, uint32_t core_mask,
-		    void *caller_data, uint32_t data_size);
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#include <sof/compiler_attributes.h>
+
+__syscall void notifier_event(const void *caller_id, enum notify_id event_type,
+			      uint32_t core_mask, void *caller_data, uint32_t data_size);
+#include <zephyr/syscalls/notifier.h>
+#else
+void z_impl_notifier_event(const void *caller_id, enum notify_id event_type,
+			   uint32_t core_mask, void *caller_data, uint32_t data_size);
+#define notifier_event z_impl_notifier_event
+#endif
 
 void init_system_notify(struct sof *sof);
 

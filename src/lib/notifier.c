@@ -146,8 +146,8 @@ void notifier_notify_remote(void)
 
 }
 
-void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
-		    void *data, uint32_t data_size)
+void z_impl_notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
+			   void *data, uint32_t data_size)
 {
 	struct notify_data *notify_data;
 	struct idc_msg notify_msg = { IDC_MSG_NOTIFY, IDC_MSG_NOTIFY_EXT };
@@ -178,6 +178,7 @@ void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 		}
 	}
 }
+EXPORT_SYMBOL(z_impl_notifier_event);
 
 __cold void init_system_notify(struct sof *sof)
 {
