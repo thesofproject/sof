@@ -503,15 +503,15 @@ static int ipc_stream_trigger(uint32_t header)
 	if (pipeline_is_timer_driven(pcm_dev->cd->pipeline)) {
 		k_spinlock_key_t key;
 
-		key = k_spin_lock(&ipc->lock);
-		ipc->task_mask |= IPC_TASK_IN_THREAD;
-		k_spin_unlock(&ipc->lock, key);
+		key = k_spin_lock(&ipc_ks(ipc)->lock);
+		ipc_ks(ipc)->task_mask |= IPC_TASK_IN_THREAD;
+		k_spin_unlock(&ipc_ks(ipc)->lock, key);
 
 		ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
 		if (ret <= 0) {
-			key = k_spin_lock(&ipc->lock);
-			ipc->task_mask &= ~IPC_TASK_IN_THREAD;
-			k_spin_unlock(&ipc->lock, key);
+			key = k_spin_lock(&ipc_ks(ipc)->lock);
+			ipc_ks(ipc)->task_mask &= ~IPC_TASK_IN_THREAD;
+			k_spin_unlock(&ipc_ks(ipc)->lock, key);
 		}
 	} else {
 		ret = pipeline_trigger_run(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
@@ -696,7 +696,7 @@ static int ipc_pm_context_save(uint32_t header)
 	/* write the context to the host driver */
 	//mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
 #endif /* !defined(CONFIG_LIBRARY) && !defined(CONFIG_ZEPHYR_POSIX) */
-	ipc_get()->pm_prepare_D3 = 1;
+	ipc_ks(ipc_get())->pm_prepare_D3 = 1;
 
 	return 0;
 }
@@ -707,7 +707,7 @@ static int ipc_pm_context_restore(uint32_t header)
 
 	tr_info(&ipc_tr, "ipc: pm -> restore");
 
-	ipc_get()->pm_prepare_D3 = 0;
+	ipc_ks(ipc_get())->pm_prepare_D3 = 0;
 
 	/* restore context placeholder */
 	//mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));

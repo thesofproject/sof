@@ -109,10 +109,10 @@ static void idc_handler(struct k_p4wq_work *work)
 	case IDC_MSG_IPC:
 		idc_cmd(&idc->received_msg);
 		/* Signal the host */
-		key = k_spin_lock(&ipc->lock);
-		ipc->task_mask &= ~IPC_TASK_SECONDARY_CORE;
+		key = k_spin_lock(&ipc_ks(ipc)->lock);
+		ipc_ks(ipc)->task_mask &= ~IPC_TASK_SECONDARY_CORE;
 		ipc_complete_cmd(ipc);
-		k_spin_unlock(&ipc->lock, key);
+		k_spin_unlock(&ipc_ks(ipc)->lock, key);
 	}
 }
 

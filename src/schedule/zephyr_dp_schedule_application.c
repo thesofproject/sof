@@ -13,6 +13,7 @@
 #include <sof/common.h>
 #include <sof/debug/telemetry/telemetry.h>
 #include <sof/ipc/common.h>
+#include <sof/ipc/msg.h>
 #include <sof/lib/mailbox.h>
 #include <sof/list.h>
 #include <sof/llext_manager.h>
@@ -577,6 +578,9 @@ static void scheduler_dp_domain_free(struct processing_module *pmod, struct k_me
 			}
 		}
 	}
+
+	/* drop messages still queued by the module, before the domain is reused */
+	ipc_user_msg_purge(mdom);
 
 	/* All partitions removed, the domain can be freed now */
 	pmod->mdom = NULL;

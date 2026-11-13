@@ -81,7 +81,7 @@ static void idc_ipc(void)
 {
 	struct ipc *ipc = ipc_get();
 
-	ipc_cmd(ipc->comp_data);
+	ipc_cmd(ipc_ks(ipc)->comp_data);
 }
 
 static int idc_ipc4_bind(uint32_t comp_id, void *payload)

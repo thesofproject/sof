@@ -127,25 +127,71 @@ struct ipc_user {
 	struct ipc_user_xcore xcore[IPC_DSP_CORE_COUNT];
 };
 
-struct ipc {
-	struct k_spinlock lock;	/* locking mechanism */
-	void *comp_data;
-
-	/* PM */
-	int pm_prepare_D3;	/* do we need to prepare for D3 */
-
+#ifdef CONFIG_SOF_USERSPACE_LL
+/**
+ * Kernel-only IPC state.
+ *
+ * With CONFIG_SOF_USERSPACE_LL, struct ipc is in a partition that the LL and
+ * IPC user threads can write. The send queue, its lock, the completion
+ * state and the IPC processing task are used by kernel code only, so they
+ * are kept here instead. The field names match the struct ipc fields used
+ * without CONFIG_SOF_USERSPACE_LL, so code accesses both through ipc_ks().
+ *
+ * comp_data stays in struct ipc for the IPC user thread, but kernel code
+ * must use the copy here, ipc_ks(ipc)->comp_data, to find the buffer.
+ */
+struct ipc_kstate {
+	struct k_spinlock lock;		/* locking mechanism */
+	void *comp_data;		/* kernel copy of ipc->comp_data */
+	int pm_prepare_D3;		/* do we need to prepare for D3 */
 	struct list_item msg_list;	/* queue of messages to be sent */
-	bool is_notification_pending;	/* notification is being sent to host */
 	uint32_t task_mask;		/* tasks to be completed by this IPC */
-	unsigned int core;		/* core, processing the IPC */
 
-	struct list_item comp_list;	/* list of component devices */
-
-	/* processing task */
+	/* processing task, run by the kernel scheduler */
 #if CONFIG_TWB_IPC_TASK
 	struct task *ipc_task;
 #else
 	struct task ipc_task;
+#endif
+};
+
+/** Kernel context only. */
+struct ipc_kstate *ipc_kstate_get(void);
+
+struct ipc;
+
+static inline struct ipc_kstate *ipc_ks(struct ipc *ipc)
+{
+	(void)ipc;
+
+	return ipc_kstate_get();
+}
+#else
+#define ipc_ks(ipc) (ipc)
+#endif
+
+struct ipc {
+#ifndef CONFIG_SOF_USERSPACE_LL
+	/* in struct ipc_kstate with CONFIG_SOF_USERSPACE_LL, use ipc_ks() */
+	struct k_spinlock lock;		/* locking mechanism */
+	int pm_prepare_D3;		/* do we need to prepare for D3 */
+	struct list_item msg_list;	/* queue of messages to be sent */
+	uint32_t task_mask;		/* tasks to be completed by this IPC */
+#endif
+	void *comp_data;
+
+	bool is_notification_pending;	/* notification is being sent to host */
+	unsigned int core;		/* core, processing the IPC */
+
+	struct list_item comp_list;	/* list of component devices */
+
+#ifndef CONFIG_SOF_USERSPACE_LL
+	/* processing task, in struct ipc_kstate with CONFIG_SOF_USERSPACE_LL */
+#if CONFIG_TWB_IPC_TASK
+	struct task *ipc_task;
+#else
+	struct task ipc_task;
+#endif
 #endif
 
 #ifdef CONFIG_SOF_USERSPACE_LL

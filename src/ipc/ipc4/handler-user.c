@@ -762,13 +762,13 @@ __cold static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
 	uint32_t reply_size = 0;
 	int err;
 
-	err = copier_ipcgtw_process((const struct ipc4_ipcgtw_cmd *)ipc4, ipc->comp_data,
+	err = copier_ipcgtw_process((const struct ipc4_ipcgtw_cmd *)ipc4, ipc_ks(ipc)->comp_data,
 				    &reply_size);
 	/* reply size is returned in header extension dword */
 	msg_reply->extension = reply_size;
 
 	if (reply_size > 0) {
-		msg_reply->tx_data = ipc->comp_data;
+		msg_reply->tx_data = ipc_ks(ipc)->comp_data;
 		msg_reply->tx_size = reply_size;
 	}
 
@@ -1329,7 +1329,7 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 	struct ipc4_module_large_config_reply reply;
 	const struct ipc4_module_large_config *config =
 		(const struct ipc4_module_large_config *)ipc4;
-	char *data = ipc_get()->comp_data;
+	char *data = ipc_ks(ipc_get())->comp_data;
 	const struct comp_driver *drv;
 	struct comp_dev *dev = NULL;
 	uint32_t data_offset;
@@ -1640,7 +1640,7 @@ __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_requ
 	} else {
 #if CONFIG_LIBRARY
 		struct ipc *ipc = ipc_get();
-		const char *data = (const char *)ipc->comp_data + sizeof(*config);
+		const char *data = (const char *)ipc_ks(ipc)->comp_data + sizeof(*config);
 #else
 		const char *data = (const char *)MAILBOX_HOSTBOX_BASE;
 #endif
@@ -1784,10 +1784,23 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 						   ipc4_user_target_core_module(ipc4));
 			if (!ret) {
 				struct ipc_user *pdata = ipc_user_get();
+				/*
+				 * pdata is writable by user threads: read the
+				 * size once and always reply from the kernel
+				 * copy of the IPC data buffer, which is where
+				 * the user thread wrote the reply.
+				 */
+				uint32_t size = pdata->reply_tx_size;
+
+				if (size > SOF_IPC_MSG_MAX_SIZE || size > MAILBOX_DSPBOX_SIZE) {
+					ipc_cmd_err(&ipc_tr, "reply size %u too large", size);
+					ret = IPC4_INVALID_CONFIG_DATA_STRUCT;
+					break;
+				}
 
 				msg_reply->extension = pdata->reply_ext;
-				msg_reply->tx_size = pdata->reply_tx_size;
-				msg_reply->tx_data = pdata->reply_tx_data;
+				msg_reply->tx_size = size;
+				msg_reply->tx_data = ipc_ks(ipc_get())->comp_data;
 			}
 		} else {
 			/* Base firmware (module_id==0): keep in kernel —

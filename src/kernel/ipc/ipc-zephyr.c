@@ -86,7 +86,7 @@ static void sof_ipc_receive_cb(const void *data, size_t len, void *priv)
 	__ASSERT(len == sizeof(uint32_t) * 2, "Unexpected IPC message length: %zu", len);
 	__ASSERT(data, "IPC data pointer is NULL");
 
-	key = k_spin_lock(&ipc->lock);
+	key = k_spin_lock(&ipc_ks(ipc)->lock);
 
 	g_last_data = msg[0];
 	g_last_ext_data = msg[1];
@@ -96,7 +96,7 @@ static void sof_ipc_receive_cb(const void *data, size_t len, void *priv)
 #endif
 	ipc_schedule_process(ipc);
 
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&ipc_ks(ipc)->lock, key);
 }
 
 #if defined(CONFIG_PM_DEVICE) && defined(CONFIG_IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC)
@@ -113,19 +113,19 @@ static int ipc_device_suspend_handler(const struct device *dev, void *arg)
 
 	int ret = 0;
 
-	if (!(ipc->task_mask & IPC_TASK_POWERDOWN)) {
+	if (!(ipc_ks(ipc)->task_mask & IPC_TASK_POWERDOWN)) {
 		tr_err(&ipc_tr,
 		       "ipc task mask not set to IPC_TASK_POWERDOWN. Current value: %u",
-		       ipc->task_mask);
+		       ipc_ks(ipc)->task_mask);
 		ret = -ENOMSG;
 	}
 
-	if (!ipc->pm_prepare_D3) {
+	if (!ipc_ks(ipc)->pm_prepare_D3) {
 		tr_err(&ipc_tr, "power state D3 not requested");
 		ret = -EBADMSG;
 	}
 
-	if (!list_is_empty(&ipc->msg_list)) {
+	if (!list_is_empty(&ipc_ks(ipc)->msg_list)) {
 		struct list_item *slist;
 		struct ipc_msg *msg;
 		/* The only possible message that can be added during power transition procedure is
@@ -134,7 +134,7 @@ static int ipc_device_suspend_handler(const struct device *dev, void *arg)
 		const uint32_t exp_hdr = SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
 		bool only_buff_status = true;
 
-		list_for_item(slist, &ipc->msg_list) {
+		list_for_item(slist, &ipc_ks(ipc)->msg_list) {
 			msg = container_of(slist, struct ipc_msg, list);
 
 			if (msg->header != exp_hdr)
@@ -167,16 +167,16 @@ static int ipc_device_resume_handler(const struct device *dev, void *arg)
 	struct ipc *ipc = (struct ipc *)arg;
 
 	ipc_set_drvdata(ipc, NULL);
-	ipc->task_mask = 0;
-	ipc->pm_prepare_D3 = false;
+	ipc_ks(ipc)->task_mask = 0;
+	ipc_ks(ipc)->pm_prepare_D3 = false;
 
 	/* schedule task */
 #if CONFIG_TWB_IPC_TASK
-	scheduler_twb_task_init(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
+	scheduler_twb_task_init(&ipc_ks(ipc)->ipc_task, SOF_UUID(zipc_task_uuid),
 							&ipc_task_ops, ipc, 0, "IPC", ZEPHYR_TWB_STACK_SIZE,
 							CONFIG_TWB_THREAD_MEDIUM_PRIORITY, ZEPHYR_TWB_BUDGET_MAX / 2);
 #else
-	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
+	schedule_task_init_edf(&ipc_ks(ipc)->ipc_task, SOF_UUID(zipc_task_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
 #endif
 	return 0;
@@ -236,8 +236,8 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 
 	dbg_path_hot_stop_watching();
 
-	if (ipc->task_mask & IPC_TASK_POWERDOWN ||
-	    ipc_get()->pm_prepare_D3) {
+	if (ipc_ks(ipc)->task_mask & IPC_TASK_POWERDOWN ||
+	    ipc_ks(ipc_get())->pm_prepare_D3) {
 #if defined(CONFIG_PM)
 		/**
 		 * @note For primary core this function
@@ -306,11 +306,11 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule task */
 #if CONFIG_TWB_IPC_TASK
-	scheduler_twb_task_init(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
+	scheduler_twb_task_init(&ipc_ks(ipc)->ipc_task, SOF_UUID(zipc_task_uuid),
 							&ipc_task_ops, ipc, 0, "IPC", ZEPHYR_TWB_STACK_SIZE,
 							CONFIG_TWB_THREAD_MEDIUM_PRIORITY, ZEPHYR_TWB_BUDGET_MAX / 2);
 #else
-	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
+	schedule_task_init_edf(&ipc_ks(ipc)->ipc_task, SOF_UUID(zipc_task_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
 #endif
 	/* configure interrupt - work is done internally by Zephyr API */
