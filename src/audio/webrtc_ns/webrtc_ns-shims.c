@@ -13,7 +13,7 @@
 #include <string.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/alloc.h>
-#if !defined(LLEXT_MODULE)
+#if !defined(LLEXT_MODULE) && !defined(LL_EXTENSION_BUILD)
 #include <rtos/userspace_helper.h>
 static APP_SYSUSER_BSS struct processing_module *active_ns_mod;
 #else
@@ -60,7 +60,7 @@ void *webrtc_ns_calloc(size_t nmemb, size_t size)
 	return p;
 }
 
-#if defined(LLEXT_MODULE)
+#if defined(LLEXT_MODULE) || defined(LL_EXTENSION_BUILD)
 /* ============================ Memory ============================ */
 
 void *malloc(size_t size)
