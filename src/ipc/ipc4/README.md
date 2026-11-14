@@ -1,11 +1,13 @@
 # IPC4 Architecture
 
 > **Runs in:** Boundary / bridge — `handler-user.c` and `notification-user.c` run in the user
-> thread that services modules. Their kernel counterparts, `handler-kernel.c` (the kernel
-> dispatcher), `handler-user-kernel.c` (the global and module message routers, which forward
-> commands to the user thread) and `notification.c`, are in `src/kernel/ipc/ipc4`, together
-> with the `z_vrfy_`/`z_impl_` pairs for the compound-message, reply and notification
-> syscalls. See [User/kernel split](../../include/sof/userspace/README.md).
+> thread that services modules. Their kernel counterparts are in `src/kernel/ipc/ipc4`:
+> `handler-kernel.c` (the kernel dispatcher), `handler-user-kernel.c` (the global and module
+> message routers), `handler-ll-user.c` and `handler-ll-kernel.c` (the routing for the LL
+> scheduler in user and in kernel space) and `notification.c`, together with the
+> `z_vrfy_`/`z_impl_` pairs for the compound-message, reply and notification syscalls. See
+> [User/Kernel Partitioning](#userkernel-partitioning) below and
+> [User/kernel split](../../include/sof/userspace/README.md).
 
 This directory holds the handlers and topology parsing logic for Inter-Processor Communication Version 4. IPC4 introduces a significantly denser, compound-command structure heavily based around the concept of "pipelines" and dynamic "modules" rather than static DSP stream roles.
 
@@ -40,6 +42,67 @@ graph TD
         Mod --> Unbind[ipc4_unbind]
     end
 ```
+
+## User/Kernel Partitioning
+
+With the LL scheduler in user space (`CONFIG_SOF_USERSPACE_LL`), each IPC4 message is handled
+in up to two places:
+
+- **Kernel IPC thread**: `handler-kernel.c` receives the message from the host mailbox and
+  replies. It handles the kernel-only messages itself and passes the others to the routers in
+  `handler-user-kernel.c`. The routers handle the messages that need kernel mode in all builds.
+  For the rest they call the `ipc4_route_*()` functions of `handler-ll-user.c`, which do any
+  privileged part of the message and forward it to the user-space IPC thread of the target
+  core with `ipc_user_forward_cmd()`.
+- **User-space IPC thread**: `ipc_user_thread_dispatch()` in `handler-user.c` runs the handlers
+  in `handler-user.c` and `helper.c` for the forwarded message.
+
+Without `CONFIG_SOF_USERSPACE_LL`, `handler-ll-kernel.c` provides the `ipc4_route_*()`
+functions instead and calls the same handlers directly, so all messages are handled in the
+kernel IPC thread. The split still marks which code must be user-space safe.
+
+```mermaid
+graph TD
+    Host[Host IPC] --> Disp["handler-kernel.c<br/>ipc4_process_glb/module_message()"]
+    Disp -->|kernel only| KOnly["library load, D0ix/Dx"]
+    Disp --> Routers["handler-user-kernel.c<br/>ipc4_user_process_glb/module_message()"]
+    Routers -->|kernel only| KRouted["CHAIN_DMA, IPC gateway, GDB,<br/>base firmware LARGE_CONFIG"]
+    Routers --> Route{"ipc4_route_*()"}
+    Route -->|CONFIG_SOF_USERSPACE_LL| LLUser["handler-ll-user.c<br/>target core, driver lookup,<br/>module load, multicore sequencing"]
+    Route -->|otherwise| LLKernel["handler-ll-kernel.c<br/>direct call"]
+    LLUser -->|ipc_user_forward_cmd| UThread["user-space IPC thread<br/>ipc_user_thread_dispatch()"]
+    UThread --> Handlers["handler-user.c / helper.c handlers"]
+    LLKernel --> Handlers
+```
+
+With `CONFIG_SOF_USERSPACE_LL`, the messages are handled as follows:
+
+| Message | Kernel only | Kernel and user | User |
+|---|---|---|---|
+| `GLB_LOAD_LIBRARY`, `GLB_LOAD_LIBRARY_PREPARE` | ✓ library manager | | |
+| `GLB_CHAIN_DMA` | ✓ | | |
+| `GLB_IPCGATEWAY_CMD` | ✓ | | |
+| `GLB_ENTER_GDB` | ✓ | | |
+| `MOD_SET_D0IX`, `MOD_SET_DX` | ✓ power management | | |
+| `MOD_LARGE_CONFIG_GET`/`SET`, base firmware (module_id 0) | ✓ reads the IMR manifest | | |
+| `GLB_CREATE_PIPELINE` | | kernel: target core; user: pipeline creation | |
+| `GLB_DELETE_PIPELINE` | | kernel: owning core; user: pipeline free | |
+| `GLB_SET_PIPELINE_STATE` | | kernel: pipeline list check, multicore prepare/trigger sequencing; user: prepare and trigger | |
+| `MOD_INIT_INSTANCE` | | kernel: driver lookup, loadable module setup; user: component creation | |
+| `MOD_CONFIG_GET`/`SET` | | | ✓ |
+| `MOD_LARGE_CONFIG_GET`/`SET`, modules | | | ✓ |
+| `MOD_BIND`, `MOD_UNBIND` | | | ✓ |
+| `MOD_DELETE_INSTANCE` | | | ✓ |
+
+For the messages in the user column, the kernel only selects the target core from the module
+and forwards the message unchanged. DP modules and modules on another core are created by the
+kernel in `ipc4_init_module_instance()`. With `CONFIG_SOF_USERSPACE_APPLICATION`, the IPCs of a
+DP module are then passed on to its DP thread (`scheduler_dp_thread_ipc()`).
+
+The other global messages (boot config, ROM control, performance measurements, multiple module
+load and unload, pipeline state get, context size, save and restore, internal messages and
+notifications) and the module restore messages are not implemented and are rejected by the
+routers.
 
 ## Processing Flows
 
