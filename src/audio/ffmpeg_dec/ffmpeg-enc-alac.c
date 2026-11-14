@@ -164,8 +164,12 @@ static int ffmpeg_enc_alac_encode_frame(struct processing_module *mod, struct ff
 	if (av_frame_get_buffer(alac->frame, 0) < 0)
 		return -ENOMEM;
 
-	ffmpeg_dec_pcm_to_frame(e->pcm_in, alac->frame,
-				e->src_fmt, ch, e->nb);
+	ret = ffmpeg_dec_pcm_to_frame(e->pcm_in, alac->frame,
+				      e->src_fmt, ch, e->nb);
+	if (ret < 0) {
+		av_frame_unref(alac->frame);
+		return ret;
+	}
 
 	ret = avcodec_send_frame(alac->avctx, alac->frame);
 	av_frame_unref(alac->frame);

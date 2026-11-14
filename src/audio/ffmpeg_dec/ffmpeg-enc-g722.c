@@ -160,9 +160,13 @@ static int ffmpeg_enc_g722_encode_frame(struct processing_module *mod, struct ff
 						      G722_ENC_FRAME_SAMPLES,
 						      e->decim_hist);
 	} else {
-		ffmpeg_dec_pcm_to_frame(e->pcm_in, g722->frame,
-					e->src_fmt, cd->out_channels,
-					G722_ENC_FRAME_SAMPLES);
+		ret = ffmpeg_dec_pcm_to_frame(e->pcm_in, g722->frame,
+					      e->src_fmt, cd->out_channels,
+					      G722_ENC_FRAME_SAMPLES);
+		if (ret < 0) {
+			av_frame_unref(g722->frame);
+			return ret;
+		}
 	}
 
 	ret = avcodec_send_frame(g722->avctx, g722->frame);

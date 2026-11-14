@@ -125,8 +125,12 @@ static int ffmpeg_enc_aptx_encode_frame(struct processing_module *mod, struct ff
 	if (av_frame_get_buffer(aptx->frame, 0) < 0)
 		return -ENOMEM;
 
-	ffmpeg_dec_pcm_to_frame(e->pcm_in, aptx->frame,
-				e->src_fmt, 2, e->nb);
+	ret = ffmpeg_dec_pcm_to_frame(e->pcm_in, aptx->frame,
+				      e->src_fmt, 2, e->nb);
+	if (ret < 0) {
+		av_frame_unref(aptx->frame);
+		return ret;
+	}
 
 	ret = avcodec_send_frame(aptx->avctx, aptx->frame);
 	av_frame_unref(aptx->frame);

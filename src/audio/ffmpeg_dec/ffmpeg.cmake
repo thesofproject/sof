@@ -129,7 +129,7 @@ set(_ff_flacenc_prep "")
 if(CONFIG_FFMPEG_ENC_FLAC)
 	set(_ff_extra_cflags "${_ff_extra_cflags} -I${SOF_FFMPEG_SRC_DIR}/libavcodec")
 	set(_ff_flacenc_prep
-		COMMAND sh -c "sed -e 's/FLAC_MAX_BLOCKSIZE/1152/g' -e 's/rc_sums\\[32\\]/rc_sums[1]/g' -e 's/subframes\\[FLAC_MAX_CHANNELS\\]/subframes[2]/g' -e 's/channels > FLAC_MAX_CHANNELS/channels > 2/g' <SOURCE_DIR>/libavcodec/flacenc.c > <BINARY_DIR>/libavcodec/flacenc.c")
+		COMMAND sh -c "sed -e 's/\\[FLAC_MAX_BLOCKSIZE\\]/[1152]/g' -e 's/\\[FLAC_MAX_BLOCKSIZE+11\\]/[1152+11]/g' -e 's/> FLAC_MAX_BLOCKSIZE/> 1152/g' -e 's/rc_sums\\[32\\]/rc_sums[1]/g' -e 's/subframes\\[FLAC_MAX_CHANNELS\\]/subframes[2]/g' -e 's/channels > FLAC_MAX_CHANNELS/channels > 2/g' <SOURCE_DIR>/libavcodec/flacenc.c > <BINARY_DIR>/libavcodec/flacenc.c")
 endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
