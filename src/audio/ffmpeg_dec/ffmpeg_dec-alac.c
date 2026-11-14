@@ -10,13 +10,50 @@
 #include <ipc/compress_params.h>
 #include <rtos/string.h>
 #include <errno.h>
+#include <limits.h>
+#if !defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+#include <libavcodec/version.h>
+#endif
 #include "ffmpeg_dec.h"
 
 LOG_MODULE_DECLARE(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
 
 #define ALAC_EXTRADATA_SIZE		36
 #define ALAC_SPECIFIC_CONFIG_SIZE	24
+#define ALAC_ATOM_HDR_SIZE		12
+#define ALAC_ATOM_TAG_OFFSET		4
+#define ALAC_COOKIE_SAMPLES_OFFSET	12
+#define ALAC_COOKIE_COMPAT_OFFSET	16
+#define ALAC_COOKIE_BITS_OFFSET		17
+#define ALAC_COOKIE_PB_OFFSET		18
+#define ALAC_COOKIE_MB_OFFSET		19
+#define ALAC_COOKIE_KB_OFFSET		20
+#define ALAC_COOKIE_CH_OFFSET		21
+#define ALAC_COOKIE_MAX_RUN_OFFSET	22
+#define ALAC_COOKIE_MAX_FRAME_OFFSET	24
+#define ALAC_COOKIE_AVG_BITRATE_OFFSET	28
+#define ALAC_COOKIE_SAMPLE_RATE_OFFSET	32
+#define ALAC_COOKIE_MIN_SIZE		22
+
+#define ALAC_HEADER_TAG_SIZE		4
+#define ALAC_HEADER_PEEK_BYTES		8
+#define ALAC_CAF_HDR_SIZE		8
+#define ALAC_CAF_CHUNK_HDR_SIZE		12
+#define ALAC_CAF_DATA_EDIT_COUNT_SIZE	4
+#define ALAC_CAF_DATA_HDR_SIZE		(ALAC_CAF_CHUNK_HDR_SIZE + ALAC_CAF_DATA_EDIT_COUNT_SIZE)
+#define ALAC_CAF_MAX_CHUNK_SIZE		0x10000000LL
+
 #define ALAC_DEFAULT_FRAME_SAMPLES	4096
+#define ALAC_MAX_FRAME_SAMPLES		16384
+#define ALAC_MAX_BITS_PER_SAMPLE	32
+#define ALAC_DEFAULT_COMPAT_VERSION	0
+#define ALAC_DEFAULT_SAMPLE_SIZE	16
+#define ALAC_DEFAULT_PB			40
+#define ALAC_DEFAULT_MB			10
+#define ALAC_DEFAULT_KB			14
+#define ALAC_DEFAULT_CHANNELS		2
+#define ALAC_DEFAULT_MAX_RUN		255
+#define ALAC_DEFAULT_SAMPLE_RATE	48000
 
 /*
  * Prefix layout of libavcodec's private ALACContext (libavcodec/alac.c):
@@ -28,7 +65,16 @@ LOG_MODULE_DECLARE(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
  * padded to the next byte boundary by flush_put_bits(). Because libavcodec
  * does not ship an AVCodecParser for ALAC, reading gb.index after
  * avcodec_receive_frame() yields the exact bit count of the decoded frame.
+ * The _Static_assert below pins the expected libavcodec version so any
+ * submodule upgrade forces re-verification of ALACContext's prefix layout.
  */
+#if !defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+_Static_assert(LIBAVCODEC_VERSION_MAJOR == 61 &&
+	       LIBAVCODEC_VERSION_MINOR == 19 &&
+	       LIBAVCODEC_VERSION_MICRO == 101,
+	       "struct alac_priv_prefix must be verified against ALACContext in libavcodec/alac.c");
+#endif
+
 struct alac_priv_prefix {
 	const void *av_class;
 	void *avctx;
@@ -67,11 +113,12 @@ static inline void alac_write_be32(uint8_t *p, uint32_t v)
 
 static uint32_t ffmpeg_dec_alac_max_frame_samples(const struct ffmpeg_dec_comp_data *cd)
 {
-	if (cd->extradata_size >= 16 &&
-	    memcmp(&cd->extradata[4], "alac", 4) == 0) {
-		uint32_t max_samples = alac_read_be32(&cd->extradata[12]);
+	if (cd->extradata_size >= ALAC_COOKIE_SAMPLES_OFFSET + 4 &&
+	    memcmp(&cd->extradata[ALAC_ATOM_TAG_OFFSET], "alac", 4) == 0) {
+		uint32_t max_samples =
+			alac_read_be32(&cd->extradata[ALAC_COOKIE_SAMPLES_OFFSET]);
 
-		if (max_samples > 0 && max_samples <= 16384)
+		if (max_samples > 0 && max_samples <= ALAC_MAX_FRAME_SAMPLES)
 			return max_samples;
 	}
 	return ALAC_DEFAULT_FRAME_SAMPLES;
@@ -80,11 +127,17 @@ static uint32_t ffmpeg_dec_alac_max_frame_samples(const struct ffmpeg_dec_comp_d
 static size_t ffmpeg_dec_alac_frame_bytes_consumed(const void *priv_data)
 {
 	const struct alac_priv_prefix *priv = priv_data;
+	size_t bytes;
 
-	if (!priv || priv->gb_index <= 0)
+	if (!priv || !priv->gb_buffer || !priv->gb_buffer_end ||
+	    priv->gb_buffer_end < priv->gb_buffer || priv->gb_index <= 0)
 		return 0;
 
-	return (size_t)((priv->gb_index + 7) >> 3);
+	bytes = (size_t)((priv->gb_index + 7) >> 3);
+	if (bytes > (size_t)(priv->gb_buffer_end - priv->gb_buffer))
+		return 0;
+
+	return bytes;
 }
 
 /*
@@ -117,34 +170,35 @@ static int ffmpeg_dec_alac_skip_container(struct processing_module *mod,
 
 	/* Step 2: Parse CAF chunks until the "data" chunk payload is reached */
 	while (cd->alac_parsing_caf) {
-		uint8_t chunk_hdr[12];
+		uint8_t chunk_hdr[ALAC_CAF_CHUNK_HDR_SIZE];
 		int64_t chunk_size;
 
 		avail = source_get_data_available(src);
-		if (avail < 12)
+		if (avail < ALAC_CAF_CHUNK_HDR_SIZE)
 			return -ENODATA;
 
-		ret = source_get_data(src, 12, &sp, &sstart, &sbytes);
+		ret = source_get_data(src, ALAC_CAF_CHUNK_HDR_SIZE, &sp, &sstart, &sbytes);
 		if (ret)
 			return ret;
-		ffmpeg_dec_copy_from_circular(chunk_hdr, sp, sstart, sbytes, 12);
+		ffmpeg_dec_copy_from_circular(chunk_hdr, sp, sstart, sbytes,
+					      ALAC_CAF_CHUNK_HDR_SIZE);
 		source_release_data(src, 0);
 
 		chunk_size = (int64_t)alac_read_be64(&chunk_hdr[4]);
 
 		/* "data" chunk: 12-byte header + 4-byte mEditCount, followed by ALAC frames */
 		if (memcmp(chunk_hdr, "data", 4) == 0) {
-			if (avail < 16)
+			if (avail < ALAC_CAF_DATA_HDR_SIZE)
 				return -ENODATA;
 
-			source_drop_data(src, 16);
+			source_drop_data(src, ALAC_CAF_DATA_HDR_SIZE);
 			cd->alac_parsing_caf = false;
 			comp_info(dev, "ALAC CAF data chunk reached (size %lld)",
 				  (long long)chunk_size);
 			return 0;
 		}
 
-		if (chunk_size < 0 || chunk_size > 0x10000000LL) {
+		if (chunk_size < 0 || chunk_size > ALAC_CAF_MAX_CHUNK_SIZE) {
 			comp_err(dev, "invalid CAF chunk %.4s size %lld",
 				 (const char *)chunk_hdr, (long long)chunk_size);
 			return -EINVAL;
@@ -153,8 +207,8 @@ static int ffmpeg_dec_alac_skip_container(struct processing_module *mod,
 		/* "kuki" (magic cookie) chunk: extract 36-byte QuickTime 'alac' atom */
 		if (memcmp(chunk_hdr, "kuki", 4) == 0 &&
 		    chunk_size >= ALAC_EXTRADATA_SIZE &&
-		    12 + (size_t)chunk_size <= cd->in_buf_size) {
-			req = 12 + (size_t)chunk_size;
+		    ALAC_CAF_CHUNK_HDR_SIZE + (size_t)chunk_size <= cd->in_buf_size) {
+			req = ALAC_CAF_CHUNK_HDR_SIZE + (size_t)chunk_size;
 			if (avail < req)
 				return -ENODATA;
 
@@ -165,7 +219,7 @@ static int ffmpeg_dec_alac_skip_container(struct processing_module *mod,
 			source_release_data(src, 0);
 
 			if (!cd->extradata_size) {
-				const uint8_t *cookie = &cd->in_buf[12];
+				const uint8_t *cookie = &cd->in_buf[ALAC_CAF_CHUNK_HDR_SIZE];
 				size_t cookie_len = (size_t)chunk_size;
 				const uint8_t *atom = NULL;
 
@@ -173,7 +227,8 @@ static int ffmpeg_dec_alac_skip_container(struct processing_module *mod,
 				for (size_t off = 0; off + ALAC_EXTRADATA_SIZE <= cookie_len;
 				     off++) {
 					if (alac_read_be32(&cookie[off]) == ALAC_EXTRADATA_SIZE &&
-					    memcmp(&cookie[off + 4], "alac", 4) == 0) {
+					    memcmp(&cookie[off + ALAC_ATOM_TAG_OFFSET],
+						   "alac", 4) == 0) {
 						atom = &cookie[off];
 						break;
 					}
@@ -189,7 +244,7 @@ static int ffmpeg_dec_alac_skip_container(struct processing_module *mod,
 		}
 
 		/* Skip other CAF metadata chunks ("desc", "chan", "info", "free", etc.) */
-		size_t chunk_total = 12 + (size_t)chunk_size;
+		size_t chunk_total = ALAC_CAF_CHUNK_HDR_SIZE + (size_t)chunk_size;
 
 		if (avail >= chunk_total) {
 			source_drop_data(src, chunk_total);
@@ -209,38 +264,56 @@ static int ffmpeg_dec_alac_skip_container(struct processing_module *mod,
 	} while (ret > 0);
 
 	avail = source_get_data_available(src);
+	if (avail < ALAC_HEADER_TAG_SIZE)
+		return -ENODATA;
+
+	ret = source_get_data(src, ALAC_HEADER_TAG_SIZE, &sp, &sstart, &sbytes);
+	if (ret)
+		return ret;
+	ffmpeg_dec_copy_from_circular(cd->in_buf, sp, sstart, sbytes,
+				      ALAC_HEADER_TAG_SIZE);
+	source_release_data(src, 0);
 
 	/* Step 4: Check for the 8-byte Core Audio Format ("caff\x00\x01\x00\x00") header */
 	if (memcmp(cd->in_buf, "caff", 4) == 0) {
-		if (avail < 8)
+		if (avail < ALAC_CAF_HDR_SIZE)
 			return -ENODATA;
-
 		comp_info(dev, "CAF header detected, parsing ALAC container chunks");
-		source_drop_data(src, 8);
+		source_drop_data(src, ALAC_CAF_HDR_SIZE);
 		cd->alac_parsing_caf = true;
 		return ffmpeg_dec_alac_skip_container(mod, src);
 	}
 
 	/* Step 5: Check for an inline 36-byte QuickTime 'alac' atom prefix */
-	if (avail >= 8 &&
-	    alac_read_be32(cd->in_buf) == ALAC_EXTRADATA_SIZE &&
-	    memcmp(&cd->in_buf[4], "alac", 4) == 0) {
-		if (avail < ALAC_EXTRADATA_SIZE)
+	if (alac_read_be32(cd->in_buf) == ALAC_EXTRADATA_SIZE) {
+		if (avail < ALAC_HEADER_PEEK_BYTES)
 			return -ENODATA;
 
-		ret = source_get_data(src, ALAC_EXTRADATA_SIZE, &sp, &sstart, &sbytes);
+		ret = source_get_data(src, ALAC_HEADER_PEEK_BYTES, &sp, &sstart, &sbytes);
 		if (ret)
 			return ret;
 		ffmpeg_dec_copy_from_circular(cd->in_buf, sp, sstart, sbytes,
-					      ALAC_EXTRADATA_SIZE);
+					      ALAC_HEADER_PEEK_BYTES);
 		source_release_data(src, 0);
 
-		if (!cd->extradata_size) {
-			ffmpeg_dec_store_extradata(mod, cd->in_buf, ALAC_EXTRADATA_SIZE);
-			comp_info(dev, "extracted inline 36-byte ALAC atom header");
+		if (memcmp(&cd->in_buf[ALAC_ATOM_TAG_OFFSET], "alac", 4) == 0) {
+			if (avail < ALAC_EXTRADATA_SIZE)
+				return -ENODATA;
+
+			ret = source_get_data(src, ALAC_EXTRADATA_SIZE, &sp, &sstart, &sbytes);
+			if (ret)
+				return ret;
+			ffmpeg_dec_copy_from_circular(cd->in_buf, sp, sstart, sbytes,
+						      ALAC_EXTRADATA_SIZE);
+			source_release_data(src, 0);
+
+			if (!cd->extradata_size) {
+				ffmpeg_dec_store_extradata(mod, cd->in_buf, ALAC_EXTRADATA_SIZE);
+				comp_info(dev, "extracted inline 36-byte ALAC atom header");
+			}
+			source_drop_data(src, ALAC_EXTRADATA_SIZE);
+			return 0;
 		}
-		source_drop_data(src, ALAC_EXTRADATA_SIZE);
-		return 0;
 	}
 
 	return 0;
@@ -250,7 +323,9 @@ static void ffmpeg_dec_alac_resize_pcm_buf(struct processing_module *mod)
 {
 	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
 	uint32_t max_samples = ffmpeg_dec_alac_max_frame_samples(cd);
-	size_t frame_bytes = cd->out_frame_bytes ? cd->out_frame_bytes : 8;
+	size_t frame_bytes = cd->out_frame_bytes ?
+			     cd->out_frame_bytes :
+			     ALAC_DEFAULT_CHANNELS * sizeof(int32_t);
 	size_t need = (size_t)max_samples * frame_bytes;
 
 	if (need > cd->pcm_buf_size) {
@@ -269,30 +344,30 @@ static void ffmpeg_dec_alac_prepare_extradata(struct processing_module *mod)
 	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
 	uint8_t atom[ALAC_EXTRADATA_SIZE];
 	uint32_t frame_length = ALAC_DEFAULT_FRAME_SAMPLES;
-	uint8_t compatible_version = 0;
-	uint8_t sample_size = 16;
-	uint8_t pb = 40;
-	uint8_t mb = 10;
-	uint8_t kb = 14;
-	uint8_t channels = cd->out_channels ? (uint8_t)cd->out_channels : 2;
-	uint16_t max_run = 255;
+	uint8_t compatible_version = ALAC_DEFAULT_COMPAT_VERSION;
+	uint8_t sample_size = ALAC_DEFAULT_SAMPLE_SIZE;
+	uint8_t pb = ALAC_DEFAULT_PB;
+	uint8_t mb = ALAC_DEFAULT_MB;
+	uint8_t kb = ALAC_DEFAULT_KB;
+	uint8_t channels = cd->out_channels ? (uint8_t)cd->out_channels : ALAC_DEFAULT_CHANNELS;
+	uint16_t max_run = ALAC_DEFAULT_MAX_RUN;
 	uint32_t max_frame_bytes = 0;
 	uint32_t avg_bitrate = 0;
-	uint32_t sample_rate = cd->out_rate ? cd->out_rate : 48000;
+	uint32_t sample_rate = cd->out_rate ? cd->out_rate : ALAC_DEFAULT_SAMPLE_RATE;
 
 	/* Valid 36-byte QuickTime 'alac' atom already present */
 	if (cd->extradata_size == ALAC_EXTRADATA_SIZE &&
-	    memcmp(&cd->extradata[4], "alac", 4) == 0) {
+	    memcmp(&cd->extradata[ALAC_ATOM_TAG_OFFSET], "alac", 4) == 0) {
 		ffmpeg_dec_alac_resize_pcm_buf(mod);
 		return;
 	}
 
 	/* Wrap a raw 24-byte ALACSpecificConfig into the 36-byte QuickTime 'alac' atom */
 	if (cd->extradata_size == ALAC_SPECIFIC_CONFIG_SIZE) {
-		memset(atom, 0, 12);
+		memset(atom, 0, ALAC_ATOM_HDR_SIZE);
 		alac_write_be32(&atom[0], ALAC_EXTRADATA_SIZE);
-		memcpy_s(&atom[4], 4, "alac", 4);
-		memcpy_s(&atom[12], ALAC_SPECIFIC_CONFIG_SIZE,
+		memcpy_s(&atom[ALAC_ATOM_TAG_OFFSET], 4, "alac", 4);
+		memcpy_s(&atom[ALAC_ATOM_HDR_SIZE], ALAC_SPECIFIC_CONFIG_SIZE,
 			 cd->extradata, ALAC_SPECIFIC_CONFIG_SIZE);
 		ffmpeg_dec_store_extradata(mod, atom, ALAC_EXTRADATA_SIZE);
 		ffmpeg_dec_alac_resize_pcm_buf(mod);
@@ -306,7 +381,8 @@ static void ffmpeg_dec_alac_prepare_extradata(struct processing_module *mod)
 		const struct snd_codec *codec_params = mod->priv.cfg.ext_data->module_data;
 		const struct snd_dec_alac *alac_opt = &codec_params->options.alac_d;
 
-		if (alac_opt->frame_length > 0 && alac_opt->frame_length <= 16384)
+		if (alac_opt->frame_length > 0 &&
+		    alac_opt->frame_length <= ALAC_MAX_FRAME_SAMPLES)
 			frame_length = alac_opt->frame_length;
 		if (alac_opt->pb > 0)
 			pb = alac_opt->pb;
@@ -314,7 +390,7 @@ static void ffmpeg_dec_alac_prepare_extradata(struct processing_module *mod)
 			mb = alac_opt->mb;
 		if (alac_opt->kb > 0)
 			kb = alac_opt->kb;
-		if (alac_opt->max_run > 0 && alac_opt->max_run <= 0xFFFF)
+		if (alac_opt->max_run > 0 && alac_opt->max_run <= UINT16_MAX)
 			max_run = (uint16_t)alac_opt->max_run;
 		if (alac_opt->max_frame_bytes > 0)
 			max_frame_bytes = alac_opt->max_frame_bytes;
@@ -323,23 +399,57 @@ static void ffmpeg_dec_alac_prepare_extradata(struct processing_module *mod)
 
 	memset(atom, 0, sizeof(atom));
 	alac_write_be32(&atom[0], ALAC_EXTRADATA_SIZE);
-	memcpy_s(&atom[4], 4, "alac", 4);
-	alac_write_be32(&atom[12], frame_length);
-	atom[16] = compatible_version;
-	atom[17] = sample_size;
-	atom[18] = pb;
-	atom[19] = mb;
-	atom[20] = kb;
-	atom[21] = channels;
-	alac_write_be16(&atom[22], max_run);
-	alac_write_be32(&atom[24], max_frame_bytes);
-	alac_write_be32(&atom[28], avg_bitrate);
-	alac_write_be32(&atom[32], sample_rate);
+	memcpy_s(&atom[ALAC_ATOM_TAG_OFFSET], 4, "alac", 4);
+	alac_write_be32(&atom[ALAC_COOKIE_SAMPLES_OFFSET], frame_length);
+	atom[ALAC_COOKIE_COMPAT_OFFSET] = compatible_version;
+	atom[ALAC_COOKIE_BITS_OFFSET] = sample_size;
+	atom[ALAC_COOKIE_PB_OFFSET] = pb;
+	atom[ALAC_COOKIE_MB_OFFSET] = mb;
+	atom[ALAC_COOKIE_KB_OFFSET] = kb;
+	atom[ALAC_COOKIE_CH_OFFSET] = channels;
+	alac_write_be16(&atom[ALAC_COOKIE_MAX_RUN_OFFSET], max_run);
+	alac_write_be32(&atom[ALAC_COOKIE_MAX_FRAME_OFFSET], max_frame_bytes);
+	alac_write_be32(&atom[ALAC_COOKIE_AVG_BITRATE_OFFSET], avg_bitrate);
+	alac_write_be32(&atom[ALAC_COOKIE_SAMPLE_RATE_OFFSET], sample_rate);
 
 	ffmpeg_dec_store_extradata(mod, atom, ALAC_EXTRADATA_SIZE);
 	ffmpeg_dec_alac_resize_pcm_buf(mod);
 	comp_info(mod->dev, "synthesized 36-byte ALAC extradata (frame_len=%u rate=%u ch=%u)",
 		  frame_length, sample_rate, channels);
+}
+
+static int ffmpeg_dec_alac_configure_avctx(struct processing_module *mod, void *avctx)
+{
+	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
+	uint32_t max_ch = cd->out_channels ? cd->out_channels : ALAC_DEFAULT_CHANNELS;
+	uint32_t cookie_samples = 0;
+	uint8_t cookie_bits = 0;
+	uint8_t cookie_ch = 0;
+
+	(void)avctx;
+
+	if (cd->extradata_size >= ALAC_COOKIE_MIN_SIZE &&
+	    memcmp(&cd->extradata[ALAC_ATOM_TAG_OFFSET], "alac", 4) == 0) {
+		cookie_samples = alac_read_be32(&cd->extradata[ALAC_COOKIE_SAMPLES_OFFSET]);
+		cookie_bits = cd->extradata[ALAC_COOKIE_BITS_OFFSET];
+		cookie_ch = cd->extradata[ALAC_COOKIE_CH_OFFSET];
+	}
+	if (cookie_samples == 0 || cookie_samples > ALAC_MAX_FRAME_SAMPLES ||
+	    cookie_bits == 0 || cookie_bits > ALAC_MAX_BITS_PER_SAMPLE ||
+	    cookie_ch == 0 || cookie_ch > max_ch) {
+		comp_err(mod->dev, "unsupported ALAC cookie (samples=%u bits=%u ch=%u)",
+			 cookie_samples, cookie_bits, cookie_ch);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static bool ffmpeg_dec_alac_is_trailing_eof(const uint8_t *pkt_data, size_t pkt_len)
+{
+	return pkt_len >= 4 &&
+	       (memcmp(pkt_data, "pakt", 4) == 0 ||
+		memcmp(pkt_data, "free", 4) == 0);
 }
 
 const struct ffmpeg_dec_codec_ops ffmpeg_dec_alac_ops = {
@@ -349,5 +459,7 @@ const struct ffmpeg_dec_codec_ops ffmpeg_dec_alac_ops = {
 	.max_frame_samples = ffmpeg_dec_alac_max_frame_samples,
 	.skip_container = ffmpeg_dec_alac_skip_container,
 	.prepare_extradata = ffmpeg_dec_alac_prepare_extradata,
+	.configure_avctx = ffmpeg_dec_alac_configure_avctx,
+	.is_trailing_eof = ffmpeg_dec_alac_is_trailing_eof,
 	.frame_bytes_consumed = ffmpeg_dec_alac_frame_bytes_consumed,
 };
