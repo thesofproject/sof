@@ -27,6 +27,16 @@ config PROBE_DMA_MAX
 	help
 	  Define maximum number of injection DMAs.
 
+config PROBE_IMX_HOST_DMA
+	bool "Extract probe data to a host ring through the i.MX host DMA"
+	depends on PROBE && IMX && IPC_MAJOR_3 && ZEPHYR_NATIVE_DRIVERS
+	help
+	  On i.MX IPC3 platforms the host DMA is configured by the firmware,
+	  so the kernel passes the host ring address in the PROBE_INIT
+	  stream_tag and the DSP writes extraction data directly into it.
+	  The firmware publishes a write counter in the ring header for the
+	  kernel to poll, since the host DMA reports no position.
+
 endif
 
 endmenu

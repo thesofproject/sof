@@ -51,6 +51,8 @@ LOG_MODULE_REGISTER(probe, CONFIG_SOF_LOG_LEVEL);
 #define PROBE_POINT_INVALID	0xFFFFFFFF
 
 #define PROBE_BUFFER_LOCAL_SIZE	8192
+/* host buffer layout: u32 write counter in the first bytes, ring data after the header */
+#define PROBE_HOST_HDR_SIZE	4096
 #define DMA_ELEM_SIZE		32
 
 /**
@@ -74,6 +76,11 @@ struct probe_dma_ext {
 	struct dma_sg_config config;	/**< DMA SG config */
 	struct probe_dma_buf dmapb;	/**< DMA buffer pointer */
 	struct dma_copy dc;		/**< DMA copy */
+#if CONFIG_PROBE_IMX_HOST_DMA
+	uintptr_t host_base;		/**< host buffer: header + ring (IPC3) */
+	uint32_t host_size;		/**< host ring size in bytes (IPC3) */
+	uint32_t host_wr;		/**< total bytes written to host ring (IPC3) */
+#endif
 };
 
 /**
@@ -201,7 +208,12 @@ __cold static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 
 	assert_can_be_cold();
 
+#if CONFIG_PROBE_IMX_HOST_DMA
+	/* i.MX: stream_tag carries the host buffer address; use host DMA channel 0 */
+	channel = 0;
+#else
 	channel = ((union ipc4_connector_node_id)dma->stream_tag).f.v_index;
+#endif
 
 	/* request DMA in the dir LMEM->HMEM with shared access */
 	dma->dc.dmac = sof_dma_get(direction, 0, SOF_DMA_DEV_HOST,
@@ -259,6 +271,10 @@ __cold static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	case SOF_DMA_DIR_LMEM_TO_HMEM:
 		dma_cfg.channel_direction = MEMORY_TO_HOST;
 		dma_block_cfg.source_address = (uint32_t)dma->dmapb.addr;
+#if CONFIG_PROBE_IMX_HOST_DMA
+		/* re-pointed before every transfer, see probe_host_reconfig() */
+		dma_block_cfg.dest_address = (uint32_t)(dma->host_base + PROBE_HOST_HDR_SIZE);
+#endif
 		break;
 	case SOF_DMA_DIR_HMEM_TO_LMEM:
 		dma_cfg.channel_direction = HOST_TO_MEMORY;
@@ -320,6 +336,58 @@ __cold static int probe_dma_deinit(struct probe_dma_ext *dma)
 	return 0;
 }
 
+#if CONFIG_PROBE_IMX_HOST_DMA
+/**
+ * \brief Point the i.MX host DMA at the bytes about to be transferred.
+ *
+ * The host DMA copies the block it was last configured with, so the block
+ * is updated before every transfer.  The transfer never has to wrap in the
+ * host ring: probe_task() already clamps it at the end of the local ring,
+ * and the host ring is a multiple of the local ring, so every host ring
+ * boundary falls on a local one.
+ *
+ * \param[in] dma extraction DMA.
+ * \param[in] bytes size of the next transfer.
+ * \return 0 on success, error code otherwise.
+ */
+static int probe_host_reconfig(struct probe_dma_ext *dma, uint32_t bytes)
+{
+	uint32_t off = dma->host_wr % dma->host_size;
+	struct dma_block_config blk = {
+		.source_address = (uint32_t)dma->dmapb.r_ptr,
+		.dest_address = (uint32_t)(dma->host_base + PROBE_HOST_HDR_SIZE + off),
+		.block_size = bytes,
+	};
+	struct dma_config cfg = {
+		.channel_direction = MEMORY_TO_HOST,
+		.source_data_size = sizeof(uint32_t),
+		.dest_data_size = sizeof(uint32_t),
+		.block_count = 1,
+		.head_block = &blk,
+	};
+
+	return dma_config(dma->dc.dmac->z_dev, dma->dc.chan->index, &cfg);
+}
+
+/**
+ * \brief Publish the host ring write counter after a transfer.
+ *
+ * The data itself was already flushed by the host DMA, so the counter is
+ * only ever visible to the host once the bytes it covers are.
+ *
+ * \param[in] dma extraction DMA.
+ * \param[in] bytes size of the transfer just completed.
+ */
+static void probe_host_publish(struct probe_dma_ext *dma, uint32_t bytes)
+{
+	/* host_wr wraps at 2^32; kernel side casts its counter to u32 before subtracting */
+	dma->host_wr += bytes;
+	*(volatile uint32_t *)dma->host_base = dma->host_wr;
+	dcache_writeback_region((__sparse_force void __sparse_cache *)dma->host_base,
+				sizeof(uint32_t));
+}
+#endif
+
 /*
  * \brief Probe task for extraction.
  *
@@ -350,23 +418,33 @@ static enum task_state probe_task(void *data)
 	if (avail + _probe->ext_dma.dmapb.r_ptr >= _probe->ext_dma.dmapb.end_addr)
 		avail = _probe->ext_dma.dmapb.end_addr - _probe->ext_dma.dmapb.r_ptr;
 
-	if (avail > 0)
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
-		err = dma_reload(_probe->ext_dma.dc.dmac->z_dev,
-				 _probe->ext_dma.dc.chan->index, 0, 0, avail);
-#else
-		err = dma_copy_to_host_nowait(&_probe->ext_dma.dc,
-					      &_probe->ext_dma.config, 0,
-					      (void *)_probe->ext_dma.dmapb.r_ptr,
-					      avail);
-#endif
-	else
+	if (!avail)
 		return SOF_TASK_STATE_RESCHEDULE;
 
+#if CONFIG_PROBE_IMX_HOST_DMA
+	err = probe_host_reconfig(&_probe->ext_dma, avail);
+	if (err < 0) {
+		tr_err(&pr_tr, "host dma reconfig failed.");
+		return SOF_TASK_STATE_COMPLETED;
+	}
+#endif
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	err = dma_reload(_probe->ext_dma.dc.dmac->z_dev,
+			 _probe->ext_dma.dc.chan->index, 0, 0, avail);
+#else
+	err = dma_copy_to_host_nowait(&_probe->ext_dma.dc,
+				      &_probe->ext_dma.config, 0,
+				      (void *)_probe->ext_dma.dmapb.r_ptr,
+				      avail);
+#endif
 	if (err < 0) {
 		tr_err(&pr_tr, "dma_copy_to_host() failed.");
 		return err;
 	}
+
+#if CONFIG_PROBE_IMX_HOST_DMA
+	probe_host_publish(&_probe->ext_dma, avail);
+#endif
 
 	/* buffer data sent, set read pointer and clear avail bytes */
 	_probe->ext_dma.dmapb.r_ptr += avail;
@@ -417,6 +495,19 @@ __cold int probe_init(const struct probe_dma *probe_dma)
 		return -EINVAL;
 	}
 
+#if CONFIG_PROBE_IMX_HOST_DMA
+	/*
+	 * a power of two of at least the local ring size: a multiple of the
+	 * local ring keeps transfers from wrapping in the host ring, a power
+	 * of two keeps the write counter consistent across its 2^32 wrap
+	 */
+	if (probe_dma && (probe_dma->dma_buffer_size < PROBE_BUFFER_LOCAL_SIZE ||
+			  (probe_dma->dma_buffer_size & (probe_dma->dma_buffer_size - 1)))) {
+		tr_err(&pr_tr, "bad host ring size %u", probe_dma->dma_buffer_size);
+		return -EINVAL;
+	}
+#endif
+
 	/* alloc probes main struct */
 	sof_get()->probe = rzalloc(SOF_MEM_FLAG_USER,
 				   sizeof(*_probe));
@@ -446,6 +537,12 @@ __cold int probe_init(const struct probe_dma *probe_dma)
 
 		_probe->ext_dma.stream_tag = probe_dma->stream_tag;
 		_probe->ext_dma.dma_buffer_size = probe_dma->dma_buffer_size;
+#if CONFIG_PROBE_IMX_HOST_DMA
+		/* i.MX: stream_tag holds the physical address of the host ring buffer */
+		_probe->ext_dma.host_base = probe_dma->stream_tag;
+		_probe->ext_dma.host_size = probe_dma->dma_buffer_size;
+		_probe->ext_dma.host_wr = 0;
+#endif
 
 		err = probe_dma_init(&_probe->ext_dma, SOF_DMA_DIR_LMEM_TO_HMEM);
 		if (err < 0) {
@@ -1246,7 +1343,7 @@ __cold int probe_point_add(uint32_t count, const struct probe_point *probe)
 			dev = ipc_get_comp_by_id(ipc_get(),
 						 IPC4_COMP_ID(buf_id->fields.module_id,
 							      buf_id->fields.instance_id));
-#elif CONFIG_AMD_ACP_HOST_DMA_PROBE
+#elif CONFIG_AMD_ACP_HOST_DMA_PROBE || CONFIG_PROBE_IMX_HOST_DMA
 			dev = ipc_get_buffer_by_id(ipc_get(), buf_id->full_id);
 #else
 			dev = ipc_get_comp_by_id(ipc_get(), buf_id->full_id);
@@ -1509,7 +1606,7 @@ __cold int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
 					}
 				}
 #else
-#if CONFIG_AMD_ACP_HOST_DMA_PROBE
+#if CONFIG_AMD_ACP_HOST_DMA_PROBE || CONFIG_PROBE_IMX_HOST_DMA
 				dev = ipc_get_buffer_by_id(ipc_get(), buffer_id[i]);
 #else
 				dev = ipc_get_comp_by_id(ipc_get(), buffer_id[i]);
