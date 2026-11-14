@@ -13,7 +13,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/math/fir_hifi2ep.h>
-#include <xtensa/config/defs.h>
+#include <xtensa/config/core-isa.h>
 #include <xtensa/tie/xt_hifi2.h>
 #include <errno.h>
 #include <stddef.h>
