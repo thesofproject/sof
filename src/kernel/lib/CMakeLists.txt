@@ -1,9 +1,14 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
+# The kernel parts of src/lib/dma.c and dai.c, built with them
+set(common_files dma-kernel.c)
+
 if(CONFIG_LIBRARY)
-  add_local_sources(sof agent.c)
+  add_local_sources(sof agent.c ${common_files})
   return()
 endif()
+
+add_local_sources(sof ${common_files})
 
 if(CONFIG_HAVE_AGENT)
   add_local_sources(sof agent.c)
