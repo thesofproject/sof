@@ -213,6 +213,10 @@ void ffmpeg_enc_stage_packet(struct processing_module *mod, struct ffmpeg_enc_da
  *                        decoder open; returns 0 when ready to decode frames, -ENODATA
  *                        when more input bytes are needed, or negative errno on error.
  * @prepare_extradata:    Optional hook to validate/filter cd->extradata before avcodec_open2().
+ * @configure_avctx:      Optional hook to validate extradata / apply codec-specific settings on
+ *                        AVCodecContext right before avcodec_open2(); returns 0 or -EINVAL/-errno.
+ * @is_trailing_eof:      Optional hook for unparsed streams returning true when a trailing
+ *                        non-audio container chunk is reached so remaining input is skipped to EOF.
  * @frame_bytes_consumed: Optional hook for unparsed self-delimiting codecs (e.g. ALAC)
  *                        returning the exact byte count consumed by the last decoded frame.
  * @limit_packet_size:    Optional hook for unparsed block/stream codecs (e.g. G.722, aptX)
@@ -226,6 +230,8 @@ struct ffmpeg_dec_codec_ops {
 	uint32_t (*max_frame_samples)(const struct ffmpeg_dec_comp_data *cd);
 	int (*skip_container)(struct processing_module *mod, struct sof_source *src);
 	void (*prepare_extradata)(struct processing_module *mod);
+	int (*configure_avctx)(struct processing_module *mod, void *avctx);
+	bool (*is_trailing_eof)(const uint8_t *pkt_data, size_t pkt_len);
 	size_t (*frame_bytes_consumed)(const void *priv_data);
 	size_t (*limit_packet_size)(const struct ffmpeg_dec_comp_data *cd, size_t pkt_len);
 };
@@ -319,7 +325,7 @@ struct ffmpeg_dec_comp_data {
 	bool flac_parsing_meta;
 	bool flac_last_block;
 	bool alac_parsing_caf;
-	bool alac_skip_to_eof;
+	bool unparsed_skip_to_eof;
 	bool draining;
 	bool drained;
 #if CONFIG_IPC_MAJOR_4
