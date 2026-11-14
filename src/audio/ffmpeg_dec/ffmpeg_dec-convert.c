@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <libavutil/samplefmt.h>
 #include "ffmpeg_dec-convert.h"
+#include "ffmpeg_dec.h"
 
 /*
  * Branch-free soft-float-free float -> Q1.31 for f in [-1.0, 1.0).
@@ -387,37 +388,62 @@ static void conv_s32_to_fltp(const int32_t *src, float *const *dst,
 	}
 }
 
+static inline bool sof_pcm_fmt_supported(int src_fmt)
+{
+	return src_fmt == SOF_IPC_FRAME_S16_LE ||
+	       src_fmt == SOF_IPC_FRAME_S24_4LE ||
+	       src_fmt == SOF_IPC_FRAME_S32_LE;
+}
+
+static inline int32_t sof_pcm_sample_to_q31(const uint8_t *in, size_t idx, int src_fmt)
+{
+	switch (src_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		return Q_SHIFT_LEFT((int32_t)((const int16_t *)in)[idx], 15, 31);
+	case SOF_IPC_FRAME_S24_4LE:
+		return Q_SHIFT_LEFT(sign_extend_s24(((const int32_t *)in)[idx]), 23, 31);
+	case SOF_IPC_FRAME_S32_LE:
+	default:
+		return ((const int32_t *)in)[idx];
+	}
+}
+
+void ffmpeg_enc_pcm_to_s16_interleaved(const uint8_t *pcm_in, int16_t *dst,
+				       size_t total_samples, int src_fmt)
+{
+	if (src_fmt == SOF_IPC_FRAME_S16_LE) {
+		memcpy_s(dst, total_samples * sizeof(int16_t),
+			 pcm_in, total_samples * sizeof(int16_t));
+		return;
+	}
+
+	for (size_t i = 0; i < total_samples; i++)
+		dst[i] = (int16_t)Q_SHIFT(sof_pcm_sample_to_q31(pcm_in, i, src_fmt), 31, 15);
+}
+
+void ffmpeg_enc_pcm_to_s16_planar(const uint8_t *pcm_in, uint8_t * const *planes,
+				  int nb_samples, int ch, int src_fmt)
+{
+	for (int c = 0; c < ch; c++) {
+		int16_t *out = (int16_t *)planes[c];
+
+		for (int i = 0; i < nb_samples; i++) {
+			int32_t q = sof_pcm_sample_to_q31(pcm_in, (size_t)i * ch + c, src_fmt);
+
+			out[i] = (int16_t)Q_SHIFT(q, 31, 15);
+		}
+	}
+}
+
 static inline int16_t pcm_frame_to_s16_mono(const uint8_t *in, int idx,
 					    int src_fmt, int src_ch)
 {
-	int32_t acc = 0;
-	int c;
+	int64_t acc = 0;
 
-	if (src_fmt == SOF_IPC_FRAME_S16_LE) {
-		const int16_t *s16 = (const int16_t *)in + (size_t)idx * src_ch;
+	for (int c = 0; c < src_ch; c++)
+		acc += sof_pcm_sample_to_q31(in, (size_t)idx * src_ch + c, src_fmt);
 
-		if (src_ch == 1)
-			return s16[0];
-		for (c = 0; c < src_ch; c++)
-			acc += s16[c];
-		return (int16_t)(acc / src_ch);
-	}
-
-	if (src_fmt == SOF_IPC_FRAME_S24_4LE) {
-		const int32_t *s24 = (const int32_t *)in + (size_t)idx * src_ch;
-
-		for (c = 0; c < src_ch; c++)
-			acc += Q_SHIFT(sign_extend_s24(s24[c]), 23, 15);
-		return (int16_t)(acc / src_ch);
-	}
-
-	{
-		const int32_t *s32 = (const int32_t *)in + (size_t)idx * src_ch;
-
-		for (c = 0; c < src_ch; c++)
-			acc += Q_SHIFT(s32[c], 31, 15);
-		return (int16_t)(acc / src_ch);
-	}
+	return (int16_t)Q_SHIFT((int32_t)(acc / src_ch), 31, 15);
 }
 
 void ffmpeg_dec_pcm_decimate_3to1_s16_mono(const uint8_t *in, int16_t *dst,
@@ -472,187 +498,62 @@ int ffmpeg_dec_pcm_to_frame(const uint8_t *in, AVFrame *frame,
 {
 	int dst_ch;
 
-	if (!in || !frame || channels <= 0 || nb_samples <= 0)
+	if (!in || !frame || channels <= 0 || nb_samples <= 0 ||
+	    !sof_pcm_fmt_supported(src_fmt))
 		return -EINVAL;
 
 	dst_ch = frame->ch_layout.nb_channels;
 	if (dst_ch != channels && !(dst_ch == 1 && frame->format == AV_SAMPLE_FMT_S16))
 		return -EINVAL;
 
-	if (frame->format == AV_SAMPLE_FMT_S16) {
+	switch (frame->format) {
+	case AV_SAMPLE_FMT_S16: {
 		int16_t *dst = (int16_t *)frame->data[0];
 
 		if (dst_ch == 1 && channels > 1) {
 			for (int i = 0; i < nb_samples; i++)
 				dst[i] = pcm_frame_to_s16_mono(in, i, src_fmt, channels);
-			return 0;
+		} else {
+			ffmpeg_enc_pcm_to_s16_interleaved(in, dst,
+							  (size_t)nb_samples * dst_ch,
+							  src_fmt);
 		}
-
-		size_t total = (size_t)nb_samples * dst_ch;
-
-		if (src_fmt == SOF_IPC_FRAME_S16_LE) {
-			memcpy_s(dst, total * sizeof(int16_t),
-				 in, total * sizeof(int16_t));
-			return 0;
-		}
-		if (src_fmt == SOF_IPC_FRAME_S24_4LE) {
-			const int32_t *src24 = (const int32_t *)in;
-
-			for (size_t i = 0; i < total; i++)
-				dst[i] = (int16_t)Q_SHIFT(sign_extend_s24(src24[i]), 23, 15);
-			return 0;
-		}
-		if (src_fmt == SOF_IPC_FRAME_S32_LE) {
-			const int32_t *src32 = (const int32_t *)in;
-
-			for (size_t i = 0; i < total; i++)
-				dst[i] = (int16_t)Q_SHIFT(src32[i], 31, 15);
-			return 0;
-		}
-		return -EINVAL;
+		return 0;
 	}
-
-	if (frame->format == AV_SAMPLE_FMT_S16P) {
-		if (src_fmt == SOF_IPC_FRAME_S16_LE) {
-			const int16_t *src16 = (const int16_t *)in;
-
-			for (int c = 0; c < dst_ch; c++) {
-				int16_t *out = (int16_t *)frame->data[c];
-
-				for (int i = 0; i < nb_samples; i++)
-					out[i] = src16[i * dst_ch + c];
-			}
-			return 0;
-		}
-		if (src_fmt == SOF_IPC_FRAME_S24_4LE) {
-			const int32_t *src24 = (const int32_t *)in;
-
-			for (int c = 0; c < dst_ch; c++) {
-				int16_t *out = (int16_t *)frame->data[c];
-
-				for (int i = 0; i < nb_samples; i++) {
-					int32_t v = sign_extend_s24(src24[i * dst_ch + c]);
-
-					out[i] = (int16_t)Q_SHIFT(v, 23, 15);
-				}
-			}
-			return 0;
-		}
-		if (src_fmt == SOF_IPC_FRAME_S32_LE) {
-			const int32_t *src32 = (const int32_t *)in;
-
-			for (int c = 0; c < dst_ch; c++) {
-				int16_t *out = (int16_t *)frame->data[c];
-
-				for (int i = 0; i < nb_samples; i++)
-					out[i] = (int16_t)Q_SHIFT(src32[i * dst_ch + c], 31, 15);
-			}
-			return 0;
-		}
-		return -EINVAL;
-	}
-
-	if (frame->format == AV_SAMPLE_FMT_S32) {
+	case AV_SAMPLE_FMT_S16P:
+		ffmpeg_enc_pcm_to_s16_planar(in, frame->data, nb_samples, dst_ch, src_fmt);
+		return 0;
+	case AV_SAMPLE_FMT_S32: {
 		int32_t *dst = (int32_t *)frame->data[0];
 		size_t total = (size_t)nb_samples * dst_ch;
 
-		if (src_fmt == SOF_IPC_FRAME_S16_LE) {
-			const int16_t *src16 = (const int16_t *)in;
-
-			for (size_t i = 0; i < total; i++)
-				dst[i] = Q_SHIFT_LEFT((int32_t)src16[i], 15, 31);
-			return 0;
-		}
-		if (src_fmt == SOF_IPC_FRAME_S24_4LE) {
-			const int32_t *src24 = (const int32_t *)in;
-
-			for (size_t i = 0; i < total; i++)
-				dst[i] = Q_SHIFT_LEFT(sign_extend_s24(src24[i]), 23, 31);
-			return 0;
-		}
 		if (src_fmt == SOF_IPC_FRAME_S32_LE) {
 			memcpy_s(dst, total * sizeof(int32_t),
 				 in, total * sizeof(int32_t));
-			return 0;
+		} else {
+			for (size_t i = 0; i < total; i++)
+				dst[i] = sof_pcm_sample_to_q31(in, i, src_fmt);
 		}
-		return -EINVAL;
+		return 0;
 	}
+	case AV_SAMPLE_FMT_S32P:
+		for (int c = 0; c < dst_ch; c++) {
+			int32_t *out = (int32_t *)frame->data[c];
 
-	if (frame->format == AV_SAMPLE_FMT_S32P) {
-		if (src_fmt == SOF_IPC_FRAME_S16_LE) {
-			const int16_t *src16 = (const int16_t *)in;
-
-			for (int c = 0; c < dst_ch; c++) {
-				int32_t *out = (int32_t *)frame->data[c];
-
-				for (int i = 0; i < nb_samples; i++) {
-					int32_t v = src16[i * dst_ch + c];
-
-					out[i] = Q_SHIFT_LEFT(v, 15, 31);
-				}
-			}
-			return 0;
+			for (int i = 0; i < nb_samples; i++)
+				out[i] = sof_pcm_sample_to_q31(in, (size_t)i * dst_ch + c,
+							       src_fmt);
 		}
-		if (src_fmt == SOF_IPC_FRAME_S24_4LE) {
-			const int32_t *src24 = (const int32_t *)in;
-
-			for (int c = 0; c < dst_ch; c++) {
-				int32_t *out = (int32_t *)frame->data[c];
-
-				for (int i = 0; i < nb_samples; i++) {
-					int32_t v = sign_extend_s24(src24[i * dst_ch + c]);
-
-					out[i] = Q_SHIFT_LEFT(v, 23, 31);
-				}
-			}
-			return 0;
-		}
-		if (src_fmt == SOF_IPC_FRAME_S32_LE) {
-			const int32_t *src32 = (const int32_t *)in;
-
-			for (int c = 0; c < dst_ch; c++) {
-				int32_t *out = (int32_t *)frame->data[c];
-
-				for (int i = 0; i < nb_samples; i++)
-					out[i] = src32[i * dst_ch + c];
-			}
-			return 0;
-		}
-		return -EINVAL;
-	}
-
-	if (frame->format == AV_SAMPLE_FMT_DBL) {
+		return 0;
+	case AV_SAMPLE_FMT_DBL: {
 		double *dst = (double *)frame->data[0];
-		int total = nb_samples * channels;
+		size_t total = (size_t)nb_samples * channels;
 
-		switch (src_fmt) {
-		case SOF_IPC_FRAME_S16_LE: {
-			const int16_t *src16 = (const int16_t *)in;
-
-			for (int i = 0; i < total; i++)
-				dst[i] = Q_CONVERT_QTOD(src16[i], 15);
-			return 0;
-		}
-		case SOF_IPC_FRAME_S24_4LE: {
-			const int32_t *src24 = (const int32_t *)in;
-
-			for (int i = 0; i < total; i++)
-				dst[i] = Q_CONVERT_QTOD(sign_extend_s24(src24[i]), 23);
-			return 0;
-		}
-		case SOF_IPC_FRAME_S32_LE: {
-			const int32_t *src32 = (const int32_t *)in;
-
-			for (int i = 0; i < total; i++)
-				dst[i] = Q_CONVERT_QTOD(src32[i], 31);
-			return 0;
-		}
-		default:
-			return -EINVAL;
-		}
+		for (size_t i = 0; i < total; i++)
+			dst[i] = Q_CONVERT_QTOD(sof_pcm_sample_to_q31(in, i, src_fmt), 31);
+		return 0;
 	}
-
-	if (frame->format == AV_SAMPLE_FMT_FLTP) {
+	case AV_SAMPLE_FMT_FLTP: {
 		float *const *dst = (float *const *)frame->data;
 
 		switch (src_fmt) {
@@ -669,8 +570,9 @@ int ffmpeg_dec_pcm_to_frame(const uint8_t *in, AVFrame *frame,
 			return -EINVAL;
 		}
 	}
-
-	return -EINVAL;
+	default:
+		return -EINVAL;
+	}
 }
 
 /* -------------------------------------------------------------------------
