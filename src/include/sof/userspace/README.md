@@ -92,13 +92,13 @@ Classification is grep-verifiable — see [Verifying the taxonomy](#verifying-th
 > collects the validating half of several syscalls in one place — `zephyr/syscall/alloc.c`,
 > `cpu.c`, `vregion.c`, `dai.c`, `sof_dma.c` each hold the `z_vrfy_*` wrappers for their
 > subsystem, physically separated from the `z_impl_*` logic (in `zephyr/lib/*.c` and
-> `src/lib/*.c`). This is exactly the boundary-tier separation this document promotes; the
+> `src/kernel/lib/*.c`). This is exactly the boundary-tier separation this document promotes; the
 > migration opportunity is to move the *still-scattered* validators (IPC, module management,
 > library manager, scheduling, debug) toward the same convention.
 
-> Borderline cases (e.g. parts of `lib/` that host syscall *implementations* such as `dma.c`
-> and `dai.c`) behave as boundary code even though the directory is mostly shared-library. When
-> a single directory genuinely mixes tiers, its README states the exception explicitly.
+> Mixed files are split: the syscall *implementations* of `lib/dma.c` and `lib/dai.c`, for
+> example, are in `kernel/lib/dma-kernel.c` and `dai-kernel.c`. When a single directory
+> genuinely mixes tiers, its README states the exception explicitly.
 
 ## The boundary is the syscall set
 
@@ -119,8 +119,8 @@ syscall by subsystem:
 | IPC | `ipc_msg_send`, `ipc_msg_list_remove`, `ipc_msg_reply`, `ipc_compound_pre_start`, `ipc_compound_post_start`, `ipc_wait_for_compound_msg`, `send_resource_notif` | `sof/ipc/msg.h`, `sof/ipc/ipc_reply.h`, `ipc4/handler.h`, `ipc4/notification.h` | scattered: `ipc/ipc-common.c`, `kernel/ipc/ipc3/helper.c`, `kernel/ipc/ipc4/handler-kernel.c`, `kernel/ipc/ipc4/notification.c` |
 | Heap alloc | `sof_heap_alloc`, `sof_heap_free` | `rtos/alloc.h` | `zephyr/syscall/alloc.c` / `zephyr/lib/alloc.c` |
 | Virtual regions | `vregion_create_map`, `vregion_set_interim`, `vregion_get`, `vregion_put`, `vregion_alloc_align`, `vregion_alloc_coherent_align`, `vregion_free` | `sof/lib/vregion.h` | `zephyr/syscall/vregion.c` / `zephyr/lib/vregion.c` |
-| DMA | `sof_dma_get`, `sof_dma_put`, `sof_dma_get_attribute`, `sof_dma_request_channel`, `sof_dma_release_channel`, `sof_dma_config`, `sof_dma_start`, `sof_dma_stop`, `sof_dma_get_status`, `sof_dma_reload`, `sof_dma_suspend`, `sof_dma_resume` | `sof/lib/sof_dma.h` | `zephyr/syscall/sof_dma.c` / `lib/dma.c` (get/put); remaining 10 are `static inline z_impl_*` in `sof/lib/sof_dma.h` |
-| DAI | `dai_get_device` | `sof/lib/dai-zephyr.h` | `zephyr/syscall/dai.c` / `lib/dai.c` |
+| DMA | `sof_dma_get`, `sof_dma_put`, `sof_dma_get_attribute`, `sof_dma_request_channel`, `sof_dma_release_channel`, `sof_dma_config`, `sof_dma_start`, `sof_dma_stop`, `sof_dma_get_status`, `sof_dma_reload`, `sof_dma_suspend`, `sof_dma_resume` | `sof/lib/sof_dma.h` | `zephyr/syscall/sof_dma.c` / `kernel/lib/dma-kernel.c` (get/put); remaining 10 are `static inline z_impl_*` in `sof/lib/sof_dma.h` |
+| DAI | `dai_get_device` | `sof/lib/dai-zephyr.h` | `zephyr/syscall/dai.c` / `kernel/lib/dai-kernel.c` |
 | CPU | `cpu_get_id` | `sof/lib/cpu.h` | `zephyr/syscall/cpu.c` / `zephyr/lib/cpu.c` |
 | Module management | `mod_balloc_align`, `mod_alloc_ext`, `mod_free`, `mod_free_all`, `mod_data_blob_handler_new`, `mod_data_blob_set`, `mod_fast_get` | `sof/audio/module_adapter/module/generic.h` | scattered: `audio/module_adapter/module/generic.c` |
 | Library manager | `lib_manager_free_module` | `sof/lib_manager.h` | scattered: `kernel/library_manager/lib_manager.c` |
