@@ -151,12 +151,12 @@ static void get_codec_info(struct sof_tlv **tuple)
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_AAC, SOF_IPC_STREAM_CAPTURE);
 #endif
 #if defined(CONFIG_FFMPEG_ENC_FLAC)
-	/* FLAC encode (compress capture) via ffmpeg_dec (native libavcodec). */
+	/* FLAC encode (compress capture) via ffmpeg_enc (native libavcodec). */
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_FLAC, SOF_IPC_STREAM_CAPTURE);
 #endif
 #if defined(CONFIG_FFMPEG_ENC_ALAC)
-	/* ALAC encode (compress capture) via ffmpeg_dec (native libavcodec). */
+	/* ALAC encode (compress capture) via ffmpeg_enc (native libavcodec). */
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_ALAC, SOF_IPC_STREAM_CAPTURE);
 #endif
@@ -166,7 +166,7 @@ static void get_codec_info(struct sof_tlv **tuple)
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_SBC, SOF_IPC_STREAM_PLAYBACK);
 #endif
 #if defined(CONFIG_FFMPEG_ENC_SBC)
-	/* Bluetooth SBC / mSBC encode via ffmpeg_dec (native libavcodec). */
+	/* Bluetooth SBC / mSBC encode via ffmpeg_enc (native libavcodec). */
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_SBC, SOF_IPC_STREAM_CAPTURE);
 #endif
@@ -176,7 +176,7 @@ static void get_codec_info(struct sof_tlv **tuple)
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_G722, SOF_IPC_STREAM_PLAYBACK);
 #endif
 #if defined(CONFIG_FFMPEG_ENC_G722)
-	/* ITU-T G.722 wideband speech encode via ffmpeg_dec (native libavcodec). */
+	/* ITU-T G.722 wideband speech encode via ffmpeg_enc (native libavcodec). */
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_G722, SOF_IPC_STREAM_CAPTURE);
 #endif
@@ -186,7 +186,7 @@ static void get_codec_info(struct sof_tlv **tuple)
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_APTX, SOF_IPC_STREAM_PLAYBACK);
 #endif
 #if defined(CONFIG_FFMPEG_ENC_APTX)
-	/* Bluetooth aptX encode via ffmpeg_dec (native libavcodec). */
+	/* Bluetooth aptX encode via ffmpeg_enc (native libavcodec). */
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_APTX, SOF_IPC_STREAM_CAPTURE);
 #endif
