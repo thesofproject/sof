@@ -172,9 +172,13 @@ static int ffmpeg_enc_sbc_encode_frame(struct processing_module *mod, struct ffm
 						      MSBC_FRAME_SAMPLES,
 						      e->decim_hist);
 	} else {
-		ffmpeg_dec_pcm_to_frame(e->pcm_in, sbc->frame,
-					e->src_fmt, cd->out_channels,
-					enc_samples);
+		ret = ffmpeg_dec_pcm_to_frame(e->pcm_in, sbc->frame,
+					      e->src_fmt, cd->out_channels,
+					      enc_samples);
+		if (ret < 0) {
+			av_frame_unref(sbc->frame);
+			return ret;
+		}
 	}
 
 	ret = avcodec_send_frame(sbc->avctx, sbc->frame);
