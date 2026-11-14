@@ -27,7 +27,6 @@
 #include <libavutil/channel_layout.h>
 #include <libavutil/log.h>
 #include <libavutil/mem.h>
-#include <libavutil/opt.h>
 #include <libavutil/samplefmt.h>
 
 LOG_MODULE_DECLARE(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
@@ -205,28 +204,10 @@ static int ffmpeg_dec_ff_configure(struct processing_module *mod)
 			return -ENOMEM;
 	}
 
-	if (cd->codec == FFMPEG_DEC_CODEC_ALAC) {
-		uint32_t max_ch = cd->out_channels ? cd->out_channels : 2;
-		uint32_t cookie_samples = 0;
-		uint8_t cookie_bits = 0;
-		uint8_t cookie_ch = 0;
-
-		if (cd->extradata_size >= 22 &&
-		    memcmp(&cd->extradata[4], "alac", 4) == 0) {
-			cookie_samples = ((uint32_t)cd->extradata[12] << 24) |
-					 ((uint32_t)cd->extradata[13] << 16) |
-					 ((uint32_t)cd->extradata[14] << 8) |
-					 (uint32_t)cd->extradata[15];
-			cookie_bits = cd->extradata[17];
-			cookie_ch = cd->extradata[21];
-		}
-		if (cookie_samples == 0 || cookie_samples > 16384 ||
-		    cookie_bits == 0 || cookie_bits > 32 ||
-		    cookie_ch == 0 || cookie_ch > max_ch) {
-			comp_err(dev, "unsupported ALAC cookie (samples=%u bits=%u ch=%u)",
-				 cookie_samples, cookie_bits, cookie_ch);
-			return -EINVAL;
-		}
+	if (cd->codec_ops && cd->codec_ops->configure_avctx) {
+		ret = cd->codec_ops->configure_avctx(mod, ff->avctx);
+		if (ret < 0)
+			return ret;
 	}
 
 	if (cd->extradata_size) {
@@ -252,28 +233,6 @@ static int ffmpeg_dec_ff_configure(struct processing_module *mod)
 	 */
 	if (ff->avctx->max_samples <= 0)
 		ff->avctx->max_samples = INT_MAX;
-
-	if (cd->codec == FFMPEG_DEC_CODEC_G722) {
-		int bpc = 8;
-
-		if (cd->req_bit_rate == 48000) {
-			bpc = 6;
-		} else if (cd->req_bit_rate == 56000) {
-			bpc = 7;
-		} else if (cd->req_bit_rate != 0 && cd->req_bit_rate != 64000) {
-			comp_err(dev, "unsupported G.722 bitrate %u", cd->req_bit_rate);
-			return -EINVAL;
-		}
-		ff->avctx->sample_rate = 16000;
-		av_opt_set_int(ff->avctx->priv_data, "bits_per_codeword", bpc, 0);
-	}
-
-	if (cd->codec == FFMPEG_DEC_CODEC_APTX) {
-		if (ff->avctx->ch_layout.nb_channels <= 0)
-			av_channel_layout_default(&ff->avctx->ch_layout, 2);
-		if (ff->avctx->sample_rate <= 0)
-			ff->avctx->sample_rate = cd->out_rate ? cd->out_rate : 48000;
-	}
 
 	ret = avcodec_open2(ff->avctx, ff->codec, NULL);
 	if (ret < 0) {
@@ -344,10 +303,11 @@ static int ffmpeg_dec_ff_decode(struct processing_module *mod,
 		size_t prev_len = ff->pktbuf_len;
 		size_t cap = ff->pktbuf_sz > AV_INPUT_BUFFER_PADDING_SIZE ?
 			     ff->pktbuf_sz - AV_INPUT_BUFFER_PADDING_SIZE : 0;
-		const uint8_t *pkt_data;
 		size_t pkt_len;
+		size_t copy = 0;
+		int prev_log_level;
 
-		if (cd->alac_skip_to_eof) {
+		if (cd->unparsed_skip_to_eof) {
 			*consumed = in_size;
 			return 0;
 		}
@@ -355,29 +315,21 @@ static int ffmpeg_dec_ff_decode(struct processing_module *mod,
 		if (!in || !in_size) {
 			if (!prev_len)
 				return 0;
-			pkt_data = ff->pktbuf;
 			pkt_len = prev_len;
-		} else if (prev_len == 0) {
-			pkt_data = in;
-			pkt_len = in_size;
 		} else {
 			size_t space = prev_len < cap ? cap - prev_len : 0;
-			size_t copy = in_size < space ? in_size : space;
 
-			if (copy) {
+			copy = in_size < space ? in_size : space;
+			if (copy)
 				memcpy_s(ff->pktbuf + prev_len, space, in, copy);
-				memset(ff->pktbuf + prev_len + copy, 0,
-				       AV_INPUT_BUFFER_PADDING_SIZE);
-			}
-			pkt_data = ff->pktbuf;
 			pkt_len = prev_len + copy;
+			memset(ff->pktbuf + pkt_len, 0, AV_INPUT_BUFFER_PADDING_SIZE);
 		}
 
-		/* Stop cleanly if a trailing CAF chunk ("pakt" or "free") is reached */
-		if (cd->codec == FFMPEG_DEC_CODEC_ALAC && pkt_len >= 4 &&
-		    (memcmp(pkt_data, "pakt", 4) == 0 ||
-		     memcmp(pkt_data, "free", 4) == 0)) {
-			cd->alac_skip_to_eof = true;
+		/* Stop cleanly if trailing container metadata is reached */
+		if (cd->codec_ops && cd->codec_ops->is_trailing_eof &&
+		    cd->codec_ops->is_trailing_eof(ff->pktbuf, pkt_len)) {
+			cd->unparsed_skip_to_eof = true;
 			ff->pktbuf_len = 0;
 			*consumed = in_size;
 			return 0;
@@ -393,45 +345,25 @@ static int ffmpeg_dec_ff_decode(struct processing_module *mod,
 					ff->pktbuf_len = 0;
 					return 0;
 				}
-				if (prev_len == 0) {
-					size_t copy = in_size < cap ? in_size : cap;
-
-					memcpy_s(ff->pktbuf, cap, in, copy);
-					memset(ff->pktbuf + copy, 0,
-					       AV_INPUT_BUFFER_PADDING_SIZE);
-					ff->pktbuf_len = copy;
-					*consumed = copy;
-				} else {
-					size_t space = prev_len < cap ? cap - prev_len : 0;
-					size_t copy = in_size < space ? in_size : space;
-
-					ff->pktbuf_len = prev_len + copy;
-					*consumed = copy;
-				}
+				ff->pktbuf_len = pkt_len;
+				*consumed = copy;
 				return 0;
 			}
 			if (lim < pkt_len) {
-				if (pkt_data == in && lim <= cap) {
-					memcpy_s(ff->pktbuf, cap, in, lim);
-					memset(ff->pktbuf + lim, 0,
-					       AV_INPUT_BUFFER_PADDING_SIZE);
-					pkt_data = ff->pktbuf;
-				} else if (pkt_data == ff->pktbuf) {
-					memset(ff->pktbuf + lim, 0,
-					       AV_INPUT_BUFFER_PADDING_SIZE);
-				}
+				memset(ff->pktbuf + lim, 0, AV_INPUT_BUFFER_PADDING_SIZE);
 				pkt_len = lim;
 			}
 		}
 
-		ff->pkt->data = (uint8_t *)pkt_data;
+		ff->pkt->data = ff->pktbuf;
 		ff->pkt->size = (int)pkt_len;
 
+		prev_log_level = av_log_get_level();
 		av_log_set_level(AV_LOG_FATAL);
 		ret = avcodec_send_packet(ff->avctx, ff->pkt);
 		if (ret == 0)
 			ret = avcodec_receive_frame(ff->avctx, ff->frame);
-		av_log_set_level(AV_LOG_ERROR);
+		av_log_set_level(prev_log_level);
 		if (ret < 0) {
 			avcodec_flush_buffers(ff->avctx);
 			if (!in || !in_size) {
@@ -444,21 +376,8 @@ static int ffmpeg_dec_ff_decode(struct processing_module *mod,
 				ff->pktbuf_len = 0;
 				return -EIO;
 			}
-			if (prev_len == 0) {
-				size_t copy = in_size < cap ? in_size : cap;
-
-				memcpy_s(ff->pktbuf, cap, in, copy);
-				memset(ff->pktbuf + copy, 0,
-				       AV_INPUT_BUFFER_PADDING_SIZE);
-				ff->pktbuf_len = copy;
-				*consumed = copy;
-			} else {
-				size_t space = prev_len < cap ? cap - prev_len : 0;
-				size_t copy = in_size < space ? in_size : space;
-
-				ff->pktbuf_len = prev_len + copy;
-				*consumed = copy;
-			}
+			ff->pktbuf_len = pkt_len;
+			*consumed = copy;
 			return 0;
 		}
 

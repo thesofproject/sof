@@ -533,7 +533,7 @@ static int ffmpeg_dec_prepare(struct processing_module *mod,
 	cd->flac_parsing_meta = false;
 	cd->flac_last_block = false;
 	cd->alac_parsing_caf = false;
-	cd->alac_skip_to_eof = false;
+	cd->unparsed_skip_to_eof = false;
 	cd->draining = false;
 	cd->drained = false;
 
@@ -904,7 +904,7 @@ static int ffmpeg_dec_reset(struct processing_module *mod)
 	cd->flac_parsing_meta = false;
 	cd->flac_last_block = false;
 	cd->alac_parsing_caf = false;
-	cd->alac_skip_to_eof = false;
+	cd->unparsed_skip_to_eof = false;
 	cd->draining = false;
 	cd->drained = false;
 #if CONFIG_IPC_MAJOR_4
