@@ -30,7 +30,6 @@ src/lib/objpool.c
 [not-user-sources]
 src/audio/dai-legacy.c
 src/audio/host-legacy.c
-src/audio/intel_uaol.c
 
 # SOF headers that only kernel code may include.
 # Not listed on purpose: rtos/init.h, which only provides the

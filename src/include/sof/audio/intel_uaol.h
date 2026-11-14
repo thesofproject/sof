@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <sof/lib/memory.h>
+#include <zephyr/devicetree.h>
 
 struct sof_tlv;
 struct device;
@@ -19,6 +20,11 @@ __cold void tlv_value_set_uaol_caps(struct sof_tlv *tuple, uint32_t type);
 __cold int uaol_stream_id_to_hda_link_stream_id(int uaol_stream_id);
 
 const struct device *get_uaol_zdevice(int uaol_link_id);
+
+#if CONFIG_UAOL_INTEL_ADSP
+/* UAOL devices, defined in intel_uaol.c. In rodata, readable from user space. */
+extern const struct device *const uaol_devs[DT_NUM_INST_STATUS_OKAY(intel_adsp_uaol)];
+#endif
 
 /* these are called from dai-zephyr.c  */
 
