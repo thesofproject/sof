@@ -8,7 +8,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <sof/drivers/dmic.h>
 #include "gateway.h"
 
 /**
