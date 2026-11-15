@@ -19,7 +19,6 @@
 #include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
 #include <rtos/clk.h>
-#include <sof/lib/memory.h>
 #include <sof/schedule/ll_schedule.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
