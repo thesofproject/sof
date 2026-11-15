@@ -19,8 +19,8 @@
 #include <sof/audio/component.h>
 #include <ipc/topology.h>
 /* in user-space LL builds idc_send_msg() forwards to the remote user IPC thread */
-#include <rtos/idc.h>
-#include <sof/schedule/ll_schedule_domain.h>
+#include <rtos/idc_msg.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 
 /** \addtogroup component_infra_api
