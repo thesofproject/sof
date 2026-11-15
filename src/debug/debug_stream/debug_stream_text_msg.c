@@ -8,6 +8,7 @@
 #include <soc.h>
 #include <adsp_debug_window.h>
 #include <sof/common.h>
+#include <rtos/symbol.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/arch/exception.h>
 
