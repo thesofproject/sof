@@ -15,7 +15,6 @@
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/dma.h>
-#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>

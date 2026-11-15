@@ -7,7 +7,6 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/llext_manager.h>
 #include <rtos/task.h>
 #include <rtos/userspace_helper.h>
 #include <sof/schedule/dp_schedule.h>
@@ -15,12 +14,10 @@
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/trace/trace.h>
 #include <rtos/wait.h>
-#include <rtos/interrupt.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/clock.h>
 #include <zephyr/sys/sem.h>
 #include <zephyr/sys/mutex.h>
-#include <sof/lib/memory.h>
 #include <sof/schedule/schedule.h>
 #include <ipc4/base_fw.h>
 

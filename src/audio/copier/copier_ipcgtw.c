@@ -7,7 +7,6 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/trace/trace.h>
-#include <sof/lib/memory.h>
 #include <sof/ut.h>
 #include <sof/lib/mailbox.h>
 #include "copier.h"

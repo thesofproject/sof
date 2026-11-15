@@ -7,7 +7,6 @@
  */
 
 #include <rtos/task.h>
-#include <rtos/userspace_helper.h>
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/library/userspace_proxy.h>

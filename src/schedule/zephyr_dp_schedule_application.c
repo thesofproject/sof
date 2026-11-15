@@ -6,16 +6,13 @@
  */
 
 #include <rtos/task.h>
-#include <rtos/userspace_helper.h>
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
 #include <sof/common.h>
 #include <sof/debug/telemetry/telemetry.h>
 #include <sof/ipc/common.h>
-#include <sof/lib/mailbox.h>
 #include <sof/list.h>
-#include <sof/llext_manager.h>
 #include <sof/objpool.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/schedule.h>
