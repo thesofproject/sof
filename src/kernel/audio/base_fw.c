@@ -86,6 +86,14 @@ struct sof_ipc4_codec_info_data {
  */
 #define SET_CODEC_INFO_ITEM(codec, dir)	(((codec) & 0xff) | (((dir) & 0xf) << 8))
 
+static inline void add_codec_info_item(struct sof_ipc4_codec_info_data *info,
+				       uint32_t codec, uint32_t dir)
+{
+	if (info->count < ARRAY_SIZE(info->items)) {
+		info->items[info->count++] = SET_CODEC_INFO_ITEM(codec, dir);
+	}
+}
+
 static void get_codec_info(struct sof_tlv **tuple)
 {
 	struct sof_ipc4_codec_info_data codec_info = { 0 };
@@ -190,23 +198,56 @@ static void get_codec_info(struct sof_tlv **tuple)
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_APTX, SOF_IPC_STREAM_CAPTURE);
 #endif
+#if defined(CONFIG_FFMPEG_DEC_APTX_HD)
+	/* Bluetooth aptX HD decode via ffmpeg_dec (native libavcodec). */
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_APTX_HD, SOF_IPC_STREAM_PLAYBACK);
+#endif
+#if defined(CONFIG_FFMPEG_ENC_APTX_HD)
+	/* Bluetooth aptX HD encode via ffmpeg_enc (native libavcodec). */
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_APTX_HD, SOF_IPC_STREAM_CAPTURE);
+#endif
+#if defined(CONFIG_FFMPEG_DEC_G726)
+	/* ITU-T G.726 ADPCM decode via ffmpeg_dec (native libavcodec). */
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_G726, SOF_IPC_STREAM_PLAYBACK);
+#endif
+#if defined(CONFIG_FFMPEG_ENC_G726)
+	/* ITU-T G.726 ADPCM encode via ffmpeg_enc (native libavcodec). */
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_G726, SOF_IPC_STREAM_CAPTURE);
+#endif
+#if defined(CONFIG_FFMPEG_DEC_ALAW)
+	/* ITU-T G.711 A-law decode via ffmpeg_dec (native libavcodec). */
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_ALAW, SOF_IPC_STREAM_PLAYBACK);
+#endif
+#if defined(CONFIG_FFMPEG_ENC_ALAW)
+	/* ITU-T G.711 A-law encode via ffmpeg_enc (native libavcodec). */
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_ALAW, SOF_IPC_STREAM_CAPTURE);
+#endif
+#if defined(CONFIG_FFMPEG_DEC_MULAW)
+	/* ITU-T G.711 mu-law decode via ffmpeg_dec (native libavcodec). */
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_MULAW, SOF_IPC_STREAM_PLAYBACK);
+#endif
+#if defined(CONFIG_FFMPEG_ENC_MULAW)
+	/* ITU-T G.711 mu-law encode via ffmpeg_enc (native libavcodec). */
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_MULAW, SOF_IPC_STREAM_CAPTURE);
+#endif
 #if (defined(CONFIG_FFMPEG_ENC_SBC) || defined(CONFIG_FFMPEG_ENC_G722) || \
-	defined(CONFIG_FFMPEG_ENC_APTX)) && !defined(CONFIG_COMP_MFCC)
+	defined(CONFIG_FFMPEG_ENC_APTX) || defined(CONFIG_FFMPEG_ENC_APTX_HD) || \
+	defined(CONFIG_FFMPEG_ENC_G726) || defined(CONFIG_FFMPEG_ENC_ALAW) || \
+	defined(CONFIG_FFMPEG_ENC_MULAW)) && !defined(CONFIG_COMP_MFCC)
 	/* Also advertise BESPOKE capture for kernels with older SND_AUDIOCODEC_MAX. */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_CAPTURE);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_CAPTURE);
 #endif
 #ifdef CONFIG_FFMPEG_DEC_OPUS
 	/* Opus decode is provided by the ffmpeg_dec (libavcodec) module.
 	 * Advertise OPUS_RAW and BESPOKE.
 	 */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_OPUS_RAW, SOF_IPC_STREAM_PLAYBACK);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_OPUS_RAW, SOF_IPC_STREAM_PLAYBACK);
 #endif
 #if defined(CONFIG_FFMPEG_DEC_OPUS) || defined(CONFIG_FFMPEG_DEC_SBC) || \
-	defined(CONFIG_FFMPEG_DEC_G722) || defined(CONFIG_FFMPEG_DEC_APTX)
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_PLAYBACK);
+	defined(CONFIG_FFMPEG_DEC_G722) || defined(CONFIG_FFMPEG_DEC_APTX) || \
+	defined(CONFIG_FFMPEG_DEC_APTX_HD) || defined(CONFIG_FFMPEG_DEC_G726) || \
+	defined(CONFIG_FFMPEG_DEC_ALAW) || defined(CONFIG_FFMPEG_DEC_MULAW)
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_PLAYBACK);
 #endif
 
 	if (!codec_info.count)

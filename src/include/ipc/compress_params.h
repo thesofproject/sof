@@ -81,7 +81,11 @@
 #define SND_AUDIOCODEC_SBC                   ((uint32_t) 0x00000012)
 #define SND_AUDIOCODEC_G722                  ((uint32_t) 0x00000013)
 #define SND_AUDIOCODEC_APTX                  ((uint32_t) 0x00000014)
-#define SND_AUDIOCODEC_MAX                   SND_AUDIOCODEC_APTX
+#define SND_AUDIOCODEC_APTX_HD               ((uint32_t) 0x00000015)
+#define SND_AUDIOCODEC_G726                  ((uint32_t) 0x00000016)
+#define SND_AUDIOCODEC_ALAW                  ((uint32_t) 0x00000017)
+#define SND_AUDIOCODEC_MULAW                 ((uint32_t) 0x00000018)
+#define SND_AUDIOCODEC_MAX                   SND_AUDIOCODEC_MULAW
 
 /*
  * Profile and modes are listed with bit masks. This allows for a
