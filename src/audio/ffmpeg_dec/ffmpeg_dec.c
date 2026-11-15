@@ -240,6 +240,18 @@ static const struct ffmpeg_dec_codec_ops * const ffmpeg_dec_codecs[] = {
 #if defined(CONFIG_FFMPEG_DEC_APTX) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
 	&ffmpeg_dec_aptx_ops,
 #endif
+#if defined(CONFIG_FFMPEG_DEC_APTX_HD) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_aptx_hd_ops,
+#endif
+#if defined(CONFIG_FFMPEG_DEC_G726) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_g726_ops,
+#endif
+#if defined(CONFIG_FFMPEG_DEC_ALAW) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_alaw_ops,
+#endif
+#if defined(CONFIG_FFMPEG_DEC_MULAW) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_mulaw_ops,
+#endif
 };
 
 static const struct ffmpeg_dec_codec_ops *ffmpeg_dec_find_codec_ops(enum ffmpeg_dec_codec id)
@@ -371,7 +383,10 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 		}
 		cd->codec_ops = ops;
 		cd->codec = ops->id;
+		cd->req_rate = codec_params->sample_rate;
+		cd->req_channels = codec_params->ch_in ? codec_params->ch_in : codec_params->ch_out;
 		cd->req_bit_rate = codec_params->bit_rate;
+		cd->req_profile = codec_params->profile;
 		comp_info(dev, "codec selected from IPC: %s (%d, snd_codec id 0x%x)",
 			  cd->codec_ops->name, cd->codec, codec_params->id);
 	}
