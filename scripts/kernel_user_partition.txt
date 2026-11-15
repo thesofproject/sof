@@ -82,10 +82,8 @@ src/audio/module_adapter/iadk/kpb_service.cpp
 src/audio/module_adapter/iadk/system_agent.cpp
 src/audio/module_adapter/iadk/timestamping_service_provider.cpp
 src/audio/module_adapter/library/native_system_service.c
-src/audio/module_adapter/module_adapter_ipc3.c
 src/audio/module_adapter/module_adapter_ipc4.c
 src/audio/pipeline/pipeline-graph.c
-src/audio/pipeline/pipeline-params.c
 src/audio/pipeline/pipeline-schedule.c
 src/audio/pipeline/pipeline-stream.c
 src/audio/pipeline/pipeline-xrun.c
