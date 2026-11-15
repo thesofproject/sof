@@ -7,7 +7,7 @@
 #define __SOF_AUDIO_INTEL_UAOL_H__
 
 #include <stdint.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <zephyr/devicetree.h>
 
 struct sof_tlv;
