@@ -22,7 +22,6 @@
 #include <ipc4/handler.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/mailbox.h>
-#include <sof/lib/memory.h>
 #include <sof/lib/vregion.h>
 #include <sof/list.h>
 #include <sof/schedule/dp_schedule.h>

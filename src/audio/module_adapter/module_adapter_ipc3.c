@@ -17,7 +17,6 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/ut.h>
-#include <rtos/interrupt.h>
 #include <limits.h>
 #include <stdint.h>
 

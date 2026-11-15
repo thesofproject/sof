@@ -18,7 +18,6 @@
 #include <rtos/alloc.h>
 #include <rtos/task.h>
 #include <sof/lib/dma.h>
-#include <sof/lib/memory.h>
 #include <ipc4/error_status.h>
 #include <ipc4/module.h>
 #include <ipc4/pipeline.h>

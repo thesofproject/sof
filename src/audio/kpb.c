@@ -24,7 +24,6 @@
 #include <sof/ipc/msg.h>
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
-#include <rtos/clk.h>
 #include <rtos/init.h>
 #include <rtos/symbol.h>
 #include <sof/lib/cold.h>
@@ -32,7 +31,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <rtos/task.h>

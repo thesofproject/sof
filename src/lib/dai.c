@@ -7,7 +7,6 @@
 #include <sof/lib/dai.h>
 #include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
-#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>

@@ -9,12 +9,10 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
-#include <rtos/idc.h>
 #include <rtos/alloc.h>
 #include <rtos/mutex.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/mailbox.h>
-#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <rtos/sof.h>
 #include <rtos/timer.h>

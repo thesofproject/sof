@@ -9,7 +9,6 @@
 #include <rtos/symbol.h>
 #include <sof/audio/component.h>
 #include <rtos/interrupt.h>
-#include <sof/lib/memory.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/zephyr_ll.h>

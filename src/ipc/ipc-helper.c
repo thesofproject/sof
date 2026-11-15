@@ -11,7 +11,6 @@
 #include <sof/common.h>
 #include <sof/debug/telemetry/performance_monitor.h>
 #include <sof/debug/telemetry/telemetry.h>
-#include <rtos/idc.h>
 #include <rtos/interrupt.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
@@ -21,8 +20,6 @@
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/cpu.h>
-#include <sof/lib/mailbox.h>
-#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>

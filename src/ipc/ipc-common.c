@@ -15,15 +15,11 @@
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>
-#include <sof/ipc/driver.h>
 #include <sof/ipc/schedule.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/cpu.h>
-#include <sof/lib/mailbox.h>
-#include <sof/lib/memory.h>
 #include <sof/list.h>
-#include <sof/platform.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/sof.h>
@@ -43,10 +39,6 @@
 #ifdef __ZEPHYR__
 #include <zephyr/kernel.h>
 #include <zephyr/internal/syscall_handler.h>
-#endif
-
-#ifdef CONFIG_SOF_USERSPACE_LL
-#include <rtos/userspace_helper.h>
 #endif
 
 #include <sof/debug/telemetry/performance_monitor.h>
