@@ -10,7 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/debug/gdb/gdb.h>
-#include <rtos/idc.h>
+#include <rtos/idc_msg.h>
 #include <rtos/symbol.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
