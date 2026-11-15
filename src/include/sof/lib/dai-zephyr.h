@@ -18,8 +18,6 @@
 
 #include <rtos/bit.h>
 #include <sof/list.h>
-#include <sof/lib/io.h>
-#include <sof/lib/memory.h>
 #include <sof/lib/dma.h>
 #include <sof/list.h>
 #include <rtos/sof.h>
