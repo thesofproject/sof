@@ -16,9 +16,13 @@ what was compiled, and matches every object built from a user-space
 source against the kernel-only header patterns in
 scripts/kernel_user_partition.txt.
 
-By default it only reports. With --strict it exits with an error when any
-user-space object includes a kernel-only header; that is meant for the
-later phases of the partition work, once the leaks have been removed.
+By default it only reports. With --strict it exits with an error when a
+user-space object includes a kernel-only header, unless its source is
+listed in the manifest's [leak-baseline] section. The baseline lists the
+sources that still have leaks to remove; it may only shrink, so new
+leaks fail the build. Baseline sources that no longer leak in the
+checked builds are reported, so that they can be dropped from the list
+once they are clean in every configuration.
 
 Usage:
     check_kernel_includes.py [--strict] [--summary] <build-dir> [<build-dir>...]
@@ -88,13 +92,15 @@ def relative_to(path, root):
 
 
 def check_build(build_dir, manifest, sof_root, zephyr_base):
-	"""Return {user source: set(kernel headers)} for one build directory."""
+	"""Return ({user source: set(kernel headers)}, set(user sources)) for one
+	build directory."""
 	user_src = manifest['user-sources']
 	not_user = manifest['not-user-sources']
 	kernel_hdr = manifest['kernel-headers']
 	zephyr_hdr = manifest['zephyr-kernel-headers']
 
 	leaks = defaultdict(set)
+	built = set()
 	if not os.path.exists(os.path.join(build_dir, 'build.ninja')):
 		sys.exit(f'{build_dir}: not a ninja build directory')
 
@@ -103,6 +109,7 @@ def check_build(build_dir, manifest, sof_root, zephyr_base):
 		rel_src = relative_to(src, sof_root) if src else None
 		if rel_src is None or not matches(rel_src, user_src) or matches(rel_src, not_user):
 			continue
+		built.add(rel_src)
 		for dep in deps:
 			rel = relative_to(dep, sof_root)
 			if rel is not None and matches(rel, kernel_hdr):
@@ -112,7 +119,7 @@ def check_build(build_dir, manifest, sof_root, zephyr_base):
 				rel = relative_to(dep, zephyr_base)
 				if rel is not None and matches(rel, zephyr_hdr):
 					leaks[rel_src].add('zephyr/' + rel)
-	return leaks
+	return leaks, built
 
 
 def main():
@@ -124,7 +131,8 @@ def main():
 	parser.add_argument('--zephyr-base', default=os.environ.get('ZEPHYR_BASE',
 				os.path.join(os.path.dirname(SOF_ROOT), 'zephyr')))
 	parser.add_argument('--strict', action='store_true',
-			    help='exit with an error if any kernel-only header is included')
+			    help='exit with an error if a source outside of the baseline '
+				 'includes a kernel-only header')
 	parser.add_argument('--summary', action='store_true',
 			    help='only print per-header counts, not every source file')
 	args = parser.parse_args()
@@ -133,10 +141,13 @@ def main():
 	zephyr_base = args.zephyr_base if os.path.isdir(args.zephyr_base) else None
 
 	leaks = defaultdict(set)
+	built = set()
 	for build_dir in args.build_dirs:
-		for src, hdrs in check_build(build_dir, manifest, args.sof_root,
-						 zephyr_base).items():
+		build_leaks, build_srcs = check_build(build_dir, manifest, args.sof_root,
+						      zephyr_base)
+		for src, hdrs in build_leaks.items():
 			leaks[src] |= hdrs
+		built |= build_srcs
 
 	by_header = defaultdict(set)
 	for src, hdrs in leaks.items():
@@ -156,7 +167,25 @@ def main():
 	print(f'{len(leaks)} user-space source files include {len(by_header)} '
 	      f'kernel-only headers')
 
-	if args.strict and leaks:
+	baseline = manifest['leak-baseline']
+	new_leaks = sorted(src for src in leaks if not matches(src, baseline))
+	fixed = sorted(src for src in built - leaks.keys() if matches(src, baseline))
+
+	if fixed:
+		print('\nBaseline sources built without leaks (drop them from '
+		      '[leak-baseline] once they are clean in every configuration):')
+		for src in fixed:
+			print(f'\t{src}')
+
+	if new_leaks:
+		print('\nUser-space sources including kernel-only headers that are not in '
+		      '[leak-baseline]:')
+		for src in new_leaks:
+			print(f'{src}:')
+			for hdr in sorted(leaks[src]):
+				print(f'\t{hdr}')
+
+	if args.strict and new_leaks:
 		return 1
 	return 0
 
