@@ -23,6 +23,8 @@ Zephyr builds everything below this directory into the `sof_kernel` library inst
 library for this directory tree, so the CMake files of moved directories do not change. Their
 Kconfig files are sourced from [`Kconfig`](Kconfig).
 
-Code here may use kernel-only headers. User-space code must not call into it directly; the
+Code here may use kernel-only headers. User-space code must not call into it directly. The
 checker in `scripts/check_kernel_includes.py` reports kernel-only includes from user-space
-sources.
+sources, and CI fails when one is added. The user-space sources that still include
+kernel-only headers are listed in the `[leak-baseline]` section of
+`scripts/kernel_user_partition.txt`; that list must only shrink.
