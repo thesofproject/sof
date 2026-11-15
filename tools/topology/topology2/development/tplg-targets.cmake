@@ -346,6 +346,29 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec-webrtc-ns2.bin"
 # WebRTC AEC capture on HDA generic
 "sof-hda-generic\;sof-hda-generic-webrtc-aec\;HDA_CONFIG=mix,AEC_PROCESSING=true"
 
+# Standalone DMIC WebRTC feature topologies (NS chain at 16 kHz and NS2 RNNoise at 48 kHz)
+"dmic-webrtc-feature\;sof-dmic-2ch-webrtc-ns\;PLATFORM=none,NUM_DMICS=2,DMIC1_RATE=16000,\
+WEBRTC_DMIC1_MODE=ns"
+"dmic-webrtc-feature\;sof-dmic-2ch-webrtc-ns2\;PLATFORM=none,NUM_DMICS=2,DMIC1_RATE=48000,\
+WEBRTC_DMIC1_MODE=ns2"
+
+# SoundWire SDCA function topologies with WebRTC capture feature pipelines
+"cavs-sdw\;sof-sdca-mic-id4-webrtc-ns\;SDW_JACK=false,SDW_DMIC=1,NUM_HDMIS=0,\
+SDW_DMIC_STREAM=Capture-SmartMic,SDW_DMIC_WEBRTC_CAPTURE=ns"
+"cavs-sdw\;sof-sdca-mic-id4-webrtc-ns2\;SDW_JACK=false,SDW_DMIC=1,NUM_HDMIS=0,\
+SDW_DMIC_STREAM=Capture-SmartMic,SDW_DMIC_WEBRTC_CAPTURE=ns2"
+"cavs-sdw\;sof-sdca-jack-id0-webrtc-ns\;SDW_JACK_OUT_STREAM=Playback-SimpleJack,\
+SDW_JACK_IN_STREAM=Capture-SimpleJack,NUM_HDMIS=0,SDW_JACK_WEBRTC_CAPTURE=ns"
+"cavs-sdw\;sof-sdca-jack-id0-webrtc-aec\;SDW_JACK_OUT_STREAM=Playback-SimpleJack,\
+SDW_JACK_IN_STREAM=Capture-SimpleJack,NUM_HDMIS=0,SDW_JACK_WEBRTC_CAPTURE=aec"
+
+# PTL PCH-DMIC function topology with 16 kHz DMIC1 WebRTC NS capture
+"cavs-sdw\;sof-ptl-dmic-2ch-id2-webrtc-ns\;PLATFORM=ptl,SDW_JACK=false,NUM_HDMIS=0,\
+NUM_DMICS=2,PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=2,DMIC1_ID=3,\
+DMIC1_ENABLE=webrtc,DMIC1_RATE=16000,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-dmic-2ch-id2-webrtc-ns.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
+
 # Topology to test the USB audio offload on an HDA machine, load it with
 # snd_sof.tplg_filename=sof-hda-generic-uaol.tplg
 "development/sof-hda-generic-uaol\;sof-hda-generic-uaol\;HDA_CONFIG=mix,HDA_MIC_ENHANCED_CAPTURE=true,\
