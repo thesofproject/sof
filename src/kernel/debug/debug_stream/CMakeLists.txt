@@ -3,3 +3,6 @@
 add_local_sources_ifdef(CONFIG_SOF_DEBUG_STREAM_SLOT sof debug_stream_slot.c)
 
 add_local_sources_ifdef(CONFIG_SOF_DEBUG_STREAM_THREAD_INFO sof debug_stream_thread_info.c)
+
+# The kernel part of src/debug/debug_stream/debug_stream_text_msg.c, built with it
+add_local_sources_ifdef(CONFIG_SOF_DEBUG_STREAM_TEXT_MSG sof debug_stream_text_msg-kernel.c)
