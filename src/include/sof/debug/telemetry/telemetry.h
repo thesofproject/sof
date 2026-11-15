@@ -17,7 +17,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __ZEPHYR__
-#include <rtos/timer.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/timing/timing.h>
 #endif
