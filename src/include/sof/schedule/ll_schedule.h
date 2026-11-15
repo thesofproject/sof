@@ -85,6 +85,14 @@ void user_ll_assert_locked(int core);
 #else
 static inline void user_ll_assert_locked(int core) { ARG_UNUSED(core); }
 #endif
+
+struct k_heap;
+
+/**
+ * @brief Get the user-space heap for Low-Latency scheduling structures.
+ * @return Pointer to the k_heap instance.
+ */
+struct k_heap *zephyr_ll_user_heap(void);
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 /* ll tracing */
