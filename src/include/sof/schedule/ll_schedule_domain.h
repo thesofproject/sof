@@ -210,12 +210,6 @@ static inline struct ll_schedule_domain *dma_domain_get(void)
 struct task *zephyr_ll_task_alloc(void);
 
 /**
- * @brief Get the user-space heap for Low-Latency scheduling structures.
- * @return Pointer to the k_heap instance.
- */
-struct k_heap *zephyr_ll_user_heap(void);
-
-/**
  * @brief Verify that a pointer belongs to the user-space LL heap.
  * @param[in] heap Heap handle to check.
  * @return true if valid, false otherwise.
