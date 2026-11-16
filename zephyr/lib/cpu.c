@@ -21,6 +21,7 @@ static uint32_t mic_disable_status;
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/platform.h>
 #include <sof/lib/dai.h>
 #include <ipc/topology.h>
 #include <module/module/base.h>

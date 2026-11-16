@@ -13,6 +13,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/platform.h>
 #include <sof/audio/pipeline.h>
 #include <sof/debug/telemetry/telemetry.h>
 #include <sof/schedule/ll_schedule_domain.h> /* for zephyr_ll_user_heap() */
