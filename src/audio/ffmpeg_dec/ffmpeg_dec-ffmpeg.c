@@ -391,7 +391,8 @@ static int ffmpeg_dec_ff_decode(struct processing_module *mod,
 			}
 			if (raw_len >= cap ||
 			    (cd->codec_ops && cd->codec_ops->limit_packet_size)) {
-				comp_err(dev, "unparsed packet reassembly buffer full or invalid block");
+				comp_err(dev, "unparsed decode failed %d (raw=%zu pkt=%zu prev=%zu)",
+					 ret, raw_len, pkt_len, prev_len);
 				ff->pktbuf_len = 0;
 				return -EIO;
 			}

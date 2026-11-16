@@ -34,6 +34,13 @@ static int ffmpeg_enc_g726_validate_params(struct processing_module *mod,
 					   const struct snd_codec *codec_params)
 {
 	struct comp_dev *dev = mod->dev;
+	uint32_t req_ch = codec_params->ch_in ?
+			  codec_params->ch_in : codec_params->ch_out;
+
+	if (req_ch > 1) {
+		comp_err(dev, "G.726 encoder only supports mono (got %u ch)", req_ch);
+		return -EINVAL;
+	}
 
 	if (codec_params->format != SND_AUDIOSTREAMFORMAT_UNDEFINED &&
 	    codec_params->format != SND_AUDIOSTREAMFORMAT_RAW &&
@@ -103,6 +110,12 @@ static int ffmpeg_enc_g726_configure(struct processing_module *mod, struct ffmpe
 	uint32_t enc_rate = e->req_rate ? e->req_rate : cd->out_rate;
 	uint32_t cs;
 	int ret;
+
+	if (e->req_channels > 1) {
+		comp_err(dev, "G.726 encoder only supports mono (got %u ch)",
+			 e->req_channels);
+		return -EINVAL;
+	}
 
 	if (enc_rate == cd->out_rate) {
 		g726->decimate = 1;

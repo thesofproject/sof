@@ -161,6 +161,10 @@ struct ffmpeg_enc_codec_ops {
 	void (*free)(struct processing_module *mod, struct ffmpeg_enc_data *e);
 };
 
+#define FFMPEG_DECIM_3TO1_HIST_LEN	12
+#define FFMPEG_DECIM_2TO1_HIST_LEN	27
+#define FFMPEG_DECIM_6TO1_HIST_LEN	(FFMPEG_DECIM_3TO1_HIST_LEN + FFMPEG_DECIM_2TO1_HIST_LEN)
+
 /**
  * struct ffmpeg_enc_data - Common encoder state across all encode codecs.
  * @codec_ops:    Selected per-codec encoder operations.
@@ -189,7 +193,7 @@ struct ffmpeg_enc_data {
 	uint32_t req_channels;
 	uint32_t req_ch_mode;
 	uint32_t req_profile;
-	int16_t decim_hist[13];
+	int16_t decim_hist[FFMPEG_DECIM_6TO1_HIST_LEN];
 	int src_fmt;
 	int frame_bytes;
 	int nb;
@@ -246,6 +250,8 @@ struct ffmpeg_dec_codec_ops {
 	uint32_t snd_codec_id;
 	const char *name;
 	const char *decoder_name;
+	int (*validate_params)(struct processing_module *mod,
+			       const struct snd_codec *codec_params);
 	uint32_t (*max_frame_samples)(const struct ffmpeg_dec_comp_data *cd);
 	int (*skip_container)(struct processing_module *mod, struct sof_source *src);
 	void (*prepare_extradata)(struct processing_module *mod);

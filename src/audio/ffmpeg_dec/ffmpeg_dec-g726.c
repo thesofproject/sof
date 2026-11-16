@@ -36,6 +36,25 @@ static int ffmpeg_dec_g726_code_size(const struct ffmpeg_dec_comp_data *cd, uint
 	return (int)cs;
 }
 
+static int ffmpeg_dec_g726_validate_params(struct processing_module *mod,
+					   const struct snd_codec *codec_params)
+{
+	uint32_t req_ch = codec_params->ch_in ?
+			  codec_params->ch_in : codec_params->ch_out;
+
+	if (codec_params->profile > 1) {
+		comp_err(mod->dev, "unsupported G.726 profile %u", codec_params->profile);
+		return -EINVAL;
+	}
+
+	if (req_ch > 1) {
+		comp_err(mod->dev, "G.726 decoder only supports mono (got %u ch)", req_ch);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static uint32_t ffmpeg_dec_g726_max_frame_samples(const struct ffmpeg_dec_comp_data *cd)
 {
 	(void)cd;
@@ -82,6 +101,12 @@ static int ffmpeg_dec_g726_configure_avctx(struct processing_module *mod, void *
 		return -EINVAL;
 	}
 
+	if (cd->req_channels > 1) {
+		comp_err(mod->dev, "G.726 decoder only supports mono (got %u ch)",
+			 cd->req_channels);
+		return -EINVAL;
+	}
+
 	cs = ffmpeg_dec_g726_code_size(cd, rate);
 	if (cs < 0) {
 		comp_err(mod->dev, "unsupported G.726 bitrate %u at %u Hz",
@@ -100,6 +125,7 @@ const struct ffmpeg_dec_codec_ops ffmpeg_dec_g726_ops = {
 	.id = FFMPEG_DEC_CODEC_G726,
 	.snd_codec_id = SND_AUDIOCODEC_G726,
 	.name = "g726",
+	.validate_params = ffmpeg_dec_g726_validate_params,
 	.max_frame_samples = ffmpeg_dec_g726_max_frame_samples,
 #if !defined(CONFIG_COMP_FFMPEG_DEC_STUB)
 	.configure_avctx = ffmpeg_dec_g726_configure_avctx,
