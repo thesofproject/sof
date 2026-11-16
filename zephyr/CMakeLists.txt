@@ -310,6 +310,7 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 	endif()
 
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/ace/include)
+	zephyr_include_directories(${SOF_USER_PLATFORM_PATH}/intel/ace/include)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 endif()
 
