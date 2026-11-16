@@ -71,6 +71,7 @@ b36ee4da-006f-47f9-a06dfecbe2d8b6ce drc
 d95fc34f-370f-4ac7-bc86bfdc5be241e6 dts
 f6d15ad3-b122-458c-ae9b0ab0b5867aa0 dummy_dma
 298873bc-d532-4d93-a54095ee6bcf3456 dw_dma
+214f8a6c-493a-4b1e-8b1e0d3b6f8a2c15 ecns
 77de2074-828c-4044-a40b420b72749e8b edf_sched
 5dbc3672-e290-43d8-91f881aafe453d5b edf_sched_lib
 3d73a110-0930-457f-be5134453e56287b edma
