@@ -55,9 +55,12 @@ zephyr/include/sof/lib/vpage.h
 
 # Zephyr headers that only kernel code may include: kernel internals and
 # driver APIs that are not system calls.
+# Not listed on purpose: zephyr/drivers/dma.h. Its types and constants are
+# the arguments of the sof_dma_*() system calls in sof/lib/sof_dma.h, so
+# user-space code needs them. User-space code must not call its dma_*()
+# driver functions directly, which this include check cannot catch.
 [zephyr-kernel-headers]
 kernel/include/*
-include/zephyr/drivers/dma.h
 include/zephyr/pm/device_runtime.h
 
 # User-space sources that still include kernel-only headers, removed one
