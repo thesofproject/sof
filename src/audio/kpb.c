@@ -1808,7 +1808,9 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	} else if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
 		comp_err(dev, "wrong client id");
 	/* TODO: check also if client is registered */
-	} else if (comp_buffer_get_sink_state(kpb->host_sink) != COMP_STATE_ACTIVE) {
+	/* sel_sink is NULL before bind and after reset/unbind */
+	} else if (!kpb->sel_sink ||
+		   comp_buffer_get_sink_state(kpb->host_sink) != COMP_STATE_ACTIVE) {
 		comp_err(dev, "sink not ready for draining");
 	} else if (kpb->hd.buffered < drain_req ||
 		   cli->drain_req > KPB_MAX_DRAINING_REQ) {
