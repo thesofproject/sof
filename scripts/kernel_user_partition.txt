@@ -27,7 +27,10 @@ src/audio/host-legacy.c
 
 # SOF headers that only kernel code may include.
 # Not listed on purpose: rtos/init.h, which only provides the
-# SOF_MODULE_INIT() registration hook used by every module.
+# SOF_MODULE_INIT() registration hook used by every module, and
+# sof/lib/mailbox.h: the mailbox windows are mapped into the user-space
+# LL and IPC threads, and their layout is in the user-space platform
+# headers in src/platform.
 [kernel-headers]
 src/include/sof/drivers/*
 src/include/sof/platform.h
@@ -35,7 +38,6 @@ src/include/sof/llext_manager.h
 src/include/sof/ipc/driver.h
 src/include/sof/lib/agent.h
 src/include/sof/lib/cpu-clk-manager.h
-src/include/sof/lib/mailbox.h
 src/include/sof/lib/perf_cnt.h
 src/include/sof/lib/watchdog.h
 src/kernel/platform/*
