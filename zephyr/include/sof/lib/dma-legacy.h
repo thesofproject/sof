@@ -6,6 +6,8 @@
 #ifndef __SOF_LIB_DMA_LEGACY_H__
 #define __SOF_LIB_DMA_LEGACY_H__
 
+#include <sof/lib/io.h>
+
 /* DMA attributes */
 #define DMA_ATTR_BUFFER_ALIGNMENT		0
 #define DMA_ATTR_COPY_ALIGNMENT			1

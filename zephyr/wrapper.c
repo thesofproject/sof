@@ -13,7 +13,8 @@
 #include <sof/drivers/interrupt-map.h>
 #include <sof/lib/dma.h>
 #include <sof/schedule/schedule.h>
-#include <platform/lib/memory.h>
+#include <sof/lib/io.h>
+#include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>

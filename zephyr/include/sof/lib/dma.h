@@ -21,8 +21,6 @@
 #include <rtos/atomic.h>
 #include <rtos/bit.h>
 #include <rtos/alloc.h>
-#include <sof/lib/io.h>
-#include <sof/lib/memory.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <stdbool.h>
