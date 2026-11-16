@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright 2021 NXP
+ * Copyright 2020 NXP
  *
- * Author: Peng Zhang <peng.zhang_8@nxp.com>
+ * Author: Daniel Baluta <daniel.baluta@nxp.com>
  */
 
 #ifdef __SOF_LIB_MAILBOX_H__
@@ -10,7 +10,7 @@
 #ifndef __PLATFORM_LIB_MAILBOX_H__
 #define __PLATFORM_LIB_MAILBOX_H__
 
-#include <sof/lib/memory.h>
+#include <platform/lib/mailbox_layout.h>
 #include <stddef.h>
 #include <stdint.h>
 
