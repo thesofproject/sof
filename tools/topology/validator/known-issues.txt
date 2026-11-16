@@ -21,6 +21,7 @@ sof-sdca-amp-ref	G001	# module-copier.21.22 of an amp function topology and
 sof-sdca-amp-ref-dai	G001	# module-copier.21.22 of an amp function topology
 sof-sdca-jack-compr	G001	# mixout.1.1 of sof-sdca-jack-id0
 sof-sdca-jack-ref-dai	G001	# module-copier.1.12 of sof-sdca-jack-id0
+sof-sdw-wov		G001	# module-copier.41.0 of sof-sdca-mic-id4
 
 # UAOL DAI type is not known to the upstream kernel find_dai() table
 sof-hda-generic*uaol	W004
