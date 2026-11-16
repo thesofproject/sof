@@ -9,4 +9,5 @@ cmocka_test(auditory
 	${PROJECT_SOURCE_DIR}/src/math/base2log.c
 	${PROJECT_SOURCE_DIR}/src/math/decibels.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
+	${PROJECT_SOURCE_DIR}/src/math/sqrt_int32.c
 )
