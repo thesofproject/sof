@@ -68,18 +68,13 @@ include/zephyr/pm/device_runtime.h
 # other user-space source is an error, so this list must only shrink.
 # It covers the CI build configurations and the user-space overlays.
 [leak-baseline]
-src/audio/asrc/asrc.c
-src/audio/chain_dma.c
 src/audio/component.c
 src/audio/copier/copier.c
-src/audio/copier/copier_dai.c
-src/audio/copier/copier_gain.c
 src/audio/copier/copier_host.c
 src/audio/copier/copier_ipcgtw.c
 src/audio/dai-zephyr.c
 src/audio/data_blob.c
 src/audio/host-zephyr.c
-src/audio/intel_uaol.c
 src/audio/kpb.c
 src/audio/module_adapter/iadk/kpb_service.cpp
 src/audio/module_adapter/iadk/system_agent.cpp
@@ -93,17 +88,12 @@ src/audio/pipeline/pipeline-xrun.c
 src/audio/volume/volume.c
 src/audio/volume/volume_ipc4.c
 src/debug/tester/tester_simple_dram_test.c
-src/ipc/ipc-common.c
 src/ipc/ipc-helper.c
 src/ipc/ipc4/dai.c
 src/ipc/ipc4/handler-user.c
 src/ipc/ipc4/helper.c
-src/lib/dai.c
-src/lib/dma.c
 src/lib/notifier.c
 src/samples/audio/detect_test.c
 src/schedule/zephyr_domain.c
 src/schedule/zephyr_dp_schedule.c
-src/schedule/zephyr_dp_schedule_application.c
-src/schedule/zephyr_dp_schedule_thread.c
 src/schedule/zephyr_ll.c
