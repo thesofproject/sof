@@ -13,6 +13,7 @@ target_include_directories(app PRIVATE
 	${SOF_ROOT}/zephyr/include
 	${SOF_ROOT}/src/include
 	${SOF_ROOT}/src/kernel/platform/posix/include
+	${SOF_ROOT}/src/platform/posix/include
 	${SOF_ROOT}/src/audio/crossover
 	${PROJECT_BINARY_DIR}/include/generated
 )
