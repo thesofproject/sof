@@ -19,6 +19,7 @@
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <sof/lib_manager.h>
 #include <rtos/clk.h>
