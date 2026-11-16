@@ -178,6 +178,9 @@ __cold void z_impl_sof_dma_put(struct sof_dma *dma)
 
 	assert_can_be_cold();
 
+	if (!dma)
+		return;
+
 	key = k_spin_lock(dma_lock(dma));
 	if (*dma_sref(dma) <= 0) {
 		tr_err(&dma_tr, "dma_put(), dma = %p not in use", dma);

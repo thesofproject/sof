@@ -263,6 +263,9 @@ __cold void dai_put(struct dai *dai)
 
 	assert_can_be_cold();
 
+	if (!dai)
+		return;
+
 #ifdef CONFIG_SOF_USERSPACE_LL
 	heap = zephyr_ll_user_heap();
 #endif
@@ -334,6 +337,9 @@ __cold void dai_put(struct dai *dai)
 	k_spinlock_key_t key;
 
 	assert_can_be_cold();
+
+	if (!dai)
+		return;
 
 	key = k_spin_lock(&dai->lock);
 	if (--dai->sref == 0) {
