@@ -1,7 +1,8 @@
 # Platform Support (`src/kernel/platform`)
 
-> **Runs in:** Kernel-only — platform bring-up, memory maps, interrupt wiring and IPC mailbox
-> windows are supervisor-context concerns and never run in a user thread. See
+> **Runs in:** Kernel-only — platform bring-up, memory maps and interrupt wiring are
+> supervisor-context concerns and never run in a user thread. The mailbox headers, which
+> user-space code uses, are in [`src/platform`](../../platform/README.md). See
 > [User/kernel split](../../include/sof/userspace/README.md).
 
 This directory contains SoC/platform-specific integration (e.g. Intel ACE, MediaTek, i.MX),
