@@ -167,5 +167,9 @@
 #include <audio/ecns/ecns.toml>
 #endif
 
+#if defined(CONFIG_COMP_MWW) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/microwakeword/mww.toml>
+#endif
+
 [module]
 count = __COUNTER__
