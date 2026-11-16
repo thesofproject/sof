@@ -24,9 +24,7 @@ struct sof;
 
 #define SOF_STACK_SIZE		(CONFIG_SOF_STACK_SIZE)
 
-uint8_t *get_library_mailbox(void);
-
-#define MAILBOX_BASE	get_library_mailbox()
+#include <platform/lib/mailbox_layout.h>
 
 #define PLATFORM_HEAP_SYSTEM		2
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	CONFIG_CORE_COUNT
