@@ -48,6 +48,7 @@ src/audio/google/*			@thesofproject/google
 
 # platforms
 src/kernel/platform/imx8/**			@dbaluta
+src/platform/imx8/**				@dbaluta
 src/kernel/platform/amd/**			@bhiregoudar @sunilkumardommati
 src/kernel/platform/mtk/**			@yaochunhung @kuanhsuncheng
 
