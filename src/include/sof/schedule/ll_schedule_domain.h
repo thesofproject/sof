@@ -18,7 +18,10 @@
 #include <rtos/panic.h>
 #include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
+#ifndef __ZEPHYR__
+/* for clock_ms_to_ticks() in domain_init() */
 #include <rtos/clk.h>
+#endif
 #include <sof/schedule/ll_schedule.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
