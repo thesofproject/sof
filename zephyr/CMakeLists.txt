@@ -157,6 +157,8 @@ cmake_path(SET sof_top_dir NORMALIZE "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(SOF_SRC_PATH "${sof_top_dir}/src")
 
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/kernel/platform")
+# platform headers that user-space code may include
+set(SOF_USER_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/kernel/drivers")
 
 set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
@@ -564,6 +566,8 @@ if(NOT DEFINED PLATFORM)
 	message(FATAL_ERROR "PLATFORM is not defined, check your Kconfiguration?")
 endif()
 zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
+# not every platform has one yet, the compiler skips missing directories
+zephyr_include_directories(${SOF_USER_PLATFORM_PATH}/${PLATFORM}/include)
 
 if(CONFIG_SOF_USERSPACE_INTERFACE_DMA)
 	zephyr_library_sources(syscall/sof_dma.c)
