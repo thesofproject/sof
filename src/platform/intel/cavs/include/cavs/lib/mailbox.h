@@ -12,7 +12,8 @@
 #define __CAVS_LIB_MAILBOX_H__
 
 #include <rtos/panic.h>
-#include <sof/lib/memory.h>
+#include <platform/lib/mailbox_layout.h>
+#include <rtos/cache.h>
 #include <rtos/string.h>
 #include <stddef.h>
 #include <stdint.h>

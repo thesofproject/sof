@@ -258,6 +258,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 
 	set(PLATFORM "tigerlake")
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
+	zephyr_include_directories(${SOF_USER_PLATFORM_PATH}/intel/cavs/include)
 endif()
 
 # Intel ACE 1.5 and newer platforms
