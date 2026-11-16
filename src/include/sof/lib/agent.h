@@ -42,6 +42,9 @@ static inline void sa_set_panic_on_delay(bool enabled)
 {
 	struct sa *sa = sof_get()->sa;
 
+	if (!sa)
+		return;
+
 	if (enabled)
 		atomic_add(&sa->panic_cnt, 1);
 	else

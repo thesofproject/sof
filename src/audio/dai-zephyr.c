@@ -793,22 +793,36 @@ __cold void dai_common_free(struct dai_data *dd)
 {
 	assert_can_be_cold();
 
+	if (!dd)
+		return;
+
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	io_perf_monitor_release_slot(dd->io_perf_dai_byte_count);
 #endif
 	telemetry_unregister_dai(dd);
 
-	if (dd->group)
+	if (dd->group) {
 		dai_group_put(dd->group);
+		dd->group = NULL;
+	}
 
 	dai_dma_release_channel(dd);
-	sof_dma_put(dd->dma);
+	if (dd->dma) {
+		sof_dma_put(dd->dma);
+		dd->dma = NULL;
+	}
 
 	dai_release_llp_slot(dd);
 
-	dai_put(dd->dai);
+	if (dd->dai) {
+		dai_put(dd->dai);
+		dd->dai = NULL;
+	}
 
-	sof_heap_free(dd->alloc_ctx.heap, dd->dai_spec_config);
+	if (dd->dai_spec_config) {
+		sof_heap_free(dd->alloc_ctx.heap, dd->dai_spec_config);
+		dd->dai_spec_config = NULL;
+	}
 
 #if CONFIG_UAOL_INTEL_ADSP
 	uaol_free(dd);
@@ -820,6 +834,11 @@ __cold static void dai_free(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	assert_can_be_cold();
+
+	if (!dd) {
+		comp_free_device(dev);
+		return;
+	}
 
 	if (dd->group)
 		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
