@@ -10,6 +10,10 @@ if(CONFIG_LIBRARY)
   return()
 endif()
 
+if(CONFIG_CPP)
+  add_local_sources(sof cpp_new_export.cpp)
+endif()
+
 is_zephyr(zephyr)
 if(zephyr) ###  Zephyr ###
 
