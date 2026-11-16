@@ -41,13 +41,13 @@ extern struct tr_ctx dp_tr;
  */
 unsigned int scheduler_dp_lock(uint16_t core)
 {
-	k_sem_take(&dp_lock[core], K_FOREVER);
+	k_mutex_lock(&dp_lock[core], K_FOREVER);
 	return core;
 }
 
 void scheduler_dp_unlock(unsigned int key)
 {
-	k_sem_give(&dp_lock[key]);
+	k_mutex_unlock(&dp_lock[key]);
 }
 
 #if CONFIG_SOF_USERSPACE_APPLICATION
