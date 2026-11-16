@@ -7,3 +7,4 @@ cmocka_test(alloc
 )
 
 target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/kernel/platform/intel/cavs/include)
+target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/intel/cavs/include)
