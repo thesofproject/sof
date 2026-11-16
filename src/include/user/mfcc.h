@@ -56,7 +56,12 @@ struct sof_mfcc_config {
 	int16_t mmax_coef; /**< Q1.15 decay coefficient for dynamic mmax, a small value for slow */
 	uint16_t dtx_trailing_silence_hops; /**< DTX: number of silence hops to send after speech, 0 = send first only */
 	uint16_t dtx_silence_hops_interval; /**< DTX: send silence frame every Nth hop during VAD=0, 0 = disable */
-	uint32_t reserved[5];
+	uint32_t pcan_smoothing_coef; /**< Q14 smoothing coef for PCAN, e.g. 819 for 0.05 */
+	int16_t agc_target; /**< Q8.7 soft AGC gain target, 0 = default 0.25 */
+	int16_t agc_floor; /**< Q8.7 soft AGC minimum gain, 0 = default -2.0 */
+	int16_t agc_release; /**< Q9.23 soft AGC release step per hop, 0 = default 4194 */
+	int16_t agc_release_speech; /**< Q9.23 release step per hop in speech, 0 = default 419 */
+	uint32_t reserved[2];
 	int32_t sample_frequency; /**< Hz. e.g. 16000 */
 	int32_t pmin; /**< Q1.31 linear power, limit minimum Mel energy, e.g. 1e-9 */
 	enum sof_mfcc_mel_log_type mel_log; /**< Use MEL_LOG_IS_LOG, LOG10 or DB*/
@@ -79,7 +84,9 @@ struct sof_mfcc_config {
 	int16_t vtln_high; /**< Reserved, no support */
 	int16_t vtln_low; /**< Reserved, no support */
 	int16_t vtln_warp; /**< Reserved, no support */
-	int16_t reserved16[3]; /**< Reserved for future 16-bit fields, set to 0 */
+	int16_t pcan_strength; /**< Q1.15 strength alpha, e.g. 31130 for 0.95 */
+	int16_t pcan_offset; /**< Q8.7 offset delta, e.g. 10240 for 80.0 */
+	int16_t pcan_gain_bits; /**< Gain bits scale, e.g. 21 */
 	bool htk_compat; /**< Must be false */
 	bool raw_energy; /**< Reserved, no support */
 	bool remove_dc_offset; /**< Reserved, no support */
@@ -92,7 +99,9 @@ struct sof_mfcc_config {
 	bool enable_dtx; /**< Discontinuous transmission: suppress silence after trailing frames */
 	bool update_controls; /**< Update controls with VAD decision */
 	bool compress_output; /**< Use compress PCM output: variable size, no zero padding */
-	bool reserved_bool[4]; /* Reserved for future boolean flags, set to false (0) */
+	bool enable_pcan; /**< Enable PCAN normalization on Mel filterbank energies */
+	bool enable_agc8; /**< Enable soft AGC and int8 Mel output, exclusive with PCAN */
+	bool reserved_bool[2]; /* Reserved for future boolean flags, set to false (0) */
 } __attribute__((packed));
 
 #endif /* __USER_MFCC_H__ */
