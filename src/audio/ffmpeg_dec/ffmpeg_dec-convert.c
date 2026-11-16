@@ -507,15 +507,40 @@ void ffmpeg_dec_pcm_decimate_6to1_s16_mono(const uint8_t *in, int16_t *dst,
 					   int nb_out_samples,
 					   int16_t hist[FFMPEG_DECIM_6TO1_HIST_LEN])
 {
+	/*
+	 * Second stage (16->8 kHz): 29-tap symmetric Kaiser-windowed linear-phase
+	 * low-pass FIR (fc = 0.225 * 16 kHz = 3.6 kHz, beta = 5.2, unity Q15 gain
+	 * 32768). Combined with decim_3to1_step(): -22.9 dB at 4 kHz Nyquist,
+	 * -72.6 dB at 5 kHz, >63 dB stopband rejection above 4.5 kHz.
+	 */
+	static const int32_t h[15] = {
+		19, -24, -96, 27, 266, 62, -543, -364,
+		899, 1086, -1263, -2781, 1537, 10184, 14750,
+	};
+	int16_t *hist2 = &hist[FFMPEG_DECIM_3TO1_HIST_LEN];
 	int i;
 
 	for (i = 0; i < nb_out_samples; i++) {
 		int16_t y0 = decim_3to1_step(in, 2 * i + 0, src_fmt, src_ch, hist);
 		int16_t y1 = decim_3to1_step(in, 2 * i + 1, src_fmt, src_ch, hist);
-		int32_t acc = (int32_t)hist[12] + 2 * (int32_t)y0 + (int32_t)y1 + 2;
+		int32_t acc;
+		int k;
 
-		dst[i] = sat_int16(acc >> 2);
-		hist[12] = y1;
+		acc = h[0] * ((int32_t)hist2[0] + (int32_t)y1) +
+		      h[1] * ((int32_t)hist2[1] + (int32_t)y0) +
+		      h[14] * (int32_t)hist2[14];
+		for (k = 2; k < 14; k++) {
+			acc += h[k] * ((int32_t)hist2[k] + (int32_t)hist2[28 - k]);
+		}
+		acc = (acc + 16384) >> 15;
+
+		for (k = 0; k < FFMPEG_DECIM_2TO1_HIST_LEN - 2; k++) {
+			hist2[k] = hist2[k + 2];
+		}
+		hist2[FFMPEG_DECIM_2TO1_HIST_LEN - 2] = y0;
+		hist2[FFMPEG_DECIM_2TO1_HIST_LEN - 1] = y1;
+
+		dst[i] = sat_int16(acc);
 	}
 }
 
