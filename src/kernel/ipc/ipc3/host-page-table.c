@@ -8,6 +8,7 @@
 #include <sof/ipc/driver.h>
 #include <rtos/alloc.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
