@@ -24,6 +24,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
