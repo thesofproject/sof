@@ -5,6 +5,7 @@
 #include <rtos/alloc.h>
 
 #include <sof/lib_manager.h>
+#include <sof/llext_manager.h>
 #include <ipc/topology.h>
 
 #include <zephyr/llext/buf_loader.h>
@@ -274,6 +275,12 @@ int llext_manager_restore_from_dram(void)
 		}
 
 		_ext_lib->desc[i] = ctx;
+		if (ctx->base_addr) {
+			const struct sof_man_fw_desc *desc = (const struct sof_man_fw_desc *)
+				((const uint8_t *)ctx->base_addr + SOF_MAN_ELF_TEXT_OFFSET);
+
+			llext_manager_register_lib_codecs(ctx, desc);
+		}
 	}
 
 	if (lib_manager_dram.n_llext) {
@@ -324,6 +331,8 @@ nomem:
 			continue;
 
 		struct lib_manager_module *mod = ctx->mod;
+
+		llext_manager_unregister_lib_codecs(ctx);
 
 		if (!mod)
 			continue;
