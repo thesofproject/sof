@@ -4,6 +4,7 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+#include <sof/audio/codec_info.h>
 #include <sof/audio/mfcc/mfcc_comp.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
@@ -21,6 +22,7 @@
 #include <sof/list.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
+#include <ipc/compress_params.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -321,6 +323,14 @@ static const struct module_interface mfcc_interface = {
 	.reset = mfcc_reset,
 };
 
+static const uint32_t mfcc_codec_info_items[]
+#if CONFIG_COMP_MFCC_MODULE
+	__section(SOF_CODEC_INFO_SECTION) __used
+#endif
+	= {
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_CAPTURE),
+};
+
 #if CONFIG_COMP_MFCC_MODULE
 /* modular: llext dynamic link */
 
@@ -338,6 +348,14 @@ SOF_LLEXT_BUILDINFO;
 /* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(mfcc_tr, SOF_UUID(mfcc_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(mfcc_interface, mfcc_uuid, mfcc_tr);
-SOF_MODULE_INIT(mfcc, sys_comp_module_mfcc_interface_init);
+
+static __maybe_unused void sys_comp_mfcc_init(void)
+{
+	sys_comp_module_mfcc_interface_init();
+	sof_codec_info_add_items(&mfcc_interface, mfcc_codec_info_items,
+				 ARRAY_SIZE(mfcc_codec_info_items));
+}
+
+SOF_MODULE_INIT(mfcc, sys_comp_mfcc_init);
 
 #endif

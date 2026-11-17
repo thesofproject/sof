@@ -7,7 +7,7 @@
 # Token tables are lists of (token id, SND_SOC_TPLG_TUPLE_TYPE_ name, getter)
 # in the order the kernel declares them.
 
-KERNEL_VERSION = 'sound-7.2-rc7-28692-gc6cf13c7c483'
+KERNEL_VERSION = 'v7.4-rc1-8643-gcd8df21fce84'
 
 TOKEN_NAMES = {100: 'SOF_TKN_BUF_SIZE',
  101: 'SOF_TKN_BUF_CAPS',
@@ -133,7 +133,13 @@ TOKEN_NAMES = {100: 'SOF_TKN_BUF_SIZE',
  2000: 'SOF_TKN_IMX_MICFIL_RATE',
  2001: 'SOF_TKN_IMX_MICFIL_CH',
  2100: 'SOF_TKN_AMD_ACP_SDW_RATE',
- 2101: 'SOF_TKN_AMD_ACP_SDW_CH'}
+ 2101: 'SOF_TKN_AMD_ACP_SDW_CH',
+ 2200: 'SOF_TKN_MEDIA_CODEC_ID',
+ 2201: 'SOF_TKN_MEDIA_CODEC_MIN_RATE',
+ 2202: 'SOF_TKN_MEDIA_CODEC_MAX_RATE',
+ 2203: 'SOF_TKN_MEDIA_CODEC_CHANNELS',
+ 2204: 'SOF_TKN_MEDIA_CODEC_BIT_DEPTH',
+ 2205: 'SOF_TKN_MEDIA_CODEC_MODULE_UUID'}
 
 TOKEN_GROUPS = ['SOF_PCM_TOKENS',
  'SOF_PIPELINE_TOKENS',
@@ -166,7 +172,8 @@ TOKEN_GROUPS = ['SOF_PCM_TOKENS',
  'SOF_ACPDMIC_TOKENS',
  'SOF_ACPI2S_TOKENS',
  'SOF_MICFIL_TOKENS',
- 'SOF_ACP_SDW_TOKENS']
+ 'SOF_ACP_SDW_TOKENS',
+ 'SOF_MEDIA_CODEC_TOKENS']
 
 GENERIC_TABLES = {'dapm_widget_tokens': [(417, 'BOOL', 'get_w_no_wname_in_long_name')],
  'comp_pin_tokens': [(411, 'WORD', 'get_token_u32'), (412, 'WORD', 'get_token_u32')],
@@ -226,7 +233,14 @@ IPC4_TOKEN_LIST = {'SOF_DAI_TOKENS': ('DAI tokens',
                       (262, 'WORD', 'get_token_u32')]),
  'SOF_SRC_TOKENS': ('SRC tokens', [(301, 'WORD', 'get_token_u32')]),
  'SOF_ASRC_TOKENS': ('ASRC tokens',
-                     [(321, 'WORD', 'get_token_u32'), (323, 'WORD', 'get_token_u32')])}
+                     [(321, 'WORD', 'get_token_u32'), (323, 'WORD', 'get_token_u32')]),
+ 'SOF_MEDIA_CODEC_TOKENS': ('IPC4 Media codec tokens',
+                            [(2200, 'WORD', 'get_token_u32'),
+                             (2201, 'WORD', 'get_token_u32'),
+                             (2202, 'WORD', 'get_token_u32'),
+                             (2203, 'WORD', 'get_token_u32'),
+                             (2204, 'WORD', 'get_token_u32'),
+                             (2205, 'UUID', 'get_token_uuid')])}
 
 IPC4_WIDGET_TOKEN_LISTS = {'aif_in': ('sof_ipc4_widget_setup_pcm',
             ['SOF_COMP_TOKENS',
@@ -306,18 +320,21 @@ IPC4_WIDGET_TOKEN_LISTS = {'aif_in': ('sof_ipc4_widget_setup_pcm',
              'SOF_AUDIO_FMT_NUM_TOKENS',
              'SOF_IN_AUDIO_FORMAT_TOKENS',
              'SOF_OUT_AUDIO_FORMAT_TOKENS',
+             'SOF_MEDIA_CODEC_TOKENS',
              'SOF_COMP_EXT_TOKENS']),
  'decoder': ('sof_ipc4_widget_setup_comp_process',
              ['SOF_COMP_TOKENS',
               'SOF_AUDIO_FMT_NUM_TOKENS',
               'SOF_IN_AUDIO_FORMAT_TOKENS',
               'SOF_OUT_AUDIO_FORMAT_TOKENS',
+              'SOF_MEDIA_CODEC_TOKENS',
               'SOF_COMP_EXT_TOKENS']),
  'encoder': ('sof_ipc4_widget_setup_comp_process',
              ['SOF_COMP_TOKENS',
               'SOF_AUDIO_FMT_NUM_TOKENS',
               'SOF_IN_AUDIO_FORMAT_TOKENS',
               'SOF_OUT_AUDIO_FORMAT_TOKENS',
+              'SOF_MEDIA_CODEC_TOKENS',
               'SOF_COMP_EXT_TOKENS'])}
 
 DAI_TYPES = {'SSP': 'SOF_DAI_INTEL_SSP',

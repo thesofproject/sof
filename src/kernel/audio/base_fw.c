@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 
+#include <sof/audio/codec_info.h>
 #include <sof/audio/component.h>
 #include <sof/ut.h>
 #include <sof/tlv.h>
@@ -14,15 +15,17 @@
 #include <ipc4/logging.h>
 #include <ipc4/notification.h>
 #include <ipc/topology.h>
-#include <ipc/compress_params.h>
 #include <sof_versions.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
 #include <sof/platform.h>
 #include <sof/lib_manager.h>
+#include <rtos/alloc.h>
 #include <rtos/clk.h>
 #include <rtos/init.h>
+#include <rtos/spinlock.h>
+#include <rtos/string.h>
 #include <rtos/timer.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/schedule/dp_schedule.h>
@@ -73,143 +76,106 @@ __cold static uint32_t get_host_buffer_size(void)
 	return periods;
 }
 
+#define SOF_IPC4_CODEC_INFO_MAX_ITEMS	64
+
 struct sof_ipc4_codec_info_data {
 	uint32_t count;
-	uint32_t items[32];
+	uint32_t items[SOF_IPC4_CODEC_INFO_MAX_ITEMS];
 } __packed __aligned(4);
 
-/**
- * Encodes codec and direction information into a single 32-bit value.
- * @param codec Codec type (bits 0-7)
- * @param dir Stream direction (bits 8-11)
- * @return Encoded 32-bit value
- */
-#define SET_CODEC_INFO_ITEM(codec, dir)	(((codec) & 0xff) | (((dir) & 0xf) << 8))
+struct sof_codec_info_slot {
+	const void *owner;
+	uint32_t item;
+};
 
-static void get_codec_info(struct sof_tlv **tuple)
+static struct sof_codec_info_slot codec_info_slots[SOF_IPC4_CODEC_INFO_MAX_ITEMS];
+static struct k_spinlock codec_info_lock;
+
+static inline void add_codec_info_item(struct sof_ipc4_codec_info_data *info,
+				       uint32_t item)
+{
+	uint32_t i;
+
+	if (!item)
+		return;
+
+	for (i = 0; i < info->count; i++) {
+		if (info->items[i] == item)
+			return;
+	}
+
+	if (info->count < ARRAY_SIZE(info->items))
+		info->items[info->count++] = item;
+}
+
+__cold int sof_codec_info_add(const void *owner, uint32_t item)
+{
+	k_spinlock_key_t key;
+	int free_idx = -1;
+	uint32_t i;
+
+	assert_can_be_cold();
+
+	if (!owner || !item)
+		return -EINVAL;
+
+	key = k_spin_lock(&codec_info_lock);
+	for (i = 0; i < ARRAY_SIZE(codec_info_slots); i++) {
+		if (codec_info_slots[i].owner == owner && codec_info_slots[i].item == item) {
+			k_spin_unlock(&codec_info_lock, key);
+			return 0;
+		}
+		if (!codec_info_slots[i].owner && free_idx < 0)
+			free_idx = i;
+	}
+
+	if (free_idx < 0) {
+		k_spin_unlock(&codec_info_lock, key);
+		return -ENOSPC;
+	}
+
+	codec_info_slots[free_idx].owner = owner;
+	codec_info_slots[free_idx].item = item;
+	k_spin_unlock(&codec_info_lock, key);
+
+	return 0;
+}
+
+__cold void sof_codec_info_remove(const void *owner, uint32_t item)
+{
+	k_spinlock_key_t key;
+	uint32_t i;
+
+	assert_can_be_cold();
+
+	if (!owner)
+		return;
+
+	key = k_spin_lock(&codec_info_lock);
+	for (i = 0; i < ARRAY_SIZE(codec_info_slots); i++) {
+		if (codec_info_slots[i].owner == owner &&
+		    (!item || codec_info_slots[i].item == item)) {
+			codec_info_slots[i].owner = NULL;
+			codec_info_slots[i].item = 0;
+		}
+	}
+	k_spin_unlock(&codec_info_lock, key);
+}
+
+static void get_codec_info(struct sof_tlv **tuple, bool include_empty)
 {
 	struct sof_ipc4_codec_info_data codec_info = { 0 };
+	k_spinlock_key_t key;
+	uint32_t i;
 
-#ifdef CONFIG_CADENCE_CODEC_AAC_DEC
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_AAC, SOF_IPC_STREAM_PLAYBACK);
-#endif
-#ifdef CONFIG_CADENCE_CODEC_MP3_DEC
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_PLAYBACK);
-#endif
-#ifdef CONFIG_CADENCE_CODEC_MP3_ENC
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_CAPTURE);
-#endif
-#ifdef CONFIG_CADENCE_CODEC_VORBIS_DEC
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_VORBIS, SOF_IPC_STREAM_PLAYBACK);
-#endif
-#ifdef CONFIG_COMP_MFCC
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_CAPTURE);
-#endif
-#if defined(CONFIG_SOF_COMPRESS_CODEC_PCM_DEC) || defined(CONFIG_FFMPEG_FILTER)
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_PCM, SOF_IPC_STREAM_PLAYBACK);
-#endif
-#ifdef CONFIG_FFMPEG_DEC_FLAC
-	/* FLAC decode is provided by the ffmpeg_dec (libavcodec) module. */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_FLAC, SOF_IPC_STREAM_PLAYBACK);
-#endif
-#ifdef CONFIG_FFMPEG_DEC_ALAC
-	/* ALAC decode is provided by the ffmpeg_dec (libavcodec) module. */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_ALAC, SOF_IPC_STREAM_PLAYBACK);
-#endif
-#if defined(CONFIG_FFMPEG_DEC_AAC) && !defined(CONFIG_CADENCE_CODEC_AAC_DEC)
-	/* AAC-LC decode is provided by the ffmpeg_dec (libavcodec) module (guarded so
-	 * it is not advertised twice when the Cadence AAC decoder is also present).
-	 */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_AAC, SOF_IPC_STREAM_PLAYBACK);
-#endif
-#if defined(CONFIG_FFMPEG_DEC_MP3) && !defined(CONFIG_CADENCE_CODEC_MP3_DEC)
-	/* MP3 decode is provided by the ffmpeg_dec (libavcodec) module (guarded so
-	 * it is not advertised twice when the Cadence MP3 decoder is also present).
-	 */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_PLAYBACK);
-#endif
-#if defined(CONFIG_FFMPEG_ENC_MP3) && !defined(CONFIG_CADENCE_CODEC_MP3_ENC)
-	/* MP3 encode (compress capture) via ffmpeg_dec (libshine), guarded so it is
-	 * not advertised twice when the Cadence MP3 encoder is also present.
-	 */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_CAPTURE);
-#endif
-#if defined(CONFIG_FFMPEG_ENC_AAC)
-	/* AAC-LC encode (compress capture) via ffmpeg_dec (vo-aacenc). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_AAC, SOF_IPC_STREAM_CAPTURE);
-#endif
-#if defined(CONFIG_FFMPEG_ENC_FLAC)
-	/* FLAC encode (compress capture) via ffmpeg_enc (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_FLAC, SOF_IPC_STREAM_CAPTURE);
-#endif
-#if defined(CONFIG_FFMPEG_ENC_ALAC)
-	/* ALAC encode (compress capture) via ffmpeg_enc (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_ALAC, SOF_IPC_STREAM_CAPTURE);
-#endif
-#if defined(CONFIG_FFMPEG_DEC_SBC)
-	/* Bluetooth SBC / mSBC decode via ffmpeg_dec (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_SBC, SOF_IPC_STREAM_PLAYBACK);
-#endif
-#if defined(CONFIG_FFMPEG_ENC_SBC)
-	/* Bluetooth SBC / mSBC encode via ffmpeg_enc (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_SBC, SOF_IPC_STREAM_CAPTURE);
-#endif
-#if defined(CONFIG_FFMPEG_DEC_G722)
-	/* ITU-T G.722 wideband speech decode via ffmpeg_dec (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_G722, SOF_IPC_STREAM_PLAYBACK);
-#endif
-#if defined(CONFIG_FFMPEG_ENC_G722)
-	/* ITU-T G.722 wideband speech encode via ffmpeg_enc (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_G722, SOF_IPC_STREAM_CAPTURE);
-#endif
-#if defined(CONFIG_FFMPEG_DEC_APTX)
-	/* Bluetooth aptX decode via ffmpeg_dec (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_APTX, SOF_IPC_STREAM_PLAYBACK);
-#endif
-#if defined(CONFIG_FFMPEG_ENC_APTX)
-	/* Bluetooth aptX encode via ffmpeg_enc (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_APTX, SOF_IPC_STREAM_CAPTURE);
-#endif
-#if (defined(CONFIG_FFMPEG_ENC_SBC) || defined(CONFIG_FFMPEG_ENC_G722) || \
-	defined(CONFIG_FFMPEG_ENC_APTX)) && !defined(CONFIG_COMP_MFCC)
-	/* Also advertise BESPOKE capture for kernels with older SND_AUDIOCODEC_MAX. */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_CAPTURE);
-#endif
-#ifdef CONFIG_FFMPEG_DEC_OPUS
-	/* Opus decode is provided by the ffmpeg_dec (libavcodec) module.
-	 * Advertise OPUS_RAW and BESPOKE.
-	 */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_OPUS_RAW, SOF_IPC_STREAM_PLAYBACK);
-#endif
-#if defined(CONFIG_FFMPEG_DEC_OPUS) || defined(CONFIG_FFMPEG_DEC_SBC) || \
-	defined(CONFIG_FFMPEG_DEC_G722) || defined(CONFIG_FFMPEG_DEC_APTX)
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_PLAYBACK);
-#endif
+	key = k_spin_lock(&codec_info_lock);
+	for (i = 0; i < ARRAY_SIZE(codec_info_slots); i++) {
+		if (codec_info_slots[i].owner)
+			add_codec_info_item(&codec_info, codec_info_slots[i].item);
+	}
+	k_spin_unlock(&codec_info_lock, key);
 
-	if (!codec_info.count)
+	if (!codec_info.count && !include_empty)
 		return;
 
 	tlv_value_set(*tuple, IPC4_SOF_CODEC_INFO, sizeof(codec_info.count) +
@@ -220,22 +186,59 @@ static void get_codec_info(struct sof_tlv **tuple)
 
 #define SOF_CONFIG_MEMBER_SIZE(struct_name)	(sizeof(struct sof_tlv) + \
 						 sizeof(struct struct_name))
-#define SOF_CONFIG_SIZE_MAX	(SOF_CONFIG_MEMBER_SIZE(sof_ipc4_codec_info_data))
+#define SOF_CONFIG_SIZE_MAX	(SOF_CONFIG_MEMBER_SIZE(sof_ipc4_codec_info_data) + \
+				 sizeof(struct sof_tlv) + sizeof(uint32_t))
+
+static uint32_t build_sof_info_tlvs(char *buf, bool include_empty_codec_info)
+{
+	struct sof_tlv *sof_config_tuple = (struct sof_tlv *)buf;
+	uint32_t caps = IPC4_SOF_CAP_RUNTIME_SOF_INFO;
+
+#ifdef CONFIG_LIBRARY_MANAGER
+	caps |= IPC4_SOF_CAP_LIBRARY_UNLOAD;
+#endif
+
+	get_codec_info(&sof_config_tuple, include_empty_codec_info);
+
+	tlv_value_uint32_set(sof_config_tuple, IPC4_SOF_CAPS, caps);
+	sof_config_tuple = tlv_next(sof_config_tuple);
+
+	return (uint32_t)((char *)sof_config_tuple - buf);
+}
 
 static void base_fw_sof_config(struct sof_tlv **tuple)
 {
 	char sof_config_data[SOF_CONFIG_SIZE_MAX] = { 0 };
-	struct sof_tlv *sof_config_tuple = (struct sof_tlv *)sof_config_data;
 	uint32_t sof_config_size;
 
-	get_codec_info(&sof_config_tuple);
-	sof_config_size = (uint32_t)((char *)sof_config_tuple - sof_config_data);
+	sof_config_size = build_sof_info_tlvs(sof_config_data, false);
 	if (sof_config_size == 0)
 		return;
 
 	tlv_value_set(*tuple, IPC4_FW_SOF_INFO, sof_config_size, sof_config_data);
 
 	*tuple = tlv_next(*tuple);
+}
+
+__cold static int basefw_sof_info_get(uint32_t *data_offset, char *data)
+{
+	char sof_config_data[SOF_CONFIG_SIZE_MAX] = { 0 };
+	uint32_t sof_config_size;
+	int ret;
+
+	assert_can_be_cold();
+
+	sof_config_size = build_sof_info_tlvs(sof_config_data, true);
+	if (*data_offset < sof_config_size)
+		return IPC4_INVALID_CONFIG_DATA_LEN;
+
+	ret = memcpy_s(data, *data_offset, sof_config_data, sof_config_size);
+	if (ret < 0)
+		return IPC4_OUT_OF_MEMORY;
+
+	*data_offset = sof_config_size;
+
+	return IPC4_SUCCESS;
 }
 
 __cold static int basefw_config(uint32_t *data_offset, char *data)
@@ -825,6 +828,8 @@ __cold static int basefw_get_large_config(struct comp_dev *dev, uint32_t param_i
 		return io_global_perf_state_get(data_offset, data);
 	case IPC4_IO_GLOBAL_PERF_DATA:
 		return io_global_perf_data_get(data_offset, data);
+	case IPC4_SOF_INFO_GET:
+		return basefw_sof_info_get(data_offset, data);
 
 	/* TODO: add more support */
 	case IPC4_DSP_RESOURCE_STATE:
@@ -919,6 +924,32 @@ __cold static int basefw_dma_control(bool first_block, bool last_block, uint32_t
 	return IPC4_SUCCESS;
 }
 
+__cold static int basefw_library_unload(bool first_block, bool last_block,
+					uint32_t data_offset, const char *data)
+{
+	uint32_t lib_id;
+	int ret;
+
+	assert_can_be_cold();
+
+	if (!first_block || !last_block || data_offset < sizeof(lib_id) || !data)
+		return IPC4_ERROR_INVALID_PARAM;
+
+	lib_id = *(const uint32_t *)data;
+	ret = lib_manager_unload_library(lib_id);
+	if (!ret)
+		return IPC4_SUCCESS;
+
+	switch (ret) {
+	case -EBUSY:
+		return IPC4_BUSY;
+	case -ENOTSUP:
+		return IPC4_UNAVAILABLE;
+	default:
+		return IPC4_ERROR_INVALID_PARAM;
+	}
+}
+
 __cold static int basefw_set_large_config(struct comp_dev *dev, uint32_t param_id,
 					  bool first_block, bool last_block,
 					  uint32_t data_offset, const char *data)
@@ -946,6 +977,8 @@ __cold static int basefw_set_large_config(struct comp_dev *dev, uint32_t param_i
 	case IPC4_RESOURCE_ALLOCATION_REQUEST:
 		return basefw_resource_allocation_request(first_block, last_block, data_offset,
 							  data);
+	case IPC4_SOF_LIBRARY_UNLOAD:
+		return basefw_library_unload(first_block, last_block, data_offset, data);
 	default:
 		break;
 	}

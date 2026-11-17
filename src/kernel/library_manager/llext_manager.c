@@ -10,6 +10,7 @@
  */
 
 #include <sof/audio/buffer.h>
+#include <sof/audio/codec_info.h>
 #include <sof/audio/component.h>
 #include <sof/audio/component_ext.h>
 #include <sof/common.h>
@@ -1170,6 +1171,140 @@ __cold int llext_manager_free_module(const uint32_t component_id)
 	return llext_manager_unload_module(mctx);
 }
 
+__cold static const void *llext_manager_elf_find_section(const uint8_t *elf, size_t elf_size,
+						     const char *name, size_t *sec_size)
+{
+	const elf_ehdr_t *ehdr;
+	const elf_shdr_t *shdrs;
+	const elf_shdr_t *shstr;
+	const char *strtab;
+	unsigned int i;
+
+	assert_can_be_cold();
+
+	if (!elf || elf_size < sizeof(*ehdr))
+		return NULL;
+
+	ehdr = (const elf_ehdr_t *)elf;
+	if (ehdr->e_ident[0] != 0x7f || ehdr->e_ident[1] != 'E' ||
+	    ehdr->e_ident[2] != 'L' || ehdr->e_ident[3] != 'F')
+		return NULL;
+
+	if (ehdr->e_shentsize != sizeof(*shdrs) || !ehdr->e_shnum)
+		return NULL;
+
+	if (ehdr->e_shoff > elf_size ||
+	    ehdr->e_shnum > (elf_size - ehdr->e_shoff) / sizeof(*shdrs))
+		return NULL;
+
+	if (ehdr->e_shstrndx >= ehdr->e_shnum)
+		return NULL;
+
+	shdrs = (const elf_shdr_t *)(elf + ehdr->e_shoff);
+	shstr = &shdrs[ehdr->e_shstrndx];
+	if (shstr->sh_offset > elf_size || shstr->sh_size > elf_size - shstr->sh_offset)
+		return NULL;
+
+	strtab = (const char *)(elf + shstr->sh_offset);
+
+	for (i = 0; i < ehdr->e_shnum; i++) {
+		const char *sec_name;
+		size_t max_len;
+
+		if (shdrs[i].sh_name >= shstr->sh_size)
+			continue;
+
+		sec_name = strtab + shdrs[i].sh_name;
+		max_len = shstr->sh_size - shdrs[i].sh_name;
+		if (strnlen(sec_name, max_len) == max_len)
+			continue;
+
+		if (strcmp(sec_name, name) != 0)
+			continue;
+
+		if (shdrs[i].sh_type == SHT_NOBITS || !shdrs[i].sh_size)
+			return NULL;
+
+		if (shdrs[i].sh_offset > elf_size ||
+		    shdrs[i].sh_size > elf_size - shdrs[i].sh_offset)
+			return NULL;
+
+		*sec_size = shdrs[i].sh_size;
+		return elf + shdrs[i].sh_offset;
+	}
+
+	return NULL;
+}
+
+__cold void llext_manager_register_lib_codecs(const struct lib_manager_mod_ctx *ctx,
+					      const struct sof_man_fw_desc *desc)
+{
+	const struct sof_man_module *mod_array;
+	size_t lib_size;
+	unsigned int k;
+
+	assert_can_be_cold();
+
+	if (!ctx || !ctx->mod || !desc)
+		return;
+
+	mod_array = (const struct sof_man_module *)((const uint8_t *)desc +
+						    SOF_MAN_MODULE_OFFSET(0));
+	if (size_mul_overflow(desc->header.preload_page_count, PAGE_SZ, &lib_size))
+		return;
+
+	for (k = 0; k < ctx->n_mod; k++) {
+		const struct lib_manager_module *mctx = &ctx->mod[k];
+		uint32_t entry_index = mctx->start_idx;
+		uint32_t next_idx = entry_index + mctx->n_mod;
+		size_t mod_offset;
+		size_t mod_size;
+		const void *sec;
+		size_t sec_size = 0;
+		int ret;
+
+		if (entry_index >= desc->header.num_module_entries)
+			continue;
+
+		mod_offset = mod_array[entry_index].segment[LIB_MANAGER_TEXT].file_offset;
+		if (mod_offset >= lib_size)
+			continue;
+
+		if (next_idx >= desc->header.num_module_entries)
+			mod_size = lib_size - mod_offset;
+		else
+			mod_size = ALIGN_UP(mod_array[next_idx].segment[LIB_MANAGER_TEXT].file_offset -
+					    mod_offset, PAGE_SZ);
+
+		if (mod_size > lib_size - mod_offset)
+			continue;
+
+		sec = llext_manager_elf_find_section((const uint8_t *)desc -
+						     SOF_MAN_ELF_TEXT_OFFSET + mod_offset,
+						     mod_size, SOF_CODEC_INFO_SECTION, &sec_size);
+		if (!sec || sec_size < sizeof(uint32_t) || (sec_size % sizeof(uint32_t)) != 0)
+			continue;
+
+		ret = sof_codec_info_add_items(mctx, sec, sec_size / sizeof(uint32_t));
+		if (ret < 0)
+			tr_warn(&lib_manager_tr, "failed to register codec info for mod %u: %d",
+				k, ret);
+	}
+}
+
+__cold void llext_manager_unregister_lib_codecs(const struct lib_manager_mod_ctx *ctx)
+{
+	unsigned int k;
+
+	assert_can_be_cold();
+
+	if (!ctx || !ctx->mod)
+		return;
+
+	for (k = 0; k < ctx->n_mod; k++)
+		sof_codec_info_remove(&ctx->mod[k], 0);
+}
+
 /* An auxiliary library has been loaded, need to read in its exported symbols */
 __cold int llext_manager_add_library(uint32_t module_id)
 {
@@ -1206,6 +1341,58 @@ __cold int llext_manager_add_library(uint32_t module_id)
 		}
 	}
 	ctx->load_type = SOF_MAN_MOD_TYPE_LLEXT;
+
+	llext_manager_register_lib_codecs(ctx, desc);
+
+	return 0;
+}
+
+__cold int llext_manager_remove_library(uint32_t module_id)
+{
+	struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(module_id);
+	unsigned int k;
+
+	assert_can_be_cold();
+
+	if (!ctx || !ctx->mod)
+		return -ENOENT;
+
+	for (k = 0; k < ctx->n_mod; k++) {
+		const struct lib_manager_module *mctx = &ctx->mod[k];
+
+		if (mctx->mapped || mctx->n_dependent ||
+		    (mctx->llext && mctx->llext->use_count > 1))
+			return -EBUSY;
+	}
+
+	llext_manager_unregister_lib_codecs(ctx);
+
+	for (k = 0; k < ctx->n_mod; k++) {
+		struct lib_manager_module *mctx = &ctx->mod[k];
+
+		if (mctx->ebl && mctx->llext) {
+			int ret = llext_free_inspection_data(&mctx->ebl->loader, mctx->llext);
+
+			if (ret < 0)
+				tr_warn(&lib_manager_tr,
+					"llext_free_inspection_data(%u) failed: %d", k, ret);
+		}
+		if (mctx->llext) {
+			int ret = llext_unload(&mctx->llext);
+
+			if (ret < 0)
+				tr_warn(&lib_manager_tr, "llext_unload(%u) failed: %d", k, ret);
+			mctx->llext = NULL;
+		}
+		if (mctx->ebl) {
+			rfree(mctx->ebl);
+			mctx->ebl = NULL;
+		}
+	}
+
+	rfree(ctx->mod);
+	ctx->mod = NULL;
+	ctx->n_mod = 0;
 
 	return 0;
 }

@@ -29,6 +29,13 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 int llext_manager_free_module(const uint32_t component_id);
 
 int llext_manager_add_library(uint32_t module_id);
+int llext_manager_remove_library(uint32_t module_id);
+
+struct lib_manager_mod_ctx;
+struct sof_man_fw_desc;
+void llext_manager_register_lib_codecs(const struct lib_manager_mod_ctx *ctx,
+				       const struct sof_man_fw_desc *desc);
+void llext_manager_unregister_lib_codecs(const struct lib_manager_mod_ctx *ctx);
 
 int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *domain);
 int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *domain);
@@ -39,6 +46,7 @@ bool comp_is_llext(struct comp_dev *comp);
 #define llext_manager_allocate_module(ipc_config, ipc_specific_config) 0
 #define llext_manager_free_module(component_id) 0
 #define llext_manager_add_library(module_id) 0
+#define llext_manager_remove_library(module_id) 0
 #define llext_manager_add_domain(component_id, domain) 0
 #define comp_is_llext(comp) false
 #endif

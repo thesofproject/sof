@@ -1370,3 +1370,40 @@ cleanup:
 
 	return ret;
 }
+
+__cold int lib_manager_unload_library(uint32_t lib_id)
+{
+	struct ext_library *_ext_lib = ext_lib_get();
+	struct lib_manager_mod_ctx *ctx;
+	uint32_t module_id;
+	int ret;
+
+	assert_can_be_cold();
+
+	if (lib_id == 0 || lib_id >= LIB_MANAGER_MAX_LIBS || !_ext_lib)
+		return -EINVAL;
+
+	ctx = _ext_lib->desc[lib_id];
+	if (!ctx)
+		return -ENOENT;
+
+	module_id = LIB_MANAGER_PACK_LIB_ID(lib_id);
+	if (ctx->load_type == SOF_MAN_MOD_TYPE_LLEXT ||
+	    ctx->load_type == SOF_MAN_MOD_TYPE_LLEXT_AUX) {
+		ret = llext_manager_remove_library(module_id);
+		if (ret < 0)
+			return ret;
+	} else {
+		return -ENOTSUP;
+	}
+
+	if (ctx->base_addr)
+		rfree(ctx->base_addr);
+
+	rfree(ctx);
+	_ext_lib->desc[lib_id] = NULL;
+
+	tr_info(&lib_manager_tr, "unloaded library id: %u", lib_id);
+
+	return 0;
+}
