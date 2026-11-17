@@ -136,6 +136,17 @@ __cold static int ipc4_user_set_pipeline_state_multicore(struct ipc4_message_req
 	return IPC4_SUCCESS;
 }
 
+__cold int ipc4_route_chain_dma(struct ipc4_message_request *ipc4)
+{
+	assert_can_be_cold();
+
+#if CONFIG_COMP_CHAIN_DMA
+	return ipc4_process_chain_dma(ipc4, ipc4_chain_dma_drv());
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
 int ipc4_route_create_pipeline(struct ipc4_message_request *ipc4)
 {
 	const struct ipc4_pipeline_create *create =

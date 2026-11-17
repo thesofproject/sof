@@ -56,11 +56,11 @@
  * messages to ipc4_user_process_module_message() here. These routers, also
  * running in the kernel IPC thread, are the boundary between kernel and user
  * space for IPC4:
- * - some messages are handled here, in kernel mode, in all builds: CHAIN_DMA,
- *   the IPC gateway, GDB, and LARGE_CONFIG get and set of the base firmware
+ * - some messages are handled here, in kernel mode, in all builds: the IPC
+ *   gateway, GDB, and LARGE_CONFIG get and set of the base firmware
  *   (module_id 0), which reads the IMR manifest;
- * - the messages that create, configure, connect and delete pipelines and
- *   modules are passed to the ipc4_route_*() functions. With the LL scheduler
+ * - CHAIN_DMA and the messages that create, configure, connect and delete
+ *   pipelines and modules are passed to the ipc4_route_*() functions. With the LL scheduler
  *   in user space (CONFIG_SOF_USERSPACE_LL) these are in handler-ll-user.c and
  *   forward the message to the user-space IPC thread, which runs the handlers
  *   in src/ipc/ipc4/handler-user.c. Otherwise they are in handler-ll-kernel.c
@@ -74,59 +74,6 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 /* Userspace message context, copied in/out by kernel IPC thread. */
 /* fw sends a fw ipc message to send the status of the last host ipc message */
 static struct ipc_msg *msg_reply;
-
-__cold static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
-{
-	assert_can_be_cold();
-
-#if CONFIG_COMP_CHAIN_DMA
-	struct ipc_comp_dev *cdma_comp;
-	struct ipc *ipc = ipc_get();
-	const struct ipc4_chain_dma *cdma = (const struct ipc4_chain_dma *)ipc4;
-	int comp_id;
-	int ret;
-
-	comp_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT, 0);
-	cdma_comp = ipc_get_comp_by_id(ipc, comp_id);
-
-	if (!cdma_comp) {
-		/*
-		 * Nothing to do when the chainDMA is not allocated and asked to
-		 * be freed
-		 */
-		if (!cdma->primary.r.allocate && !cdma->primary.r.enable)
-			return IPC4_SUCCESS;
-
-		ret = ipc4_chain_manager_create(cdma);
-		if (ret < 0)
-			return IPC4_FAILURE;
-
-		cdma_comp = ipc_get_comp_by_id(ipc, comp_id);
-		if (!cdma_comp) {
-			return IPC4_FAILURE;
-		}
-
-		ret = ipc4_chain_dma_state(cdma_comp->cd, cdma);
-		if (ret < 0) {
-			comp_free(cdma_comp->cd);
-			list_item_del(&cdma_comp->list);
-			sof_heap_free(sof_sys_user_heap_get(), cdma_comp);
-			return IPC4_FAILURE;
-		}
-
-		return IPC4_SUCCESS;
-	}
-
-	ret = ipc4_chain_dma_state(cdma_comp->cd, cdma);
-	if (ret < 0)
-		return IPC4_INVALID_CHAIN_STATE_TRANSITION;
-
-	return IPC4_SUCCESS;
-#else /* CONFIG_COMP_CHAIN_DMA */
-	return IPC4_UNAVAILABLE;
-#endif /* CONFIG_COMP_CHAIN_DMA */
-}
-
 
 __cold static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
 {
@@ -186,7 +133,7 @@ int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4,
 		break;
 
 	case SOF_IPC4_GLB_CHAIN_DMA:
-		ret = ipc4_process_chain_dma(ipc4);
+		ret = ipc4_route_chain_dma(ipc4);
 		break;
 
 	/* pipeline settings */

@@ -58,6 +58,17 @@
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
+__cold int ipc4_route_chain_dma(struct ipc4_message_request *ipc4)
+{
+	assert_can_be_cold();
+
+#if CONFIG_COMP_CHAIN_DMA
+	return ipc4_process_chain_dma(ipc4, ipc4_chain_dma_drv());
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
 __cold int ipc4_route_create_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc *ipc = ipc_get();
