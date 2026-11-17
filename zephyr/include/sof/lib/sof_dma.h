@@ -134,7 +134,12 @@ struct sof_dma_kinfo {
 	struct k_spinlock lock;		/**< protects sref, heap and chan */
 	int sref;			/**< reference count, under lock */
 	struct k_heap *heap;		/**< heap the channel array came from */
-	struct dma_chan_data *chan;	/**< channel array to free on last put */
+	/**
+	 * channel array, freed on the last put, or with
+	 * CONFIG_SOF_USERSPACE_LL kept in the kernel RW area of the LL
+	 * region for the next get
+	 */
+	struct dma_chan_data *chan;
 };
 
 /**

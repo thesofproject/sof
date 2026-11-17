@@ -17,7 +17,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
-#include <sof/schedule/ll_schedule_domain.h> /* zephyr_ll_user_heap_verify() */
+#include <sof/schedule/ll_schedule_domain.h> /* zephyr_ll_karea_alloc() */
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
@@ -188,7 +188,9 @@ __cold void z_impl_sof_dma_put(struct sof_dma *dma)
 	--*dma_sref(dma);
 	dma->sref = *dma_sref(dma);
 	if (!*dma_sref(dma)) {
-#ifdef CONFIG_SOF_USERSPACE_INTERFACE_DMA
+#if CONFIG_SOF_USERSPACE_LL
+		/* kinfo->chan is in a kernel area: kept for the next dma_init() */
+#elif defined(CONFIG_SOF_USERSPACE_INTERFACE_DMA)
 		struct sof_dma_kinfo *kinfo = sof_dma_kinfo_get(dma);
 
 		sof_heap_free(kinfo->heap, kinfo->chan);
@@ -218,24 +220,27 @@ __cold static int dma_init(struct sof_dma *dma)
 
 	assert_can_be_cold();
 
-#if CONFIG_SOF_USERSPACE_INTERFACE_DMA && CONFIG_SOF_USERSPACE_LL
+#if CONFIG_SOF_USERSPACE_LL
 	/*
-	 * Called in supervisor mode from the sof_dma_get() system call. The
-	 * heap pointer comes from user-writable memory, so check that it is
-	 * the LL user heap before running the allocator on it.
+	 * Called in supervisor mode, also from the sof_dma_get() system call.
+	 * The kernel does not allocate from the LL user heap, whose metadata
+	 * user threads can write. Take the array from the kernel RW area of
+	 * the LL region instead, which user threads can access too. Kernel
+	 * area memory is never freed, so the array of a controller is
+	 * allocated on first use and reused after that.
 	 */
-	if (!zephyr_ll_user_heap_verify(heap)) {
-		tr_err(&dma_tr, "dma %d: invalid channel heap %p", dma->plat_data.id, heap);
-		return -EINVAL;
-	}
-#endif
-
+	chans = sof_dma_kinfo_get(dma)->chan;
+	if (!chans)
+		chans = zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, SOF_MEM_FLAG_COHERENT,
+					      sizeof(struct dma_chan_data) * channels, 0);
+#else
 	/*
 	 * allocate dma channels, use a local pointer until the array is
 	 * initialized: dma->chan is user-writable and must not be read back
 	 */
 	chans = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			       sizeof(struct dma_chan_data) * channels, 0);
+#endif
 	if (!chans) {
 		tr_err(&dma_tr, "dma %d allocation of channels failed",
 		       dma->plat_data.id);
