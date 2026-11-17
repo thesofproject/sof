@@ -36,6 +36,7 @@ int ipc4_get_large_config_module_instance(struct ipc4_message_request *ipc4);
 int ipc4_set_large_config_module_instance(struct ipc4_message_request *ipc4);
 
 /* Global messages */
+int ipc4_route_chain_dma(struct ipc4_message_request *ipc4);
 int ipc4_route_create_pipeline(struct ipc4_message_request *ipc4);
 int ipc4_route_delete_pipeline(struct ipc4_message_request *ipc4);
 int ipc4_route_set_pipeline_state(struct ipc4_message_request *ipc4);

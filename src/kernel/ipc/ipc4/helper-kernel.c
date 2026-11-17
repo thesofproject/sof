@@ -202,72 +202,14 @@ __cold int ipc_comp_free_remote(struct comp_dev *dev)
 }
 
 #if CONFIG_COMP_CHAIN_DMA
-/* Only called from ipc4_process_chain_dma(), which is __cold */
-__cold int ipc4_chain_manager_create(const struct ipc4_chain_dma *cdma)
+/* Only called from the chain DMA message routers, which are __cold */
+__cold const struct comp_driver *ipc4_chain_dma_drv(void)
 {
 	const struct sof_uuid uuid = SOF_REG_UUID(chain_dma);
-	const struct comp_driver *drv;
-	struct comp_dev *dev;
 
 	assert_can_be_cold();
 
-	drv = ipc4_get_drv(&uuid);
-	if (!drv)
-		return -EINVAL;
-
-	dev = drv->ops.create(drv, NULL, cdma);
-	if (!dev)
-		return -EINVAL;
-
-	/* differentiate instance by unique ids assignment */
-	const uint32_t comp_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id
-					      + IPC4_MAX_MODULE_COUNT, 0);
-	dev->ipc_config.id = comp_id;
-	dev->ipc_config.pipeline_id = cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT;
-
-	return ipc4_add_comp_dev(dev);
-}
-
-/* Only called from ipc4_process_chain_dma(), which is __cold */
-__cold int ipc4_chain_dma_state(struct comp_dev *dev, const struct ipc4_chain_dma *cdma)
-{
-	const bool allocate = cdma->primary.r.allocate;
-	const bool enable = cdma->primary.r.enable;
-	struct ipc *ipc = ipc_get();
-	struct ipc_comp_dev *icd;
-	struct list_item *clist, *_tmp;
-	int ret;
-
-	assert_can_be_cold();
-
-	if (!dev)
-		return -EINVAL;
-
-	if (allocate) {
-		if (enable)
-			ret = comp_trigger(dev, COMP_TRIGGER_START);
-		else
-			ret = comp_trigger(dev, COMP_TRIGGER_PAUSE);
-	} else {
-		if (enable)
-			return -EINVAL;
-
-		/* remove chain part */
-		ret = comp_trigger(dev, COMP_TRIGGER_PAUSE);
-		if (ret < 0)
-			return ret;
-
-		list_for_item_safe(clist, _tmp, &ipc->comp_list) {
-			icd = container_of(clist, struct ipc_comp_dev, list);
-			if (icd->cd != dev)
-				continue;
-			list_item_del(&icd->list);
-			sof_heap_free(sof_sys_user_heap_get(), icd);
-			break;
-		}
-		comp_free(dev);
-	}
-	return ret;
+	return ipc4_get_drv(&uuid);
 }
 #endif /* CONFIG_COMP_CHAIN_DMA */
 

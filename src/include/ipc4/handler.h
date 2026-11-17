@@ -37,6 +37,16 @@ int ipc4_user_module_load(const struct comp_driver *drv,
 			  const struct ipc4_module_init_instance *mi);
 
 /**
+ * \brief Process GLB_CHAIN_DMA in any execution context.
+ * \ingroup ipc4_envelope_api
+ * @param[in] ipc4 IPC4 message request structure.
+ * @param[in] drv Chain DMA component driver, looked up by the kernel.
+ * @return IPC4 status code (IPC4_SUCCESS on success).
+ */
+int ipc4_process_chain_dma(struct ipc4_message_request *ipc4,
+			   const struct comp_driver *drv);
+
+/**
  * \brief Process MOD_CONFIG_GET or MOD_CONFIG_SET in any execution context.
  * \ingroup ipc4_envelope_api
  * @param[in] ipc4 IPC4 message request structure.

@@ -1247,6 +1247,74 @@ int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint3
 	return IPC4_SUCCESS;
 }
 
+#if CONFIG_COMP_CHAIN_DMA
+/* Only called from ipc4_process_chain_dma(), which is __cold */
+__cold int ipc4_chain_manager_create(const struct comp_driver *drv,
+				     const struct ipc4_chain_dma *cdma)
+{
+	struct comp_dev *dev;
+
+	assert_can_be_cold();
+
+	if (!drv)
+		return -EINVAL;
+
+	dev = drv->ops.create(drv, NULL, cdma);
+	if (!dev)
+		return -EINVAL;
+
+	/* differentiate instance by unique ids assignment */
+	const uint32_t comp_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id
+					      + IPC4_MAX_MODULE_COUNT, 0);
+	dev->ipc_config.id = comp_id;
+	dev->ipc_config.pipeline_id = cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT;
+
+	return ipc4_add_comp_dev(dev);
+}
+
+/* Only called from ipc4_process_chain_dma(), which is __cold */
+__cold int ipc4_chain_dma_state(struct comp_dev *dev, const struct ipc4_chain_dma *cdma)
+{
+	const bool allocate = cdma->primary.r.allocate;
+	const bool enable = cdma->primary.r.enable;
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *icd;
+	struct list_item *clist, *_tmp;
+	int ret;
+
+	assert_can_be_cold();
+
+	if (!dev)
+		return -EINVAL;
+
+	if (allocate) {
+		if (enable)
+			ret = comp_trigger(dev, COMP_TRIGGER_START);
+		else
+			ret = comp_trigger(dev, COMP_TRIGGER_PAUSE);
+	} else {
+		if (enable)
+			return -EINVAL;
+
+		/* remove chain part */
+		ret = comp_trigger(dev, COMP_TRIGGER_PAUSE);
+		if (ret < 0)
+			return ret;
+
+		list_for_item_safe(clist, _tmp, &ipc->comp_list) {
+			icd = container_of(clist, struct ipc_comp_dev, list);
+			if (icd->cd != dev)
+				continue;
+			list_item_del(&icd->list);
+			sof_heap_free(sof_sys_user_heap_get(), icd);
+			break;
+		}
+		comp_free(dev);
+	}
+	return ret;
+}
+#endif /* CONFIG_COMP_CHAIN_DMA */
+
 /* Unlike the above ipc4_find_dma_config(), this can find multiple DMA configs.
  * For example, a UAOL copier may use two DMA channels: one for audio and one
  * for clock feedback. This function can only work when all data in data_buffer

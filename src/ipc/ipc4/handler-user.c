@@ -596,6 +596,66 @@ static int ipc4_set_pipeline_state_phase(struct ipc4_message_request *ipc4, uint
 }
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
+#if CONFIG_COMP_CHAIN_DMA
+/**
+ * @brief Process GLB_CHAIN_DMA in any execution context.
+ *
+ * Creates the chain DMA component on the first message for a host DMA
+ * channel and changes its state.
+ *
+ * @param ipc4 Pointer to the IPC4 message request (primary + extension)
+ * @param drv  Chain DMA component driver, looked up by the kernel
+ * @return IPC4 status code (0 on success)
+ */
+__cold int ipc4_process_chain_dma(struct ipc4_message_request *ipc4,
+				  const struct comp_driver *drv)
+{
+	struct ipc_comp_dev *cdma_comp;
+	struct ipc *ipc = ipc_get();
+	const struct ipc4_chain_dma *cdma = (const struct ipc4_chain_dma *)ipc4;
+	int comp_id;
+	int ret;
+
+	assert_can_be_cold();
+
+	comp_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT, 0);
+	cdma_comp = ipc_get_comp_by_id(ipc, comp_id);
+
+	if (!cdma_comp) {
+		/*
+		 * Nothing to do when the chainDMA is not allocated and asked to
+		 * be freed
+		 */
+		if (!cdma->primary.r.allocate && !cdma->primary.r.enable)
+			return IPC4_SUCCESS;
+
+		ret = ipc4_chain_manager_create(drv, cdma);
+		if (ret < 0)
+			return IPC4_FAILURE;
+
+		cdma_comp = ipc_get_comp_by_id(ipc, comp_id);
+		if (!cdma_comp)
+			return IPC4_FAILURE;
+
+		ret = ipc4_chain_dma_state(cdma_comp->cd, cdma);
+		if (ret < 0) {
+			comp_free(cdma_comp->cd);
+			list_item_del(&cdma_comp->list);
+			sof_heap_free(sof_sys_user_heap_get(), cdma_comp);
+			return IPC4_FAILURE;
+		}
+
+		return IPC4_SUCCESS;
+	}
+
+	ret = ipc4_chain_dma_state(cdma_comp->cd, cdma);
+	if (ret < 0)
+		return IPC4_INVALID_CHAIN_STATE_TRANSITION;
+
+	return IPC4_SUCCESS;
+}
+#endif /* CONFIG_COMP_CHAIN_DMA */
+
 /**
  * @brief Process MOD_CONFIG_GET or MOD_CONFIG_SET in any execution context.
  *
