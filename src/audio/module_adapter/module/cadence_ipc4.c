@@ -3,6 +3,7 @@
 // Copyright(c) 2025-2026 Intel Corporation. All rights reserved.
 //
 
+#include <sof/audio/codec_info.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/cadence.h>
 #include <sof/audio/cadence/mp3_dec/xa_mp3_dec_api.h>
@@ -644,4 +645,38 @@ static const struct module_interface cadence_codec_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(cadence_codec_interface, cadence_codec_uuid, cadence_codec_tr);
-SOF_MODULE_INIT(cadence_codec, sys_comp_module_cadence_codec_interface_init);
+
+#if defined(CONFIG_CADENCE_CODEC_AAC_DEC) || defined(CONFIG_CADENCE_CODEC_MP3_DEC) || \
+	defined(CONFIG_CADENCE_CODEC_MP3_ENC) || defined(CONFIG_CADENCE_CODEC_VORBIS_DEC) || \
+	defined(CONFIG_SOF_COMPRESS_CODEC_PCM_DEC)
+static const uint32_t cadence_codec_info_items[] = {
+#ifdef CONFIG_CADENCE_CODEC_AAC_DEC
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_AAC, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#ifdef CONFIG_CADENCE_CODEC_MP3_DEC
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#ifdef CONFIG_CADENCE_CODEC_MP3_ENC
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_CAPTURE),
+#endif
+#ifdef CONFIG_CADENCE_CODEC_VORBIS_DEC
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_VORBIS, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#ifdef CONFIG_SOF_COMPRESS_CODEC_PCM_DEC
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_PCM, SOF_IPC_STREAM_PLAYBACK),
+#endif
+};
+#endif
+
+static __maybe_unused void sys_comp_cadence_codec_init(void)
+{
+	sys_comp_module_cadence_codec_interface_init();
+#if defined(CONFIG_CADENCE_CODEC_AAC_DEC) || defined(CONFIG_CADENCE_CODEC_MP3_DEC) || \
+	defined(CONFIG_CADENCE_CODEC_MP3_ENC) || defined(CONFIG_CADENCE_CODEC_VORBIS_DEC) || \
+	defined(CONFIG_SOF_COMPRESS_CODEC_PCM_DEC)
+	sof_codec_info_add_items(&cadence_codec_interface, cadence_codec_info_items,
+				 ARRAY_SIZE(cadence_codec_info_items));
+#endif
+}
+
+SOF_MODULE_INIT(cadence_codec, sys_comp_cadence_codec_init);
