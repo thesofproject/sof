@@ -87,8 +87,9 @@ struct sof_ipc4_codec_info_data {
  */
 #define SET_CODEC_INFO_ITEM(codec, dir)	(((codec) & 0xff) | (((dir) & 0xf) << 8))
 
-static inline void add_codec_info_item(struct sof_ipc4_codec_info_data *info,
-				       uint32_t codec, uint32_t dir)
+static inline __maybe_unused void
+add_codec_info_item(struct sof_ipc4_codec_info_data *info,
+		    uint32_t codec, uint32_t dir)
 {
 	if (info->count < ARRAY_SIZE(info->items)) {
 		info->items[info->count++] = SET_CODEC_INFO_ITEM(codec, dir);
@@ -100,104 +101,104 @@ static void get_codec_info(struct sof_tlv **tuple)
 	struct sof_ipc4_codec_info_data codec_info = { 0 };
 
 #ifdef CONFIG_CADENCE_CODEC_AAC_DEC
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_AAC, SOF_IPC_STREAM_PLAYBACK);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_AAC,
+			    SOF_IPC_STREAM_PLAYBACK);
 #endif
 #ifdef CONFIG_CADENCE_CODEC_MP3_DEC
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_PLAYBACK);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_MP3,
+			    SOF_IPC_STREAM_PLAYBACK);
 #endif
 #ifdef CONFIG_CADENCE_CODEC_MP3_ENC
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_CAPTURE);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_MP3,
+			    SOF_IPC_STREAM_CAPTURE);
 #endif
 #ifdef CONFIG_CADENCE_CODEC_VORBIS_DEC
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_VORBIS, SOF_IPC_STREAM_PLAYBACK);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_VORBIS,
+			    SOF_IPC_STREAM_PLAYBACK);
 #endif
 #ifdef CONFIG_COMP_MFCC
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_CAPTURE);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_BESPOKE,
+			    SOF_IPC_STREAM_CAPTURE);
 #endif
 #if defined(CONFIG_SOF_COMPRESS_CODEC_PCM_DEC) || defined(CONFIG_FFMPEG_FILTER)
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_PCM, SOF_IPC_STREAM_PLAYBACK);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_PCM,
+			    SOF_IPC_STREAM_PLAYBACK);
 #endif
 #ifdef CONFIG_FFMPEG_DEC_FLAC
 	/* FLAC decode is provided by the ffmpeg_dec (libavcodec) module. */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_FLAC, SOF_IPC_STREAM_PLAYBACK);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_FLAC,
+			    SOF_IPC_STREAM_PLAYBACK);
 #endif
 #ifdef CONFIG_FFMPEG_DEC_ALAC
 	/* ALAC decode is provided by the ffmpeg_dec (libavcodec) module. */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_ALAC, SOF_IPC_STREAM_PLAYBACK);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_ALAC,
+			    SOF_IPC_STREAM_PLAYBACK);
 #endif
 #if defined(CONFIG_FFMPEG_DEC_AAC) && !defined(CONFIG_CADENCE_CODEC_AAC_DEC)
 	/* AAC-LC decode is provided by the ffmpeg_dec (libavcodec) module (guarded so
 	 * it is not advertised twice when the Cadence AAC decoder is also present).
 	 */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_AAC, SOF_IPC_STREAM_PLAYBACK);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_AAC,
+			    SOF_IPC_STREAM_PLAYBACK);
 #endif
 #if defined(CONFIG_FFMPEG_DEC_MP3) && !defined(CONFIG_CADENCE_CODEC_MP3_DEC)
 	/* MP3 decode is provided by the ffmpeg_dec (libavcodec) module (guarded so
 	 * it is not advertised twice when the Cadence MP3 decoder is also present).
 	 */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_PLAYBACK);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_MP3,
+			    SOF_IPC_STREAM_PLAYBACK);
 #endif
 #if defined(CONFIG_FFMPEG_ENC_MP3) && !defined(CONFIG_CADENCE_CODEC_MP3_ENC)
 	/* MP3 encode (compress capture) via ffmpeg_dec (libshine), guarded so it is
 	 * not advertised twice when the Cadence MP3 encoder is also present.
 	 */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_CAPTURE);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_MP3,
+			    SOF_IPC_STREAM_CAPTURE);
 #endif
 #if defined(CONFIG_FFMPEG_ENC_AAC)
 	/* AAC-LC encode (compress capture) via ffmpeg_dec (vo-aacenc). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_AAC, SOF_IPC_STREAM_CAPTURE);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_AAC,
+			    SOF_IPC_STREAM_CAPTURE);
 #endif
 #if defined(CONFIG_FFMPEG_ENC_FLAC)
 	/* FLAC encode (compress capture) via ffmpeg_enc (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_FLAC, SOF_IPC_STREAM_CAPTURE);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_FLAC,
+			    SOF_IPC_STREAM_CAPTURE);
 #endif
 #if defined(CONFIG_FFMPEG_ENC_ALAC)
 	/* ALAC encode (compress capture) via ffmpeg_enc (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_ALAC, SOF_IPC_STREAM_CAPTURE);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_ALAC,
+			    SOF_IPC_STREAM_CAPTURE);
 #endif
 #if defined(CONFIG_FFMPEG_DEC_SBC)
 	/* Bluetooth SBC / mSBC decode via ffmpeg_dec (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_SBC, SOF_IPC_STREAM_PLAYBACK);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_SBC,
+			    SOF_IPC_STREAM_PLAYBACK);
 #endif
 #if defined(CONFIG_FFMPEG_ENC_SBC)
 	/* Bluetooth SBC / mSBC encode via ffmpeg_enc (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_SBC, SOF_IPC_STREAM_CAPTURE);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_SBC,
+			    SOF_IPC_STREAM_CAPTURE);
 #endif
 #if defined(CONFIG_FFMPEG_DEC_G722)
 	/* ITU-T G.722 wideband speech decode via ffmpeg_dec (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_G722, SOF_IPC_STREAM_PLAYBACK);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_G722,
+			    SOF_IPC_STREAM_PLAYBACK);
 #endif
 #if defined(CONFIG_FFMPEG_ENC_G722)
 	/* ITU-T G.722 wideband speech encode via ffmpeg_enc (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_G722, SOF_IPC_STREAM_CAPTURE);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_G722,
+			    SOF_IPC_STREAM_CAPTURE);
 #endif
 #if defined(CONFIG_FFMPEG_DEC_APTX)
 	/* Bluetooth aptX decode via ffmpeg_dec (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_APTX, SOF_IPC_STREAM_PLAYBACK);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_APTX,
+			    SOF_IPC_STREAM_PLAYBACK);
 #endif
 #if defined(CONFIG_FFMPEG_ENC_APTX)
 	/* Bluetooth aptX encode via ffmpeg_enc (native libavcodec). */
-	codec_info.items[codec_info.count++] =
-		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_APTX, SOF_IPC_STREAM_CAPTURE);
+	add_codec_info_item(&codec_info, SND_AUDIOCODEC_APTX,
+			    SOF_IPC_STREAM_CAPTURE);
 #endif
 #if defined(CONFIG_FFMPEG_DEC_APTX_HD)
 	/* Bluetooth aptX HD decode via ffmpeg_dec (native libavcodec). */
