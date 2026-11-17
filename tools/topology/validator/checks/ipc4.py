@@ -410,6 +410,64 @@ def connection_pin_formats(ctx):
                             f"[{describe_formats(ins)}]")
 
 
+@rule("F004", "L4", ERROR,
+      "sof_ipc4_init_output_audio_fmt, sof_ipc4_set_copier_sink_format",
+      "declared copier outputs are selectable using fixed or input-preserving parameters")
+def copier_output_selection(ctx):
+    for w in ctx.tplg.widgets:
+        if w.type_name not in ("buffer", "aif_in", "aif_out", "dai_in", "dai_out"):
+            continue
+        kw = ctx.kw(w)
+        sched = ctx.pipeline_widget(w)
+        if kw.error or (sched is not None and pipeline_info(ctx, sched)[0]):
+            continue
+        ni, no, ins, outs = kw.audio_formats()
+        pins = {f.get(TKN_OUT_PIN_INDEX, 0) for f in outs}
+        pins.update(range(kw.num_output_pins))
+        if w.type_name == "buffer":
+            pins.add(0)
+        else:
+            pins.discard(0)  # Gateway pin 0 has endpoint-specific selection rules.
+        if not pins:
+            continue
+        inputs = connection_formats(w, kw, 0, False)
+        if len(ins) != ni or len(outs) != no or not inputs:
+            yield w.label, "incomplete format declarations; copier selection not checked", INFO
+            continue
+        for pin in sorted(pins):
+            where = f"output pin {pin}"
+            if not any(f.get(TKN_OUT_PIN_INDEX, 0) == pin for f in outs):
+                if pin > 0:
+                    yield w.label, (f"{where} has no declared formats; selected at bind "
+                                    "time, prepare/bind consistency is not checked"), INFO
+                else:
+                    yield w.label, f"{where} has incomplete formats; selection not checked", INFO
+                continue
+            outputs = connection_formats(w, kw, pin, True)
+            if not outputs:
+                yield w.label, f"{where} has incomplete formats; selection not checked", INFO
+                continue
+            bad = []
+            for incoming in sorted(inputs):
+                rate, channels, bits, stype, representation = incoming
+                candidates = {f for f in outputs if f[0] == rate}
+                if not candidates:
+                    bad.append(f"{rate}Hz: no output at input rate")
+                    continue
+                channel_counts = {f[1] for f in candidates}
+                representations = {f[2:] for f in candidates}
+                if len(channel_counts) == 1:
+                    channels = next(iter(channel_counts))
+                if len(representations) == 1:
+                    bits, stype, representation = next(iter(representations))
+                if (rate, channels, bits, stype, representation) not in candidates:
+                    bad.append(f"{describe_formats({incoming})}: ambiguous output; fixed "
+                               "and input-preserving parameters select no declared format")
+            if bad:
+                more = f"; and {len(bad) - 3} more input alternatives" if len(bad) > 3 else ""
+                yield w.label, f"{where}: {'; '.join(bad[:3])}{more}"
+
+
 # --- controls ----------------------------------------------------------------
 
 @rule("C001", "L3", ERROR, "sof_control_load_volume, sof_control_load_enum",

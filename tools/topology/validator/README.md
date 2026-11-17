@@ -56,7 +56,7 @@ Rules are grouped in layers by how closely they follow kernel code:
 | L1 | `sound/soc/soc-topology.c` | headers, element sizes, names, kcontrol handler IDs, TLV types |
 | L2 | `sound/soc/sof/topology.c` tuple engine | kernel parse errors, tuple types, audio format blocks vs. counts |
 | L3 | `topology.c`, `ipc4-topology.c` setup | routes, pipelines, chain DMA, DAI types, pins, bytes controls, PCM binding |
-| L4 | `sof-audio.c` path walk, format selection | PCM formats vs. host copier formats (advisory) |
+| L4 | `sof-audio.c` path walk, format selection | PCM formats vs. host formats (advisory), pin compatibility, copier selection contract |
 
 `F003` checks each firmware route's actual output/input pin pair. Single-pin
 endpoints use pin 0; multi-pin endpoints require explicit bindings. Disjoint
@@ -85,6 +85,41 @@ use the pin-0 fallback. Missing process extension formats remain covered by
 `W008`. Chain-DMA and DAPM-only routes are skipped. An unbound siggen input
 has no firmware route to check. Feature routes use widgets from `--base`.
 
+### Copier output selection (F004)
+
+F004 checks a topology declaration contract, not the behavior of every kernel
+version. A copier cannot resample. For each declared input pin 0 alternative,
+each checked output pin must be selectable at that input rate:
+
+1. Consider only output alternatives at the input rate.
+2. If they all declare the same channel count, use that count; otherwise preserve
+   the input channel count.
+3. If they all declare the same sample representation (valid bits and the
+   normalized type/representation used by F003), use it; otherwise preserve the
+   input representation.
+4. The resulting **complete combination** must exist in the output declarations.
+   Selecting individual fields must not invent an undeclared combination.
+
+This permits a fixed output conversion, broad format-preserving UAOL tables,
+and fixed S32 conversion with input-dependent stereo/4-channel output. Each pin
+is evaluated independently; a fixed format on one output does not constrain the
+others. Output pin 0 must be selectable even if the first path prepared leaves
+on a secondary output, because input 0 and output 0 are configured at init.
+
+The rule checks module-copier output 0 and declared secondary outputs of module,
+host and DAI copiers. Gateway output 0 is excluded: its selection can depend on
+FE/BE parameters and gateway-specific container handling. Undeclared secondary
+outputs are reported as INFO, not rejected: their formats come from the sink at
+bind time, so this check cannot establish prepare/bind consistency. Incomplete
+declarations also produce INFO rather than a speculative selection error.
+Chain-DMA pipelines are skipped.
+
+All declared input alternatives are checked, not just combinations reachable at
+runtime. Like F003, this does not validate container/layout compatibility or
+firmware converter availability. F003 checks overlap between connected pins;
+F004 checks selection within a copier. Passing both does not prove whole-path
+compatibility or that a given kernel propagates the selected format correctly.
+
 Every finding names the rule and the relevant kernel path it models. These
 references explain how topology objects and connections are interpreted; they
 do not make findings predictions about how a specific kernel version handles
@@ -96,7 +131,8 @@ foo.tplg: error: G001 route 'mixin.90.1' -> 'mixout.1.1': sink widget 'mixout.1.
 
 Severities: `error` means the topology fails validation, usually because the
 kernel fails to load it or an affected PCM fails when used. `F003` also treats
-disjoint declared pin formats as errors, without simulating firmware behavior.
+disjoint declared pin formats as errors, and `F004` rejects declarations that
+violate the copier selection contract, without simulating firmware behavior.
 `warning` means a likely mistake, or a failure that depends on runtime state the
 validator cannot know. `info` lists observations (`-v`).
 
