@@ -400,7 +400,8 @@ __cold int get_performance_data(struct global_perf_data * const global_perf_data
 }
 
 __cold int
-get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data)
+get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data,
+			      uint32_t size)
 {
 	assert_can_be_cold();
 
@@ -409,6 +410,14 @@ get_extended_performance_data(struct extended_global_perf_data * const ext_globa
 		return -EINVAL;
 	}
 
+	if (size < sizeof(*ext_global_perf_data)) {
+		tr_err(&ipc_tr, "IPC data size %u too small", size);
+		return -EINVAL;
+	}
+
+	/* the buffer cannot hold an item for every core and every perf slot */
+	const size_t max_slots =
+		(size - sizeof(*ext_global_perf_data)) / sizeof(struct ext_perf_data_item);
 	size_t slots_count;
 	size_t slot_idx = 0;
 	uint64_t total_dsp_cycles[CONFIG_MAX_CORE_COUNT];
@@ -421,7 +430,7 @@ get_extended_performance_data(struct extended_global_perf_data * const ext_globa
 		total_dsp_cycles[core_id] = 1;
 
 	/* Fill one performance record per core with total dsp cycles */
-	for (int core_id = 0; core_id < CONFIG_MAX_CORE_COUNT; ++core_id) {
+	for (int core_id = 0; core_id < CONFIG_MAX_CORE_COUNT && slot_idx < max_slots; ++core_id) {
 		if (!(cpu_enabled_cores() & BIT(core_id)))
 			continue;
 
@@ -435,6 +444,11 @@ get_extended_performance_data(struct extended_global_perf_data * const ext_globa
 	}
 
 	slots_count = perf_bitmap_get_occupied(&performance_data_bitmap) + slot_idx;
+	if (slots_count > max_slots) {
+		tr_warn(&ipc_tr, "%zu perf items do not fit, reporting %zu", slots_count,
+			max_slots);
+		slots_count = max_slots;
+	}
 	ext_global_perf_data->perf_item_count = slots_count;
 
 	/* fill the rest of the IPC records with data from
