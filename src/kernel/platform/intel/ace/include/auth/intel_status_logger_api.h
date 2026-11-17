@@ -9,7 +9,7 @@
 #define INTEL_STATUS_LOGGER_API
 
 #include "stdint.h"
-#include "intel_status_logger_iface.h"
+#include <auth/intel_status_logger_iface.h>
 
 inline void sts_log_init(struct status_logger_ctx *ctx)
 {

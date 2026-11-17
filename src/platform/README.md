@@ -8,7 +8,7 @@ This directory holds the parts of the platform headers that user-space code may 
 has the same layout as `src/kernel/platform`, and both are on the include path, so the
 headers keep their include names.
 
-Today it has the mailbox:
+Today it has the mailbox and the ACE status logger interface:
 
 - `platform/lib/mailbox.h`, and for Intel `ace/lib/mailbox.h` and `cavs/lib/mailbox.h`: the
   mailbox window addresses and the software register accessors, used through
@@ -17,5 +17,7 @@ Today it has the mailbox:
   `user_access_to_mailbox()`.
 - `platform/lib/mailbox_layout.h`: the layout of the host memory windows. The platform
   memory map in `src/kernel/platform`, which user-space code must not include, includes it.
+- `auth/intel_status_logger_iface.h` (ACE): the status logger callback types, which the
+  authentication API structures in `sof/auth_api_iface.h` use.
 
 The AMD and MediaTek mailbox headers are still in `src/kernel/platform`.
