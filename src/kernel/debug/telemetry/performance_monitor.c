@@ -498,7 +498,7 @@ __cold void disable_performance_counters(void)
 
 __cold int enable_performance_counters(void)
 {
-	struct sof_man_module *man_module;
+	const struct sof_man_module *man_module;
 	struct comp_dev *dev;
 	uint32_t comp_id;
 	const struct sof_man_fw_desc *desc;
@@ -523,8 +523,8 @@ __cold int enable_performance_counters(void)
 
 		/* Reinitialize performance data for all created components */
 		for (int mod_id = 0 ; mod_id < desc->header.num_module_entries; mod_id++) {
-			man_module =
-				(struct sof_man_module *)(desc + SOF_MAN_MODULE_OFFSET(mod_id));
+			man_module = (const struct sof_man_module *)((const uint8_t *)desc +
+								     SOF_MAN_MODULE_OFFSET(mod_id));
 
 			for (int inst_id = 0; inst_id < man_module->instance_max_count; inst_id++) {
 				comp_id = IPC4_COMP_ID(mod_id, inst_id);
