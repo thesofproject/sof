@@ -580,4 +580,7 @@ COMPRESSED_1=true,COMPRESSED_2=false"
 "cavs-sdw\;sof-sdca-amp-compr\;SDW_JACK=false,NUM_HDMIS=0,COMPRESSED=true,\
 COMPRESSED_1=false,COMPRESSED_2=true"
 
+# Media decode feature topology with per-format module UUID lists
+"media-decode-feature\;sof-media-decode-feature\;"
+
 )

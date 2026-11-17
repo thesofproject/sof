@@ -359,6 +359,8 @@ def widget_parse_tokens(data: bytes, token_list, kw: KernelWidget):
         if g == "SOF_COMP_EXT_TOKENS":
             kw.comp_ext = parse_tokens(data, group(g), kw.trace, ref)
             continue
+        if g == "SOF_MEDIA_CODEC_TOKENS":
+            continue
         if g == "SOF_IN_AUDIO_FORMAT_TOKENS":
             num_sets = get_token_value(TKN_NUM_INPUT_AUDIO_FORMATS, kw.tuples)
             if num_sets is None:
