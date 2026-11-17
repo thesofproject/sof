@@ -7,11 +7,13 @@
  * Tests for the kernel-managed areas of the LL memory region: LL user
  * threads can write objects in the RW area, only read objects in the RO
  * area, such as the user scheduler descriptors, and the kernel allocator
- * state is not in user memory.
+ * state is not in user memory. Also checks the kernel DMA objects that
+ * live in the RW area and the kernel DMA wrappers.
  */
 
 #include <sof/boot_test.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/dma.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
 
@@ -172,6 +174,55 @@ ZTEST(userspace_ll_karea, contains_and_limits)
 	zassert_is_null(zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, 0,
 					      CONFIG_SOF_ZEPHYR_LL_KAREA_RW_SIZE + 1, 0));
 	zassert_is_null(zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RO, 0, SIZE_MAX, 0));
+}
+
+ZTEST(userspace_ll_karea, dma_channels_in_rw_area)
+{
+	struct sof_dma *dma = sof_dma_get(SOF_DMA_DIR_HMEM_TO_LMEM, 0, SOF_DMA_DEV_HOST,
+					  SOF_DMA_ACCESS_SHARED);
+	struct sof_dma_kinfo *kinfo;
+	struct dma_chan_data *chan;
+	int i;
+
+	zassert_not_null(dma, "no host DMA");
+	kinfo = sof_dma_kinfo_get(dma);
+	zassert_not_null(kinfo);
+	chan = kinfo->chan;
+	zassert_true(zephyr_ll_karea_contains(ZEPHYR_LL_KAREA_RW, chan,
+					      kinfo->channels * sizeof(*chan)),
+		     "channel array %p not in the RW area", chan);
+	sof_dma_put(dma);
+
+	/* the array is kept after the last put and reused */
+	for (i = 0; i < 4; i++) {
+		dma = sof_dma_get(SOF_DMA_DIR_HMEM_TO_LMEM, 0, SOF_DMA_DEV_HOST,
+				  SOF_DMA_ACCESS_SHARED);
+		zassert_not_null(dma, "no host DMA");
+		zassert_equal_ptr(sof_dma_kinfo_get(dma)->chan, chan, "channel array reallocated");
+		sof_dma_put(dma);
+	}
+}
+
+ZTEST(userspace_ll_karea, dma_kernel_device)
+{
+	struct sof_dma *dma = sof_dma_get(SOF_DMA_DIR_HMEM_TO_LMEM, 0, SOF_DMA_DEV_HOST,
+					  SOF_DMA_ACCESS_SHARED);
+	const struct device *z_dev;
+	uint32_t align = 0;
+	int ret;
+
+	zassert_not_null(dma, "no host DMA");
+	zassert_equal_ptr(sof_dma_kdev(dma), sof_dma_kinfo_get(dma)->z_dev);
+
+	/* user threads can write dma[]: the kernel wrappers must not use it */
+	z_dev = dma->z_dev;
+	dma->z_dev = (const struct device *)&kernel_only_word;
+	ret = sof_dma_get_attribute(dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT, &align);
+	dma->z_dev = z_dev;
+
+	zassert_equal(ret, 0, "get_attribute failed: %d", ret);
+	zassert_not_equal(align, 0);
+	sof_dma_put(dma);
 }
 
 ZTEST_SUITE(userspace_ll_karea, sof_boot_test_standalone_predicate, ll_karea_setup,
