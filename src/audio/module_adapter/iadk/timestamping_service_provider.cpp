@@ -1,4 +1,4 @@
-#include <rtos/userspace_helper.h>
+#include <rtos/userspace_data.h>
 #include <sof/audio/module_adapter/iadk/iadk_timestamping_service.h>
 #include <sof/audio/module_adapter/iadk/timestamping_interface.h>
 
