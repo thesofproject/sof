@@ -63,7 +63,7 @@ DECLARE_TR_CTX(lib_manager_tr, SOF_UUID(lib_manager_uuid), LOG_LEVEL_INFO);
 
 struct lib_manager_dma_ext {
 	struct sof_dma *dma;
-	struct dma_chan_data *chan;
+	uint32_t chan;			/**< DMA channel index */
 	uintptr_t dma_addr;		/**< buffer start pointer */
 	uint32_t addr_align;
 };
@@ -1010,13 +1010,15 @@ __cold static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint
 		return -ENODEV;
 	}
 
-	chan_index = dma_request_channel(dma_ext->dma->z_dev, &dma_id);
+	/*
+	 * use the sof_dma API: user threads can write dma[], so the Zephyr
+	 * DMA API must not be called on dma->z_dev here
+	 */
+	chan_index = sof_dma_request_channel(dma_ext->dma, dma_id);
 	if (chan_index < 0)
 		return chan_index;
 
-	dma_ext->chan = &dma_ext->dma->chan[chan_index];
-	if (!dma_ext->chan)
-		return -EINVAL;
+	dma_ext->chan = chan_index;
 
 	return 0;
 }
@@ -1030,9 +1032,7 @@ __cold static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint
 static int lib_manager_dma_deinit(struct lib_manager_dma_ext *dma_ext, uint32_t dma_id)
 {
 	if (dma_ext->dma) {
-		if (dma_ext->dma->z_dev)
-			dma_release_channel(dma_ext->dma->z_dev, dma_id);
-
+		sof_dma_release_channel(dma_ext->dma, dma_id);
 		sof_dma_put(dma_ext->dma);
 	}
 	return 0;
@@ -1051,8 +1051,7 @@ __cold static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dm
 	timeout += sof_cycle_get_64();
 
 	for (;;) {
-		ret = dma_get_status(dma_ext->chan->dma->z_dev,
-				     dma_ext->chan->index, &stat);
+		ret = sof_dma_get_status(dma_ext->dma, dma_ext->chan, &stat);
 		if (ret < 0 || stat.pending_length >= size)
 			return ret;
 
@@ -1089,7 +1088,7 @@ __cold static int lib_manager_store_data(struct lib_manager_dma_ext *dma_ext,
 		memcpy_s((__sparse_force uint8_t *)dst_addr + copied_bytes, bytes_to_copy,
 			 (void *)dma_ext->dma_addr, bytes_to_copy);
 		copied_bytes += bytes_to_copy;
-		dma_reload(dma_ext->chan->dma->z_dev, dma_ext->chan->index, 0, 0, bytes_to_copy);
+		sof_dma_reload(dma_ext->dma, dma_ext->chan, bytes_to_copy);
 	}
 
 	return 0;
@@ -1232,8 +1231,8 @@ __cold static int lib_manager_setup(uint32_t dma_id)
 	if (ret < 0)
 		goto err_dma_init;
 
-	ret = dma_get_attribute(dma_ext->dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
-				&dma_ext->addr_align);
+	ret = sof_dma_get_attribute(dma_ext->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+				    &dma_ext->addr_align);
 	if (ret < 0)
 		goto err_dma_init;
 
@@ -1253,11 +1252,11 @@ __cold static int lib_manager_setup(uint32_t dma_id)
 		goto err_dma_buffer;
 #endif
 
-	ret = dma_config(dma_ext->chan->dma->z_dev, dma_ext->chan->index, &config);
+	ret = sof_dma_config(dma_ext->dma, dma_ext->chan, &config);
 	if (ret < 0)
 		goto err_dma;
 
-	ret = dma_start(dma_ext->chan->dma->z_dev, dma_ext->chan->index);
+	ret = sof_dma_start(dma_ext->dma, dma_ext->chan);
 	if (ret < 0)
 		goto err_dma;
 
@@ -1339,7 +1338,7 @@ __cold int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t t
 #endif /* CONFIG_LIBRARY_AUTH_SUPPORT */
 
 stop_dma:
-	ret2 = dma_stop(dma_ext->chan->dma->z_dev, dma_ext->chan->index);
+	ret2 = sof_dma_stop(dma_ext->dma, dma_ext->chan);
 	if (ret2 < 0) {
 		tr_err(&lib_manager_tr, "error stopping DMA: %d", ret);
 		if (!ret)
