@@ -319,6 +319,16 @@ struct sof_dma_kinfo *sof_dma_kinfo_get(const struct sof_dma *d)
 
 	return &dma_kinfo[offset / sizeof(dma[0])];
 }
+
+const struct device *sof_dma_kdev(const struct sof_dma *d)
+{
+	const struct sof_dma_kinfo *kinfo = sof_dma_kinfo_get(d);
+
+	/* kernel callers only pass controllers from sof_dma_get() */
+	__ASSERT(kinfo, "%p is not a DMA controller", d);
+
+	return kinfo ? kinfo->z_dev : NULL;
+}
 #endif
 
 /* Initialize all platform DMAC's */
