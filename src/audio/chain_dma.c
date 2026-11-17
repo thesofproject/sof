@@ -348,7 +348,10 @@ static int chain_task_start(struct comp_dev *dev)
 		goto error_task;
 	}
 
+#ifndef CONFIG_SOF_USERSPACE_LL
+	/* with LL in user space, the kernel takes it, see ipc4_route_chain_dma() */
 	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+#endif
 
 	return 0;
 
@@ -379,7 +382,9 @@ static int chain_task_pause(struct comp_dev *dev)
 		ret = ret2;
 
 	schedule_task_free(&cd->chain_task);
+#ifndef CONFIG_SOF_USERSPACE_LL
 	pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+#endif
 
 	return ret;
 }
