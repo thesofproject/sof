@@ -12,9 +12,9 @@
 /* Sentinel: no slot is currently draining. */
 #define WOV_ARB_NO_ACTIVE 0xff
 
-/** Host enum control IDs exposed by the WoV arbiter topology. */
-#define WOV_ARB_ACTIVE_SLOT_CONTROL_ID 1
-#define WOV_ARB_CALL_STATE_CONTROL_ID 2
+/** Host enum control IDs, the kernel numbers enums of a widget from 0. */
+#define WOV_ARB_ACTIVE_SLOT_CONTROL_ID 0
+#define WOV_ARB_CALL_STATE_CONTROL_ID 1
 
 /** Values of the host WoV call-state enum control. */
 #define WOV_ARB_CALL_STATE_LISTENING 0
