@@ -101,7 +101,10 @@ PCM_PLAYBACK_ADD(ACP-SW0-PIN4-Playback-SPK, 2, PIPELINE_PCM_2)
 #/**********************************************************************************/
 # Capture pipeline 6 on PCM 3 using max 2 channels of s32le.
 # DAI index PDM_INDEX (0 = PDM0, 1 = PDM1), BE acp-dmic-codec, DAI link id 5.
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+# Uses the volume/switch pipeline so the "Master Capture Switch" kcontrol can
+# mute the PDM capture stream from user-space (amixer) without stopping the
+# DMA, avoiding boot/transient noise being recorded.
+PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
         6, 3, 2, s32le,
         2000, 0, 0,
         PDM_RATE, PDM_RATE, PDM_RATE)
