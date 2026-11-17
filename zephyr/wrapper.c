@@ -21,6 +21,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component_ext.h>
 #include <sof/trace/trace.h>
+#include <rtos/timer.h>
 #include <rtos/wait.h>
 #include <rtos/clk.h>
 #if CONFIG_IPC_MAJOR_4

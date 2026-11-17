@@ -12,7 +12,6 @@
 #include <stdbool.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/time_units.h>
-#include <rtos/timer.h>
 
 static inline void wait_delay_us(uint64_t us)
 {
