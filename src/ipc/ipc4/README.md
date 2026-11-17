@@ -66,7 +66,7 @@ graph TD
     Host[Host IPC] --> Disp["handler-kernel.c<br/>ipc4_process_glb/module_message()"]
     Disp -->|kernel only| KOnly["library load, D0ix/Dx"]
     Disp --> Routers["handler-user-kernel.c<br/>ipc4_user_process_glb/module_message()"]
-    Routers -->|kernel only| KRouted["CHAIN_DMA, IPC gateway, GDB,<br/>base firmware LARGE_CONFIG"]
+    Routers -->|kernel only| KRouted["IPC gateway, GDB,<br/>base firmware LARGE_CONFIG"]
     Routers --> Route{"ipc4_route_*()"}
     Route -->|CONFIG_SOF_USERSPACE_LL| LLUser["handler-ll-user.c<br/>target core, driver lookup,<br/>module load, multicore sequencing"]
     Route -->|otherwise| LLKernel["handler-ll-kernel.c<br/>direct call"]
@@ -80,14 +80,14 @@ With `CONFIG_SOF_USERSPACE_LL`, the messages are handled as follows:
 | Message | Kernel only | Kernel and user | User |
 |---|---|---|---|
 | `GLB_LOAD_LIBRARY`, `GLB_LOAD_LIBRARY_PREPARE` | ✓ library manager | | |
-| `GLB_CHAIN_DMA` | ✓ | | |
-| `GLB_IPCGATEWAY_CMD` | ✓ | | |
+| `GLB_IPCGATEWAY_CMD` | ✓ (the IPC gateway is disabled in the LL overlay) | | |
 | `GLB_ENTER_GDB` | ✓ | | |
 | `MOD_SET_D0IX`, `MOD_SET_DX` | ✓ power management | | |
 | `MOD_LARGE_CONFIG_GET`/`SET`, base firmware (module_id 0) | ✓ reads the IMR manifest | | |
 | `GLB_CREATE_PIPELINE` | | kernel: target core; user: pipeline creation | |
 | `GLB_DELETE_PIPELINE` | | kernel: owning core; user: pipeline free | |
 | `GLB_SET_PIPELINE_STATE` | | kernel: pipeline list check, multicore prepare/trigger sequencing; user: prepare and trigger | |
+| `GLB_CHAIN_DMA` | | kernel: driver lookup, runtime idle PM lock of started chains; user: chain DMA creation, state changes and free | |
 | `MOD_INIT_INSTANCE` | | kernel: driver lookup, loadable module setup; user: component creation | |
 | `MOD_CONFIG_GET`/`SET` | | | ✓ |
 | `MOD_LARGE_CONFIG_GET`/`SET`, modules | | | ✓ |

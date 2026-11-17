@@ -190,11 +190,15 @@ calls from LL threads: only kernel threads can write objects there.
 Objects in the kernel areas:
 
 - RO: the user scheduler list heads and descriptors (`struct schedule_data`, including the
-  scheduler ops), and the LL allocation context `ipc->ll_alloc`. Kernel code finds the user
-  scheduler lists through a kernel-only copy of the per-core list heads.
+  scheduler ops), the LL allocation context `ipc->ll_alloc`, and the drivers of the loadable
+  modules (`struct comp_driver`, including the component ops), which are never unregistered.
+  Kernel code finds the user scheduler lists through a kernel-only copy of the per-core list
+  heads.
 - RW: `struct ipc_user`, the IPC data buffer `ipc->comp_data`, the LL scheduler state
   (`struct zephyr_ll`), the LL scheduling domain and its Zephyr domain data, the DP scheduler
-  data, and the LL tasks that kernel threads create at boot together with their task data.
+  data, the LL tasks that kernel threads create at boot together with their task data, and
+  the DMA channel arrays. A channel array is allocated on the first `sof_dma_get()` of its
+  controller and kept in the kernel-only `struct sof_dma_kinfo` for the next one.
 
 DP modules are created by kernel code, but their allocation context, pin format arrays and
 configuration buffers are in the module's own vregion, released with it, and the IPC user
@@ -205,9 +209,20 @@ The LL timer interrupt and the LL thread setup and teardown use kernel-only copi
 domain data pointer, the per-core semaphores and the LL threads, not the user-writable domain
 data.
 
-The LL user heap keeps its `sys_heap` metadata in user-writable memory. Kernel code is being
-moved off it; `CONFIG_SOF_ZEPHYR_LL_HEAP_KERNEL_TRACE` logs the remaining uses by kernel
-threads. Kernel code still follows some pointers stored in user-writable memory, for example
+Chain DMA messages are forwarded to the IPC user thread like the pipeline messages, so the
+chain DMA component is created, run and freed in user space. The kernel only looks up the
+driver, and takes the runtime idle PM lock of a started chain itself, tracked in a kernel-only
+mask of host DMA channels. The IPC gateway is not supported and is disabled in the LL overlay.
+
+User threads can write the `dma[]` array, so kernel code drives DMA through the `sof_dma_*()`
+wrappers, which take the Zephyr device from `struct sof_dma_kinfo` (`sof_dma_kdev()`), and
+never calls the Zephyr DMA API on `dma->z_dev`.
+
+The LL user heap keeps its `sys_heap` metadata in user-writable memory. Kernel threads no
+longer allocate from it or free to it; `CONFIG_SOF_ZEPHYR_LL_HEAP_KERNEL_TRACE` logs any use
+by a kernel thread. User threads still allocate from it through the `sof_heap_alloc()` and
+`sof_heap_free()` system calls, so the allocator still runs in supervisor mode on this
+metadata. Kernel code still follows some pointers stored in user-writable memory, for example
 `task->sch` and the domain `ops`.
 
 ## Memory-partition markers
