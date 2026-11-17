@@ -13,7 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <rtos/string.h>
-#include <rtos/userspace_helper.h>
+#include <rtos/userspace_data.h>
 #include <utilities/array.h>
 #include <module/iadk/adsp_error_code.h>
 #include <system_service.h>
