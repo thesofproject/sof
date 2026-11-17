@@ -29,6 +29,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
 #include <sof/audio/module_adapter/library/userspace_proxy.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <utilities/array.h>
 #include <system_agent.h>
 #include <native_system_agent.h>
@@ -939,8 +940,20 @@ __cold int lib_manager_register_module(const uint32_t component_id)
 	drv_heap = sof_sys_user_heap_get();
 #endif /* CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP */
 
+#if CONFIG_SOF_USERSPACE_LL && !CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP
+	/*
+	 * LL user threads read the driver, but the kernel calls its ops, for
+	 * example to create DP modules, so user threads must not be able to
+	 * write it. The kernel does not allocate from the LL user heap
+	 * either. Loadable drivers are never unregistered, so the kernel RO
+	 * area of the LL region, which is never freed, fits.
+	 */
+	drv = zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RO, SOF_MEM_FLAG_COHERENT,
+				    sizeof(struct comp_driver), 0);
+#else
 	drv = sof_heap_alloc(drv_heap, SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 			     sizeof(struct comp_driver), 0);
+#endif
 	if (!drv) {
 		tr_err(&lib_manager_tr, "failed to allocate comp_driver");
 		goto cleanup;
@@ -961,8 +974,14 @@ __cold int lib_manager_register_module(const uint32_t component_id)
 cleanup:
 	if (ret < 0) {
 		rfree(new_drv_info);
+		/* with LL, drv is in a kernel area, which is never freed */
+#if !CONFIG_SOF_USERSPACE_LL || CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP
 		sof_heap_free(drv_heap, drv);
+#endif
+#if CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP
+		/* only a driver heap of its own, never the shared user heap */
 		module_driver_heap_remove(drv_heap);
+#endif
 	}
 
 	return ret;

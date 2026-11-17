@@ -192,12 +192,14 @@ config SOF_ZEPHYR_LL_KAREA_RW_SIZE
 
 config SOF_ZEPHYR_LL_KAREA_RO_SIZE
 	hex "Size of the kernel-managed read-only area for LL user threads"
-	default 0x1000
+	default 0x2000
 	depends on SOF_USERSPACE_LL
 	help
 	 Size of the area in the LL user memory region from which kernel
 	 code allocates objects that the LL and IPC user threads may only
-	 read. The area is mapped read-only into the LL memory domain, so
+	 read, such as the scheduler descriptors and the drivers of the
+	 loadable modules. Each loadable module in use takes about 128 bytes.
+	 The area is mapped read-only into the LL memory domain, so
 	 kernel code running in that domain, for example in a system call,
 	 cannot write it either. The area is taken from
 	 SOF_ZEPHYR_SYS_USER_HEAP_SIZE. Must be a multiple of the MMU page
