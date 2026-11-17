@@ -250,13 +250,13 @@ default ID ranges for the same endpoint types.
 | Jack Echo Ref | 11 | `SDW_JACK_ECHO_REF_PCM_ID` |
 | Speaker Echo Ref | 12 | `SDW_SPK_ECHO_REF_PCM_ID` |
 | Bluetooth | 2 or 20 | `BT_PCM_ID` |
-| USB Audio Offload (UAOL0) | 21 | `UAOL_PCM_ID` |
-| USB Audio Offload (UAOL1) | 22 | `UAOL_PCM1_ID` |
-| Deepbuffer UAOL0 | 23 | `UAOL_DB_PCM_ID` |
-| Deepbuffer UAOL1 | 24 | `UAOL_DB1_PCM_ID` |
-| Deep Buffer (Jack) | 31 | `DEEP_BUFFER_PCM_ID` |
-| Deep Buffer (Speaker) | 35 | `DEEP_BUFFER_PCM_ID_2` |
-| DMIC Deep Buffer | 46 | `DMIC0_DEEP_BUFFER_PCM_ID` |
+| USB Offload 0 (playback/capture) | 21 | `UAOL_PCM_ID` |
+| USB Offload 1 (playback/capture) | 22 | `UAOL_PCM1_ID` |
+| Deepbuffer USB Offload 0 | 23 | `UAOL_DB_PCM_ID` |
+| Deepbuffer USB Offload 1 | 24 | `UAOL_DB1_PCM_ID` |
+| Deepbuffer Jack Out | 31 | `DEEP_BUFFER_PCM_ID` |
+| Deepbuffer Speaker | 35 | `DEEP_BUFFER_PCM_ID_2` |
+| Deepbuffer DMIC | 46 | `DMIC0_DEEP_BUFFER_PCM_ID` |
 | Compress Jack Out | 50 | `COMPR_PCM_ID` |
 | Compress Speaker | 52 | `COMPR_2_PCM_ID` |
 
@@ -273,7 +273,11 @@ default ID ranges for the same endpoint types.
 | HDMI 2 | 4 | `HDMI2_PCM_ID` |
 | HDMI 3 | 5 | `HDMI3_PCM_ID` |
 | DMIC0 | 6 | `DMIC0_PCM_ID` |
-| Deep Buffer | 31 | `DEEP_BUFFER_PCM_ID` |
+| USB Offload 0 (playback/capture) | 21 | `UAOL_PCM_ID` |
+| USB Offload 1 (playback/capture) | 22 | `UAOL_PCM1_ID` |
+| Deepbuffer USB Offload 0 | 23 | `UAOL_DB_PCM_ID` |
+| Deepbuffer USB Offload 1 | 24 | `UAOL_DB1_PCM_ID` |
+| Deepbuffer HDA Analog | 31 | `DEEP_BUFFER_PCM_ID` |
 | Compress HDA Analog | 50 | `COMPR_PCM_ID` |
 
 **Intel HDA Backend DAI Link IDs:**
