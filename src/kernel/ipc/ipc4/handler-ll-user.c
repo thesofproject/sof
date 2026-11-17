@@ -39,6 +39,8 @@
 #include <rtos/kernel.h>
 #include <sof/lib_manager.h>
 
+#include <zephyr/pm/policy.h>
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -136,12 +138,59 @@ __cold static int ipc4_user_set_pipeline_state_multicore(struct ipc4_message_req
 	return IPC4_SUCCESS;
 }
 
+#if CONFIG_COMP_CHAIN_DMA
+/*
+ * Host DMA channels of the started chain DMAs, kernel-only. A running chain
+ * DMA blocks the runtime idle state, and the PM policy can only be changed
+ * in kernel mode, so the lock is taken here and not by the component.
+ */
+static uint32_t chain_dma_pm_locked;
+#endif
+
 __cold int ipc4_route_chain_dma(struct ipc4_message_request *ipc4)
 {
 	assert_can_be_cold();
 
 #if CONFIG_COMP_CHAIN_DMA
-	return ipc4_process_chain_dma(ipc4, ipc4_chain_dma_drv());
+	const struct ipc4_chain_dma *cdma = (const struct ipc4_chain_dma *)ipc4;
+	const bool start = cdma->primary.r.allocate && cdma->primary.r.enable;
+	const uint32_t chan = BIT(cdma->primary.r.host_dma_id);
+	bool locked_here = false;
+	int ret;
+
+	/* hold the lock from before the user thread starts the DMA */
+	if (start && !(chain_dma_pm_locked & chan)) {
+		chain_dma_pm_locked |= chan;
+		pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+		locked_here = true;
+	}
+
+	/*
+	 * The kernel only looks up the driver: the IPC user thread creates
+	 * and controls the component, like for the other pipeline messages.
+	 */
+	ipc_user_get()->init_drv = ipc4_chain_dma_drv();
+	ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat, cpu_get_id());
+
+	/*
+	 * A timed-out command can still run in the user thread later, so keep
+	 * the lock: it is only released once the DMA is known to be stopped.
+	 * A later pause or free of the chain releases it.
+	 */
+	if (ret == -EAGAIN)
+		return ret;
+
+	/*
+	 * A failed start leaves the DMA stopped, unless the chain was started
+	 * before. Pause and free stop a started chain also when they fail.
+	 */
+	if ((start && ret && locked_here) ||
+	    (!cdma->primary.r.enable && (chain_dma_pm_locked & chan))) {
+		chain_dma_pm_locked &= ~chan;
+		pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+	}
+
+	return ret;
 #else
 	return IPC4_UNAVAILABLE;
 #endif

@@ -1238,6 +1238,16 @@ int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
 						   pipe->primary.r.instance_id);
 			break;
 		}
+#if CONFIG_COMP_CHAIN_DMA
+		case SOF_IPC4_GLB_CHAIN_DMA: {
+			/* driver looked up by the kernel, see ipc4_route_chain_dma() */
+			const struct comp_driver *drv = ipc_user->init_drv;
+
+			ipc_user->init_drv = NULL;
+			result = ipc4_process_chain_dma(&msg, drv);
+			break;
+		}
+#endif
 		case SOF_IPC4_GLB_SET_PIPELINE_STATE:
 			if (ipc_user->ppl_phase)
 				result = ipc4_set_pipeline_state_phase(&msg, ipc_user->ppl_phase);
