@@ -358,6 +358,97 @@ def test_f003_format_overlap_is_not_a_mismatch():
     assert f003(pin_connection(outs=[out_format(), out_format(rate=16000)])) == []
 
 
+def copier_selection(ins, outs, pins=1, wtype="buffer"):
+    t = Topology()
+    t.pipeline(1)
+    t.widget("copier", wtype, 1, module_tuples(
+        n_in=len(ins), n_out=len(outs), out_pins=pins, ins=ins, outs=outs))
+    return [f for f in run(t.build()) if f.rule == "F004"]
+
+
+def test_f004_fixed_representation_preserves_channels_per_rate():
+    ins = [in_format(rate=r, channels=c, depth=16, valid=16)
+           for r in (48000, 96000) for c in (2, 4)]
+    outs = [out_format(rate=r, channels=c, depth=b, valid=b)
+            for r, b in ((48000, 32), (96000, 16)) for c in (2, 4)]
+    assert copier_selection(ins, outs) == []
+
+
+def test_f004_fixed_channels_preserve_sample_format():
+    ins = [in_format(channels=4, depth=b, valid=b) for b in (16, 32)]
+    outs = [out_format(channels=1, depth=b, valid=b) for b in (16, 32)]
+    assert copier_selection(ins, outs) == []
+
+
+def test_f004_uaol_style_alternatives_preserve_input():
+    ins = [in_format(rate=r, channels=c, depth=b, valid=b)
+           for r in (48000, 96000) for c in (1, 2, 4) for b in (16, 32)]
+    outs = [out_format(rate=r, channels=c, depth=b, valid=b)
+            for r in (48000, 96000) for c in (1, 2, 4) for b in (16, 32)]
+    assert copier_selection(ins, outs) == []
+
+
+def test_f004_rejects_undeclared_combination():
+    found = copier_selection(
+        [in_format(depth=16, valid=16)],
+        [out_format(channels=1, depth=16, valid=16), out_format(channels=2)])
+    assert [f.severity for f in found] == [checks.ERROR]
+    assert "output pin 0" in found[0].message
+    assert "ambiguous" in found[0].message
+
+
+def test_f004_requires_output_at_input_rate():
+    found = copier_selection([in_format()], [out_format(rate=96000)])
+    assert [f.severity for f in found] == [checks.ERROR]
+    assert "48000Hz" in found[0].message
+
+
+def test_f004_secondary_pin_is_selected_independently():
+    assert copier_selection(
+        [in_format()],
+        [out_format(out_pin=0), out_format(out_pin=1, channels=1, depth=16, valid=16)],
+        pins=2) == []
+    found = copier_selection(
+        [in_format()],
+        [out_format(out_pin=0), out_format(out_pin=1, rate=96000)], pins=2)
+    assert [f.severity for f in found] == [checks.ERROR]
+    assert "output pin 1" in found[0].message
+
+
+def test_f004_gateway_pin_zero_uses_endpoint_selection():
+    assert copier_selection([in_format()], [out_format(rate=96000)],
+                            wtype="aif_out") == []
+    found = copier_selection(
+        [in_format()],
+        [out_format(out_pin=0), out_format(out_pin=1, rate=96000)], pins=2, wtype="aif_in")
+    assert [f.severity for f in found] == [checks.ERROR]
+
+
+@pytest.mark.parametrize("output", [False, True])
+def test_f004_undeclared_and_incomplete_formats_are_unresolved(output):
+    found = copier_selection([in_format()], [out_format()], pins=2)
+    assert [f.severity for f in found] == [checks.INFO]
+    assert "bind" in found[0].message
+    ins = [in_format(channels=0)] if not output else [in_format()]
+    outs = [out_format(channels=0)] if output else [out_format()]
+    found = copier_selection(ins, outs)
+    assert [f.severity for f in found] == [checks.INFO]
+    assert "incomplete" in found[0].message
+
+
+@pytest.mark.parametrize("stype", [0, 2])
+def test_f004_full_width_integer_alignment_is_equivalent(stype):
+    fmt = sample_type(out_format(), 1937, stype)
+    assert copier_selection([in_format()], [fmt, out_format(depth=16, valid=16)]) == []
+
+
+def test_f004_skips_chain_dma():
+    t = Topology()
+    t.pipeline(1, chain_dma=1)
+    t.widget("copier", "buffer", 1, module_tuples(outs=[out_format(rate=96000)]))
+    assert "F004" not in rules(run(t.build()))
+
+
 @pytest.mark.parametrize("depth,valid,stype,mismatch", [
     (32, 32, 4, True),   # float vs integer
     (32, 32, 0, False),  # full-width MSB vs LSB integer
