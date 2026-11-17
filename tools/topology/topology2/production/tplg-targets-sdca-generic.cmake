@@ -48,14 +48,14 @@ EFX_MIC_TDFB_PARAMS=line4_pass"
 # the BT link. The link has two streams per direction and each gets a backend,
 # in the order Play0, Cap0, Play1, Cap1, so four consecutive IDs are taken and
 # the topology exposes a PCM per pair. The range below covers a jack and
-# amplifier board without DMIC and BT (6) up to a jack, amplifier with feedback,
-# PCH DMIC and BT board (10). Add a variant here for every further ID that is
-# needed.
+# amplifier board without DMIC and BT (6) up to a jack, amplifier, SoundWire
+# DMIC, PCH DMIC and BT board (11). Add a variant for every further ID needed.
 "cavs-uaol\;sof-uaol-id6\;UAOL_PB_BE_ID=6,UAOL_CP_BE_ID=7,UAOL_PB1_BE_ID=8,UAOL_CP1_BE_ID=9"
 "cavs-uaol\;sof-uaol-id7\;UAOL_PB_BE_ID=7,UAOL_CP_BE_ID=8,UAOL_PB1_BE_ID=9,UAOL_CP1_BE_ID=10"
 "cavs-uaol\;sof-uaol-id8\;UAOL_PB_BE_ID=8,UAOL_CP_BE_ID=9,UAOL_PB1_BE_ID=10,UAOL_CP1_BE_ID=11"
 "cavs-uaol\;sof-uaol-id9\;UAOL_PB_BE_ID=9,UAOL_CP_BE_ID=10,UAOL_PB1_BE_ID=11,UAOL_CP1_BE_ID=12"
 "cavs-uaol\;sof-uaol-id10\;UAOL_PB_BE_ID=10,UAOL_CP_BE_ID=11,UAOL_PB1_BE_ID=12,UAOL_CP1_BE_ID=13"
+"cavs-uaol\;sof-uaol-id11\;UAOL_PB_BE_ID=11,UAOL_CP_BE_ID=12,UAOL_PB1_BE_ID=13,UAOL_CP1_BE_ID=14"
 
 # Feature topologies which should work with the function topologies above
 "cavs-sdw\;sof-sdca-amp-ref\;SDW_JACK=false,NUM_HDMIS=0,JACK_RATE=48000,\
