@@ -55,58 +55,77 @@ __syscall int sof_dma_suspend(struct sof_dma *dma, uint32_t channel);
 
 __syscall int sof_dma_resume(struct sof_dma *dma, uint32_t channel);
 
+#ifdef CONFIG_SOF_USERSPACE_INTERFACE_DMA
+/**
+ * Return the Zephyr device of @p dma from its kernel-only state.
+ *
+ * User threads can write dma[], so kernel code must not call the Zephyr
+ * DMA API on dma->z_dev. @p dma is not dereferenced. Kernel context only.
+ */
+const struct device *sof_dma_kdev(const struct sof_dma *dma);
+#else
+static inline const struct device *sof_dma_kdev(const struct sof_dma *dma)
+{
+	return dma->z_dev;
+}
+#endif
+
+/*
+ * The z_impl_sof_dma_*() functions are only called in kernel context,
+ * the system call validators use the Zephyr DMA API directly
+ */
 static inline int z_impl_sof_dma_get_attribute(struct sof_dma *dma, uint32_t type, uint32_t *value)
 {
-	return dma_get_attribute(dma->z_dev, type, value);
+	return dma_get_attribute(sof_dma_kdev(dma), type, value);
 }
 
 static inline int z_impl_sof_dma_request_channel(struct sof_dma *dma, uint32_t stream_tag)
 {
-	return dma_request_channel(dma->z_dev, &stream_tag);
+	return dma_request_channel(sof_dma_kdev(dma), &stream_tag);
 }
 
 static inline void z_impl_sof_dma_release_channel(struct sof_dma *dma,
 						  uint32_t channel)
 {
-	dma_release_channel(dma->z_dev, channel);
+	dma_release_channel(sof_dma_kdev(dma), channel);
 }
 
 static inline int z_impl_sof_dma_config(struct sof_dma *dma, uint32_t channel,
 					struct dma_config *config)
 {
-	return dma_config(dma->z_dev, channel, config);
+	return dma_config(sof_dma_kdev(dma), channel, config);
 }
 
 
 static inline int z_impl_sof_dma_start(struct sof_dma *dma, uint32_t channel)
 {
-	return dma_start(dma->z_dev, channel);
+	return dma_start(sof_dma_kdev(dma), channel);
 }
 
 static inline int z_impl_sof_dma_stop(struct sof_dma *dma, uint32_t channel)
 {
-	return dma_stop(dma->z_dev, channel);
+	return dma_stop(sof_dma_kdev(dma), channel);
 }
 
 static inline int z_impl_sof_dma_get_status(struct sof_dma *dma, uint32_t channel,
 					    struct dma_status *stat)
 {
-	return dma_get_status(dma->z_dev, channel, stat);
+	return dma_get_status(sof_dma_kdev(dma), channel, stat);
 }
 
 static inline int z_impl_sof_dma_reload(struct sof_dma *dma, uint32_t channel, size_t size)
 {
-	return dma_reload(dma->z_dev, channel, 0, 0, size);
+	return dma_reload(sof_dma_kdev(dma), channel, 0, 0, size);
 }
 
 static inline int z_impl_sof_dma_suspend(struct sof_dma *dma, uint32_t channel)
 {
-	return dma_suspend(dma->z_dev, channel);
+	return dma_suspend(sof_dma_kdev(dma), channel);
 }
 
 static inline int z_impl_sof_dma_resume(struct sof_dma *dma, uint32_t channel)
 {
-	return dma_resume(dma->z_dev, channel);
+	return dma_resume(sof_dma_kdev(dma), channel);
 }
 
 #ifdef CONFIG_SOF_USERSPACE_INTERFACE_DMA
