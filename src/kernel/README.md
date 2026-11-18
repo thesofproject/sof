@@ -30,6 +30,9 @@ Kernel-only headers are in [`include/sof/kernel`](include/sof/kernel) and are in
 `<sof/kernel/platform.h>`. The directory is on the include path of the firmware, the host
 library and the testbench, but not of LLEXT modules. Kernel-only headers that the host builds
 replace with their own versions, such as the `rtos/` headers, have not moved yet.
+User-space code must not include anything from here: the `codestyle` CI workflow runs
+`scripts/check_kernel_includes.py --sources --strict`, which fails when a user-space source or
+header includes `<sof/kernel/...>`.
 
 Code here may use kernel-only headers. User-space code must not call into it directly. The
 checker in `scripts/check_kernel_includes.py` reports kernel-only includes from user-space

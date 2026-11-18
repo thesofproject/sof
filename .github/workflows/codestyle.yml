@@ -38,3 +38,14 @@ jobs:
         run: yamllint -f parsable
           -d "$yamllint_config"
           --strict .github/workflows/*.yml *.yml
+
+  kernel-includes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          filter: 'tree:0'
+
+      - name: no kernel-only headers in user-space code
+        # see scripts/check_kernel_includes.py
+        run: python3 scripts/check_kernel_includes.py --sources --strict
