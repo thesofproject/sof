@@ -1740,6 +1740,64 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 }
 
 #ifdef CONFIG_SOF_USERSPACE_LL
+/**
+ * @brief Helper thread entry performing SOF_IPC4_MOD_INIT_INSTANCE.
+ *
+ * Runs in user space on the same core as the IPC user thread that spawned
+ * it. The IPC message words and driver pointer are taken from the shared
+ * @c ipc_user context (@p p1); the result is stored in
+ * @c ipc_user->init_result.
+ *
+ * @param p1 struct ipc_user pointer
+ * @param p2 unused
+ * @param p3 unused
+ */
+static void ipc_user_init_instance_fn(void *p1, void *p2, void *p3)
+{
+	struct ipc_user *ipc_user = p1;
+	struct ipc4_message_request msg;
+	const struct comp_driver *drv = ipc_user->init_drv;
+	struct comp_dev *dev;
+	int result;
+
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	msg.primary.dat = ipc_user->ipc_msg_pri;
+	msg.extension.dat = ipc_user->ipc_msg_ext;
+
+	/* User thread creates the component: drv->ops.create() runs in
+	 * user-space so untrusted module code does not execute with kernel
+	 * privileges. init_drv is the original kernel pointer.
+	 */
+	tr_info(&ipc_tr, "INIT_INSTANCE: driver received %p", drv);
+	ipc_user->init_drv = NULL;
+	if (!drv) {
+		tr_err(&ipc_tr, "INIT_INSTANCE: driver missing");
+		ipc_user->init_result = IPC4_MOD_NOT_INITIALIZED;
+		return;
+	}
+
+	dev = comp_new_ipc4_user(&msg, drv);
+	if (!dev) {
+		tr_err(&ipc_tr, "INIT_INSTANCE: component creation failed");
+		ipc_user->init_result = IPC4_MOD_NOT_INITIALIZED;
+		return;
+	}
+
+	result = ipc4_add_comp_dev(dev);
+	if (result != IPC4_SUCCESS) {
+		tr_err(&ipc_tr, "INIT_INSTANCE: component registration failed %d", result);
+		ipc_user->init_result = result;
+		return;
+	}
+
+	comp_update_ibs_obs_cpc(dev);
+
+	ipc_user->init_result = 0;
+	tr_info(&ipc_tr, "INIT_INSTANCE: completed");
+}
+
 /*
  * IPC4 implementation of the user-thread dispatch hook. Runs in the
  * user-space IPC thread; reconstructs the IPC4 message from the forwarded
@@ -1789,45 +1847,45 @@ int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
 			break;
 		}
 		case SOF_IPC4_MOD_INIT_INSTANCE: {
-			/* User thread creates the component —
-			 * drv->ops.create() runs in user-space so untrusted
-			 * module code does not execute with kernel privileges.
-			 *
-			 * init_drv = original kernel pointer
+			/*
+			 * Run the instance creation in a helper thread pinned to
+			 * the same core as this IPC user thread, then join it.
+			 * Message words and init_drv are already in ipc_user.
 			 */
-			const struct comp_driver *drv = ipc_user->init_drv;
+			unsigned int core = ipc_user->cmd_core;
+			struct k_thread *thread;
 
-			tr_info(&ipc_tr, "INIT_INSTANCE: driver received %p", drv);
-			ipc_user->init_drv = NULL;
-			if (!drv) {
-				tr_err(&ipc_tr, "INIT_INSTANCE: driver missing");
+			if (core >= CONFIG_CORE_COUNT || !ipc_user->init_thread[core]) {
 				result = IPC4_MOD_NOT_INITIALIZED;
 				break;
 			}
 
-			//tr_info(&ipc_tr, "INIT_INSTANCE: driver validated, creating component");
-			struct comp_dev *dev = comp_new_ipc4_user(&msg, drv);
+			thread = ipc_user->init_thread[core];
+			ipc_user->init_result = IPC4_MOD_NOT_INITIALIZED;
 
-			if (!dev) {
-				tr_err(&ipc_tr, "INIT_INSTANCE: component creation failed");
+			k_thread_create(thread, ipc_user->init_stack[core],
+					CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE,
+					ipc_user_init_instance_fn, ipc_user, NULL, NULL,
+					-1, K_USER | K_INHERIT_PERMS, K_FOREVER);
+			result = sof_thread_cpu_pin(thread, core);
+			if (result) {
+				tr_err(&ipc_tr, "INIT_INSTANCE: cpu pin failed %d", result);
+				/* never started: abort so the objects can be reused */
+				k_thread_abort(thread);
+				result = IPC4_MOD_NOT_INITIALIZED;
+				break;
+			}
+			k_thread_name_set(thread, "ipc_init");
+			k_thread_start(thread);
+
+			result = k_thread_join(thread, K_FOREVER);
+			if (result) {
+				tr_err(&ipc_tr, "INIT_INSTANCE: join failed %d", result);
 				result = IPC4_MOD_NOT_INITIALIZED;
 				break;
 			}
 
-			//tr_info(&ipc_tr, "INIT_INSTANCE: component created %p, registering", dev);
-			result = ipc4_add_comp_dev(dev);
-			if (result != IPC4_SUCCESS) {
-				tr_err(&ipc_tr, "INIT_INSTANCE: component registration failed %d",
-				       result);
-				break;
-			}
-
-			//tr_info(&ipc_tr, "INIT_INSTANCE: component registered, updating IBS/OBS/CPC");
-			comp_update_ibs_obs_cpc(dev);
-			//tr_info(&ipc_tr, "INIT_INSTANCE: IBS/OBS/CPC update completed");
-
-			result = 0;
-			tr_info(&ipc_tr, "INIT_INSTANCE: completed");
+			result = ipc_user->init_result;
 			break;
 		}
 		case SOF_IPC4_MOD_DELETE_INSTANCE: {

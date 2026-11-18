@@ -117,7 +117,7 @@ syscall by subsystem:
 | Virtual regions | `vregion_create_map`, `vregion_set_interim`, `vregion_get`, `vregion_put`, `vregion_alloc_align`, `vregion_alloc_coherent_align`, `vregion_free` | `sof/lib/vregion.h` | `zephyr/syscall/vregion.c` / `zephyr/lib/vregion.c` |
 | DMA | `sof_dma_get`, `sof_dma_put`, `sof_dma_get_attribute`, `sof_dma_request_channel`, `sof_dma_release_channel`, `sof_dma_config`, `sof_dma_start`, `sof_dma_stop`, `sof_dma_get_status`, `sof_dma_reload`, `sof_dma_suspend`, `sof_dma_resume` | `sof/lib/sof_dma.h` | `zephyr/syscall/sof_dma.c` / `lib/dma.c` (get/put); remaining 10 are `static inline z_impl_*` in `sof/lib/sof_dma.h` |
 | DAI | `dai_get_device` | `sof/lib/dai-zephyr.h` | `zephyr/syscall/dai.c` / `lib/dai.c` |
-| CPU | `cpu_get_id` | `sof/lib/cpu.h` | `zephyr/syscall/cpu.c` / `zephyr/lib/cpu.c` |
+| CPU | `cpu_get_id`, `sof_thread_cpu_pin` | `sof/lib/cpu.h` | `zephyr/syscall/cpu.c` / `zephyr/lib/cpu.c` |
 | Module management | `mod_balloc_align`, `mod_alloc_ext`, `mod_free`, `mod_free_all`, `mod_data_blob_handler_new`, `mod_fast_get` | `sof/audio/module_adapter/module/generic.h` | scattered: `audio/module_adapter/module/generic.c` |
 | Library manager | `lib_manager_free_module` | `sof/lib_manager.h` | scattered: `library_manager/lib_manager.c` |
 | Scheduling | `zephyr_ll_task_sem_alloc`, `zephyr_ll_task_sem_free`, `scheduler_dp_internal_free`, `scheduler_dp_ll_tick` | `sof/schedule/ll_schedule_domain.h`, `sof/schedule/dp_schedule.h` | scattered: `schedule/zephyr_ll.c`, `schedule/zephyr_dp_schedule*.c` |
