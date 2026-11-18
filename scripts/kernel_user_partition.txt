@@ -32,6 +32,7 @@ src/audio/host-legacy.c
 # LL and IPC threads, and their layout is in the user-space platform
 # headers in src/platform.
 [kernel-headers]
+src/kernel/include/*
 src/include/sof/drivers/*
 src/include/sof/platform.h
 src/include/sof/llext_manager.h

@@ -42,6 +42,7 @@ set(config_h ${sof_binary_directory}/library_autoconfig.h)
 target_include_directories(${testbench} PRIVATE "${sof_source_directory}/src/kernel/platform/library/include")
 target_include_directories(${testbench} PRIVATE "${sof_source_directory}/src/platform/library/include")
 target_include_directories(${testbench} PRIVATE "${sof_source_directory}/src/audio")
+target_include_directories(${testbench} PRIVATE "${sof_source_directory}/src/kernel/include")
 
 # Configuration time, make copy
 configure_file(${default_asoc_h} ${CMAKE_CURRENT_BINARY_DIR}/include/alsa/sound/asoc.h)

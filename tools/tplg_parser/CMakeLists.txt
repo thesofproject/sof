@@ -45,6 +45,7 @@ target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/a
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/kernel/arch/host/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/kernel/platform/library/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/platform/library/include)
+target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/kernel/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/posix/include)
 
 # Configuration time, make copy

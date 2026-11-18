@@ -171,6 +171,8 @@ set(RIMAGE_CONFIG_PATH ${RIMAGE_TOP}/config CACHE PATH
 # default SOF includes
 target_include_directories(SOF INTERFACE ${RIMAGE_TOP}/src/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
+# kernel-only headers, included as <sof/kernel/...>; LLEXT modules do not get them
+target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/kernel/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/kernel/arch/${ARCH}/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/third_party/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/zephyr/include)
