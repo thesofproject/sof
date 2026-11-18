@@ -178,6 +178,14 @@ config PLATFORM_TEENSY41
 	help
 	  Select if your target platform is PJRC Teensy 4.1.
 
+config PLATFORM_NORDIC
+	bool "Build for Nordic Semiconductor nRF54L Series SoC (Zephyr-only)"
+	select ZEPHYR_LOG
+	select ZEPHYR_NATIVE_DRIVERS
+	select STATIC_PIPELINE
+	help
+	  Select if your target platform is Nordic Semiconductor nRF54L Series SoC.
+
 config REMBRANDT
 	bool "Build for Rembrandt"
 	select XT_INTERRUPT_LEVEL_5
@@ -265,6 +273,26 @@ config TEENSY41_INTERFACE_SPDIF
 	bool "S/PDIF Hardware Transceiver"
 	help
 	  Route audio through NXP on-chip S/PDIF transceiver.
+
+endchoice
+
+endif
+
+if PLATFORM_NORDIC
+
+choice
+	prompt "Nordic Target SoC"
+	default PLATFORM_NRF54L15
+
+config PLATFORM_NRF54L15
+	bool "Nordic nRF54L15 (ARM Cortex-M33 @ 128 MHz, 256KB RAM)"
+	help
+	  Select for nRF54L15-DK board.
+
+config PLATFORM_NRF54LM20
+	bool "Nordic nRF54LM20 (ARM Cortex-M33 @ 128 MHz, 512KB RAM, High-Speed USB)"
+	help
+	  Select for nRF54LM20-DK board.
 
 endchoice
 
