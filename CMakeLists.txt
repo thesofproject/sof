@@ -63,6 +63,9 @@ add_library(sof_options INTERFACE)
 
 target_link_libraries(sof_options INTERFACE sof_public_headers)
 
+# kernel-only headers, included as <sof/kernel/...>, not part of the public headers
+target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/kernel/include)
+
 if(BUILD_COUNTERS)
 target_compile_definitions(sof_options INTERFACE BLD_COUNTERS=1)
 else()

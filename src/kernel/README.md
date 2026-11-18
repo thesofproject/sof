@@ -23,6 +23,14 @@ Zephyr builds everything below this directory into the `sof_kernel` library inst
 library for this directory tree, so the CMake files of moved directories do not change. Their
 Kconfig files are sourced from [`Kconfig`](Kconfig).
 
+## Headers
+
+Kernel-only headers are in [`include/sof/kernel`](include/sof/kernel) and are included as
+`<sof/kernel/...>`, keeping the path they had below `sof/`: `sof/platform.h` is
+`<sof/kernel/platform.h>`. The directory is on the include path of the firmware, the host
+library and the testbench, but not of LLEXT modules. Kernel-only headers that the host builds
+replace with their own versions, such as the `rtos/` headers, have not moved yet.
+
 Code here may use kernel-only headers. User-space code must not call into it directly. The
 checker in `scripts/check_kernel_includes.py` reports kernel-only includes from user-space
 sources, and CI fails when one is added. The user-space sources that still include
