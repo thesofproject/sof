@@ -957,6 +957,9 @@ static int host_verify_params(struct comp_dev *dev,
 #endif
 
 /* configure the DMA params and descriptors for host buffer IO */
+/**
+ * @brief Configure host DMA, limiting HDA buffers to the 16-bit DGMBS range.
+ */
 int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params, notifier_callback_t cb)
 {
@@ -1045,6 +1048,18 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	buffer_size_preferred = buffer_size;
 	if (hd->ipc_host.dma_buffer_size != 0)
 		buffer_size_preferred = ROUND_UP(hd->ipc_host.dma_buffer_size, buffer_size);
+
+	/* Keep deep buffers within the 16-bit HDA DGMBS limit and whole allocation units. */
+	if (hd->dma->plat_data.caps & SOF_DMA_CAP_HDA) {
+		uint32_t max_buffer_size = ROUND_DOWN(UINT16_MAX, buffer_size);
+
+		if (!max_buffer_size) {
+			comp_err(dev, "HDA DMA minimum buffer size %u exceeds 16-bit limit",
+				 buffer_size);
+			return -EINVAL;
+		}
+		buffer_size_preferred = MIN(buffer_size_preferred, max_buffer_size);
+	}
 
 	/* alloc DMA buffer or change its size if exists */
 	/*
