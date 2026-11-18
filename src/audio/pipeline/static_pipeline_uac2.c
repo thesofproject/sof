@@ -612,7 +612,7 @@ static int sof_uac2_set_feature_mute(const struct device *dev, uint8_t entity_id
 				continue;
 
 			for (size_t c = 0; c < topo->num_comps; c++) {
-				if (topo->comps[c].id == ctl->comp_id) {
+				if (topo->comps[c].id == ctl->target_comp_id) {
 					if (topo->comps[c].direction == SOF_IPC_STREAM_PLAYBACK)
 						s_uac2_playback_mute = mute;
 					else if (topo->comps[c].direction == SOF_IPC_STREAM_CAPTURE)

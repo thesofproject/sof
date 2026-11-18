@@ -186,6 +186,14 @@ config PLATFORM_NORDIC
 	help
 	  Select if your target platform is Nordic Semiconductor nRF54L Series SoC.
 
+config PLATFORM_RP2350
+	bool "Build for Raspberry Pi RP2350 (ARM Cortex-M33)"
+	select ZEPHYR_LOG
+	select ZEPHYR_NATIVE_DRIVERS
+	select STATIC_PIPELINE
+	help
+	  Select if your target platform is Raspberry Pi RP2350 (Pico 2).
+
 config REMBRANDT
 	bool "Build for Rembrandt"
 	select XT_INTERRUPT_LEVEL_5
@@ -293,6 +301,50 @@ config PLATFORM_NRF54LM20
 	bool "Nordic nRF54LM20 (ARM Cortex-M33 @ 128 MHz, 512KB RAM, High-Speed USB)"
 	help
 	  Select for nRF54LM20-DK board.
+
+endchoice
+
+endif
+
+if PLATFORM_RP2350
+
+choice
+	prompt "RP2350 Board Role"
+	default RP2350_BOARD_A
+	help
+	  Select whether this binary is for Board A (Master Tx) or Board B (Slave Rx).
+
+config RP2350_BOARD_A
+	bool "RP2350 Board A (Master Clock Provider / Tx)"
+	help
+	  Configure board as Board A (Master clock provider for I2S,
+	  generates BCLK and LRCLK). Appears on host USB as
+	  'SOF RP2350 Audio A'.
+
+config RP2350_BOARD_B
+	bool "RP2350 Board B (Slave Clock Consumer / Rx)"
+	help
+	  Configure board as Board B (Slave clock consumer for I2S,
+	  receives BCLK and LRCLK). Appears on host USB as
+	  'SOF RP2350 Audio B'.
+
+endchoice
+
+choice
+	prompt "RP2350 Audio Hardware Interface"
+	default RP2350_INTERFACE_LOOPBACK
+	help
+	  Select whether the static audio pipeline connects to internal loopback or PIO I2S.
+
+config RP2350_INTERFACE_LOOPBACK
+	bool "Internal Loopback (UAC2 Playback -> SOF -> UAC2 Capture)"
+	help
+	  Route host USB playback internally to host USB capture for validation.
+
+config RP2350_INTERFACE_PIO_I2S
+	bool "PIO I2S Digital Audio Interface"
+	help
+	  Route audio through RP2350 PIO I2S TX/RX hardware interface.
 
 endchoice
 
