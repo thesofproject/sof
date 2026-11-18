@@ -167,8 +167,8 @@
  *   <td>
  *     - @ref zephyr/include/rtos/alloc.h "rtos/alloc.h"<br/>
  *     - @ref src/include/sof/lib/vregion.h "sof/lib/vregion.h"<br/>
- *     - @ref zephyr/include/sof/lib/regions_mm.h "sof/lib/regions_mm.h"<br/>
- *     - @ref zephyr/include/sof/lib/vpage.h "sof/lib/vpage.h"<br/>
+ *     - @ref src/kernel/include/sof/kernel/lib/regions_mm.h "sof/kernel/lib/regions_mm.h"<br/>
+ *     - @ref src/kernel/include/sof/kernel/lib/vpage.h "sof/kernel/lib/vpage.h"<br/>
  *     - @ref src/include/sof/lib/fast-get.h "sof/lib/fast-get.h"<br/>
  *     - @ref zephyr/include/sof/lib/memory.h "sof/lib/memory.h"
  *   </td>

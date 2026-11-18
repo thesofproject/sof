@@ -6,7 +6,7 @@
  */
 
 /**
- * @file sof/lib/regions_mm.h
+ * @file sof/kernel/lib/regions_mm.h
  * @brief Virtual Memory Heap (VMH) and multi-block region allocator API.
  * @ingroup memory_api
  */
