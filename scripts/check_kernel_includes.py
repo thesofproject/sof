@@ -24,13 +24,20 @@ leaks fail the build. Baseline sources that no longer leak in the
 checked builds are reported, so that they can be dropped from the list
 once they are clean in every configuration.
 
+With --sources it checks the source tree instead of build directories:
+kernel-only headers in src/kernel/include are included as
+<sof/kernel/...>, and no user-space source or header may include one.
+This covers code that no checked build compiles, and has no baseline.
+
 Usage:
     check_kernel_includes.py [--strict] [--summary] <build-dir> [<build-dir>...]
+    check_kernel_includes.py --sources [--strict]
 """
 
 import argparse
 import fnmatch
 import os
+import re
 import subprocess
 import sys
 from collections import defaultdict
@@ -122,9 +129,52 @@ def check_build(build_dir, manifest, sof_root, zephyr_base):
 	return leaks, built
 
 
+KERNEL_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"](sof/kernel/[^>"]+)[>"]', re.M)
+
+
+def source_files(sof_root):
+	"""Return the files of the SOF source tree, relative to it."""
+	try:
+		out = subprocess.run(['git', '-C', sof_root, 'ls-files'],
+				     check=True, capture_output=True, text=True).stdout
+		return out.splitlines()
+	except (OSError, subprocess.CalledProcessError):
+		files = []
+		for top, dirs, names in os.walk(sof_root):
+			dirs[:] = [d for d in dirs if d != '.git' and not d.startswith('build')]
+			files += [os.path.relpath(os.path.join(top, n), sof_root).replace(os.sep, '/')
+				  for n in names]
+		return files
+
+
+def check_sources(manifest, sof_root):
+	"""Return {user-space file: [kernel header includes]} from the source tree."""
+	user_src = manifest['user-sources']
+	not_user = manifest['not-user-sources']
+	user_hdr = manifest['user-headers']
+	kernel_hdr = manifest['kernel-headers']
+
+	found = {}
+	for rel in source_files(sof_root):
+		if rel.endswith(SOURCE_EXTS):
+			if not matches(rel, user_src) or matches(rel, not_user):
+				continue
+		elif not (rel.endswith(('.h', '.hpp')) and matches(rel, user_hdr)) or \
+		     matches(rel, not_user) or matches(rel, kernel_hdr):
+			continue
+		path = os.path.join(sof_root, rel)
+		if not os.path.isfile(path):
+			continue
+		with open(path, encoding='utf-8', errors='replace') as f:
+			incs = KERNEL_INCLUDE.findall(f.read())
+		if incs:
+			found[rel] = incs
+	return found
+
+
 def main():
 	parser = argparse.ArgumentParser(description=__doc__.split('\n', 1)[0])
-	parser.add_argument('build_dirs', nargs='+', metavar='build-dir')
+	parser.add_argument('build_dirs', nargs='*', metavar='build-dir')
 	parser.add_argument('--manifest', default=DEFAULT_MANIFEST)
 	parser.add_argument('--sof-root', default=SOF_ROOT,
 			    help='SOF source directory the build directories were built from')
@@ -135,9 +185,25 @@ def main():
 				 'includes a kernel-only header')
 	parser.add_argument('--summary', action='store_true',
 			    help='only print per-header counts, not every source file')
+	parser.add_argument('--sources', action='store_true',
+			    help='check the source tree for <sof/kernel/...> includes from '
+				 'user-space code instead of build directories')
 	args = parser.parse_args()
 
 	manifest = parse_manifest(args.manifest)
+
+	if args.sources:
+		if args.build_dirs:
+			parser.error('--sources cannot be combined with build directories')
+		found = check_sources(manifest, args.sof_root)
+		for src in sorted(found):
+			print(f'{src}:')
+			for inc in found[src]:
+				print(f'\t{inc}')
+		print(f'{len(found)} user-space files include headers from src/kernel/include')
+		return 1 if args.strict and found else 0
+	if not args.build_dirs:
+		parser.error('build directories or --sources are required')
 	zephyr_base = args.zephyr_base if os.path.isdir(args.zephyr_base) else None
 
 	leaks = defaultdict(set)
