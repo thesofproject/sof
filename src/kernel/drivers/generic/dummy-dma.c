@@ -33,7 +33,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
 #include <sof/trace/trace.h>

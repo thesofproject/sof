@@ -20,7 +20,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <rtos/panic.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <rtos/task.h>

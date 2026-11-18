@@ -4,7 +4,7 @@
 #include <rtos/clk.h>
 #include <platform/lib/memory.h>
 #include <kernel/ext_manifest.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <sof/debug/debug.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/msg.h>

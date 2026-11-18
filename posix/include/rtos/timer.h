@@ -12,7 +12,7 @@
 #include <rtos/clk.h>
 #include <sof/lib/cpu.h>
 #include <rtos/sof.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <stdint.h>
 
 struct comp_dev;

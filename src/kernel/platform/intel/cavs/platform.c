@@ -27,7 +27,7 @@
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/notifier.h>
 #include <rtos/wait.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>

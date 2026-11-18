@@ -21,7 +21,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
 #include <rtos/wait.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <rtos/task.h>
 #include <rtos/sof.h>
 #include <sof/trace/trace.h>

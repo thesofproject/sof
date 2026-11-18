@@ -12,7 +12,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>

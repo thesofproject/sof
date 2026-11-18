@@ -9,7 +9,7 @@
 #ifndef __SOF_IPC_DRIVER_H__
 #define __SOF_IPC_DRIVER_H__
 
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <rtos/sof.h>
 #include <sof/ipc/common.h>
 #include <rtos/task.h>

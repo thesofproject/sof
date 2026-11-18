@@ -4,7 +4,7 @@
 #include <sof/ipc/driver.h>
 #include <rtos/clk.h>
 #include <rtos/task.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/ll_schedule.h>

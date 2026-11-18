@@ -26,6 +26,6 @@
 
 #else
 
-#error "This file shouldn't be included from outside of sof/platform.h"
+#error "This file shouldn't be included from outside of sof/kernel/platform.h"
 
 #endif /* __SOF_PLATFORM_H__ */

@@ -24,7 +24,7 @@
 
 #include <sof/lib/memory.h>
 #include <sof/lib_manager.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 
 #include <ipc4/base_fw.h>
 #include <ipc4/alh.h>
