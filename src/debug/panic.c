@@ -10,7 +10,7 @@
 #include <rtos/interrupt.h>
 #include <rtos/cache.h>
 #include <sof/lib/mailbox.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <ipc/trace.h>

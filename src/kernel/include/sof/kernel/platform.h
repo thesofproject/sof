@@ -6,7 +6,7 @@
  */
 
 /**
-  * \file include/sof/platform.h
+  * \file include/sof/kernel/platform.h
   * \brief Platform API definition
   * \author Marcin Maka <marcin.maka@linux.intel.com>
   */

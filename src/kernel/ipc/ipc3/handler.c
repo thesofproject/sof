@@ -32,7 +32,7 @@
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/list.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <rtos/string.h>
 #include <rtos/string_macro.h>
 #include <sof/trace/trace.h>

@@ -12,7 +12,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/watchdog.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/zephyr_ll.h>

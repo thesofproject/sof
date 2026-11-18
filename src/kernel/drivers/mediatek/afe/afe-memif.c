@@ -20,7 +20,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>

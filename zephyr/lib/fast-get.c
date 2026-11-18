@@ -69,7 +69,7 @@ static bool fast_get_find_entry(void *data, void *arg)
 #define PAGE_SZ CONFIG_MM_DRV_PAGE_SIZE
 #define FAST_GET_MAX_COPY_SIZE (PAGE_SZ / 2)
 #else
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #define PAGE_SZ HOST_PAGE_SIZE
 #define FAST_GET_MAX_COPY_SIZE 0
 #endif

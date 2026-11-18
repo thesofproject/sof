@@ -19,7 +19,7 @@
 #include <sof/lib/perf_cnt.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>

@@ -19,7 +19,7 @@
 #include <rtos/cache.h>
 #include <sof/lib/mailbox.h>
 #include <sof/list.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <rtos/sof.h>
 #include <ipc/dai.h>
 #include <ipc/header.h>

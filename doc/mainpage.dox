@@ -232,7 +232,7 @@
  *     - @ref zephyr/include/sof/lib/dai.h "sof/lib/dai.h"<br/>
  *     - @ref zephyr/include/sof/lib/dma.h "sof/lib/dma.h"<br/>
  *     - @ref zephyr/include/sof/lib/pm_runtime.h "pm_runtime.h"<br/>
- *     - @ref src/include/sof/platform.h "sof/platform.h"
+ *     - @ref src/kernel/include/sof/kernel/platform.h "sof/kernel/platform.h"
  *   </td>
  *   <td>
  *     Low-level peripheral drivers: Digital Audio Interfaces (I2S/SSP, SoundWire, DMIC/PDM, HDA),

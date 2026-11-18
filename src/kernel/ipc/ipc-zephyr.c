@@ -37,7 +37,7 @@
 #include <sof/lib/uuid.h>
 #include <rtos/wait.h>
 #include <sof/list.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/twb_schedule.h>
 #include <sof/schedule/schedule.h>

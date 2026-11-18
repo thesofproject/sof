@@ -27,7 +27,7 @@
 #include <sof/lib/io.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/notifier.h>
-#include <sof/platform.h>
+#include <sof/kernel/platform.h>
 #include <sof/schedule/schedule.h>
 #include <rtos/spinlock.h>
 #include <sof/math/numbers.h>
