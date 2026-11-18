@@ -6,6 +6,14 @@
 # CMakeLists.txt but differ significantly in how it executes)
 # different cmake environments into which it needs to build.
 is_zephyr(zephyr)
+if(NOT DEFINED PYTHON_EXECUTABLE)
+  if(DEFINED Python3_EXECUTABLE)
+    set(PYTHON_EXECUTABLE "${Python3_EXECUTABLE}")
+  else()
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    set(PYTHON_EXECUTABLE "${Python3_EXECUTABLE}")
+  endif()
+endif()
 if(zephyr)
   set(TOPDIR ${sof_top_dir})
   set(UUID_REG_H ${PROJECT_BINARY_DIR}/include/generated/uuid-registry.h)
@@ -33,5 +41,9 @@ add_custom_command(
 			     ${UUID_REG_H})
 
 add_custom_target(uuid_reg_h DEPENDS ${UUID_REG_H})
+
+if(TARGET zephyr_generated_headers)
+  add_dependencies(zephyr_generated_headers uuid_reg_h)
+endif()
 
 add_dependencies(${DEP_TARGET} uuid_reg_h)

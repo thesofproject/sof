@@ -20,6 +20,18 @@ elseif(CONFIG_PLATFORM_RP2350)
 	set(ARCH host)
 	set(PLATFORM "rp2350")
 	set(PLATFORM_HEADERS "rp2350")
+elseif(CONFIG_PLATFORM_ESP32P4)
+	set(ARCH host)
+	set(PLATFORM "esp32p4")
+	set(PLATFORM_HEADERS "esp32p4")
+elseif(CONFIG_PLATFORM_ESP32S3)
+	set(ARCH host)
+	set(PLATFORM "esp32s3")
+	set(PLATFORM_HEADERS "esp32s3")
+elseif(CONFIG_PLATFORM_ESP32C6)
+	set(ARCH host)
+	set(PLATFORM "esp32c6")
+	set(PLATFORM_HEADERS "esp32c6")
 else()
 	# firmware build supports only xtensa arch for now
 	set(ARCH xtensa)
@@ -507,6 +519,42 @@ if (CONFIG_PLATFORM_RP2350)
 	set(PLATFORM "rp2350")
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/rp2350/include)
 endif()
+
+if (CONFIG_PLATFORM_ESP32P4)
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/esp32p4/platform.c
+		${SOF_PLATFORM_PATH}/esp32p4/esp32p4_pipeline_def.c
+		${SOF_PLATFORM_PATH}/esp32p4/lib/clk.c
+		lib/dma.c
+	)
+
+	set(PLATFORM "esp32p4")
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/esp32p4/include)
+endif()
+
+if (CONFIG_PLATFORM_ESP32S3)
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/esp32s3/platform.c
+		${SOF_PLATFORM_PATH}/esp32s3/esp32s3_pipeline_def.c
+		${SOF_PLATFORM_PATH}/esp32s3/lib/clk.c
+		lib/dma.c
+	)
+
+	set(PLATFORM "esp32s3")
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/esp32s3/include)
+endif()
+
+if (CONFIG_PLATFORM_ESP32C6)
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/esp32c6/platform.c
+		${SOF_PLATFORM_PATH}/esp32c6/esp32c6_pipeline_def.c
+		${SOF_PLATFORM_PATH}/esp32c6/lib/clk.c
+		lib/dma.c
+	)
+
+	set(PLATFORM "esp32c6")
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/esp32c6/include)
+endif()
 if (CONFIG_SOC_MIMX9596_M7)
 
 	zephyr_library_sources(
@@ -697,9 +745,9 @@ zephyr_library_sources_ifdef(CONFIG_SOF_BOOT_TEST
        boot_test.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_SHELL
-       sof_shell.c
-)
+if(CONFIG_SHELL AND NOT CONFIG_PLATFORM_ESP32P4 AND NOT CONFIG_PLATFORM_ESP32C6 AND NOT CONFIG_PLATFORM_ESP32S3)
+	zephyr_library_sources(sof_shell.c)
+endif()
 
 zephyr_syscall_header(include/sof/lib/cpu.h)
 zephyr_library_sources_ifdef(CONFIG_USERSPACE syscall/cpu.c)
