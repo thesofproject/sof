@@ -6,7 +6,7 @@
 //              Bala Kishore <balakishore.pati@amd.com>
 
 #include <sof/common.h>
-#include <sof/drivers/acp_dai_dma.h>
+#include <sof/kernel/drivers/acp_dai_dma.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/memory.h>
 #include <rtos/sof.h>

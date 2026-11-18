@@ -9,7 +9,7 @@
 #include <sof/kernel/ipc/driver.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/schedule.h>
-#include <sof/drivers/mu.h>
+#include <sof/kernel/drivers/mu.h>
 #include <rtos/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/mailbox.h>

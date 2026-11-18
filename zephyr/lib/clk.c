@@ -6,7 +6,7 @@
 
 #include <sof/lib/notifier.h>
 #include <rtos/clk.h>
-#include <sof/drivers/ssp.h>
+#include <sof/kernel/drivers/ssp.h>
 #include <rtos/sof.h>
 #include <sof/common.h>
 #include <sof/lib/memory.h>

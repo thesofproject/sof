@@ -2,7 +2,7 @@
 // Copyright(c) 2024 Google LLC.  All rights reserved.
 // Author: Andy Ross <andyross@google.com>
 #include <sof/lib/dai-legacy.h>
-#include <sof/drivers/afe-drv.h>
+#include <sof/kernel/drivers/afe-drv.h>
 #include <stdio.h>
 
 /* DIY assertion, an "assert()" is already defined in platform headers */

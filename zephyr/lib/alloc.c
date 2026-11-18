@@ -8,7 +8,7 @@
 #include <rtos/alloc.h>
 #include <rtos/idc.h>
 #include <rtos/interrupt.h>
-#include <sof/drivers/interrupt-map.h>
+#include <sof/kernel/drivers/interrupt-map.h>
 #include <sof/schedule/schedule.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>

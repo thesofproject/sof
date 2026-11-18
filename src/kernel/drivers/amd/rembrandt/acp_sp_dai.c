@@ -7,7 +7,7 @@
 //              Sivasubramanian <sravisar@amd.com>
 
 #include <sof/audio/component.h>
-#include <sof/drivers/acp_dai_dma.h>
+#include <sof/kernel/drivers/acp_dai_dma.h>
 #include <rtos/interrupt.h>
 #include <rtos/alloc.h>
 #include <sof/lib/dai.h>

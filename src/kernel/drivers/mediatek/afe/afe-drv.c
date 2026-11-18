@@ -15,8 +15,8 @@
 #include <ipc/topology.h>
 #include <sof/lib/uuid.h>
 #include <errno.h>
-#include <sof/drivers/afe-drv.h>
-#include <sof/drivers/afe-memif.h>
+#include <sof/kernel/drivers/afe-drv.h>
+#include <sof/kernel/drivers/afe-memif.h>
 
 /*#define AFE_DRV_LOG*/
 static struct mtk_base_afe mtk_afe;

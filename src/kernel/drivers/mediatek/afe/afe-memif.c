@@ -10,9 +10,9 @@
 
 #include <sof/common.h>
 #include <sof/audio/component.h>
-#include <sof/drivers/afe-drv.h>
-#include <sof/drivers/afe-dai.h>
-#include <sof/drivers/afe-memif.h>
+#include <sof/kernel/drivers/afe-drv.h>
+#include <sof/kernel/drivers/afe-dai.h>
+#include <sof/kernel/drivers/afe-memif.h>
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
 #include <sof/lib/dma.h>
