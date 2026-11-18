@@ -10,7 +10,6 @@
 # https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # include files
-src/include/sof/drivers/dmic.h		@singalsu
 src/include/ipc/**			@thesofproject/steering-committee
 src/include/ipc/**			@randerwang @tmleman @pblaszko
 src/include/ipc4/**			@randerwang @tmleman @pblaszko
