@@ -13,7 +13,7 @@
 #include <zephyr/sys/dlist.h>
 #include <zephyr/app_memory/mem_domain.h>
 #include <zephyr/logging/log.h>
-#include <sof/lib/vpage.h>
+#include <sof/kernel/lib/vpage.h>
 #include <sof/lib/vregion.h>
 #include <sof/debug/telemetry/telemetry.h>
 #include <rtos/alloc.h>

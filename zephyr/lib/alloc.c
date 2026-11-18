@@ -31,7 +31,7 @@
 #endif
 
 #if CONFIG_VIRTUAL_HEAP
-#include <sof/lib/regions_mm.h>
+#include <sof/kernel/lib/regions_mm.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
 
 struct vmh_heap;

@@ -9,7 +9,7 @@
 
 #if defined(CONFIG_MM_DRV)
 #include <sof/lib/cold.h>
-#include <sof/lib/regions_mm.h>
+#include <sof/kernel/lib/regions_mm.h>
 #ifdef CONFIG_SOF_TELEMETRY_MEMORY
 #include <sof/debug/telemetry/telemetry.h>
 #endif

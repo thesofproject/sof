@@ -9,7 +9,7 @@
 #include <string.h>
 
 #include <sof/boot_test.h>
-#include <sof/lib/vpage.h>
+#include <sof/kernel/lib/vpage.h>
 
 #include <zephyr/logging/log.h>
 #include <zephyr/ztest.h>

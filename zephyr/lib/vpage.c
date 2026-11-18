@@ -10,8 +10,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/check.h>
 #include <sof/lib/cold.h>
-#include <sof/lib/regions_mm.h>
-#include <sof/lib/vpage.h>
+#include <sof/kernel/lib/regions_mm.h>
+#include <sof/kernel/lib/vpage.h>
 #include <sof/debug/telemetry/telemetry.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
 

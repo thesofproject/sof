@@ -50,8 +50,6 @@ zephyr/include/sof/lib/io.h
 zephyr/include/sof/lib/memory.h
 zephyr/include/sof/lib/mm_heap.h
 zephyr/include/sof/lib/pm_runtime.h
-zephyr/include/sof/lib/regions_mm.h
-zephyr/include/sof/lib/vpage.h
 
 # Zephyr headers that only kernel code may include: kernel internals and
 # driver APIs that are not system calls.

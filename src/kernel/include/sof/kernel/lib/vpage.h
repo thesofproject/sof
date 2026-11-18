@@ -2,7 +2,7 @@
 // Copyright(c) 2025 Intel Corporation.
 
 /**
- * @file sof/lib/vpage.h
+ * @file sof/kernel/lib/vpage.h
  * @brief Virtual Page Allocator API for mapping contiguous memory pages.
  * @ingroup memory_api
  */

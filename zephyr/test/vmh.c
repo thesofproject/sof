@@ -11,7 +11,7 @@
 
 #include <adsp_memory_regions.h>
 #include <sof/boot_test.h>
-#include <sof/lib/regions_mm.h>
+#include <sof/kernel/lib/regions_mm.h>
 
 #include <zephyr/logging/log.h>
 #include <zephyr/ztest.h>
