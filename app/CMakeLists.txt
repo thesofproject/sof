@@ -22,7 +22,7 @@ endif()
 find_package(Zephyr HINTS $ENV{ZEPHYR_BASE})
 project(sample_sof)
 
-if(NOT ZEPHYR_SOF_MODULE)
+if(NOT TARGET SOF)
   add_subdirectory(../zephyr sof_zephyr)
 endif()
 

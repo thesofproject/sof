@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <rtos/cache.h>
 
 #define SRAM_BANK_SIZE 0x10000
 #define EPROMS_START 0
@@ -15,12 +16,6 @@
 #define HEAP_RUNTIME_SIZE 0x8000
 #define HEAP_BUFFER_SIZE 0x10000
 
-#define PLATFORM_DCACHE_ALIGN 64
-#define PLATFORM_DCACHE_ALIGN_SHIFT 6
-
-#define uncache_to_cache(address) (address)
-#define cache_to_uncache(address) (address)
-#define is_uncached(address) 0
 #define host_to_local(addr) (addr)
 #define local_to_host(addr) (addr)
 

@@ -16,6 +16,10 @@ LOG_MODULE_DECLARE(volume_riscv, CONFIG_SOF_LOG_LEVEL);
 
 #include "volume.h"
 
+#ifndef fabsf
+#define fabsf(x) __builtin_fabsf(x)
+#endif
+
 #if CONFIG_COMP_PEAK_VOL
 
 static inline int32_t sat_clamp_q31(int64_t x)

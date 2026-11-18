@@ -462,12 +462,21 @@ static int cmd_sof_regs(const struct shell *sh, size_t argc, char **argv)
 		(uint32_t)I2S0.tx_conf.tx_tdm_en,
 		(uint32_t)I2S0.tx_conf.tx_slave_mod);
 #endif
+#if defined(CONFIG_SOC_SERIES_ESP32S3)
+	shell_print(sh, "  I2S0.tx_pcm2pdm_conf: 0x%08x (conv_en=%u, osr2=%u, dac_en=%u, dac_2out=%u)",
+		(uint32_t)I2S0.tx_pcm2pdm_conf.val,
+		(uint32_t)I2S0.tx_pcm2pdm_conf.pcm2pdm_conv_en,
+		(uint32_t)I2S0.tx_pcm2pdm_conf.tx_sinc_osr2,
+		(uint32_t)I2S0.tx_pcm2pdm_conf.tx_dac_mode_en,
+		(uint32_t)I2S0.tx_pcm2pdm_conf.tx_dac_2out_en);
+#else
 	shell_print(sh, "  I2S0.tx_pcm2pdm_conf: 0x%08x (conv_en=%u, osr2=%u, dac_en=%u, dac_2out=%u)",
 		(uint32_t)I2S0.tx_pcm2pdm_conf.val,
 		(uint32_t)I2S0.tx_pcm2pdm_conf.pcm2pdm_conv_en,
 		(uint32_t)I2S0.tx_pcm2pdm_conf.tx_pdm_sinc_osr2,
 		(uint32_t)I2S0.tx_pcm2pdm_conf.tx_pdm_dac_mode_en,
 		(uint32_t)I2S0.tx_pcm2pdm_conf.tx_pdm_dac_2out_en);
+#endif
 	shell_print(sh, "  I2S0.tx_pcm2pdm_conf1:0x%08x (fp=%u, fs=%u)",
 		(uint32_t)I2S0.tx_pcm2pdm_conf1.val,
 		(uint32_t)I2S0.tx_pcm2pdm_conf1.tx_pdm_fp,

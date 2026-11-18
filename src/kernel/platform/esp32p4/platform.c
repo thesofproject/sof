@@ -5,6 +5,7 @@
 
 #include <rtos/sof.h>
 #include <rtos/clk.h>
+#include <sof/platform.h>
 #include <platform/lib/clk.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/dai.h>
@@ -169,4 +170,9 @@ int platform_init(struct sof *sof)
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
 	ARG_UNUSED(ipc);
+}
+
+void ipc_platform_send_msg_direct(const struct ipc_msg *msg)
+{
+	ARG_UNUSED(msg);
 }

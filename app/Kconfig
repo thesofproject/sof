@@ -9,10 +9,6 @@ endchoice
 source "Kconfig.zephyr"
 osource "samples/subsys/usb/common/Kconfig.sample_usbd"
 
-if !ZEPHYR_SOF_MODULE
-rsource "../zephyr/Kconfig"
-endif
-
 if SOC_FAMILY_INTEL_ADSP
 	rsource "boards/intel_adsp/Kconfig.defconfig"
 endif
