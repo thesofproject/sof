@@ -64,6 +64,14 @@ extern struct tr_ctx ipc_tr;
 
 struct ipc_user {
 	struct k_thread *thread[IPC_DSP_CORE_COUNT];
+	/** @brief Per-core helper thread objects used for INIT_INSTANCE processing */
+	struct k_thread *init_thread[IPC_DSP_CORE_COUNT];
+	/** @brief Per-core stacks for the INIT_INSTANCE helper threads */
+	k_thread_stack_t *init_stack[IPC_DSP_CORE_COUNT];
+	/** @brief Core the currently forwarded command is executed on */
+	unsigned int cmd_core;
+	/** @brief Result of the INIT_INSTANCE helper thread */
+	int init_result;
 	struct k_sem *sem;
 	struct k_event *event[IPC_DSP_CORE_COUNT];
 	/** @brief Copy of IPC4 message primary word forwarded to user thread */

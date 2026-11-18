@@ -418,6 +418,10 @@ SOF_DEFINE_REG_UUID(sec_core_init);
 static K_THREAD_STACK_ARRAY_DEFINE(ipc_user_stack, CONFIG_CORE_COUNT,
 				   CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE);
 
+/* Stacks for the per-core helper threads spawned by the IPC user thread */
+static K_THREAD_STACK_ARRAY_DEFINE(ipc_init_stack, CONFIG_CORE_COUNT,
+				   CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE);
+
 /**
  * @brief Forward an IPC command to the user-space thread.
  *
@@ -446,6 +450,7 @@ int ipc_user_forward_cmd(uint32_t primary, uint32_t extension, unsigned int core
 	pdata->ipc_msg_pri = primary;
 	pdata->ipc_msg_ext = extension;
 	pdata->ipc = ipc;
+	pdata->cmd_core = core;
 
 	/* Prevent host completion until user thread finishes */
 	key = k_spin_lock(&ipc->lock);
@@ -542,6 +547,14 @@ __cold static int ipc_user_init_thread(struct ipc_user *ipc_user, unsigned int c
 		goto e_event;
 	}
 
+	ipc_user->init_thread[core] = k_object_alloc(K_OBJ_THREAD);
+	if (!ipc_user->init_thread[core]) {
+		LOG_ERR("user IPC init thread alloc failed");
+		ret = -ENOMEM;
+		goto e_event;
+	}
+	ipc_user->init_stack[core] = ipc_init_stack[core];
+
 	k_thread_create(ipc_user->thread[core], ipc_user_stack[core],
 			CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE,
 			ipc_user_thread_fn, ipc_user, UINT_TO_POINTER(core), NULL,
@@ -556,6 +569,9 @@ __cold static int ipc_user_init_thread(struct ipc_user *ipc_user, unsigned int c
 	 * and signal completion on the primary core semaphore
 	 */
 	k_thread_access_grant(ipc_user->thread[core], ipc_user->sem, ipc_user->event[core]);
+	/* The IPC thread creates, pins and joins its INIT_INSTANCE helper thread */
+	k_thread_access_grant(ipc_user->thread[core], ipc_user->init_thread[core],
+			      ipc_user->init_stack[core]);
 	user_grant_dai_access_all(ipc_user->thread[core]);
 	user_grant_dma_access_all(ipc_user->thread[core]);
 	k_mem_domain_add_thread(zephyr_ll_mem_domain(), ipc_user->thread[core]);
