@@ -5,7 +5,6 @@
 // Author: Baofeng Tian <baofeng.tian@intel.com>
 
 #include <sof/audio/coefficients/volume/windows_fade.h>
-#include <sof/audio/component_ext.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/module_adapter/module/generic.h>
@@ -16,10 +15,10 @@
 #include <sof/ipc/msg.h>
 #include <rtos/init.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/mailbox.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>

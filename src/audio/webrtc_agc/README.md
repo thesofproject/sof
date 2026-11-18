@@ -8,7 +8,7 @@ Wraps WebRTC's digital Automatic Gain Control (`digital_agc.c`) behind the SOF `
 
 - **Adaptive Speech Leveling**: Analyzes short-term speech envelope and applies dynamic digital gain to boost quiet talkers without amplifying background stationary noise.
 - **Integrated Saturation Limiter**: S-curve saturation limiter with fast lookahead attack and smooth release decay, guaranteeing zero digital overs.
-- **Framing FIFO Engine**: Transparently decouples pipeline period sizes (e.g., 1 ms, 2 ms, or 5 ms) by buffering streaming audio into standard 10 ms WebRTC analysis frames (160 samples @ 16 kHz, 80 samples @ 8 kHz).
+- **Framing FIFO Engine**: Transparently decouples pipeline period sizes (e.g., 1 ms, 2 ms, or 5 ms) by buffering streaming audio into standard 10 ms WebRTC analysis frames (80/160/320/480 samples @ 8/16/32/48 kHz).
 - **Pure Fixed-Point Implementation**: Pure integer Q15/Q31 arithmetic with zero floating-point unit dependencies (`CONFIG_FPU=n`).
 - **ALSA IPC4 Switch Control**: Runtime bypass/enable toggling via standard ALSA mixer controls (`SOF_IPC4_SWITCH_CONTROL_PARAM_ID`).
 - **Multichannel Support**: Accommodates up to 4 audio channels with per-channel state instances.

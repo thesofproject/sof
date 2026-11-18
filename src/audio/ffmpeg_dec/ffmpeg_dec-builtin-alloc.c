@@ -155,15 +155,10 @@ void *__wrap_realloc(void *ptr, size_t size)
 
 #else /* !CONFIG_SOF_USERSPACE_APPLICATION */
 
-/* Working-set heap: AAC-LC needs ~768 KiB (one ~541 KiB av_tx MDCT table alloc +
- * decoder context). FLAC/MP3/Opus only need a small fraction of this, so sizing
- * to 576 KiB reclaims over 300 KiB for sof_heap to accommodate the 64 KiB DP stack.
+/* Working-set heap: with -DSOF_AAC_LC_ONLY=1, FLAC/MP3/AAC/Opus all fit within
+ * 576 KiB, reclaiming over 300 KiB for sof_heap to accommodate the 64 KiB DP stack.
  */
-#if defined(CONFIG_FFMPEG_DEC_AAC)
-#define FFMPEG_DEC_HEAP_BYTES	(880 * 1024)
-#else
 #define FFMPEG_DEC_HEAP_BYTES	(576 * 1024)
-#endif
 
 static uint8_t ffmpeg_dec_heap_buf[FFMPEG_DEC_HEAP_BYTES]
 	__aligned(FFMPEG_DEC_ALLOC_ALIGN);

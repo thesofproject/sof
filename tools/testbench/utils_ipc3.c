@@ -341,8 +341,7 @@ static int test_pipeline_params(struct testbench_prm *tp)
 	return 0;
 }
 
-static void tb_test_pipeline_set_test_limits(int pipeline_id, int max_copies,
-					     int max_samples)
+static void tb_test_pipeline_set_test_limits(int pipeline_id, size_t max_copies, size_t max_samples)
 {
 	struct list_item *clist;
 	struct ipc_comp_dev *icd = NULL;

@@ -18,9 +18,9 @@
 
 #include <sof/audio/component.h>
 #include <ipc/topology.h>
-/* TODO: the cross-core helpers below send IDC messages, which is kernel only */
-#include <rtos/idc.h>
-#include <sof/lib/dai.h>
+/* in user-space LL builds idc_send_msg() forwards to the remote user IPC thread */
+#include <rtos/idc_msg.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 
 /** \addtogroup component_infra_api
@@ -300,9 +300,18 @@ static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t 
 	if (type != COMP_ATTR_BASE_CONFIG)
 		return -EINVAL;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/* must be writable by the user-space thread on the remote core */
+	base_cfg = sof_heap_alloc(zephyr_ll_user_heap(), SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				  sizeof(*base_cfg), 0);
+	if (!base_cfg)
+		return -ENOMEM;
+	memset(base_cfg, 0, sizeof(*base_cfg));
+#else
 	base_cfg = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*base_cfg));
 	if (!base_cfg)
 		return -ENOMEM;
+#endif
 
 	payload.type = type;
 	payload.value = base_cfg;
@@ -313,7 +322,11 @@ static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t 
 		memcpy_s(value, sizeof(struct ipc4_base_module_cfg),
 			 base_cfg, sizeof(struct ipc4_base_module_cfg));
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	sof_heap_free(zephyr_ll_user_heap(), base_cfg);
+#else
 	rfree(base_cfg);
+#endif
 	return ret;
 }
 #endif	/* CONFIG_IPC_MAJOR_4 */
@@ -385,42 +398,6 @@ static inline int comp_reset(struct comp_dev *dev)
 
 	return 0;
 }
-
-#if CONFIG_IPC_MAJOR_3
-/**
- * \brief Configure DAI component.
- * \param[in,out] dev Component device.
- * \param[in] config IPC DAI configuration.
- * \param[in] spec_config Spec-specific configuration data.
- * \return 0 on success, negative error code on failure.
- */
-static inline int comp_dai_config(struct comp_dev *dev, struct ipc_config_dai *config,
-				  const void *spec_config)
-{
-	struct dai_data *dd = comp_get_drvdata(dev);
-
-	if (dev->drv->ops.dai_config)
-		return dev->drv->ops.dai_config(dd, dev, config, spec_config);
-
-	return 0;
-}
-#elif CONFIG_IPC_MAJOR_4
-/**
- * \brief Configure DAI component (IPC4).
- * \param[in,out] dd DAI driver data.
- * \param[in,out] dev Component device.
- * \param[in] config IPC DAI configuration.
- * \param[in] spec_config Spec-specific configuration data.
- * \return 0 on success, negative error code on failure.
- */
-static inline int comp_dai_config(struct dai_data *dd, struct comp_dev *dev,
-				  struct ipc_config_dai *config, const void *spec_config)
-{
-	return dai_config(dd, dev, config, spec_config);
-}
-#else
-#error Unknown IPC major version
-#endif
 
 /**
  * \brief Retrieve stream position from component.
@@ -536,6 +513,23 @@ static inline bool comp_is_scheduling_source(struct comp_dev *dev)
 static inline void comp_make_shared(struct comp_dev *dev)
 {
 	dev->is_shared = true;
+}
+
+/**
+ * \brief Get the core of the parent pipeline of a component.
+ *
+ * Use this instead of dev->pipeline->core on other cores than the pipeline
+ * core: struct pipeline isn't coherent between cores, struct comp_dev is.
+ * \param[in] dev Component device.
+ * \return Pipeline core, or the component core if it has no pipeline.
+ */
+static inline uint32_t comp_ppl_core(const struct comp_dev *dev)
+{
+#if CONFIG_IPC_MAJOR_4
+	return dev->ipc_config.ppl_core;
+#else
+	return dev->ipc_config.core;
+#endif
 }
 
 /**

@@ -19,7 +19,6 @@
 #include <sof/ipc/msg.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
-#include <sof/platform.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>

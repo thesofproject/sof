@@ -122,13 +122,13 @@ struct phase_vocoder_fft {
  * @output_phase: Output phase per channel
  */
 struct phase_vocoder_polar {
-	struct ipolar32 *polar[PLATFORM_MAX_CHANNELS];
-	struct ipolar32 *polar_prev[PLATFORM_MAX_CHANNELS];
+	struct ipolar32 *polar[CONFIG_PLATFORM_MAX_CHANNELS];
+	struct ipolar32 *polar_prev[CONFIG_PLATFORM_MAX_CHANNELS];
 	struct ipolar32 *polar_tmp;
 	int32_t *polar_buffer;
-	int32_t *angle_delta_prev[PLATFORM_MAX_CHANNELS];
-	int32_t *angle_delta[PLATFORM_MAX_CHANNELS];
-	int32_t *output_phase[PLATFORM_MAX_CHANNELS];
+	int32_t *angle_delta_prev[CONFIG_PLATFORM_MAX_CHANNELS];
+	int32_t *angle_delta[CONFIG_PLATFORM_MAX_CHANNELS];
+	int32_t *output_phase[CONFIG_PLATFORM_MAX_CHANNELS];
 };
 
 /**
@@ -151,12 +151,12 @@ struct phase_vocoder_polar {
  * @first_output_ifft_done: True after first output IFFT is completed
  */
 struct phase_vocoder_state {
-	struct phase_vocoder_buffer ibuf[PLATFORM_MAX_CHANNELS];
-	struct phase_vocoder_buffer obuf[PLATFORM_MAX_CHANNELS];
+	struct phase_vocoder_buffer ibuf[CONFIG_PLATFORM_MAX_CHANNELS];
+	struct phase_vocoder_buffer obuf[CONFIG_PLATFORM_MAX_CHANNELS];
 	struct phase_vocoder_fft fft;
 	struct phase_vocoder_polar polar;
 	size_t phase_vocoder_polar_bytes;
-	int32_t *prev_data[PLATFORM_MAX_CHANNELS];
+	int32_t *prev_data[CONFIG_PLATFORM_MAX_CHANNELS];
 	int32_t *buffers;
 	int32_t *window;
 	int32_t num_input_fft_to_use;

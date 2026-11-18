@@ -22,7 +22,6 @@
 #include <rtos/bit.h>
 #include <sof/common.h>
 #include <sof/trace/trace.h>
-#include <sof/lib/mailbox.h>
 #include <ipc/stream.h>
 #include <user/trace.h>
 #include <stddef.h>
@@ -153,7 +152,7 @@ struct sof_ipc_ctrl_value_chan;
  * circular buffer views and only performs the gain scaling.
  */
 typedef void (*vol_scale_func)(struct processing_module *mod, struct cir_buf_source *source,
-			struct cir_buf_sink *sink, uint32_t frames, uint32_t attenuation);
+			struct cir_buf_sink *sink, size_t frames, uint32_t attenuation);
 
 /**
  * \brief volume interface for function getting nearest zero crossing frame
@@ -289,14 +288,6 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
 	}
 }
 #endif
-
-static inline void peak_vol_update(struct vol_data *cd)
-{
-#if CONFIG_COMP_PEAK_VOL
-	/* update peakvol in mailbox */
-	mailbox_sw_regs_write(cd->mailbox_offset, &cd->peak_regs, sizeof(cd->peak_regs));
-#endif
-}
 
 #ifdef UNIT_TEST
 void sys_comp_module_volume_interface_init(void);

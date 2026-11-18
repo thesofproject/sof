@@ -91,7 +91,6 @@ void init_heap(struct sof *sof);
 void free_heap(void);
 
 /* status */
-void heap_trace_all(int force);
 void heap_trace(struct mm_heap *heap, int size);
 
 #if CONFIG_DEBUG_MEMORY_USAGE_SCAN

@@ -61,6 +61,25 @@ float exp2f(float x)
 	return p * aec_ldexp2(n);
 }
 
+#ifdef LL_EXTENSION_BUILD
+/* --- sqrtf: not exported by the base firmware, bit estimate + 3 Newton steps --- */
+float sqrtf(float x)
+{
+	union { float f; uint32_t i; } u = { .f = x };
+	float y;
+
+	if (x <= 0.0f)
+		return 0.0f;
+
+	u.i = (u.i >> 1) + 0x1fc00000;
+	y = u.f;
+	y = 0.5f * (y + x / y);
+	y = 0.5f * (y + x / y);
+	y = 0.5f * (y + x / y);
+	return y;
+}
+#endif
+
 
 /* --- powf: x^y = 2^(y * log2(x)) --- */
 float powf(float x, float y)

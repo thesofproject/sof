@@ -16,16 +16,15 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
-#include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/ll_schedule.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
@@ -153,6 +152,14 @@ int src_prepare_general(struct processing_module *mod,
 
 	/* set align requirements */
 	src_set_alignment(source);
+
+#if CONFIG_FORMAT_FLOAT
+	if (source_get_frm_fmt(source) == SOF_IPC_FRAME_FLOAT) {
+		cd->data_shift = 0;
+		cd->polyphase_func = src_polyphase_stage_cir_float;
+		goto out;
+	}
+#endif
 
 	switch (cd->ipc_config.base.audio_fmt.valid_bit_depth) {
 #if CONFIG_FORMAT_S16LE

@@ -304,6 +304,23 @@ const struct dma_info lib_dma = {
 	.num_dmas = ARRAY_SIZE(dma)
 };
 
+#ifdef CONFIG_SOF_USERSPACE_INTERFACE_DMA
+/* kernel-only, see struct sof_dma_kinfo */
+static struct sof_dma_kinfo dma_kinfo[ARRAY_SIZE(dma)];
+
+struct sof_dma_kinfo *sof_dma_kinfo_get(const struct sof_dma *d)
+{
+	/* use the array symbol, not sof->dma_info, and never dereference d */
+	uintptr_t offset = (uintptr_t)d - (uintptr_t)dma;
+
+	if ((uintptr_t)d < (uintptr_t)dma || offset >= sizeof(dma) ||
+	    offset % sizeof(dma[0]))
+		return NULL;
+
+	return &dma_kinfo[offset / sizeof(dma[0])];
+}
+#endif
+
 /* Initialize all platform DMAC's */
 __cold int dmac_init(struct sof *sof)
 {
@@ -316,6 +333,16 @@ __cold int dmac_init(struct sof *sof)
 	/* early lock initialization for ref counting */
 	for (i = 0; i < sof->dma_info->num_dmas; i++)
 		k_spinlock_init(&sof->dma_info->dma_array[i].lock);
+
+#ifdef CONFIG_SOF_USERSPACE_INTERFACE_DMA
+	/* snapshot the constant fields before any user thread can modify dma[] */
+	for (i = 0; i < ARRAY_SIZE(dma); i++) {
+		dma_kinfo[i].z_dev = dma[i].z_dev;
+		dma_kinfo[i].dir = dma[i].plat_data.dir;
+		dma_kinfo[i].caps = dma[i].plat_data.caps;
+		dma_kinfo[i].channels = dma[i].plat_data.channels;
+	}
+#endif
 
 	return 0;
 }

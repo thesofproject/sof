@@ -59,7 +59,7 @@ typedef int (*sound_dose_func)(const struct processing_module *mod,
  * @enable: Control processing on/off, on - reorder channels
  */
 struct sound_dose_comp_data {
-	struct iir_state_df1 iir[PLATFORM_MAX_CHANNELS];
+	struct iir_state_df1 iir[CONFIG_PLATFORM_MAX_CHANNELS];
 	struct sound_dose_setup_config setup;
 	struct sound_dose_volume_config vol;
 	struct sound_dose_gain_config att;
@@ -68,7 +68,7 @@ struct sound_dose_comp_data {
 	struct sof_sound_dose *dose;
 	struct ipc_msg *msg;
 	sound_dose_func sound_dose_func;
-	int64_t energy[PLATFORM_MAX_CHANNELS];
+	int64_t energy[CONFIG_PLATFORM_MAX_CHANNELS];
 	int64_t total_frames_count;
 	int32_t log_offset_for_mean;
 	int32_t rate_to_us_coef;

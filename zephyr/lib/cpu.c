@@ -19,7 +19,9 @@ static uint32_t mic_disable_status;
 #endif /* CONFIG_INTEL_ADSP_MIC_PRIVACY */
 #include <sof/init.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/platform.h>
 #include <sof/lib/dai.h>
 #include <ipc/topology.h>
 #include <module/module/base.h>

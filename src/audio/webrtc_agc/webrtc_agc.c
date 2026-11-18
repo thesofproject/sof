@@ -76,8 +76,9 @@ __cold static int webrtc_agc_prepare(struct processing_module *mod,
 	cd->rate = source_get_rate(sources[0]);
 	cd->channels = source_get_channels(sources[0]);
 
-	if (cd->rate != 8000 && cd->rate != 16000) {
-		comp_err(dev, "webrtc_agc: unsupported rate %d (only 8000 and 16000 Hz supported)",
+	if (cd->rate != 8000 && cd->rate != 16000 &&
+	    cd->rate != 32000 && cd->rate != 48000) {
+		comp_err(dev, "webrtc_agc: unsupported rate %d (only 8/16/32/48 kHz supported)",
 			 cd->rate);
 		return -EINVAL;
 	}

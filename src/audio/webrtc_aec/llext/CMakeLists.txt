@@ -10,9 +10,15 @@ if(CONFIG_COMP_WEBRTC_AEC_STUB)
 else()
   include(${CMAKE_CURRENT_LIST_DIR}/../webrtc_aec.cmake)
 
+  if(CONFIG_WEBRTC_AEC_BACKEND_FLOAT)
+    set(_aec_backend_glue ../webrtc_aec-aec.c ../webrtc_aec-math.c)
+  else()
+    set(_aec_backend_glue ../webrtc_aec-aecm.c)
+  endif()
+
   sof_llext_build("webrtc_aec"
     SOURCES ../webrtc_aec.c
-            ../webrtc_aec-aecm.c
+            ${_aec_backend_glue}
             ../webrtc_aec-shims.c
     INCLUDES "${WEBRTC_AECM_INSTALL_DIR}/include"
              "${SOF_WEBRTC_APM_SRC_DIR}"

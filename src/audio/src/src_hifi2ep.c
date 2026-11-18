@@ -307,11 +307,11 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	ae_q56s q;
 	ae_q32s *rp;
 	ae_q32s *wp;
-	int i;
+	size_t i;
 	int n;
-	int m;
-	int n_wrap_buf;
-	int n_min;
+	size_t m;
+	size_t n_wrap_buf;
+	size_t n_min;
 	struct src_state *fir = s->state;
 	const struct src_stage *cfg = s->stage;
 	int32_t *fir_end = &fir->fir_delay[fir->fir_delay_size];
@@ -319,9 +319,9 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	const char *cp; /* Can be int32_t or int16_t */
 	const size_t out_size = fir->out_delay_size * sizeof(int32_t);
 	const int nch = s->nch;
-	const int nch_x_odm = cfg->odm * nch;
-	const int blk_in_words = nch * cfg->blk_in;
-	const int blk_out_words = nch * cfg->num_of_subfilters;
+	const size_t nch_x_odm = cfg->odm * nch;
+	const size_t blk_in_words = nch * cfg->blk_in;
+	const size_t blk_out_words = nch * cfg->num_of_subfilters;
 	const int sz = sizeof(int32_t);
 	const int n_sz = -sizeof(int32_t);
 	const int rewind_sz = sz * nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
@@ -432,11 +432,11 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	ae_p24x2s d;
 	ae_q32s *rp;
 	ae_q32s *wp;
-	int i;
+	size_t i;
 	int n;
-	int m;
-	int n_wrap_buf;
-	int n_min;
+	size_t m;
+	size_t n_wrap_buf;
+	size_t n_min;
 	struct src_state *fir = s->state;
 	const struct src_stage *cfg = s->stage;
 	int32_t *fir_end = &fir->fir_delay[fir->fir_delay_size];
@@ -444,9 +444,9 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	const char *cp; /* Can be int32_t or int16_t */
 	const size_t out_size = fir->out_delay_size * sizeof(int32_t);
 	const int nch = s->nch;
-	const int nch_x_odm = cfg->odm * nch;
-	const int blk_in_words = nch * cfg->blk_in;
-	const int blk_out_words = nch * cfg->num_of_subfilters;
+	const size_t nch_x_odm = cfg->odm * nch;
+	const size_t blk_in_words = nch * cfg->blk_in;
+	const size_t blk_out_words = nch * cfg->num_of_subfilters;
 	const int sz = sizeof(int32_t);
 	const int n_sz = -sizeof(int32_t);
 	const int rewind_sz = sz * nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);

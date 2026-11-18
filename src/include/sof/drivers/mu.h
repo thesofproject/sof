@@ -12,6 +12,7 @@
 
 #include <rtos/bit.h>
 #include <rtos/clk.h>
+#include <sof/lib/memory.h>
 #include <stdint.h>
 
 enum imx_mu_type {

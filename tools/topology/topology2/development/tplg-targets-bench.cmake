@@ -73,10 +73,12 @@ set(component_parameters_s24
 
 set(components_s32
 	"micsel_multich"
+	"ffmpeg_dec"
 )
 
 set(component_parameters_s32
 	"BENCH_MICSEL_PARAMS=default"
+	"BENCH_FFMPEG_DEC_PARAMS=default"
 )
 
 set (plat "mtl")

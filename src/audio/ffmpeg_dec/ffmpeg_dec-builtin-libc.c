@@ -19,7 +19,12 @@
 //     getenv, clock, gmtime, mktime, strftime): NEVER used on a SOF DSP nor on
 //     the FLAC decode path -> no-op stubs. av_log()'s stderr path is bypassed by
 //     the Zephyr LOG wrapper installed in ffmpeg_dec-ffmpeg.c.
-//   * strtod: not on the FLAC decode path -> return-0 stub.
+//   * strtod / strtof: Zephyr's CONFIG_MINIMAL_LIBC (lib/libc/minimal/source/
+//     stdlib/) only implements atoi/strtol/strtoul and omits strtod/strtof, and
+//     the toolchain's prebuilt newlib libc.a cannot be linked into the base
+//     firmware image (compiled without -mlongcalls and conflicts with minimal
+//     libc). libavfilter's av_opt_set_from_string() -> av_strtod() calls strtod
+//     to parse filter argument strings (e.g. "limit=0.95:attack=5:release=50").
 //   * __errno: the double libm libav* references (acos/sin/exp/log/pow/scalbn/
 //     __isinfd/...) is NOT stubbed here -- it is the real newlib math for this
 //     core, compiled from vendored newlib source with -mlongcalls into
@@ -69,14 +74,21 @@ __attribute__((weak)) void *gmtime(const void *timep) { (void)timep; return NULL
 __attribute__((weak)) long mktime(void *tm) { (void)tm; return -1; }
 __attribute__((weak)) size_t strftime(char *s, size_t max, const char *fmt, const void *tm)
 { (void)fmt; (void)tm; if (max) s[0] = '\0'; return 0; }
+/*
+ * Zephyr's CONFIG_MINIMAL_LIBC omits strtod/strtof (only strtol/strtoul are
+ * provided in zephyr/lib/libc/minimal/source/stdlib/), and the SDK's prebuilt
+ * libc.a cannot be linked into a -nostdlib / --no-relax firmware image.
+ * libavfilter's option parser (av_strtod) requires strtod to parse filter
+ * parameter strings such as "nr=28:nf=-20" and "limit=0.95:attack=5".
+ */
 __attribute__((weak)) double strtod(const char *nptr, char **endptr)
 {
 	const char *s = nptr;
 	double val = 0.0;
 	double sign = 1.0;
-	double frac = 0.0;
-	double div = 1.0;
 	int has_digits = 0;
+	int frac_exp = 0;
+	int exp_val = 0;
 
 	while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r')
 		s++;
@@ -94,7 +106,7 @@ __attribute__((weak)) double strtod(const char *nptr, char **endptr)
 		s += 3;
 		if (endptr)
 			*endptr = (char *)s;
-		return sign * (1.0 / 0.0);
+		return sign * __builtin_inf();
 	}
 	if ((s[0] == 'n' || s[0] == 'N') &&
 	    (s[1] == 'a' || s[1] == 'A') &&
@@ -102,12 +114,15 @@ __attribute__((weak)) double strtod(const char *nptr, char **endptr)
 		s += 3;
 		if (endptr)
 			*endptr = (char *)s;
-		return 0.0 / 0.0;
+		return __builtin_nan("");
 	}
 
 	while (*s >= '0' && *s <= '9') {
 		has_digits = 1;
-		val = val * 10.0 + (double)(*s - '0');
+		if (val < 1e18)
+			val = val * 10.0 + (double)(*s - '0');
+		else
+			frac_exp++;
 		s++;
 	}
 
@@ -115,20 +130,24 @@ __attribute__((weak)) double strtod(const char *nptr, char **endptr)
 		s++;
 		while (*s >= '0' && *s <= '9') {
 			has_digits = 1;
-			div *= 10.0;
-			frac = frac * 10.0 + (double)(*s - '0');
+			if (val < 1e18) {
+				val = val * 10.0 + (double)(*s - '0');
+				frac_exp--;
+			}
 			s++;
 		}
-		val += frac / div;
 	}
 
-	if (has_digits && (*s == 'e' || *s == 'E')) {
+	if (!has_digits) {
+		if (endptr)
+			*endptr = (char *)nptr;
+		return 0.0;
+	}
+
+	if (*s == 'e' || *s == 'E') {
 		const char *es = s + 1;
 		int exp_sign = 1;
-		int exp_val = 0;
 		int exp_digits = 0;
-		double p = 1.0;
-		int i;
 
 		if (*es == '-') {
 			exp_sign = -1;
@@ -138,24 +157,44 @@ __attribute__((weak)) double strtod(const char *nptr, char **endptr)
 		}
 		while (*es >= '0' && *es <= '9') {
 			exp_digits = 1;
-			exp_val = exp_val * 10 + (*es - '0');
+			if (exp_val < 10000)
+				exp_val = exp_val * 10 + (*es - '0');
 			es++;
 		}
 		if (exp_digits) {
-			for (i = 0; i < exp_val; i++)
-				p *= 10.0;
-			if (exp_sign < 0)
-				val /= p;
-			else
-				val *= p;
+			exp_val *= exp_sign;
 			s = es;
+		} else {
+			exp_val = 0;
 		}
 	}
 
-	if (!has_digits) {
-		if (endptr)
-			*endptr = (char *)nptr;
-		return 0.0;
+	exp_val += frac_exp;
+	if (val != 0.0) {
+		while (exp_val >= 8) {
+			val *= 1e8;
+			if (val == __builtin_inf())
+				break;
+			exp_val -= 8;
+		}
+		while (exp_val > 0) {
+			val *= 10.0;
+			if (val == __builtin_inf())
+				break;
+			exp_val--;
+		}
+		while (exp_val <= -8) {
+			val *= 1e-8;
+			if (val == 0.0)
+				break;
+			exp_val += 8;
+		}
+		while (exp_val < 0) {
+			val *= 0.1;
+			if (val == 0.0)
+				break;
+			exp_val++;
+		}
 	}
 
 	if (endptr)

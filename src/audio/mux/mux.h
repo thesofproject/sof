@@ -16,7 +16,6 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/common.h>
-#include <sof/platform.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
 #include <sof/lib/uuid.h>
@@ -41,7 +40,7 @@ struct cir_buf_sink;
 #endif
 #define BASE_CFG_QUEUED_ID 0
 /** guard against invalid amount of streams defined */
-STATIC_ASSERT(MUX_MAX_STREAMS < PLATFORM_MAX_STREAMS,
+STATIC_ASSERT(MUX_MAX_STREAMS < CONFIG_PLATFORM_MAX_STREAMS,
 	      unsupported_amount_of_streams_for_mux);
 
 struct mux_copy_elem {
@@ -58,15 +57,15 @@ struct mux_copy_elem {
 
 struct mux_look_up {
 	uint32_t num_elems;
-	struct mux_copy_elem copy_elem[PLATFORM_MAX_CHANNELS];
+	struct mux_copy_elem copy_elem[CONFIG_PLATFORM_MAX_CHANNELS];
 };
 
 struct mux_stream_data {
 	uint32_t pipeline_id;
 	uint8_t num_channels_deprecated;	/* deprecated in ABI 3.15 */
-	uint8_t mask[PLATFORM_MAX_CHANNELS];
+	uint8_t mask[CONFIG_PLATFORM_MAX_CHANNELS];
 
-	uint8_t reserved1[8 - PLATFORM_MAX_CHANNELS]; // padding for extra channels
+	uint8_t reserved1[8 - CONFIG_PLATFORM_MAX_CHANNELS]; // padding for extra channels
 	uint8_t reserved2[3]; // padding to ensure proper alignment of following instances
 } __attribute__((packed, aligned(4)));
 

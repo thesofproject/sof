@@ -14,7 +14,6 @@
 #ifndef __SOF_AUDIO_ARIA_H__
 #define __SOF_AUDIO_ARIA_H__
 
-#include <sof/audio/component_ext.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/compiler_attributes.h>
 #include <rtos/bit.h>

@@ -12,6 +12,7 @@
 #include <ipc/control.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/mailbox.h>
 
 LOG_MODULE_REGISTER(data_blob, CONFIG_SOF_LOG_LEVEL);
@@ -131,10 +132,12 @@ bool comp_is_current_data_blob_valid(struct comp_data_blob_handler
 }
 EXPORT_SYMBOL(comp_is_current_data_blob_valid);
 
-int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
-			uint32_t size, const void *init_data)
+__cold int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
+			       uint32_t size, const void *init_data)
 {
 	int ret;
+
+	assert_can_be_cold();
 
 	assert(blob_handler);
 
@@ -169,9 +172,9 @@ int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
 }
 EXPORT_SYMBOL(comp_init_data_blob);
 
-int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
-		       enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-		       const uint8_t *fragment_in, size_t fragment_size)
+__cold int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
+			      enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			      const uint8_t *fragment_in, size_t fragment_size)
 {
 #if CONFIG_IPC_MAJOR_3
 	struct sof_ipc_ctrl_data *cdata	= (struct sof_ipc_ctrl_data *)fragment_in;
@@ -180,6 +183,8 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 	const uint8_t *fragment = fragment_in;
 #endif
 	int ret;
+
+	assert_can_be_cold();
 
 	if (!blob_handler)
 		return -EINVAL;
@@ -316,14 +321,16 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 	return 0;
 }
 
-int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
-			    bool first_block,
-			    bool last_block,
-			    uint32_t data_offset,
-			    const char *data)
+__cold int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
+				   bool first_block,
+				   bool last_block,
+				   uint32_t data_offset,
+				   const char *data)
 {
 	int ret;
 	int valid_data_size;
+
+	assert_can_be_cold();
 
 	assert(blob_handler);
 
@@ -460,10 +467,12 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 }
 EXPORT_SYMBOL(comp_data_blob_set);
 
-int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
-			   struct sof_ipc_ctrl_data *cdata)
+__cold int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
+				  struct sof_ipc_ctrl_data *cdata)
 {
 	int ret = 0;
+
+	assert_can_be_cold();
 
 	assert(blob_handler);
 
@@ -603,10 +612,12 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 	return 0;
 }
 
-int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
-			   struct sof_ipc_ctrl_data *cdata, int size)
+__cold int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
+				  struct sof_ipc_ctrl_data *cdata, int size)
 {
 	int ret = 0;
+
+	assert_can_be_cold();
 
 	assert(blob_handler);
 
@@ -668,8 +679,10 @@ int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
 }
 EXPORT_SYMBOL(comp_data_blob_get_cmd);
 
-static void *default_alloc(struct comp_data_blob_handler *handler, size_t size)
+__cold static void *default_alloc(struct comp_data_blob_handler *handler, size_t size)
 {
+	assert_can_be_cold();
+
 	if (handler->dev->mod)
 		return sof_ctx_alloc(handler->dev->mod->priv.resources.alloc,
 				     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_LARGE_BUFFER, size, 0);
@@ -685,12 +698,14 @@ static void default_free(struct comp_data_blob_handler *handler, void *buf)
 		sof_heap_free(sof_sys_user_heap_get(), buf);
 }
 
-struct comp_data_blob_handler *
+__cold struct comp_data_blob_handler *
 comp_data_blob_handler_new_ext(struct comp_dev *dev, bool single_blob,
 			       void *(*alloc)(struct comp_data_blob_handler *, size_t),
 			       void (*free)(struct comp_data_blob_handler *, void *))
 {
 	struct comp_data_blob_handler *handler;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "entry");
 
@@ -713,8 +728,10 @@ comp_data_blob_handler_new_ext(struct comp_dev *dev, bool single_blob,
 }
 EXPORT_SYMBOL(comp_data_blob_handler_new_ext);
 
-void comp_data_blob_handler_free(struct comp_data_blob_handler *blob_handler)
+__cold void comp_data_blob_handler_free(struct comp_data_blob_handler *blob_handler)
 {
+	assert_can_be_cold();
+
 	if (!blob_handler)
 		return;
 

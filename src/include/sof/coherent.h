@@ -20,7 +20,7 @@
 
 #include <rtos/spinlock.h>
 #include <sof/list.h>
-#include <sof/lib/memory.h>
+#include <rtos/cache.h>
 #include <sof/lib/cpu.h>
 
 /** \addtogroup memory_api

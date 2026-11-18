@@ -28,7 +28,6 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
-#include <sof/platform.h>
 #include <stddef.h>
 
 enum ipc4_mixin_config_param {

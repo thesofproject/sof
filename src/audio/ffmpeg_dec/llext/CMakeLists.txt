@@ -5,6 +5,14 @@ if(CONFIG_COMP_FFMPEG_DEC_STUB)
 	# Dependency-free build: SOF glue + passthrough stub backend, no libavcodec.
 	sof_llext_build("ffmpeg_dec"
 		SOURCES ../ffmpeg_dec.c
+			../ffmpeg_dec-flac.c
+			../ffmpeg_dec-mp3.c
+			../ffmpeg_dec-aac.c
+			../ffmpeg_dec-opus.c
+			../ffmpeg_dec-alac.c
+			../ffmpeg_dec-sbc.c
+			../ffmpeg_dec-g722.c
+			../ffmpeg_dec-aptx.c
 			../ffmpeg_dec-stub.c
 		LIB openmodules
 	)
@@ -20,8 +28,33 @@ else()
 		../ffmpeg_dec.c
 		../ffmpeg_dec-ffmpeg.c
 		../ffmpeg_dec-convert.c
+		../ffmpeg-convert-hifi.c
 		../ffmpeg_dec-shims.c
 		../ffmpeg_dec-alloc.c)
+	if(CONFIG_FFMPEG_DEC_FLAC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-flac.c)
+	endif()
+	if(CONFIG_FFMPEG_DEC_MP3)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-mp3.c)
+	endif()
+	if(CONFIG_FFMPEG_DEC_AAC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-aac.c)
+	endif()
+	if(CONFIG_FFMPEG_DEC_OPUS)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-opus.c)
+	endif()
+	if(CONFIG_FFMPEG_DEC_ALAC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-alac.c)
+	endif()
+	if(CONFIG_FFMPEG_DEC_SBC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-sbc.c)
+	endif()
+	if(CONFIG_FFMPEG_DEC_G722)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-g722.c)
+	endif()
+	if(CONFIG_FFMPEG_DEC_APTX)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-aptx.c)
+	endif()
 	# fastmathf provides the single-precision libm the codecs need AND sofm_log2f
 	# used by the shims' log10(); always built for the real (non-stub) backend.
 	list(APPEND ffmpeg_dec_srcs ../fastmathf.c)
@@ -30,34 +63,60 @@ else()
 	# libavfilter into the link; it must precede the libs it depends on.
 	set(ffmpeg_dec_libs avcodec swresample avutil)
 	set(ffmpeg_dec_libpaths "${FFMPEG_INSTALL_DIR}/lib")
-	# Real libm (newlib double math) so lossy codecs (MP3/AAC/Opus) decode correctly
-	get_filename_component(_ff_libm_dir "${FFMPEG_TARGET_LIBM}" DIRECTORY)
-	list(APPEND ffmpeg_dec_libpaths "${_ff_libm_dir}")
-	list(APPEND ffmpeg_dec_libs newlib_m)
+	if(CONFIG_FFMPEG_FILTER)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-filter.c)
+	endif()
 	if(CONFIG_FFMPEG_BUILD_AVFILTER)
-		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-filter.c)
 		set(ffmpeg_dec_libs avfilter ${ffmpeg_dec_libs})
 	endif()
 
-	# Encode mode: PCM->compressed backend + libshine (linked AFTER libavcodec,
-	# which references it), from its own cross-build install dir.
-	if(CONFIG_FFMPEG_DEC_ENCODE_MODE)
-		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-encode.c)
+	# Encode support: PCM->compressed backend + libshine / vo-aacenc archives
+	# (linked AFTER libavcodec, which references libshine).
+	if(CONFIG_FFMPEG_ENC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-encode.c)
 	endif()
 	if(CONFIG_FFMPEG_ENC_MP3)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-mp3.c)
 		list(APPEND ffmpeg_dec_libs shine)
 		list(APPEND ffmpeg_dec_libpaths "${SHINE_INSTALL}/lib")
 	endif()
 	if(CONFIG_FFMPEG_ENC_AAC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-aac.c)
 		list(APPEND ffmpeg_dec_libs vo-aacenc)
 		list(APPEND ffmpeg_dec_libpaths "${VO_AACENC_INSTALL}/lib")
 	endif()
+	if(CONFIG_FFMPEG_ENC_FLAC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-flac.c)
+	endif()
+	if(CONFIG_FFMPEG_ENC_ALAC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-alac.c)
+	endif()
+	if(CONFIG_FFMPEG_ENC_SBC)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-sbc.c)
+	endif()
+	if(CONFIG_FFMPEG_ENC_G722)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-g722.c)
+	endif()
+	if(CONFIG_FFMPEG_ENC_APTX)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-aptx.c)
+	endif()
+
+	# Real libm (newlib double math) LAST so libav*/filter references resolve against it
+	get_filename_component(_ff_libm_dir "${FFMPEG_TARGET_LIBM}" DIRECTORY)
+	list(APPEND ffmpeg_dec_libpaths "${_ff_libm_dir}")
+	list(APPEND ffmpeg_dec_libs newlib_m)
 
 	# Cold split: module code must also use -mlongcalls to reach FFmpeg code
 	# that now lives in the far (DRAM) .cold region.
 	set(ffmpeg_dec_cflags "")
 	if(CONFIG_FFMPEG_DEC_COLD_SPLIT)
-		set(ffmpeg_dec_cflags -mlongcalls)
+		list(APPEND ffmpeg_dec_cflags -mlongcalls)
+	endif()
+	# Disable scalar hardware FP0 on Clang targets (CONFIG_FPU=n) so float
+	# conversions and strtod/strtof emit soft-float libcalls instead of
+	# faulting FP0 instructions.
+	if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+		list(APPEND ffmpeg_dec_cflags "SHELL:-Xclang -target-feature -Xclang -fp")
 	endif()
 
 	set(ffmpeg_dec_includes "${FFMPEG_INSTALL_DIR}/include")
@@ -75,8 +134,8 @@ else()
 	)
 
 	# The archives must be built before the module compiles/links against them.
-	add_dependencies(ffmpeg_dec_llext_lib ffmpeg_ext newlib_m)
-	add_dependencies(ffmpeg_dec ffmpeg_ext newlib_m)
+	add_dependencies(ffmpeg_dec_llext_lib ffmpeg_ext newlib_m ${_ff_shine_dep} ${_ff_vo_aacenc_dep})
+	add_dependencies(ffmpeg_dec ffmpeg_ext newlib_m ${_ff_shine_dep} ${_ff_vo_aacenc_dep})
 
 	# Cold split: place the (renamed) FFmpeg .cold code so the loader relocates
 	# it to DRAM. See ffmpeg_cold.ld for why INSERT AFTER .bss.

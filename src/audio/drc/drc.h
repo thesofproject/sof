@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/buffer.h>
-#include <sof/platform.h>
 
 #include "drc_user.h"
 
@@ -53,7 +52,7 @@ struct drc_state {
 	int32_t compressor_gain;  /* Q2.30 */
 
 	/* Lookahead section. */
-	int8_t *pre_delay_buffers[PLATFORM_MAX_CHANNELS];
+	int8_t *pre_delay_buffers[CONFIG_PLATFORM_MAX_CHANNELS];
 	int32_t last_pre_delay_frames; /* integer */
 	int32_t pre_delay_read_index;  /* integer */
 	int32_t pre_delay_write_index; /* integer */
@@ -70,7 +69,7 @@ struct drc_state {
 typedef void (*drc_func)(struct processing_module *mod,
 			 const struct cir_buf_source *source,
 			 struct cir_buf_sink *sink,
-			 uint32_t frames);
+			 size_t frames);
 
 /* DRC component private data */
 struct drc_comp_data {
@@ -81,7 +80,7 @@ struct drc_comp_data {
 	bool enabled;                       /**< control processing via blob and switch */
 	bool enable_switch;                 /**< enable switch state */
 	enum sof_ipc_frame source_format;   /**< source frame format */
-	int channels;                       /**< number of channels */
+	unsigned int channels;              /**< number of channels */
 	drc_func drc_func;                  /**< processing function */
 };
 
@@ -95,7 +94,7 @@ extern const size_t drc_proc_fncount;
 
 void drc_default_pass(struct processing_module *mod,
 		      const struct cir_buf_source *source,
-		      struct cir_buf_sink *sink, uint32_t frames);
+		      struct cir_buf_sink *sink, size_t frames);
 /**
  * \brief Returns DRC processing function.
  */

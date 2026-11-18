@@ -188,6 +188,9 @@ endif # Cadence
 		  API definition together with pre-compiled library is shared by Dolby.
 		  If library is not provided, COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK must be true,
 		  then the input will be copied to the output.
+		  The DAX module is not user-mode safe and requires a kernel-mode DP
+		  thread: building it with SOF_USERSPACE_APPLICATION
+		  is rejected with a compile-time error.
 
 	config COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK
 		bool "Dolby DAX audio processing component mock"
@@ -223,7 +226,7 @@ endif # Cadence
 	config INTEL_MODULES
 	bool "Intel modules"
 	depends on LIBRARY_MANAGER
-	select KPB_NOTIFIER if COMP_KPB
+	select KPB_NOTIFIER if COMP_KPB && !KPB_CLI_Q
 	help
 		Select for a Intel modules API implementation.
 		This will cause module adapter component to include IADK module

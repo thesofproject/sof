@@ -50,11 +50,24 @@ config SOF_USERSPACE_LL
 	select SOF_USERSPACE_INTERFACE_ALLOC
 	select SOF_USERSPACE_INTERFACE_DMA
 	select SOF_USERSPACE_INTERFACE_VREGION if SOF_VREGIONS
+	select UAOL_USERSPACE if UAOL_INTEL_ADSP
 	help
 	  Run Low-Latency (LL) pipelines in userspace threads. This adds
 	  memory protection between operating system resources and
 	  audio application threads.
           If unsure, select "N".
+
+config SOF_USERSPACE_SYSCALL_CALLER_CHECK
+	bool "Restrict SOF system calls to the threads that need them"
+	depends on SOF_USERSPACE_LL
+	default y
+	help
+	  Zephyr allows any user thread to invoke any system call. With
+	  this option, the validators of SOF system calls that are only
+	  needed by the LL scheduler and IPC user threads kill any other
+	  calling user thread, such as a DP module thread. System calls
+	  needed to implement the module interface stay available to all
+	  user threads. Disable only to debug a suspected false positive.
 
 config SOF_ZEPHYR_HEAP_CACHED
 	bool "Cached Zephyr heap for SOF memory non-shared zones"
@@ -153,15 +166,52 @@ config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
 	 shared between instances of the same module.
 
 config SOF_ZEPHYR_SYS_USER_HEAP_SIZE
-	hex "Size of the shared LL user-space heap"
+	hex "Size of the LL user-space memory region"
 	default 0x20000
 	depends on SOF_USERSPACE_LL
 	help
-	 The size of the shared heap used by the low-latency (LL) scheduler
-	 user-space thread. This heap is shared across all pipelines running
+	 The size of the memory region of the low-latency (LL) scheduler
+	 user-space threads: the shared LL user heap and the kernel-managed
+	 areas SOF_ZEPHYR_LL_KAREA_RW_SIZE and SOF_ZEPHYR_LL_KAREA_RO_SIZE.
+	 The heap is shared across all pipelines running
 	 on the LL thread and must be large enough to hold all host DMA
 	 buffers, chain DMA data, SG elements, and module adapter buffers
 	 for all simultaneously active pipelines.
+
+config SOF_ZEPHYR_LL_KAREA_RW_SIZE
+	hex "Size of the kernel-managed read-write area for LL user threads"
+	default 0x4000
+	depends on SOF_USERSPACE_LL
+	help
+	 Size of the area in the LL user memory region from which kernel
+	 code allocates objects that the LL and IPC user threads read and
+	 write. The kernel keeps the allocator state for this area in its
+	 own memory, so user threads cannot affect kernel allocations.
+	 The area is taken from SOF_ZEPHYR_SYS_USER_HEAP_SIZE. Must be a
+	 multiple of the MMU page size.
+
+config SOF_ZEPHYR_LL_KAREA_RO_SIZE
+	hex "Size of the kernel-managed read-only area for LL user threads"
+	default 0x1000
+	depends on SOF_USERSPACE_LL
+	help
+	 Size of the area in the LL user memory region from which kernel
+	 code allocates objects that the LL and IPC user threads may only
+	 read. The area is mapped read-only into the LL memory domain, so
+	 kernel code running in that domain, for example in a system call,
+	 cannot write it either. The area is taken from
+	 SOF_ZEPHYR_SYS_USER_HEAP_SIZE. Must be a multiple of the MMU page
+	 size.
+
+config SOF_ZEPHYR_LL_HEAP_KERNEL_TRACE
+	bool "Log LL user heap allocations made by kernel threads"
+	depends on SOF_USERSPACE_LL
+	help
+	 Log every allocation from and free to the LL user heap that a
+	 kernel thread makes, with its size and caller address. Kernel
+	 code is being moved off this heap, whose metadata user threads
+	 can write. Use this to find the remaining callers. Calls made by
+	 user threads, including through system calls, are not logged.
 
 config SOF_USERSPACE_PROXY
 	bool "Use userspace proxy to support userspace modules"
@@ -347,6 +397,27 @@ config STACK_SIZE_IPC_TX
 	default 2048
 	help
 	  IPC sender work-queue thread stack size. Keep a power of 2.
+
+config SOF_IPC_USER_MSG_SLOTS
+	int "Number of IPC messages from user threads that can be queued"
+	default 16
+	depends on USERSPACE
+	help
+	  IPC messages sent by user threads, for example module
+	  notifications, are copied to kernel-owned slots before they
+	  are queued for sending to the host. A message sent while all
+	  slots are in use is dropped.
+
+config SOF_IPC_USER_MSG_MAX_SIZE
+	int "Maximum payload size of an IPC message from a user thread"
+	default 384 if IPC_MAJOR_3
+	default 64
+	depends on USERSPACE
+	help
+	  Maximum payload size in bytes of an IPC message sent by a
+	  user thread. Each of the SOF_IPC_USER_MSG_SLOTS slots reserves
+	  this much kernel memory. Sending a larger message faults the
+	  sending thread.
 
 config SOF_IPC_USER_THREAD_STACK_SIZE
 	int "IPC user thread stack size"

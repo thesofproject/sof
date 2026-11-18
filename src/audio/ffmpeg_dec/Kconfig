@@ -51,11 +51,164 @@ config FFMPEG_DEC_MP3
 	  MPEG-1/2 Layer III decoder. Enables --enable-decoder=mp3 and the
 	  mpegaudio parser in the libavcodec build. Uses the float math layer.
 
-# Selected automatically when a decoder that needs IEEE float math is
+config FFMPEG_DEC_ALAC
+	bool "ALAC decoder"
+	help
+	  Apple Lossless Audio Codec (ALAC) decoder. Pure 16/24-bit integer
+	  lossless decoder with no floating-point math dependency. Enables
+	  --enable-decoder=alac in the libavcodec build for compress playback
+	  streams requesting SND_AUDIOCODEC_ALAC.
+
+config FFMPEG_DEC_SBC
+	bool "Bluetooth SBC / mSBC decoder"
+	help
+	  Bluetooth A2DP Subband Codec (SBC) and HFP Wideband Speech (mSBC)
+	  decoder. Pure integer synthesis filterbank with no floating-point
+	  math dependency. Enables --enable-decoder=sbc --enable-parser=sbc
+	  in the libavcodec build.
+
+config FFMPEG_DEC_G722
+	bool "ITU-T G.722 ADPCM wideband speech decoder"
+	help
+	  ITU-T G.722 7 kHz wideband speech ADPCM decoder (64/56/48 kbps).
+	  Pure integer QMF + 2-band ADPCM decoder with no floating-point math
+	  dependency. Enables --enable-decoder=adpcm_g722 in the libavcodec
+	  build for compress playback streams requesting SND_AUDIOCODEC_G722.
+
+config FFMPEG_DEC_APTX
+	bool "Bluetooth aptX decoder"
+	help
+	  Bluetooth aptX audio decoder. Pure integer 4-band QMF + ADPCM
+	  decoder with no floating-point math dependency. Enables
+	  --enable-decoder=aptx in the libavcodec build for compress playback
+	  streams requesting SND_AUDIOCODEC_APTX.
+
+comment "FFmpeg encoders to build (footprint scales with selection)"
+
+config FFMPEG_ENC_MP3
+	bool "MP3 encoder (libshine, fixed-point)"
+	help
+	  MPEG-1 Layer III encoder via libshine, a small fixed-point encoder
+	  (west-pinned; FFmpeg has no native MP3 encoder). Cross-builds libshine
+	  and enables --enable-libshine --enable-encoder=libshine. Fixed-point, so
+	  no float math dependency. Selected at runtime for compress capture streams
+	  requesting SND_AUDIOCODEC_MP3.
+
+config FFMPEG_ENC_AAC
+	bool "AAC-LC encoder (vo-aacenc, fixed-point)"
+	help
+	  MPEG-4 AAC Low Complexity encoder via vo-aacenc, a lightweight 32-bit
+	  fixed-point integer encoder (west-pinned). Pure integer fixed-point, no
+	  float math dependency. Output is a standard ADTS AAC elementary stream.
+	  Selected at runtime for compress capture streams requesting
+	  SND_AUDIOCODEC_AAC.
+
+config FFMPEG_ENC_FLAC
+	bool "FLAC encoder (native libavcodec, fixed LPC)"
+	help
+	  Lossless FLAC encoder via native libavcodec flac encoder configured
+	  with fixed integer LPC predictors (FF_LPC_TYPE_FIXED, compression_level 1).
+	  Emits a self-contained native .flac stream ("fLaC" + STREAMINFO + frames).
+	  Selected at runtime for compress capture streams requesting
+	  SND_AUDIOCODEC_FLAC.
+
+config FFMPEG_ENC_ALAC
+	bool "ALAC encoder (native libavcodec, fixed LPC)"
+	help
+	  Apple Lossless Audio Codec (ALAC) encoder via native libavcodec alac
+	  encoder configured with fixed integer LPC prediction (compression_level 1).
+	  Selected at runtime for compress capture streams requesting
+	  SND_AUDIOCODEC_ALAC.
+
+config FFMPEG_ENC_SBC
+	bool "Bluetooth SBC / mSBC encoder (native libavcodec)"
+	help
+	  Bluetooth A2DP Subband Codec (SBC) and HFP Wideband Speech (mSBC)
+	  encoder via native libavcodec sbc encoder. Pure integer analysis
+	  filterbank with no floating-point math dependency. Selected at
+	  runtime for compress capture streams requesting SND_AUDIOCODEC_SBC.
+
+config FFMPEG_ENC_G722
+	bool "ITU-T G.722 ADPCM wideband speech encoder (native libavcodec)"
+	help
+	  ITU-T G.722 7 kHz wideband speech ADPCM encoder (64 kbps) via
+	  native libavcodec g722 encoder. Pure integer QMF + 2-band ADPCM
+	  encoder with no floating-point math dependency. Selected at runtime
+	  for compress capture streams requesting SND_AUDIOCODEC_G722.
+
+config FFMPEG_ENC_APTX
+	bool "Bluetooth aptX encoder (native libavcodec)"
+	help
+	  Bluetooth aptX audio encoder via native libavcodec aptx encoder.
+	  Pure integer 4-band QMF + ADPCM encoder with no floating-point math
+	  dependency. Selected at runtime for compress capture streams
+	  requesting SND_AUDIOCODEC_APTX.
+
+# Selected automatically when any encoder is enabled. Gates compilation of the
+# runtime encode path (ffmpeg-encode.c).
+config FFMPEG_ENC
+	bool
+	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC || FFMPEG_ENC_FLAC || FFMPEG_ENC_ALAC || FFMPEG_ENC_SBC || FFMPEG_ENC_G722 || FFMPEG_ENC_APTX
+
+comment "FFmpeg audio filters to build (libavfilter)"
+	depends on IPC_MAJOR_4
+
+config FFMPEG_FILTER_AFFTDN
+	bool "FFT noise reduction (afftdn)"
+	depends on IPC_MAJOR_4
+	help
+	  FFT-based audio denoiser (libavfilter af_afftdn). Builds libavfilter
+	  with abuffer, abuffersink, aformat and afftdn, plus the avfilter-graph
+	  runtime path (ffmpeg-filter.c).
+
+config FFMPEG_FILTER_ALIMITER
+	bool "Lookahead peak limiter (alimiter)"
+	depends on IPC_MAJOR_4
+	help
+	  Lookahead brickwall peak limiter (libavfilter af_alimiter). Prevents
+	  digital clipping and provides speaker protection. Builds libavfilter
+	  with abuffer, abuffersink, aformat and alimiter, plus the avfilter-graph
+	  runtime path (ffmpeg-filter.c).
+
+# Turns on libavfilter in the FFmpeg cross-build when any filter is selected.
+config FFMPEG_BUILD_AVFILTER
+	bool
+	default y if FFMPEG_FILTER_AFFTDN || FFMPEG_FILTER_ALIMITER
+
+# Gates compilation of the runtime avfilter-graph path (ffmpeg-filter.c).
+config FFMPEG_FILTER
+	bool
+	default y if FFMPEG_BUILD_AVFILTER
+
+choice
+	prompt "Default FFmpeg audio filter"
+	depends on FFMPEG_FILTER
+	default FFMPEG_FILTER_DEFAULT_AFFTDN if FFMPEG_FILTER_AFFTDN
+	default FFMPEG_FILTER_DEFAULT_ALIMITER if FFMPEG_FILTER_ALIMITER
+
+config FFMPEG_FILTER_DEFAULT_AFFTDN
+	bool "FFT noise reduction (afftdn)"
+	depends on FFMPEG_FILTER_AFFTDN
+	help
+	  Select afftdn (FFT noise reduction) as the default libavfilter audio
+	  filter when no explicit filter profile or runtime configuration is
+	  supplied.
+
+config FFMPEG_FILTER_DEFAULT_ALIMITER
+	bool "Lookahead peak limiter (alimiter)"
+	depends on FFMPEG_FILTER_ALIMITER
+	help
+	  Select alimiter (lookahead brickwall peak limiter) as the default
+	  libavfilter audio filter when no explicit filter profile or runtime
+	  configuration is supplied.
+
+endchoice
+
+# Selected automatically when a decoder or filter that needs IEEE float math is
 # built. Gates compilation of the fast single-precision libm (fastmathf.c).
 config FFMPEG_DEC_FLOAT_MATH
 	bool
-	default y if FFMPEG_DEC_AAC || FFMPEG_DEC_OPUS || FFMPEG_DEC_MP3
+	default y if FFMPEG_DEC_AAC || FFMPEG_DEC_OPUS || FFMPEG_DEC_MP3 || FFMPEG_BUILD_AVFILTER
 
 config FFMPEG_DEC_COLD_SPLIT
 	bool "Place cold FFmpeg code (av_cold init/setup) in DRAM [EXPERIMENTAL]"

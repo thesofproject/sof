@@ -14,12 +14,12 @@
 
 #include <rtos/symbol.h>
 
-int iir_delay_size_df1(struct sof_eq_iir_header *config)
+size_t iir_delay_size_df1(struct sof_eq_iir_header *config)
 {
 	uint32_t n = config->num_sections; /* One section uses four unit delays */
 
 	if (!n || n > SOF_EQ_IIR_BIQUADS_MAX)
-		return -EINVAL;
+		return 0;
 
 	/* The filter runs num_sections_in_series biquads per parallel
 	 * branch, so the sections must split evenly into branches.
@@ -27,7 +27,7 @@ int iir_delay_size_df1(struct sof_eq_iir_header *config)
 	if (!config->num_sections_in_series ||
 	    config->num_sections_in_series > n ||
 	    n % config->num_sections_in_series)
-		return -EINVAL;
+		return 0;
 
 	return 4 * n * sizeof(int32_t);
 }

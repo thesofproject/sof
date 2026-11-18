@@ -10,9 +10,12 @@
 #include <rtos/interrupt.h>
 #include <sof/drivers/interrupt-map.h>
 #include <sof/schedule/schedule.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/platform.h>
 #include <sof/audio/pipeline.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <sof/schedule/ll_schedule_domain.h> /* for zephyr_ll_user_heap() */
 #include <sof/trace/trace.h>
 #include <rtos/symbol.h>
@@ -20,8 +23,11 @@
 
 #define SHARED_BUFFER_HEAP_MEM_SIZE	0
 
-#if CONFIG_L3_HEAP && CONFIG_MMU
+#if CONFIG_L3_HEAP
+#include <rimage/sof/user/manifest.h>
+#if CONFIG_MMU
 #include <kernel_arch_interface.h>
+#endif
 #endif
 
 #if CONFIG_VIRTUAL_HEAP
@@ -149,6 +155,37 @@ extern char _end[], _heap_sentry[];
 
 static struct k_heap sof_heap;
 
+#if !defined(CONFIG_SOF_NATIVE_SIM_HOST_HEAP) && defined(CONFIG_SOF_TELEMETRY_MEMORY)
+#define TEL_HEAP_SYS_IDX	0
+#define TEL_HEAP_SHARED_IDX	1
+#define TEL_HEAP_LL_USER_IDX	2
+#define TEL_HEAP_L3_IMR_IDX	3
+#define TEL_HEAP_OTHER_IDX	4
+
+static uint16_t heap_fail_counts[SOF_TEL_MAX_HEAPS];
+
+void telemetry_notify_mem_alloc_fail(uint16_t heap_type)
+{
+	switch (heap_type) {
+	case SOF_TEL_HEAP_SYS:
+		heap_fail_counts[TEL_HEAP_SYS_IDX]++;
+		break;
+	case SOF_TEL_HEAP_SHARED:
+		heap_fail_counts[TEL_HEAP_SHARED_IDX]++;
+		break;
+	case SOF_TEL_HEAP_LL_USER:
+		heap_fail_counts[TEL_HEAP_LL_USER_IDX]++;
+		break;
+	case SOF_TEL_HEAP_L3_IMR:
+		heap_fail_counts[TEL_HEAP_L3_IMR_IDX]++;
+		break;
+	default:
+		heap_fail_counts[TEL_HEAP_OTHER_IDX]++;
+		break;
+	}
+}
+#endif
+
 #if !defined(CONFIG_SOF_NATIVE_SIM_HOST_HEAP)
 /**
  * Checks whether pointer is from a given heap memory.
@@ -198,36 +235,40 @@ static struct k_heap l3_heap;
 static struct k_heap l3_heap_copy __imrdata;
 
 /**
- * Returns the start of L3 memory heap.
+ * Calculates the start of L3 memory heap.
  * @return Pointer to the L3 memory location which can be used for L3 heap.
+ *
+ * The firmware image stays in IMR after boot and is copied to SRAM again
+ * from there when the DSP is resumed from IMR. The heap must not overlap
+ * with the image, so start the heap after the end of the image, which is
+ * calculated from the preload page count in the firmware manifest.
  */
-static inline uintptr_t get_l3_heap_start(void)
+static uintptr_t calc_l3_heap_start(void)
 {
-	/*
-	 * TODO: parse the actual offset using:
-	 * - HfIMRIA1 register
-	 * - rom_ext_load_offset
-	 * - main_fw_load_offset
-	 * - main fw size in manifest
-	 */
-	return (uintptr_t)(ROUND_UP(IMR_L3_HEAP_BASE, L3_MEM_PAGE_SIZE));
+	const struct sof_man_fw_desc *desc =
+		sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)
+					   IMR_BOOT_LDR_MANIFEST_BASE);
+	uintptr_t image_end;
+
+	image_end = IMR_BOOT_LDR_MANIFEST_BASE +
+		desc->header.preload_page_count * HOST_PAGE_SIZE;
+
+	return ROUND_UP(image_end, L3_MEM_PAGE_SIZE);
 }
 
 /**
- * Returns the size of L3 memory heap.
+ * Calculates the size of L3 memory heap.
+ * @param start Start of L3 heap, see calc_l3_heap_start().
  * @return Size of the L3 memory region which can be used for L3 heap.
  */
-static inline size_t get_l3_heap_size(void)
+static size_t calc_l3_heap_size(uintptr_t start)
 {
-	 /*
-	  * Calculate the IMR heap size using:
-	  * - total IMR size
-	  * - IMR base address
-	  * - actual IMR heap start
-	  */
-	size_t offset = IMR_L3_HEAP_BASE - L3_MEM_BASE_ADDR;
+	uintptr_t imr_end = L3_MEM_BASE_ADDR + ace_imr_get_mem_size();
 
-	return ROUND_DOWN(ace_imr_get_mem_size() - offset, L3_MEM_PAGE_SIZE);
+	if (start >= imr_end)
+		return 0;
+
+	return ROUND_DOWN(imr_end - start, L3_MEM_PAGE_SIZE);
 }
 
 void l3_heap_save(void)
@@ -236,8 +277,8 @@ void l3_heap_save(void)
 	LOG_DBG("L3 heap copy: %p", (void *)l3_heap_copy.heap.heap);
 	dcache_writeback_region((__sparse_force void __sparse_cache *)&l3_heap_copy,
 				sizeof(l3_heap_copy));
-	dcache_writeback_region((__sparse_force void __sparse_cache *)get_l3_heap_start(),
-				get_l3_heap_size());
+	dcache_writeback_region((__sparse_force void __sparse_cache *)l3_heap.heap.init_mem,
+				l3_heap.heap.init_bytes);
 }
 
 static void *l3_heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes)
@@ -249,12 +290,22 @@ static void *l3_heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t by
 #endif
 	if (!cpu_is_primary(arch_proc_id())) {
 		tr_err(&zephyr_tr, "L3_HEAP available only for primary core!");
+		telemetry_notify_mem_alloc_fail(SOF_TEL_HEAP_L3_IMR);
+		return NULL;
+	}
+
+	/* not initialized, e.g. if no IMR space left after the image */
+	if (!h->heap.heap) {
+		telemetry_notify_mem_alloc_fail(SOF_TEL_HEAP_L3_IMR);
 		return NULL;
 	}
 
 	key = k_spin_lock(&h->lock);
 	ret = sys_heap_aligned_alloc(&h->heap, min_align, bytes);
 	k_spin_unlock(&h->lock, key);
+
+	if (!ret)
+		telemetry_notify_mem_alloc_fail(SOF_TEL_HEAP_L3_IMR);
 
 #if CONFIG_SYS_HEAP_RUNTIME_STATS && CONFIG_IPC_MAJOR_4
 	sys_heap_runtime_stats_get(&h->heap, &stats);
@@ -381,10 +432,13 @@ SYS_INIT(virtual_heap_init, POST_KERNEL, 1);
 
 #endif /* CONFIG_VIRTUAL_HEAP */
 
+#if CONFIG_SOF_FULL_ZEPHYR_APPLICATION
+/* unit-test builds get a static inline NULL stub from rtos/alloc.h */
 struct k_heap *sof_sys_heap_get(void)
 {
 	return &sof_heap;
 }
+#endif
 
 struct k_heap *sof_sys_user_heap_get(void)
 {
@@ -422,6 +476,19 @@ static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes
 	key = k_spin_lock(&h->lock);
 	ret = sys_heap_aligned_alloc(&h->heap, min_align, bytes);
 	k_spin_unlock(&h->lock, key);
+
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+	if (!ret) {
+		if (h == &sof_heap)
+			heap_fail_counts[TEL_HEAP_SYS_IDX]++;
+#if CONFIG_SOF_USERSPACE_USE_SHARED_HEAP
+		else if (h == &shared_buffer_heap)
+			heap_fail_counts[TEL_HEAP_SHARED_IDX]++;
+#endif
+		else
+			heap_fail_counts[TEL_HEAP_OTHER_IDX]++;
+	}
+#endif
 
 #if CONFIG_SYS_HEAP_RUNTIME_STATS && CONFIG_IPC_MAJOR_4
 	sys_heap_runtime_stats_get(&h->heap, &stats);
@@ -767,8 +834,41 @@ EXPORT_SYMBOL(rfree);
  * To match the fall-back SOF main heap all private heaps should also be in the
  * uncached address range.
  */
+#if CONFIG_SOF_ZEPHYR_LL_HEAP_KERNEL_TRACE
+/* Log use of the LL user heap by kernel threads, see the Kconfig help */
+static void ll_heap_kernel_trace(const char *op, struct k_heap *heap, const void *ptr,
+				 size_t bytes, const void *caller)
+{
+	struct k_thread *thread = k_current_get();
+
+	if (heap != zephyr_ll_user_heap() || (thread->base.user_options & K_USER))
+		return;
+
+	tr_warn(&zephyr_tr, "LL heap %s by kernel thread %s: %p %zu bytes, caller %p", op,
+		k_thread_name_get(thread) ? k_thread_name_get(thread) : "?", ptr, bytes, caller);
+}
+#else
+static inline void ll_heap_kernel_trace(const char *op, struct k_heap *heap, const void *ptr,
+					size_t bytes, const void *caller)
+{
+}
+#endif
+
+static void *sof_heap_alloc_impl(struct k_heap *heap, uint32_t flags, size_t bytes,
+				 size_t alignment);
+
 void *z_impl_sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 			    size_t alignment)
+{
+	void *ptr = sof_heap_alloc_impl(heap, flags, bytes, alignment);
+
+	ll_heap_kernel_trace("alloc", heap, ptr, bytes, __builtin_return_address(0));
+
+	return ptr;
+}
+
+static void *sof_heap_alloc_impl(struct k_heap *heap, uint32_t flags, size_t bytes,
+				 size_t alignment)
 {
 #if CONFIG_SOF_USERSPACE_USE_SHARED_HEAP
 	/*
@@ -810,6 +910,21 @@ void *z_impl_sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 
 void z_impl_sof_heap_free(struct k_heap *heap, void *addr)
 {
+	ll_heap_kernel_trace("free", heap, addr, 0, __builtin_return_address(0));
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * The kernel-managed LL areas are inside a kernel heap block and are
+	 * never freed: passing such memory to rfree() would corrupt the
+	 * kernel heap.
+	 */
+	if (addr && (zephyr_ll_karea_contains(ZEPHYR_LL_KAREA_RW, addr, 1) ||
+		     zephyr_ll_karea_contains(ZEPHYR_LL_KAREA_RO, addr, 1))) {
+		tr_err(&zephyr_tr, "%p is in a kernel LL area, not freed", addr);
+		return;
+	}
+#endif
+
 	if (heap && addr && is_heap_pointer(heap, addr))
 		heap_free(heap, addr);
 	else
@@ -839,6 +954,33 @@ void sof_heap_free(struct k_heap *heap, void *addr)
 #endif /* CONFIG_SOF_USERSPACE_INTERFACE_ALLOC */
 #endif /* CONFIG_SOF_NATIVE_SIM_HOST_HEAP */
 
+#if CONFIG_L3_HEAP
+static void l3_heap_init(void)
+{
+	uintptr_t start = calc_l3_heap_start();
+	size_t l3_heap_size = calc_l3_heap_size(start);
+	void *l3_heap_start = UINT_TO_POINTER(start);
+
+	/* no IMR space left after the image, L3 allocations will fail */
+	if (!l3_heap_size)
+		return;
+
+#if CONFIG_MMU
+	void *cached_ptr = sys_cache_cached_ptr_get(l3_heap_start);
+	uintptr_t va = POINTER_TO_UINT(cached_ptr);
+
+	arch_mem_map(l3_heap_start, va, l3_heap_size, K_MEM_PERM_RW | K_MEM_CACHE_WB);
+#endif
+	if (l3_heap_copy.heap.heap) {
+		l3_heap = l3_heap_copy;
+	} else {
+		l3_heap.heap.init_mem = l3_heap_start;
+		l3_heap.heap.init_bytes = l3_heap_size;
+		sys_heap_init(&l3_heap.heap, l3_heap_start, l3_heap_size);
+	}
+}
+#endif
+
 static int heap_init(void)
 {
 	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE - SHARED_BUFFER_HEAP_MEM_SIZE);
@@ -850,23 +992,8 @@ static int heap_init(void)
 #endif
 
 #if CONFIG_L3_HEAP
-	if (ace_imr_used()) {
-		void *l3_heap_start = UINT_TO_POINTER(get_l3_heap_start());
-		size_t l3_heap_size = get_l3_heap_size();
-#if CONFIG_MMU
-		void *cached_ptr = sys_cache_cached_ptr_get(l3_heap_start);
-		uintptr_t va = POINTER_TO_UINT(cached_ptr);
-
-		arch_mem_map(l3_heap_start, va, l3_heap_size, K_MEM_PERM_RW | K_MEM_CACHE_WB);
-#endif
-		if (l3_heap_copy.heap.heap) {
-			l3_heap = l3_heap_copy;
-		} else {
-			l3_heap.heap.init_mem = l3_heap_start;
-			l3_heap.heap.init_bytes = l3_heap_size;
-			sys_heap_init(&l3_heap.heap, l3_heap_start, l3_heap_size);
-		}
-	}
+	if (ace_imr_used())
+		l3_heap_init();
 #endif
 
 	return 0;
@@ -883,5 +1010,120 @@ __weak void *_sbrk_r(struct _reent *ptr, ptrdiff_t incr)
 	k_panic();
 	return NULL;
 }
+
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+static void fill_one_heap_telemetry(struct sof_tel_heap_info *dst, struct k_heap *h,
+				    uint16_t type, uint16_t fail_cnt)
+{
+	dst->heap_type = type;
+	dst->alloc_fail_count = fail_cnt;
+	if (!h || !h->heap.heap) {
+		dst->total_bytes = 0;
+		dst->allocated_bytes = 0;
+		dst->free_bytes = 0;
+		dst->max_allocated_bytes = 0;
+		return;
+	}
+
+	dst->total_bytes = (uint32_t)h->heap.init_bytes;
+#if CONFIG_SYS_HEAP_RUNTIME_STATS
+	struct sys_memory_stats stats = { 0 };
+	int ret = sys_heap_runtime_stats_get(&h->heap, &stats);
+
+	if (ret == 0) {
+		dst->allocated_bytes = (uint32_t)stats.allocated_bytes;
+		dst->free_bytes = (uint32_t)stats.free_bytes;
+		dst->max_allocated_bytes = (uint32_t)stats.max_allocated_bytes;
+		if (dst->total_bytes == 0)
+			dst->total_bytes = dst->allocated_bytes + dst->free_bytes;
+	}
+#endif
+}
+
+void telemetry_collect_mem_stats(struct sof_tel_mem_section *mem)
+{
+	uint32_t free_heap_pages;
+
+	if (!mem)
+		return;
+
+	fill_one_heap_telemetry(&mem->heaps[TEL_HEAP_SYS_IDX], &sof_heap,
+				SOF_TEL_HEAP_SYS, heap_fail_counts[TEL_HEAP_SYS_IDX]);
+#if CONFIG_SOF_USERSPACE_USE_SHARED_HEAP
+	fill_one_heap_telemetry(&mem->heaps[TEL_HEAP_SHARED_IDX], &shared_buffer_heap,
+				SOF_TEL_HEAP_SHARED, heap_fail_counts[TEL_HEAP_SHARED_IDX]);
+#endif
+#ifdef CONFIG_SOF_USERSPACE_LL
+	fill_one_heap_telemetry(&mem->heaps[TEL_HEAP_LL_USER_IDX], zephyr_ll_user_heap(),
+				SOF_TEL_HEAP_LL_USER, heap_fail_counts[TEL_HEAP_LL_USER_IDX]);
+#endif
+#if CONFIG_L3_HEAP
+	fill_one_heap_telemetry(&mem->heaps[TEL_HEAP_L3_IMR_IDX], &l3_heap,
+				SOF_TEL_HEAP_L3_IMR, heap_fail_counts[TEL_HEAP_L3_IMR_IDX]);
+#endif
+
+	free_heap_pages = (mem->heaps[TEL_HEAP_SYS_IDX].free_bytes +
+			   mem->heaps[TEL_HEAP_SHARED_IDX].free_bytes +
+			   mem->heaps[TEL_HEAP_LL_USER_IDX].free_bytes) / HOST_PAGE_SIZE;
+
+#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
+	uint32_t hp_banks = ace_hpsram_get_bank_count();
+	uint32_t lp_banks = ace_lpsram_get_bank_count();
+	uint64_t hp_mask = 0;
+	uint32_t lp_mask = 0;
+	uint32_t active_hp_banks = 0;
+	uint32_t active_lp_banks = 0;
+	uint32_t unpowered_hp_pages = 0;
+	uint32_t unpowered_lp_pages = 0;
+
+	for (uint32_t i = 0; i < MIN(hp_banks, 64U); i++) {
+		if (HPSRAM_REGS(i)->HSxPGISTS == 0) {
+			hp_mask |= BIT64(i);
+			active_hp_banks++;
+		}
+	}
+	for (uint32_t i = 0; i < MIN(lp_banks, 32U); i++) {
+		if (LPSRAM_REGS(i)->USxPGISTS == 0) {
+			lp_mask |= BIT(i);
+			active_lp_banks++;
+		}
+	}
+	mem->sram.hp_sram_total_pages = (uint16_t)(L2_SRAM_SIZE / HOST_PAGE_SIZE);
+	if (hp_banks && hp_banks >= active_hp_banks)
+		unpowered_hp_pages =
+			(mem->sram.hp_sram_total_pages * (hp_banks - active_hp_banks)) / hp_banks;
+	mem->sram.hp_sram_free_pages =
+		(uint16_t)MIN((uint32_t)mem->sram.hp_sram_total_pages,
+			      unpowered_hp_pages + free_heap_pages);
+
+	mem->sram.lp_sram_total_pages = (uint16_t)(LP_SRAM_SIZE / HOST_PAGE_SIZE);
+	if (lp_banks && lp_banks >= active_lp_banks)
+		unpowered_lp_pages =
+			(mem->sram.lp_sram_total_pages * (lp_banks - active_lp_banks)) / lp_banks;
+	mem->sram.lp_sram_free_pages = (uint16_t)unpowered_lp_pages;
+	mem->sram.ebb_power_mask_lo = (uint32_t)(hp_mask & 0xFFFFFFFFU);
+	mem->sram.ebb_power_mask_hi = (uint32_t)(hp_mask >> 32);
+	mem->sram.lpsram_ebb_mask = lp_mask;
+#elif defined(PLATFORM_HPSRAM_EBB_COUNT)
+	mem->sram.hp_sram_total_pages =
+		(uint16_t)((SRAM_BANK_SIZE * PLATFORM_HPSRAM_EBB_COUNT) / HOST_PAGE_SIZE);
+	mem->sram.hp_sram_free_pages =
+		(uint16_t)MIN((uint32_t)mem->sram.hp_sram_total_pages, free_heap_pages);
+	mem->sram.ebb_power_mask_lo = HPSRAM_REGS(0)->HSxPGCTL;
+#if PLATFORM_HPSRAM_EBB_COUNT > 32
+	mem->sram.ebb_power_mask_hi = HPSRAM_REGS(1)->HSxPGCTL;
+#endif
+#endif
+
+#if CONFIG_VIRTUAL_HEAP
+	if (virtual_buffers_heap)
+		vmh_fill_telemetry_stats(virtual_buffers_heap, mem);
+#endif
+
+#if defined(CONFIG_FAST_GET) && defined(CONFIG_COLD_STORE_EXECUTE_DRAM)
+	telemetry_collect_fast_get_stats(&mem->fast_get);
+#endif
+}
+#endif
 
 SYS_INIT(heap_init, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);

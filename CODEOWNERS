@@ -47,21 +47,24 @@ src/audio/module_adapter/*		@ranj063 @jxstelter
 src/audio/google/*			@thesofproject/google
 
 # platforms
-src/platform/imx8/**			@dbaluta
-src/platform/amd/**			@bhiregoudar @sunilkumardommati
-src/platform/mtk/**			@yaochunhung @kuanhsuncheng
+src/kernel/platform/imx8/**			@dbaluta
+src/platform/imx8/**				@dbaluta
+src/kernel/platform/amd/**			@bhiregoudar @sunilkumardommati
+src/kernel/platform/mtk/**			@yaochunhung @kuanhsuncheng
 
 # drivers
 src/drivers/intel/dmic.c		@singalsu
-src/drivers/imx/**			@dbaluta
-src/drivers/amd/*			@bhiregoudar @sunilkumardommati
-src/drivers/mediatek/**		@yaochunhung @kuanhsuncheng
+src/kernel/drivers/imx/**		@dbaluta
+src/kernel/drivers/amd/*		@bhiregoudar @sunilkumardommati
+src/kernel/drivers/mediatek/**		@yaochunhung @kuanhsuncheng
 
 # other libs
 src/math/*				@singalsu
 src/ipc/*				@bardliao @tmleman @pblaszko
+src/kernel/ipc/**			@bardliao @tmleman @pblaszko
 # src/lib/*				TODO
 src/schedule				@pblaszko @marcinszkudlinski @dbaluta @LaurentiuM1234
+src/kernel/schedule			@pblaszko @marcinszkudlinski @dbaluta @LaurentiuM1234
 
 # samples
 samples/audio/detect_test.c		@iganakov

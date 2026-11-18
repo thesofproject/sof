@@ -30,7 +30,7 @@ jobs:
         run: sudo apt-get update &&
                sudo apt-get -y install ninja-build
                   automake autoconf libtool gettext libasound2-dev
-                  pkg-config
+                  pkg-config python3-construct python3-pytest
 
       # Ubuntu 24.04 ships autoconf 2.71, but current alsa-lib/alsa-utils
       # require >= 2.72. Build a newer autoconf from the GNU release
@@ -84,3 +84,10 @@ jobs:
         run: CMAKE_BUILD_TYPE=Release ./sof/scripts/build-tools.sh ||
              VERBOSE=1 NO_PROCESSORS=1 USE_XARGS=no
              CMAKE_BUILD_TYPE=Release ./sof/scripts/build-tools.sh
+
+      # The build above already validated every topology v2 binary
+      - name: topology validator tests
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/tools/lib
+          ALSATPLG: ${{ github.workspace }}/tools/bin/alsatplg
+        run: python3 -m pytest -v sof/tools/topology/validator/tests

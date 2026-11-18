@@ -84,6 +84,8 @@ struct ffmpeg_dec_ffmpeg_data {
 	AVPacket *pkt;
 	AVFrame *frame;
 	uint8_t *pktbuf;
+	size_t pktbuf_sz;
+	size_t pktbuf_len;
 	const AVCodec *codec;
 };
 
@@ -106,6 +108,22 @@ static enum AVCodecID ffmpeg_dec_av_codec_id(enum ffmpeg_dec_codec codec)
 #if defined(CONFIG_FFMPEG_DEC_MP3)
 	case FFMPEG_DEC_CODEC_MP3:
 		return AV_CODEC_ID_MP3;
+#endif
+#if defined(CONFIG_FFMPEG_DEC_ALAC)
+	case FFMPEG_DEC_CODEC_ALAC:
+		return AV_CODEC_ID_ALAC;
+#endif
+#if defined(CONFIG_FFMPEG_DEC_SBC)
+	case FFMPEG_DEC_CODEC_SBC:
+		return AV_CODEC_ID_SBC;
+#endif
+#if defined(CONFIG_FFMPEG_DEC_G722)
+	case FFMPEG_DEC_CODEC_G722:
+		return AV_CODEC_ID_ADPCM_G722;
+#endif
+#if defined(CONFIG_FFMPEG_DEC_APTX)
+	case FFMPEG_DEC_CODEC_APTX:
+		return AV_CODEC_ID_APTX;
 #endif
 	default:
 		return AV_CODEC_ID_NONE;
@@ -131,11 +149,9 @@ static int ffmpeg_dec_ff_init(struct processing_module *mod)
 		return -ENOMEM;
 
 	id = ffmpeg_dec_av_codec_id(cd->codec);
-#if defined(CONFIG_FFMPEG_DEC_AAC)
-	if (cd->codec == FFMPEG_DEC_CODEC_AAC)
-		ff->codec = avcodec_find_decoder_by_name("aac_fixed");
+	if (cd->codec_ops && cd->codec_ops->decoder_name)
+		ff->codec = avcodec_find_decoder_by_name(cd->codec_ops->decoder_name);
 	if (!ff->codec)
-#endif
 		ff->codec = avcodec_find_decoder(id);
 	if (!ff->codec) {
 		comp_err(dev, "no libavcodec decoder for codec %d", cd->codec);
@@ -178,19 +194,23 @@ static int ffmpeg_dec_ff_configure(struct processing_module *mod)
 
 	ffmpeg_dec_libc_bind(mod);
 
-	/* Filter extradata by codec:
-	 *  - FLAC needs the 34-byte STREAMINFO.
-	 *  - Opus needs "OpusHead" (RFC 7845) or NULL (falls back to built-in stereo default).
-	 *    If the topology carries a FLAC header, ignore it so Opus uses its default.
-	 */
-	if (cd->codec == FFMPEG_DEC_CODEC_OPUS && cd->extradata && cd->extradata_size) {
-		if (cd->extradata_size < 8 || memcmp(cd->extradata, "OpusHead", 8) != 0) {
-			comp_info(dev, "ignoring non-Opus extradata from topology");
-			cd->extradata_size = 0;
-		}
+	if (cd->codec_ops && cd->codec_ops->prepare_extradata)
+		cd->codec_ops->prepare_extradata(mod);
+
+	if (cd->codec_ops && cd->codec_ops->max_frame_samples && cd->out_frame_bytes) {
+		size_t need = (size_t)cd->codec_ops->max_frame_samples(cd) * cd->out_frame_bytes;
+
+		if (cd->pcm_buf_size < need)
+			return -ENOMEM;
 	}
 
-	if (cd->extradata && cd->extradata_size) {
+	if (cd->codec_ops && cd->codec_ops->configure_avctx) {
+		ret = cd->codec_ops->configure_avctx(mod, ff->avctx);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (cd->extradata_size) {
 		av_freep(&ff->avctx->extradata);
 		ff->avctx->extradata =
 			av_mallocz(cd->extradata_size + AV_INPUT_BUFFER_PADDING_SIZE);
@@ -222,15 +242,29 @@ static int ffmpeg_dec_ff_configure(struct processing_module *mod)
 	comp_info(dev, "libavcodec decoder opened (%s)", ff->codec->name);
 
 	/*
-	 * Padded scratch for a parsed packet payload, sized to OBS as a bound.
+	 * Padded scratch for a parsed or reassembled packet payload, sized to
+	 * hold a worst-case uncompressed frame (up to 4 bytes/sample/ch) plus
+	 * framing overhead and AV_INPUT_BUFFER_PADDING_SIZE.
 	 * Route through av_malloc (the sys_heap-backed FFmpeg heap, see
 	 * ffmpeg_dec-builtin-alloc.c) rather than mod_alloc: the SOF per-module
 	 * heap is far too small for this tens-of-KiB scratch.
 	 */
-	ff->pktbuf = av_malloc(cd->out_frame_bytes ?
-			       cd->out_frame_bytes * 4096 : 65536);
+	{
+		uint32_t max_samples = (cd->codec_ops && cd->codec_ops->max_frame_samples) ?
+				       cd->codec_ops->max_frame_samples(cd) : 4096;
+		size_t max_ch = cd->out_channels ? cd->out_channels : 2;
+		size_t frame_bytes = MAX((size_t)cd->out_frame_bytes,
+					 max_ch * sizeof(int32_t));
+
+		ff->pktbuf_sz = frame_bytes * (size_t)max_samples;
+		if (ff->pktbuf_sz < 65536)
+			ff->pktbuf_sz = 65536;
+		ff->pktbuf_sz += 1024 + AV_INPUT_BUFFER_PADDING_SIZE;
+	}
+	ff->pktbuf = av_malloc(ff->pktbuf_sz);
 	if (!ff->pktbuf)
 		return -ENOMEM;
+	ff->pktbuf_len = 0;
 
 	return 0;
 }
@@ -259,6 +293,113 @@ static int ffmpeg_dec_ff_decode(struct processing_module *mod,
 
 	*consumed = 0;
 	*produced = 0;
+
+	/*
+	 * Unparsed decode path for self-delimiting codecs without an
+	 * AVCodecParser (e.g. ALAC, where alac_decode_frame reads bit-by-bit
+	 * up to TYPE_END and reports the exact bit count in gb.index).
+	 */
+	if (!ff->parser) {
+		size_t prev_len = ff->pktbuf_len;
+		size_t cap = ff->pktbuf_sz > AV_INPUT_BUFFER_PADDING_SIZE ?
+			     ff->pktbuf_sz - AV_INPUT_BUFFER_PADDING_SIZE : 0;
+		size_t pkt_len;
+		size_t copy = 0;
+		int prev_log_level;
+
+		if (cd->unparsed_skip_to_eof) {
+			*consumed = in_size;
+			return 0;
+		}
+
+		if (!in || !in_size) {
+			if (!prev_len)
+				return 0;
+			pkt_len = prev_len;
+		} else {
+			size_t space = prev_len < cap ? cap - prev_len : 0;
+
+			copy = in_size < space ? in_size : space;
+			if (copy)
+				memcpy_s(ff->pktbuf + prev_len, space, in, copy);
+			pkt_len = prev_len + copy;
+			memset(ff->pktbuf + pkt_len, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+		}
+
+		/* Stop cleanly if trailing container metadata is reached */
+		if (cd->codec_ops && cd->codec_ops->is_trailing_eof &&
+		    cd->codec_ops->is_trailing_eof(ff->pktbuf, pkt_len)) {
+			cd->unparsed_skip_to_eof = true;
+			ff->pktbuf_len = 0;
+			*consumed = in_size;
+			return 0;
+		}
+
+		size_t raw_len = pkt_len;
+
+		if (cd->codec_ops && cd->codec_ops->limit_packet_size) {
+			size_t lim = cd->codec_ops->limit_packet_size(cd, pkt_len);
+
+			if (lim == 0) {
+				if (!in || !in_size) {
+					ff->pktbuf_len = 0;
+					return 0;
+				}
+				ff->pktbuf_len = pkt_len;
+				*consumed = copy;
+				return 0;
+			}
+			if (lim < pkt_len) {
+				memset(ff->pktbuf + lim, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+				pkt_len = lim;
+			}
+		}
+
+		ff->pkt->data = ff->pktbuf;
+		ff->pkt->size = (int)pkt_len;
+
+		prev_log_level = av_log_get_level();
+		av_log_set_level(AV_LOG_FATAL);
+		ret = avcodec_send_packet(ff->avctx, ff->pkt);
+		if (ret == 0)
+			ret = avcodec_receive_frame(ff->avctx, ff->frame);
+		av_log_set_level(prev_log_level);
+		if (ret < 0) {
+			avcodec_flush_buffers(ff->avctx);
+			if (!in || !in_size) {
+				ff->pktbuf_len = 0;
+				return 0;
+			}
+			if (raw_len >= cap ||
+			    (cd->codec_ops && cd->codec_ops->limit_packet_size)) {
+				comp_err(dev, "unparsed packet reassembly buffer full or invalid block");
+				ff->pktbuf_len = 0;
+				return -EIO;
+			}
+			ff->pktbuf_len = pkt_len;
+			*consumed = copy;
+			return 0;
+		}
+
+		size_t fbytes = pkt_len;
+
+		if (cd->codec_ops && cd->codec_ops->frame_bytes_consumed) {
+			size_t b = cd->codec_ops->frame_bytes_consumed(ff->avctx->priv_data);
+
+			if (b > 0 && b <= pkt_len)
+				fbytes = b;
+		}
+		*consumed = (fbytes > prev_len) ? (fbytes - prev_len) : 0;
+		ff->pktbuf_len = 0;
+
+		ret = ffmpeg_dec_emit_frame(mod, ff->frame, out, out_size);
+		if (ret < 0) {
+			comp_warn(dev, "output buffer full, PCM dropped");
+			return 0;
+		}
+		*produced = (size_t)ret;
+		return 0;
+	}
 
 	if (!in || !in_size) {
 		/* Flush parser first */
@@ -366,13 +507,15 @@ static int ffmpeg_dec_ff_reset(struct processing_module *mod)
 	if (ff && ff->avctx && avcodec_is_open(ff->avctx))
 		avcodec_flush_buffers(ff->avctx);
 
+	if (ff)
+		ff->pktbuf_len = 0;
+
 	/*
 	 * Re-initialize the parser to clear any partial frame bytes buffered
 	 * from the previous stream.
 	 */
-	if (ff && ff->codec) {
-		if (ff->parser)
-			av_parser_close(ff->parser);
+	if (ff && ff->codec && ff->parser) {
+		av_parser_close(ff->parser);
 		ff->parser = av_parser_init(ff->codec->id);
 		if (!ff->parser)
 			return -ENOMEM;

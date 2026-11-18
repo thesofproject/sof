@@ -23,9 +23,10 @@ if(NOT EXISTS "${SOF_FFMPEG_SRC_DIR}/configure")
 		"-DSOF_FFMPEG_SRC_DIR=<path-to-clean-ffmpeg-checkout>.")
 endif()
 
-# --- 2. Kconfig -> --enable-decoder / --enable-parser lists ---
+# --- 2. Kconfig -> --enable-decoder / --enable-parser / --enable-encoder lists ---
 set(_ff_decoders "")
 set(_ff_parsers "")
+set(_ff_encoders "")
 if(CONFIG_FFMPEG_DEC_FLAC)
 	list(APPEND _ff_decoders flac)
 	list(APPEND _ff_parsers  flac)
@@ -42,15 +43,69 @@ if(CONFIG_FFMPEG_DEC_MP3)
 	list(APPEND _ff_decoders mp3)
 	list(APPEND _ff_parsers  mpegaudio)
 endif()
-# A decoder is required.
-if(NOT _ff_decoders)
-	message(FATAL_ERROR "ffmpeg_dec: no decoder selected (Kconfig FFMPEG_DEC_*)")
+if(CONFIG_FFMPEG_DEC_ALAC)
+	list(APPEND _ff_decoders alac)
+endif()
+if(CONFIG_FFMPEG_DEC_SBC)
+	list(APPEND _ff_decoders sbc)
+	list(APPEND _ff_parsers  sbc)
+endif()
+if(CONFIG_FFMPEG_DEC_G722)
+	list(APPEND _ff_decoders adpcm_g722)
+endif()
+if(CONFIG_FFMPEG_DEC_APTX)
+	list(APPEND _ff_decoders aptx)
+endif()
+if(CONFIG_FFMPEG_ENC_FLAC)
+	list(APPEND _ff_encoders flac)
+endif()
+if(CONFIG_FFMPEG_ENC_ALAC)
+	list(APPEND _ff_encoders alac)
+endif()
+if(CONFIG_FFMPEG_ENC_SBC)
+	list(APPEND _ff_encoders sbc)
+endif()
+if(CONFIG_FFMPEG_ENC_G722)
+	list(APPEND _ff_encoders adpcm_g722)
+endif()
+if(CONFIG_FFMPEG_ENC_APTX)
+	list(APPEND _ff_encoders aptx)
+endif()
+# At least one decoder, encoder, or filter must be selected.
+if(NOT _ff_decoders AND NOT _ff_encoders AND NOT CONFIG_FFMPEG_ENC_MP3 AND NOT CONFIG_FFMPEG_ENC_AAC AND NOT CONFIG_FFMPEG_BUILD_AVFILTER)
+	message(FATAL_ERROR "ffmpeg_dec: no decoder, encoder, or filter selected (Kconfig FFMPEG_DEC_*/FFMPEG_ENC_*/FFMPEG_FILTER_*)")
 endif()
 set(_ff_dec_cfg "")
 if(_ff_decoders)
 	list(JOIN _ff_decoders "," _ff_dec_csv)
+	list(APPEND _ff_dec_cfg --enable-decoder=${_ff_dec_csv})
+endif()
+if(_ff_parsers)
 	list(JOIN _ff_parsers  "," _ff_par_csv)
-	set(_ff_dec_cfg --enable-decoder=${_ff_dec_csv} --enable-parser=${_ff_par_csv})
+	list(APPEND _ff_dec_cfg --enable-parser=${_ff_par_csv})
+endif()
+set(_ff_enc_cfg "")
+if(_ff_encoders)
+	list(JOIN _ff_encoders "," _ff_enc_csv)
+	set(_ff_enc_cfg --enable-encoder=${_ff_enc_csv})
+endif()
+
+# --- 2b. Kconfig -> libavfilter audio filters (off unless a filter is chosen) ---
+set(_ff_avfilter_cfg --disable-avfilter)
+if(CONFIG_FFMPEG_BUILD_AVFILTER)
+	set(_ff_filters "")
+	if(CONFIG_FFMPEG_FILTER_AFFTDN)
+		list(APPEND _ff_filters afftdn)
+	endif()
+	if(CONFIG_FFMPEG_FILTER_ALIMITER)
+		list(APPEND _ff_filters alimiter)
+	endif()
+	list(JOIN _ff_filters "," _ff_filt_csv)
+	# abuffer/abuffersink feed/drain a filter graph; aformat negotiates format.
+	set(_ff_avfilter_cfg
+		--enable-avfilter
+		--enable-filter=abuffer,abuffersink,aformat,${_ff_filt_csv})
+	message(STATUS "ffmpeg_dec: enabling avfilter, filters [${_ff_filt_csv}]")
 endif()
 
 # --- 3. Derive the cross toolchain + per-compiler cross flags ---
@@ -63,6 +118,18 @@ set(_ff_extra_cflags "-fPIC -mlongcalls -mtext-section-literals -Wno-error=incom
 # enough for the DSP heap. See libavcodec/aacsbr_template.c.
 if(CONFIG_FFMPEG_DEC_AAC)
 	set(_ff_extra_cflags "${_ff_extra_cflags} -DSOF_AAC_LC_ONLY=1")
+endif()
+
+# FFmpeg's stock FlacEncodeContext embeds fixed arrays for 8 channels x 65535
+# blocksize + 32 exact-Rice partition tables (~7.35 MiB). SOF's FLAC encoder
+# runs at compression_level=1 (1152-sample blocksize, <=2 channels, estimated
+# Rice params where only sums[0] is used); cap FlacEncodeContext in the
+# out-of-tree build copy of flacenc.c so priv_data shrinks to ~60 KiB.
+set(_ff_flacenc_prep "")
+if(CONFIG_FFMPEG_ENC_FLAC)
+	set(_ff_extra_cflags "${_ff_extra_cflags} -I${SOF_FFMPEG_SRC_DIR}/libavcodec")
+	set(_ff_flacenc_prep
+		COMMAND sh -c "sed -e 's/\\[FLAC_MAX_BLOCKSIZE\\]/[1152]/g' -e 's/\\[FLAC_MAX_BLOCKSIZE+11\\]/[1152+11]/g' -e 's/> FLAC_MAX_BLOCKSIZE/> 1152/g' -e 's/rc_sums\\[32\\]/rc_sums[1]/g' -e 's/subframes\\[FLAC_MAX_CHANNELS\\]/subframes[2]/g' -e 's/channels > FLAC_MAX_CHANNELS/channels > 2/g' <SOURCE_DIR>/libavcodec/flacenc.c > <BINARY_DIR>/libavcodec/flacenc.c")
 endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
@@ -346,17 +413,185 @@ if(CONFIG_FFMPEG_DEC_COLD_SPLIT)
 			${FFMPEG_INSTALL_DIR}/lib/libavutil.a
 		COMMAND ${_ff_objcopy} --rename-section .text=.cold
 			${FFMPEG_INSTALL_DIR}/lib/libswresample.a)
+	if(CONFIG_FFMPEG_BUILD_AVFILTER)
+		list(APPEND _ff_cold_rename
+			COMMAND ${_ff_objcopy} --rename-section .text=.cold
+				${FFMPEG_INSTALL_DIR}/lib/libavfilter.a)
+	endif()
 endif()
 
+# --- 3b. MP3 encoder via libshine (fixed-point; FFmpeg has no native one) ---
 set(_ff_cfg_env "PATH=${_tc_dir}:$ENV{PATH}")
+set(_ff_shine_cfg "")
+set(_ff_shine_dep "")
+if(CONFIG_FFMPEG_ENC_MP3)
+	set(SHINE_SRC "${sof_top_dir}/../modules/audio/shine")
+	if(NOT EXISTS "${SHINE_SRC}/src/lib/layer3.h")
+		message(FATAL_ERROR "ffmpeg_dec: libshine source not at '${SHINE_SRC}'; run 'west update'")
+	endif()
+	set(SHINE_INSTALL "${CMAKE_CURRENT_BINARY_DIR}/shine-install")
+	file(MAKE_DIRECTORY "${SHINE_INSTALL}/lib/pkgconfig" "${SHINE_INSTALL}/include/shine")
+	# pkg-config file for FFmpeg's require_pkg_config libshine.
+	file(WRITE "${SHINE_INSTALL}/lib/pkgconfig/shine.pc"
+"prefix=${SHINE_INSTALL}
+libdir=\${prefix}/lib
+includedir=\${prefix}/include
+Name: shine
+Description: Shine fixed-point MP3 encoder
+Version: 3.1.1
+Libs: -L\${libdir} -lshine ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.o
+Cflags: -I\${includedir}
+")
+	# FFmpeg's -lshine link *test* pulls newlib malloc -> Zephyr runtime syms
+	# (z_errno_wrap, ...) that only exist at module load. Provide dummies so the
+	# configure test links; --extra-ldflags only affects tests, not the .a build.
+	file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.c"
+"int z_errno_wrap(void){return 0;}
+void *stdout;
+int open(const char *p, int f, ...){return -1;}
+void *sbrk(int i){return (void *)-1;}
+")
+	# libshine's lib needs no config.h; build the objects directly and archive
+	# (its autotools CLI/shared link cannot work bare-metal).
+	file(GLOB _shine_srcs CONFIGURE_DEPENDS
+		"${SHINE_SRC}/src/lib/*.c"
+		"${SHINE_SRC}/src/lib/*.h")
+	file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/shine-build.sh"
+"#!/bin/sh
+set -e
+export PATH=${_tc_dir}:\$PATH
+CC=\"${_ff_cc}\"
+mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/shine-obj
+for f in ${SHINE_SRC}/src/lib/*.c; do
+	\$CC -O2 -fPIC -mlongcalls -mtext-section-literals -DSHINE_HAVE_BSWAP_H \\
+		-I${SHINE_SRC}/src/lib -c \"\$f\" \\
+		-o ${CMAKE_CURRENT_BINARY_DIR}/shine-obj/\$(basename \"\$f\").o
+done
+${_ff_cross_prefix}ar rcs ${SHINE_INSTALL}/lib/libshine.a ${CMAKE_CURRENT_BINARY_DIR}/shine-obj/*.o
+cp ${SHINE_SRC}/src/lib/layer3.h ${SHINE_INSTALL}/include/shine/layer3.h
+\$CC -fPIC -c ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.c \\
+	-o ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.o
+")
+	add_custom_command(
+		OUTPUT "${SHINE_INSTALL}/lib/libshine.a"
+		       "${SHINE_INSTALL}/include/shine/layer3.h"
+		       "${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.o"
+		COMMAND sh "${CMAKE_CURRENT_BINARY_DIR}/shine-build.sh"
+		DEPENDS ${_shine_srcs}
+			"${CMAKE_CURRENT_BINARY_DIR}/shine-build.sh"
+			"${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.c"
+		VERBATIM)
+	add_custom_target(shine_ext DEPENDS "${SHINE_INSTALL}/lib/libshine.a")
+
+	set(_ff_cfg_env "PATH=${_tc_dir}:$ENV{PATH}" "PKG_CONFIG_PATH=${SHINE_INSTALL}/lib/pkgconfig")
+	# NOTE: the cfgstub is scoped to libshine's OWN detection via shine.pc
+	# Libs (as an object), NOT a global --extra-ldflags. A global stub makes
+	# FFmpeg's generic check_func tests (posix_memalign/strerror_r/iconv)
+	# link against sbrk and false-positive HAVE_*=1, emitting libc calls that
+	# do not exist in the =y newlib env -> final firmware link fails. Scoping
+	# keeps this build's FFmpeg config identical to the decoder builds.
+	# --disable-iconv guards the one live check (iconv, probed after libshine).
+	set(_ff_shine_cfg --enable-libshine --enable-encoder=libshine --pkg-config=pkg-config
+		--disable-iconv
+		# The precomputed shine init tables (shine_precomp.h) add ~52KB of
+		# .rodata to libshine. FFmpeg's bare-metal -lshine configure *probe*
+		# links against the default GNU linker script whose 'flash' region is
+		# only 64KB, so the probe overflows ("region flash overflowed"). Grow
+		# the probe's flash region via --defsym. This affects configure test
+		# links ONLY (--disable-programs builds .a archives, no real link) and
+		# provides no symbols, so unlike a global libc stub it cannot trigger
+		# false-positive HAVE_* detection.
+		"--extra-ldflags=-Wl,--defsym,__flash_size=0x400000")
+	set(_ff_shine_dep shine_ext)
+	message(STATUS "ffmpeg_dec: enabling MP3 encoder via libshine (${SHINE_SRC})")
+endif()
+
+# --- 3c. AAC encoder via vo-aacenc (fixed-point integer AAC-LC) ---
+set(_ff_vo_aacenc_dep "")
+if(CONFIG_FFMPEG_ENC_AAC)
+	set(VO_AACENC_SRC "${sof_top_dir}/../modules/audio/vo-aacenc")
+	if(NOT EXISTS "${VO_AACENC_SRC}/common/include/voAAC.h")
+		message(FATAL_ERROR "ffmpeg_dec: vo-aacenc source not at '${VO_AACENC_SRC}'; run 'west update'")
+	endif()
+	set(VO_AACENC_INSTALL "${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-install")
+	file(MAKE_DIRECTORY "${VO_AACENC_INSTALL}/lib" "${VO_AACENC_INSTALL}/include/vo-aacenc")
+
+	set(_vo_aacenc_srcs
+		"${VO_AACENC_SRC}/common/cmnMemory.c"
+		"${VO_AACENC_SRC}/aacenc/basic_op/basicop2.c"
+		"${VO_AACENC_SRC}/aacenc/basic_op/oper_32b.c"
+		"${VO_AACENC_SRC}/aacenc/src/aac_rom.c"
+		"${VO_AACENC_SRC}/aacenc/src/aacenc.c"
+		"${VO_AACENC_SRC}/aacenc/src/aacenc_core.c"
+		"${VO_AACENC_SRC}/aacenc/src/adj_thr.c"
+		"${VO_AACENC_SRC}/aacenc/src/band_nrg.c"
+		"${VO_AACENC_SRC}/aacenc/src/bit_cnt.c"
+		"${VO_AACENC_SRC}/aacenc/src/bitbuffer.c"
+		"${VO_AACENC_SRC}/aacenc/src/bitenc.c"
+		"${VO_AACENC_SRC}/aacenc/src/block_switch.c"
+		"${VO_AACENC_SRC}/aacenc/src/channel_map.c"
+		"${VO_AACENC_SRC}/aacenc/src/dyn_bits.c"
+		"${VO_AACENC_SRC}/aacenc/src/grp_data.c"
+		"${VO_AACENC_SRC}/aacenc/src/interface.c"
+		"${VO_AACENC_SRC}/aacenc/src/line_pe.c"
+		"${VO_AACENC_SRC}/aacenc/src/memalign.c"
+		"${VO_AACENC_SRC}/aacenc/src/ms_stereo.c"
+		"${VO_AACENC_SRC}/aacenc/src/pre_echo_control.c"
+		"${VO_AACENC_SRC}/aacenc/src/psy_configuration.c"
+		"${VO_AACENC_SRC}/aacenc/src/psy_main.c"
+		"${VO_AACENC_SRC}/aacenc/src/qc_main.c"
+		"${VO_AACENC_SRC}/aacenc/src/quantize.c"
+		"${VO_AACENC_SRC}/aacenc/src/sf_estim.c"
+		"${VO_AACENC_SRC}/aacenc/src/spreading.c"
+		"${VO_AACENC_SRC}/aacenc/src/stat_bits.c"
+		"${VO_AACENC_SRC}/aacenc/src/tns.c"
+		"${VO_AACENC_SRC}/aacenc/src/transform.c")
+	file(GLOB _vo_aacenc_hdrs CONFIGURE_DEPENDS
+		"${VO_AACENC_SRC}/aacenc/inc/*.h"
+		"${VO_AACENC_SRC}/aacenc/basic_op/*.h"
+		"${VO_AACENC_SRC}/common/include/*.h")
+	string(REPLACE ";" " " _vo_aacenc_srclist "${_vo_aacenc_srcs}")
+
+	file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-build.sh"
+"#!/bin/sh
+set -e
+export PATH=${_tc_dir}:\$PATH
+CC=\"${_ff_cc}\"
+mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-obj
+for f in ${_vo_aacenc_srclist}; do
+	\$CC -O2 -DNDEBUG -fPIC -mlongcalls -mtext-section-literals -D__unused= \\
+		-I${VO_AACENC_SRC}/aacenc/inc \\
+		-I${VO_AACENC_SRC}/aacenc/basic_op \\
+		-I${VO_AACENC_SRC}/common/include \\
+		-c \"\$f\" \\
+		-o ${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-obj/\$(basename \"\$f\").o
+done
+${_ff_cross_prefix}ar rcs ${VO_AACENC_INSTALL}/lib/libvo-aacenc.a ${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-obj/*.o
+cp ${VO_AACENC_SRC}/common/include/*.h ${VO_AACENC_INSTALL}/include/vo-aacenc/
+")
+	add_custom_command(
+		OUTPUT "${VO_AACENC_INSTALL}/lib/libvo-aacenc.a"
+		COMMAND sh "${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-build.sh"
+		DEPENDS ${_vo_aacenc_srcs}
+			${_vo_aacenc_hdrs}
+			"${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-build.sh"
+		VERBATIM)
+	add_custom_target(vo_aacenc_ext DEPENDS "${VO_AACENC_INSTALL}/lib/libvo-aacenc.a")
+	set(_ff_vo_aacenc_dep vo_aacenc_ext)
+	message(STATUS "ffmpeg_dec: enabling AAC encoder via vo-aacenc (${VO_AACENC_SRC})")
+endif()
 
 # --- 4. Configure + make + install (out-of-tree; source must be clean) ---
 set(_ff_byproducts
 	${FFMPEG_INSTALL_DIR}/lib/libavcodec.a
 	${FFMPEG_INSTALL_DIR}/lib/libavutil.a
 	${FFMPEG_INSTALL_DIR}/lib/libswresample.a)
+if(CONFIG_FFMPEG_BUILD_AVFILTER)
+	list(APPEND _ff_byproducts ${FFMPEG_INSTALL_DIR}/lib/libavfilter.a)
+endif()
 
 ExternalProject_Add(ffmpeg_ext
+	DEPENDS ${_ff_shine_dep} ${_ff_vo_aacenc_dep}
 	SOURCE_DIR      "${SOF_FFMPEG_SRC_DIR}"
 	BUILD_IN_SOURCE 0
 	CONFIGURE_COMMAND
@@ -372,14 +607,17 @@ ExternalProject_Add(ffmpeg_ext
 			# C intrinsics) and is required to build ff_float_dsp_init_xtensa.
 			--disable-all --disable-everything --disable-autodetect
 			--disable-programs --disable-doc --disable-network
-			--disable-avformat --disable-avdevice --disable-avfilter
+			--disable-avformat --disable-avdevice ${_ff_avfilter_cfg}
 			--disable-swscale
 			--disable-pthreads --disable-w32threads --disable-os2threads
 			--disable-runtime-cpudetect --disable-debug
 			--enable-avcodec --enable-avutil --enable-swresample
 			${_ff_dec_cfg}
+			${_ff_enc_cfg}
+			${_ff_shine_cfg}
 			--enable-small --enable-pic --enable-hardcoded-tables
 			"--extra-cflags=${_ff_extra_cflags}"
+		${_ff_flacenc_prep}
 	BUILD_COMMAND
 		${CMAKE_COMMAND} -E env "PATH=${_tc_dir}:$ENV{PATH}" make -j 8
 	INSTALL_COMMAND make install

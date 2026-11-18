@@ -285,7 +285,7 @@ static void mux_s16le(struct comp_dev *dev, struct sof_sink *sink,
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE || CONFIG_FORMAT_FLOAT
 
 static size_t mux_calc_frames_without_wrap_s32(struct cir_buf_sink *sink,
 					       struct cir_buf_source *source_bufs,
@@ -540,6 +540,9 @@ const struct comp_func_map mux_func_map[] = {
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, &mux_s32le, &demux_s32le },
 #endif
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, &mux_s32le, &demux_s32le },
+#endif
 };
 
 void mux_prepare_look_up_table(struct processing_module *mod)
@@ -552,8 +555,8 @@ void mux_prepare_look_up_table(struct processing_module *mod)
 
 	/* Prepare look up table */
 	for (i = 0; i < cd->config.num_streams; i++) {
-		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++) {
-			for (k = 0; k < PLATFORM_MAX_CHANNELS; k++) {
+		for (j = 0; j < CONFIG_PLATFORM_MAX_CHANNELS; j++) {
+			for (k = 0; k < CONFIG_PLATFORM_MAX_CHANNELS; k++) {
 				if (cd->config.streams[i].mask[j] & BIT(k)) {
 					/* MUX component has only one sink */
 					cd->lookup[0].copy_elem[idx].in_ch = j;
@@ -577,8 +580,8 @@ void demux_prepare_look_up_table(struct processing_module *mod)
 	/* Prepare look up table */
 	for (i = 0; i < cd->config.num_streams; i++) {
 		idx = 0;
-		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++) {
-			for (k = 0; k < PLATFORM_MAX_CHANNELS; k++) {
+		for (j = 0; j < CONFIG_PLATFORM_MAX_CHANNELS; j++) {
+			for (k = 0; k < CONFIG_PLATFORM_MAX_CHANNELS; k++) {
 				if (cd->config.streams[i].mask[j] & BIT(k)) {
 					/* DEMUX component has only one source */
 					cd->lookup[i].copy_elem[idx].in_ch = k;

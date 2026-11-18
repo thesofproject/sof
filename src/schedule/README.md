@@ -1,12 +1,15 @@
 # SOF Scheduling Architecture
 
-> **Runs in:** Boundary / bridge — this directory owns the LL/DP schedulers and their thread +
-> memory-domain setup. `zephyr_ll.c` and `zephyr_domain.c` are kernel-side; `zephyr_ll_user.c`
-> sets up the LL user memory domain (kernel-executed) and supports the LL user thread.
-> `zephyr_dp_schedule_thread.c` is boundary code that can create and manage both kernel and
-> `K_USER` DP threads depending on configuration; `zephyr_dp_schedule_application.c` is the
-> DP application-mode path. This directory hosts the `zephyr_ll_task_sem_*` and
-> `scheduler_dp_*` syscalls. See [User/kernel split](../include/sof/userspace/README.md).
+> **Runs in:** Boundary / bridge — this directory holds the parts of the LL and DP schedulers
+> that run in the scheduler and IPC threads, which are user threads with user-space LL. Their
+> kernel parts are in `src/kernel/schedule`, one `*-kernel.c` file per source here: scheduler
+> registration and initialization, the LL thread and timer setup and the timer interrupt, the
+> DP thread creation and memory domains, the access grants, and the kernel halves of the
+> `zephyr_ll_task_sem_*` and `scheduler_dp_*` syscalls. The LL user memory domain and heap are
+> set up by `src/kernel/schedule/zephyr_ll_user.c`, and the TWB scheduler, which is kernel-only,
+> is `src/kernel/schedule/zephyr_twb_schedule.c`. The scheduler data structures shared by both
+> parts are in `sof/schedule/zephyr_ll.h` and `sof/schedule/zephyr_dp_schedule.h`. See
+> [User/kernel split](../include/sof/userspace/README.md).
 
 This directory (`src/schedule`) contains the Sound Open Firmware (SOF) scheduling infrastructure, deeply integrated with the underlying Zephyr RTOS. SOF utilizes a multi-tiered scheduling approach to cater to different real-time constraints, ranging from hard real-time, low-latency requirements to more relaxed, compute-intensive data processing tasks.
 
@@ -107,7 +110,7 @@ The DP scheduler (`zephyr_dp_schedule.c`) manages asynchronous, compute-heavy ta
 ### Architecture
 
 -   **Separate Threads**: Unlike LL which multiplexes tasks inside a single thread, **each DP task is assigned its own Zephyr thread**.
--   **Wakeup Mechanism**: DP scheduling is evaluated at the end of each LL tick (`scheduler_dp_recalculate()`).
+-   **Wakeup Mechanism**: DP scheduling is evaluated at the end of each LL tick (`scheduler_dp_recalculate()`). With user-space LL and DP, this runs in the LL user thread and the kernel applies the results with `scheduler_dp_kick()`.
 -   **Readiness**: It checks if a component has sufficient data across its sinks and sources. If so, it transitions to `RUNNING` and signals the individual DP thread via a Zephyr Event object.
 -   **Deadlines**: Once ready, the DP thread computes its deadline absolute timestamp (`module_get_deadline()`) and calls `k_thread_absolute_deadline_set()`, submitting to the Zephyr kernel's EDF scheduler.
 
@@ -139,7 +142,7 @@ stateDiagram-v2
 
 ## 3. TWB (Thread With Budget) Scheduler
 
-The TWB scheduler (`zephyr_twb_schedule.c`) provides execution budget limits for specific tasks to prevent them from starving the CPU. This is useful for intensive workloads that shouldn't disrupt the overall systemic low-latency chain.
+The TWB scheduler (`src/kernel/schedule/zephyr_twb_schedule.c`) provides execution budget limits for specific tasks to prevent them from starving the CPU. This is useful for intensive workloads that shouldn't disrupt the overall systemic low-latency chain.
 
 ### Architecture
 

@@ -9,8 +9,10 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/check.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/regions_mm.h>
 #include <sof/lib/vpage.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
 
 LOG_MODULE_REGISTER(vpage, CONFIG_SOF_LOG_LEVEL);
@@ -62,6 +64,10 @@ struct vpage_context {
 
 /* uncache persistent across all cores */
 static struct vpage_context vpage_ctx;
+#ifdef CONFIG_SOF_TELEMETRY_VREGION
+static uint16_t vpage_min_free_pages = UINT16_MAX;
+static uint32_t vpage_alloc_fail_count;
+#endif
 
 /**
  * @brief Allocate and map virtual memory pages
@@ -73,10 +79,12 @@ static struct vpage_context vpage_ctx;
  * @param ptr Pointer to store the address of allocated pages.
  * @retval 0 if successful.
  */
-static int vpages_alloc_and_map(unsigned int pages, void **ptr)
+__cold static int vpages_alloc_and_map(unsigned int pages, void **ptr)
 {
 	void *vaddr;
 	int ret;
+
+	assert_can_be_cold();
 
 	/* check for valid pages and ptr */
 	if (!ptr)
@@ -118,6 +126,19 @@ static int vpages_alloc_and_map(unsigned int pages, void **ptr)
 	if (ret < 0) {
 		LOG_ERR("error: failed to map virtual region %p to physical region %p, error %d",
 			vaddr, vpage_ctx.virtual_region->addr, ret);
+
+		/*
+		 * The driver maps page by page and leaves already mapped pages (and
+		 * their physical pages) in place on failure, e.g. when physical L2 is
+		 * exhausted. Release them so they do not leak.
+		 */
+		for (unsigned int i = 0; i < pages; i++) {
+			void *va = (uint8_t *)vaddr + i * CONFIG_MM_DRV_PAGE_SIZE;
+
+			if (!sys_mm_drv_page_phys_get(va, NULL))
+				sys_mm_drv_unmap_page(va);
+		}
+
 		sys_mem_blocks_free_contiguous(&vpage_ctx.vpage_blocks, vaddr, pages);
 		return ret;
 	}
@@ -147,13 +168,21 @@ static int vpages_alloc_and_map(unsigned int pages, void **ptr)
  * @param pages Number of pages (usually 4kB large) to allocate.
  * @retval NULL on allocation failure.
  */
-void *vpage_alloc(unsigned int pages)
+__cold void *vpage_alloc(unsigned int pages)
 {
 	void *ptr = NULL;
 	int ret;
 
+	assert_can_be_cold();
+
 	k_mutex_lock(&vpage_ctx.lock, K_FOREVER);
 	ret = vpages_alloc_and_map(pages, &ptr);
+#ifdef CONFIG_SOF_TELEMETRY_VREGION
+	if (ret < 0)
+		vpage_alloc_fail_count++;
+	else if (vpage_ctx.free_pages < vpage_min_free_pages)
+		vpage_min_free_pages = (uint16_t)vpage_ctx.free_pages;
+#endif
 	k_mutex_unlock(&vpage_ctx.lock);
 	if (ret < 0)
 		LOG_ERR("vpage_alloc failed %d for %d pages, total %d free %d",
@@ -161,6 +190,7 @@ void *vpage_alloc(unsigned int pages)
 	else
 		LOG_INF("vpage_alloc ptr %p pages %u free %u/%u", ptr, pages, vpage_ctx.free_pages,
 			vpage_ctx.total_pages);
+	telemetry_notify_vregion_change();
 	return ptr;
 }
 
@@ -226,12 +256,15 @@ static int vpages_free_and_unmap(uintptr_t *ptr)
 		return ret;
 	}
 
-	/* move the last element over the released one, clear the last element */
+	/*
+	 * Keep the elements dense: move the last in-use element (num_elems_in_use - 1)
+	 * over the released one and clear the last slot.
+	 */
+	vpage_ctx.num_elems_in_use--;
 	if (vpage_ctx.num_elems_in_use != elem_idx)
 		vpage_ctx.velems[elem_idx] = vpage_ctx.velems[vpage_ctx.num_elems_in_use];
 	vpage_ctx.velems[vpage_ctx.num_elems_in_use].pages = 0;
 	vpage_ctx.velems[vpage_ctx.num_elems_in_use].vpage = 0;
-	vpage_ctx.num_elems_in_use--;
 
 	/* success update the free pages */
 	vpage_ctx.free_pages += pages;
@@ -253,10 +286,39 @@ void vpage_free(void *ptr)
 	ret = vpages_free_and_unmap((uintptr_t *)ptr);
 	k_mutex_unlock(&vpage_ctx.lock);
 
-	if (!ret)
+	if (!ret) {
 		LOG_INF("vptr %p free/total pages %d/%d", ptr, vpage_ctx.free_pages,
 			vpage_ctx.total_pages);
+		telemetry_notify_vregion_change();
+	}
 }
+
+#ifdef CONFIG_SOF_TELEMETRY_VREGION
+void telemetry_collect_vpage_stats(struct sof_tel_vregion_section *vsec)
+{
+	if (!vsec || !vpage_ctx.virtual_region)
+		return;
+
+	vsec->total_pages = (uint16_t)vpage_ctx.total_pages;
+	vsec->free_pages = (uint16_t)vpage_ctx.free_pages;
+	vsec->min_free_pages = (vpage_min_free_pages == UINT16_MAX) ?
+			       (uint16_t)vpage_ctx.free_pages :
+			       vpage_min_free_pages;
+	vsec->num_elems_in_use = (uint16_t)vpage_ctx.num_elems_in_use;
+	vsec->alloc_fail_count = vpage_alloc_fail_count;
+	vsec->region_base_va = (uint32_t)POINTER_TO_UINT(vpage_ctx.virtual_region->addr);
+
+	for (int i = 0; i < SOF_TEL_MAX_VPAGE_ELEMS; i++) {
+		if (i < VPAGE_MAX_ALLOCS) {
+			vsec->velems[i].pages = vpage_ctx.velems[i].pages;
+			vsec->velems[i].vpage = vpage_ctx.velems[i].vpage;
+		} else {
+			vsec->velems[i].pages = 0;
+			vsec->velems[i].vpage = 0;
+		}
+	}
+}
+#endif
 
 /**
  * @brief Initialize virtual page allocator
@@ -267,7 +329,7 @@ void vpage_free(void *ptr)
  * @retval 0 if successful.
  * @retval -ENOMEM on creation failure.
  */
-static int vpage_init(void)
+__cold static int vpage_init(void)
 {
 	const struct sys_mm_drv_region *virtual_memory_regions;
 	const struct sys_mm_drv_region *region;
@@ -282,6 +344,8 @@ static int vpage_init(void)
 	uintptr_t end;
 	size_t remaining_ram;
 
+	assert_can_be_cold();
+
 	k_mutex_init(&vpage_ctx.lock);
 
 	if (start + CONFIG_LIBRARY_REGION_SIZE + CONFIG_MM_DRV_PAGE_SIZE <= l2_end) {
@@ -289,18 +353,40 @@ static int vpage_init(void)
 		end = l2_end - CONFIG_LIBRARY_REGION_SIZE;
 	} else {
 		/*
-		 * TODO: on demand mapping currently only supports
-		 * cached mappings, so we need to limit vpages to
-		 * physical L2 size for now until support is added to
-		 * Zephyr mm_drv_intel_adsp_mtl_tlb.c and friends
+		 * Small L2 (e.g. NVL-S): the virtual heap and library regions are only
+		 * virtual address space backed on demand, so they need not fit in L2
+		 * together with the vpages. Use the virtual space up to the library
+		 * region (or the end of virtual memory) and cap it below by the
+		 * physical L2 left after the image, as vpages can never use more.
+		 * Using pages beyond physical L2 needs the Zephyr TLB driver to map
+		 * the uncached alias too, see
+		 * https://github.com/zephyrproject-rtos/zephyr/pull/122801
 		 */
-		LOG_WRN("no space left for vpages, start %#lx l2_end %#lx",
-			(unsigned long)start, (unsigned long)l2_end);
+		end = L2_VIRTUAL_SRAM_BASE + L2_VIRTUAL_SRAM_SIZE;
+		if (IS_ENABLED(CONFIG_LIBRARY_MANAGER) && CONFIG_LIBRARY_BASE_ADDRESS < end)
+			end = CONFIG_LIBRARY_BASE_ADDRESS;
+	}
+
+	/* the image or virtual heap may leave no room, don't let this underflow */
+	if (end < start + CONFIG_MM_DRV_PAGE_SIZE) {
+		LOG_WRN("no space left for vpages, start %#lx end %#lx",
+			(unsigned long)start, (unsigned long)end);
 		return -ENOMEM;
 	}
 
 	remaining_ram = end - start;
-	__ASSERT_NO_MSG(remaining_ram >= CONFIG_MM_DRV_PAGE_SIZE);
+	if (end > l2_end) {
+		uintptr_t image_end = adsp_mm_get_unused_l2_start_aligned();
+		size_t phys_left = image_end < l2_end ? l2_end - image_end : 0;
+
+		remaining_ram = MIN(remaining_ram, phys_left);
+	}
+
+	/* revalidate, the physical cap can leave less than a page */
+	if (remaining_ram < CONFIG_MM_DRV_PAGE_SIZE) {
+		LOG_WRN("no physical L2 left for vpages");
+		return -ENOMEM;
+	}
 
 	ret = adsp_add_virtual_memory_region(start, remaining_ram, VIRTUAL_REGION_VPAGES_ATTR);
 	if (ret)

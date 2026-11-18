@@ -12,9 +12,9 @@ set(SOF_ROOT "${PROJECT_SOURCE_DIR}/../../../../..")
 target_include_directories(app PRIVATE
 	${SOF_ROOT}/zephyr/include
 	${SOF_ROOT}/src/include
-	# Reference test vectors are #included in place from the CMocka tree
-	# rather than copied, so both frameworks share identical data.
-	${SOF_ROOT}/test/cmocka/src/math/arithmetic
+	# ref_chirp_mono_8k_s16.h is shared with the mu_law suite; a_law_codec.h
+	# is colocated with this test.
+	${SOF_ROOT}/test/ztest/unit/math/arithmetic
 )
 
 # Define SOF-specific configurations for unit testing

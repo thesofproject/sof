@@ -9,6 +9,7 @@
 #include <errno.h>
 
 #include <sof/audio/component.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <sof/lib/fast-get.h>
 #include <sof/lib/vregion.h>
 #include <sof/objpool.h>
@@ -36,6 +37,14 @@ struct sof_fast_get_data {
 static struct sof_fast_get_data fast_get_data = {
 	.pool.list = LIST_INIT(fast_get_data.pool.list),
 };
+
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+static uint32_t fast_get_total_calls;
+static uint16_t fast_get_active_entries;
+static uint16_t fast_get_fail_count;
+static uint32_t fast_get_live_bytes;
+static uint32_t fast_get_peak_bytes;
+#endif
 
 LOG_MODULE_REGISTER(fast_get, CONFIG_SOF_LOG_LEVEL);
 
@@ -66,13 +75,51 @@ static bool fast_get_find_entry(void *data, void *arg)
 #endif
 
 #if CONFIG_USERSPACE
+/*
+ * Removing a partition leaves an unused slot in domain->partitions[], so used
+ * slots can be located beyond num_partitions. Scan all slots, skipping unused
+ * ones, until all num_partitions used slots have been checked.
+ */
 static bool fast_get_partition_exists(struct k_mem_domain *domain, void *start, size_t size)
 {
-	for (unsigned int i = 0; i < domain->num_partitions; i++) {
+	unsigned int n = domain->num_partitions;
+
+	for (unsigned int i = 0; i < arch_mem_domain_max_partitions_get() && n; i++) {
 		struct k_mem_partition *dpart = &domain->partitions[i];
+
+		if (!dpart->size)
+			continue;
 
 		if (dpart->start == (uintptr_t)start && dpart->size == size)
 			return true;
+
+		n--;
+	}
+
+	return false;
+}
+
+/*
+ * Check whether the domain can already access the region via a partition
+ * covering it, e.g. when the buffer was allocated from a heap which is
+ * mapped to the domain as a whole (like the LL user-space heap). Adding
+ * another partition in that case would fail as overlapping.
+ */
+static bool fast_get_partition_covers(struct k_mem_domain *domain, void *start, size_t size)
+{
+	uintptr_t addr = (uintptr_t)start;
+	unsigned int n = domain->num_partitions;
+
+	for (unsigned int i = 0; i < arch_mem_domain_max_partitions_get() && n; i++) {
+		struct k_mem_partition *dpart = &domain->partitions[i];
+
+		if (!dpart->size)
+			continue;
+
+		if (addr >= dpart->start && addr + size <= dpart->start + dpart->size)
+			return true;
+
+		n--;
 	}
 
 	return false;
@@ -167,7 +214,7 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 		 * we skip memory domain manipulation.
 		 */
 		if (current_is_userspace && size > FAST_GET_MAX_COPY_SIZE) {
-			if (!fast_get_partition_exists(mdom, ret,
+			if (!fast_get_partition_covers(mdom, ret,
 						       ALIGN_UP(size, CONFIG_MM_DRV_PAGE_SIZE))) {
 				LOG_DBG("grant access to domain %p", mdom);
 
@@ -184,7 +231,8 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 				 */
 				dcache_invalidate_region((__sparse_force void __sparse_cache *)ret,
 							 size);
-			} else {
+			} else if (fast_get_partition_exists(mdom, ret,
+							     ALIGN_UP(size, CONFIG_MM_DRV_PAGE_SIZE))) {
 				LOG_WRN("Repeated access request by thread");
 			}
 		}
@@ -207,10 +255,16 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 	dcache_writeback_region((__sparse_force void __sparse_cache *)ret, size);
 
 #if CONFIG_USERSPACE
-	if (size > FAST_GET_MAX_COPY_SIZE && current_is_userspace) {
-		/* Otherwise we've allocated on thread's heap, so it already has access */
-		int err = fast_get_access_grant(k_current_get()->mem_domain_info.mem_domain,
-						ret, size);
+	struct k_mem_domain *mdom = k_current_get()->mem_domain_info.mem_domain;
+
+	/*
+	 * Otherwise we've allocated on thread's heap, so it already has access.
+	 * The same is true for large buffers allocated from a heap, that is
+	 * mapped to the thread's domain as a whole.
+	 */
+	if (size > FAST_GET_MAX_COPY_SIZE && current_is_userspace &&
+	    !fast_get_partition_covers(mdom, ret, ALIGN_UP(size, CONFIG_MM_DRV_PAGE_SIZE))) {
+		int err = fast_get_access_grant(mdom, ret, size);
 
 		if (err < 0) {
 			LOG_ERR("failed to grant access err=%d", err);
@@ -225,13 +279,38 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 	entry->size = size;
 	entry->sram_ptr = ret;
 	entry->refcount = 1;
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+	fast_get_active_entries++;
+	fast_get_live_bytes += (uint32_t)size;
+	if (fast_get_live_bytes > fast_get_peak_bytes)
+		fast_get_peak_bytes = fast_get_live_bytes;
+#endif
 out:
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+	fast_get_total_calls++;
+	if (!ret)
+		fast_get_fail_count++;
+#endif
 	k_spin_unlock(&data->lock, key);
 	LOG_DBG("get %p, %p, size %u, refcnt %u", dram_ptr, ret, size, entry ? entry->refcount : 0);
 
 	return ret;
 }
 EXPORT_SYMBOL(fast_get);
+
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+void telemetry_collect_fast_get_stats(struct sof_tel_fast_get_info *fg)
+{
+	if (!fg)
+		return;
+
+	fg->active_entries = fast_get_active_entries;
+	fg->fail_count = fast_get_fail_count;
+	fg->total_sram_bytes = fast_get_live_bytes;
+	fg->peak_sram_bytes = fast_get_peak_bytes;
+	fg->total_get_calls = fast_get_total_calls;
+}
+#endif
 
 static bool fast_put_find_entry(void *data, void *arg)
 {
@@ -267,6 +346,14 @@ void fast_put(struct mod_alloc_ctx *alloc, struct k_mem_domain *mdom, const void
 	entry->refcount--;
 
 	if (!entry->refcount) {
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+		if (fast_get_active_entries > 0)
+			fast_get_active_entries--;
+		if (fast_get_live_bytes >= (uint32_t)entry->size)
+			fast_get_live_bytes -= (uint32_t)entry->size;
+		else
+			fast_get_live_bytes = 0;
+#endif
 		LOG_DBG("freeing buffer %p", sram_ptr);
 		if (alloc && alloc->vreg && entry->size <= FAST_GET_MAX_COPY_SIZE)
 			vregion_free(alloc->vreg, entry->sram_ptr);
@@ -278,9 +365,12 @@ void fast_put(struct mod_alloc_ctx *alloc, struct k_mem_domain *mdom, const void
 	/*
 	 * For large buffers, each thread that called fast_get() has a partition
 	 * in its memory domain. Each thread must remove its own partition here
-	 * to prevent partition leaks.
+	 * to prevent partition leaks. No partition was added, if the domain
+	 * already had access to the buffer via a partition covering it.
 	 */
-	if (entry->size > FAST_GET_MAX_COPY_SIZE && mdom) {
+	if (entry->size > FAST_GET_MAX_COPY_SIZE && mdom &&
+	    fast_get_partition_exists(mdom, (void *)sram_ptr,
+				      ALIGN_UP(entry->size, CONFIG_MM_DRV_PAGE_SIZE))) {
 		struct k_mem_partition part = {
 			.start = (uintptr_t)sram_ptr,
 			.size = ALIGN_UP(entry->size, CONFIG_MM_DRV_PAGE_SIZE),

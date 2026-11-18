@@ -11,6 +11,12 @@
 #include <sof/math/mu_law.h>
 
 /* Include the same fixed-point reference vectors as the CMocka test. */
+/* ref_chirp_mono_8k_s16.h is shared with the a_law suite via the
+ * test/ztest/unit/math/arithmetic include path; mu_law_codec.h is colocated
+ * with this test. Both were moved here from the legacy CMocka tree
+ * (test/cmocka/src/math/arithmetic/) when the CMocka a_law/mu_law tests
+ * were removed, preserving the exact same fixed-point data.
+ */
 #include "ref_chirp_mono_8k_s16.h"
 #include "mu_law_codec.h"
 

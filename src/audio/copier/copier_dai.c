@@ -4,9 +4,9 @@
 //
 // Author: Baofeng Tian <baofeng.tian@intel.com>
 
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <sof/trace/trace.h>
-#include <sof/audio/component_ext.h>
+#include <sof/audio/component_dai.h>
 #include <ipc/dai.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include "copier.h"
@@ -38,7 +38,7 @@ static uint32_t bitmask_to_nibble_channel_map(uint8_t bitmask)
 	return nibble_map;
 }
 
-static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *dev,
+__cold static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *dev,
 						const struct ipc4_copier_module_cfg *copier_cfg,
 						int index)
 {
@@ -47,6 +47,8 @@ static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *dev,
 	const struct sof_alh_configuration_blob *alh_blob;
 	uint8_t chan_bitmask;
 	int channels;
+
+	assert_can_be_cold();
 
 	if (!copier_cfg->gtw_cfg.config_length) {
 		comp_err(dev, "No ipc4_alh_multi_gtw_cfg found in blob!");
@@ -71,12 +73,12 @@ static int copier_set_alh_multi_gtw_channel_map(struct comp_dev *dev,
 	return 0;
 }
 
-static int copier_alh_assign_dai_index(struct comp_dev *dev,
-				       void *gtw_cfg_data,
-				       union ipc4_connector_node_id node_id,
-				       struct ipc_config_dai *dai,
-				       int *dai_index,
-				       int *dai_count)
+__cold static int copier_alh_assign_dai_index(struct comp_dev *dev,
+					      void *gtw_cfg_data,
+					      union ipc4_connector_node_id node_id,
+					      struct ipc_config_dai *dai,
+					      int *dai_index,
+					      int *dai_count)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
@@ -85,6 +87,8 @@ static int copier_alh_assign_dai_index(struct comp_dev *dev,
 	size_t alh_cfg_size, dma_config_length, blob_size;
 	uint32_t alh_count;
 	int i, dai_num, ret;
+
+	assert_can_be_cold();
 
 	if (!cd->config.gtw_cfg.config_length) {
 		comp_err(mod->dev, "No gateway config found in blob!");
@@ -333,7 +337,7 @@ __cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		break;
 	case ipc4_alh_link_output_class:
 	case ipc4_alh_link_input_class:
-#if ACE_VERSION > ACE_VERSION_1_5
+#if CONFIG_ACE_VERSION_2_0_OR_LATER
 		dai.type = SOF_DAI_INTEL_HDA;
 		dai.is_config_blob = true;
 		cd->gtw_type = ipc4_gtw_link;
@@ -341,7 +345,7 @@ __cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		dai.type = SOF_DAI_INTEL_ALH;
 		dai.is_config_blob = true;
 		cd->gtw_type = ipc4_gtw_alh;
-#endif /* ACE_VERSION > ACE_VERSION_1_5 */
+#endif /* CONFIG_ACE_VERSION_2_0_OR_LATER */
 		ret = copier_alh_assign_dai_index(dev, gtw_cfg_data, node_id, &dai, dai_index,
 						  &dai_count);
 		if (ret)

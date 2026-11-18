@@ -10,6 +10,7 @@
 #ifndef __SOF_LIB_VREGION_H__
 #define __SOF_LIB_VREGION_H__
 
+#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sof/compiler_attributes.h>
@@ -172,11 +173,45 @@ void vregion_info(struct vregion *vr);
 void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start);
 
 /**
- * @brief Validate that a virtual region handle is genuine and isolated from user space.
+ * @brief Validate a virtual region handle passed by a user thread and pin it.
+ *
+ * For system call validators only. Kills the calling thread if vr is not a
+ * live vregion, or if the caller has no access to the region memory. On
+ * success vr stays allocated until vregion_unpin(), even if all its
+ * references are dropped meanwhile. A pin is not a reference: it is counted
+ * separately, so vregion_put() calls of other threads can not consume it.
+ *
  * @param[in] vr Pointer to virtual region instance to verify.
- * @return True if handle is valid and secure, false otherwise.
+ * @return True if vr was pinned, false if vr is NULL.
  */
-bool vregion_verify(struct vregion *vr);
+bool vregion_verify_pin(struct vregion *vr);
+
+/**
+ * @brief Release a pin taken with vregion_verify_pin().
+ *
+ * Frees vr if this was the last pin and no references are left.
+ *
+ * @param[in] vr Pinned virtual region instance.
+ */
+void vregion_unpin(struct vregion *vr);
+
+/**
+ * @brief Take a reference to a pinned virtual region.
+ *
+ * @param[in] vr Pinned virtual region instance.
+ * @return False if vr has no references left, so it can not be revived.
+ */
+bool vregion_pinned_get(struct vregion *vr);
+
+/**
+ * @brief Drop a reference to a pinned virtual region.
+ *
+ * Never frees vr: that is left to vregion_unpin().
+ *
+ * @param[in] vr Pinned virtual region instance.
+ * @return References left, or -EINVAL if vr had none to drop.
+ */
+int vregion_pinned_put(struct vregion *vr);
 
 #include <zephyr/syscalls/vregion.h>
 
@@ -227,7 +262,10 @@ static inline void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t 
 	if (size)
 		*size = 0;
 }
-static inline bool vregion_verify(struct vregion *vr) {return false;}
+static inline bool vregion_verify_pin(struct vregion *vr) { return false; }
+static inline void vregion_unpin(struct vregion *vr) {}
+static inline bool vregion_pinned_get(struct vregion *vr) { return false; }
+static inline int vregion_pinned_put(struct vregion *vr) { return -EINVAL; }
 
 #endif /* CONFIG_SOF_VREGIONS */
 

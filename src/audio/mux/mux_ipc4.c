@@ -47,9 +47,9 @@ static int build_config(struct processing_module *mod, struct mux_data *cfg)
 	/* base+reference map 1:1 to contiguous output channels: sink width
 	 * must equal their sum and fit the 8-bit output mask
 	 */
-	if (base_ch + ref_ch > PLATFORM_MAX_CHANNELS || out_ch != base_ch + ref_ch) {
+	if (base_ch + ref_ch > CONFIG_PLATFORM_MAX_CHANNELS || out_ch != base_ch + ref_ch) {
 		comp_err(dev, "invalid channel count: base %u + reference %u -> output %u (max %d)",
-			 base_ch, ref_ch, out_ch, PLATFORM_MAX_CHANNELS);
+			 base_ch, ref_ch, out_ch, CONFIG_PLATFORM_MAX_CHANNELS);
 		return -EINVAL;
 	}
 

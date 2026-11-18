@@ -31,4 +31,16 @@ endif()
 
 if(CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_SOF_USERSPACE_LL)
   zephyr_library_sources(userspace/test_ll_task.c)
+  zephyr_library_sources(userspace/test_ll_karea.c)
+  zephyr_library_sources(userspace/test_ipc_msg_queue.c)
+endif()
+
+if(CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_SOF_USERSPACE_SYSCALL_CALLER_CHECK AND
+   CONFIG_IPC_MAJOR_4)
+  zephyr_library_sources(userspace/test_syscall_caller.c)
+endif()
+
+if(CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_SOF_USERSPACE_SYSCALL_CALLER_CHECK AND
+   CONFIG_SOF_USERSPACE_APPLICATION AND CONFIG_ZEPHYR_DP_SCHEDULER)
+  zephyr_library_sources(userspace/test_dp_kick.c)
 endif()

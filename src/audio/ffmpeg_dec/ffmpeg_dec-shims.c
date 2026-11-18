@@ -16,7 +16,10 @@
 //     a compact real implementation.
 //   * str/mem helpers not exported by the core (memchr, strchr, ...): real.
 //   * bsearch, __bswap*: real.
-//   * strto* : not on the FLAC decode path -> return-0 stubs.
+//   * strto* : Zephyr's CONFIG_MINIMAL_LIBC omits strtod/strtof and an
+//     isolated LLEXT module cannot link the toolchain's non-PIC libc.a.
+//     libavfilter's av_opt_set_from_string() calls strtod/strtol to parse
+//     floating-point, integer, and boolean filter argument strings.
 //   * libm (pow/sin/sqrt/...): FLAC is lossless integer and never calls these;
 //     SOF's fixed-point math is range-limited (sqrt 0-2, exp +/-8, 16-bit sin) so
 //     it cannot serve as a double libm. These are RESOLVE-ONLY STUBS that let the
@@ -179,18 +182,224 @@ uint64_t __bswapdi2(uint64_t x)
 	       __bswapsi2((uint32_t)(x >> 32));
 }
 
-/* ============================ strto* (unused stubs) ======================= */
+/* ============================ strto* ===================================== */
 
+/*
+ * Zephyr's CONFIG_MINIMAL_LIBC omits strtod/strtof (only strtol/strtoul exist
+ * in zephyr/lib/libc/minimal/source/stdlib/), and an LLEXT module cannot link
+ * the toolchain's non-PIC newlib libc.a or import strtod from the base image.
+ * libavfilter's option parser (av_strtod) requires strtod to parse filter
+ * parameter strings such as "nr=28:nf=-20" and "limit=0.95:attack=5".
+ */
 double strtod(const char *nptr, char **endptr)
-{ if (endptr) *endptr = (char *)nptr; return 0; }
-long strtol(const char *nptr, char **endptr, int base)
-{ (void)base; if (endptr) *endptr = (char *)nptr; return 0; }
-long long strtoll(const char *nptr, char **endptr, int base)
-{ (void)base; if (endptr) *endptr = (char *)nptr; return 0; }
-unsigned long strtoul(const char *nptr, char **endptr, int base)
-{ (void)base; if (endptr) *endptr = (char *)nptr; return 0; }
+{
+	const char *s = nptr;
+	double val = 0.0;
+	double sign = 1.0;
+	int has_digits = 0;
+	int frac_exp = 0;
+	int exp_val = 0;
+
+	while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r')
+		s++;
+
+	if (*s == '-') {
+		sign = -1.0;
+		s++;
+	} else if (*s == '+') {
+		s++;
+	}
+
+	if ((s[0] == 'i' || s[0] == 'I') &&
+	    (s[1] == 'n' || s[1] == 'N') &&
+	    (s[2] == 'f' || s[2] == 'F')) {
+		s += 3;
+		if (endptr)
+			*endptr = (char *)s;
+		return sign * __builtin_inf();
+	}
+	if ((s[0] == 'n' || s[0] == 'N') &&
+	    (s[1] == 'a' || s[1] == 'A') &&
+	    (s[2] == 'n' || s[2] == 'N')) {
+		s += 3;
+		if (endptr)
+			*endptr = (char *)s;
+		return __builtin_nan("");
+	}
+
+	while (*s >= '0' && *s <= '9') {
+		has_digits = 1;
+		if (val < 1e18)
+			val = val * 10.0 + (double)(*s - '0');
+		else
+			frac_exp++;
+		s++;
+	}
+
+	if (*s == '.') {
+		s++;
+		while (*s >= '0' && *s <= '9') {
+			has_digits = 1;
+			if (val < 1e18) {
+				val = val * 10.0 + (double)(*s - '0');
+				frac_exp--;
+			}
+			s++;
+		}
+	}
+
+	if (!has_digits) {
+		if (endptr)
+			*endptr = (char *)nptr;
+		return 0.0;
+	}
+
+	if (*s == 'e' || *s == 'E') {
+		const char *es = s + 1;
+		int exp_sign = 1;
+		int exp_digits = 0;
+
+		if (*es == '-') {
+			exp_sign = -1;
+			es++;
+		} else if (*es == '+') {
+			es++;
+		}
+		while (*es >= '0' && *es <= '9') {
+			exp_digits = 1;
+			if (exp_val < 10000)
+				exp_val = exp_val * 10 + (*es - '0');
+			es++;
+		}
+		if (exp_digits) {
+			exp_val *= exp_sign;
+			s = es;
+		} else {
+			exp_val = 0;
+		}
+	}
+
+	exp_val += frac_exp;
+	if (val != 0.0) {
+		while (exp_val >= 8) {
+			val *= 1e8;
+			if (val == __builtin_inf())
+				break;
+			exp_val -= 8;
+		}
+		while (exp_val > 0) {
+			val *= 10.0;
+			if (val == __builtin_inf())
+				break;
+			exp_val--;
+		}
+		while (exp_val <= -8) {
+			val *= 1e-8;
+			if (val == 0.0)
+				break;
+			exp_val += 8;
+		}
+		while (exp_val < 0) {
+			val *= 0.1;
+			if (val == 0.0)
+				break;
+			exp_val++;
+		}
+	}
+
+	if (endptr)
+		*endptr = (char *)s;
+
+	return sign * val;
+}
+
+float strtof(const char *nptr, char **endptr)
+{
+	return (float)strtod(nptr, endptr);
+}
+
+static unsigned long long ffmpeg_dec_strtoull(const char *nptr, char **endptr,
+					      int base, int *is_neg)
+{
+	const char *s = nptr;
+	unsigned long long acc = 0;
+	int neg = 0, any = 0, d;
+
+	while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r')
+		s++;
+
+	if (*s == '-') {
+		neg = 1;
+		s++;
+	} else if (*s == '+') {
+		s++;
+	}
+
+	if (base < 0 || base == 1 || base > 36) {
+		if (endptr)
+			*endptr = (char *)nptr;
+		if (is_neg)
+			*is_neg = 0;
+		return 0;
+	}
+
+	if ((base == 0 || base == 16) && s[0] == '0' && (s[1] == 'x' || s[1] == 'X') &&
+	    ((s[2] >= '0' && s[2] <= '9') ||
+	     (s[2] >= 'a' && s[2] <= 'f') ||
+	     (s[2] >= 'A' && s[2] <= 'F'))) {
+		s += 2;
+		base = 16;
+	}
+	if (base == 0)
+		base = (*s == '0') ? 8 : 10;
+
+	for (;; s++) {
+		if (*s >= '0' && *s <= '9')
+			d = *s - '0';
+		else if (*s >= 'a' && *s <= 'z')
+			d = *s - 'a' + 10;
+		else if (*s >= 'A' && *s <= 'Z')
+			d = *s - 'A' + 10;
+		else
+			break;
+		if (d >= base)
+			break;
+		any = 1;
+		acc = acc * (unsigned long long)base + (unsigned long long)d;
+	}
+
+	if (endptr)
+		*endptr = (char *)(any ? s : nptr);
+	if (is_neg)
+		*is_neg = any ? neg : 0;
+	return any ? acc : 0;
+}
+
 unsigned long long strtoull(const char *nptr, char **endptr, int base)
-{ (void)base; if (endptr) *endptr = (char *)nptr; return 0; }
+{
+	int neg = 0;
+	unsigned long long uv = ffmpeg_dec_strtoull(nptr, endptr, base, &neg);
+
+	return neg ? -uv : uv;
+}
+
+long long strtoll(const char *nptr, char **endptr, int base)
+{
+	int neg = 0;
+	unsigned long long uv = ffmpeg_dec_strtoull(nptr, endptr, base, &neg);
+
+	return neg ? -(long long)uv : (long long)uv;
+}
+
+long strtol(const char *nptr, char **endptr, int base)
+{
+	return (long)strtoll(nptr, endptr, base);
+}
+
+unsigned long strtoul(const char *nptr, char **endptr, int base)
+{
+	return (unsigned long)strtoull(nptr, endptr, base);
+}
 
 /* ============================ errno / libm =============================== */
 /*

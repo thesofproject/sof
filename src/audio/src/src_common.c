@@ -17,7 +17,7 @@
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
 #include <sof/lib/fast-get.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
@@ -25,7 +25,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
@@ -45,13 +44,13 @@
 LOG_MODULE_REGISTER(src, CONFIG_SOF_LOG_LEVEL);
 
 /* Calculates buffers to allocate for a SRC mode */
-static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nch)
+static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, unsigned int nch)
 {
 	const struct src_stage *stage1;
 	const struct src_stage *stage2;
 	struct src_param *a;
 	int fs_in, fs_out;
-	int source_frames;
+	size_t source_frames;
 	int r1, n;
 
 	a = &cd->param;
@@ -59,7 +58,7 @@ static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nc
 	fs_out = cd->sink_rate;
 	source_frames = cd->source_frames;
 
-	if (nch > PLATFORM_MAX_CHANNELS) {
+	if (nch > CONFIG_PLATFORM_MAX_CHANNELS) {
 		/* TODO: should be device, not class */
 		comp_err(dev, "nch = %u > PLATFORM_MAX_CHANNELS",
 			 nch);
@@ -240,13 +239,13 @@ static int src_2s(struct comp_data *cd,
 	void *sbuf_end_addr = &cd->delay_lines[cd->param.sbuf_length];
 	size_t sbuf_size = cd->param.sbuf_length * sizeof(int32_t);
 	/* chan sink == chan src therefore we only need to use one*/
-	int nch = source_get_channels(source);
+	unsigned int nch = source_get_channels(source);
 	int sbuf_free = cd->param.sbuf_length - cd->sbuf_avail;
-	int avail_b = source_get_data_available(source);
-	int free_b = sink_get_free_size(sink);
-	int sz = cd->sample_container_bytes;
-	uint32_t source_frag_size = cd->param.blk_in * source_get_frame_bytes(source);
-	uint32_t sink_frag_size = cd->param.blk_out * sink_get_frame_bytes(sink);
+	size_t avail_b = source_get_data_available(source);
+	size_t free_b = sink_get_free_size(sink);
+	size_t sz = cd->sample_container_bytes;
+	size_t source_frag_size = cd->param.blk_in * source_get_frame_bytes(source);
+	size_t sink_frag_size = cd->param.blk_out * sink_get_frame_bytes(sink);
 
 	ret = source_get_data(source, source_frag_size,
 			      &s1.x_rptr, (void const **)&source_buffer_start, &s1.x_size);
@@ -333,8 +332,8 @@ static int src_1s(struct comp_data *cd, struct sof_source *source,
 	int ret;
 	uint8_t const *source_buffer_start;
 	uint8_t *sink_buffer_start;
-	uint32_t source_frag_size = cd->param.blk_in * source_get_frame_bytes(source);
-	uint32_t sink_frag_size = cd->param.blk_out * sink_get_frame_bytes(sink);
+	size_t source_frag_size = cd->param.blk_in * source_get_frame_bytes(source);
+	size_t sink_frag_size = cd->param.blk_out * sink_get_frame_bytes(sink);
 
 	ret = source_get_data(source, source_frag_size,
 			      &s1.x_rptr, (void const **)&source_buffer_start, &s1.x_size);
@@ -369,12 +368,15 @@ static int src_1s(struct comp_data *cd, struct sof_source *source,
 int src_copy_sxx(struct comp_data *cd, struct sof_source *source,
 		 struct sof_sink *sink)
 {
-	int frames = cd->param.blk_in;
+	size_t frames = cd->param.blk_in;
 
 	switch (source_get_frm_fmt(source)) {
 	case SOF_IPC_FRAME_S16_LE:
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
+#if CONFIG_FORMAT_FLOAT
+	case SOF_IPC_FRAME_FLOAT:
+#endif
 		return source_to_sink_copy(source, sink, true,
 					   frames * source_get_frame_bytes(source));
 	default:
@@ -436,8 +438,8 @@ static bool src_get_copy_limits(struct comp_data *cd,
 	struct src_param *sp;
 	const struct src_stage *s1;
 	const struct src_stage *s2;
-	int frames_src;
-	int frames_snk;
+	size_t frames_src;
+	size_t frames_snk;
 
 	/* Get SRC parameters */
 	sp = &cd->param;
@@ -501,7 +503,7 @@ int src_params_general(struct processing_module *mod,
 
 	comp_info(dev, "source_rate = %u, sink_rate = %u",
 		  cd->source_rate, cd->sink_rate);
-	comp_dbg(dev, "sample_container_bytes = %d, channels = %u, dev->frames = %u",
+	comp_dbg(dev, "sample_container_bytes = %zu, channels = %u, dev->frames = %u",
 		 cd->sample_container_bytes, cd->channels_count, dev->frames);
 	if (!cd->sink_rate) {
 		comp_err(dev, "zero sink rate");
@@ -536,7 +538,8 @@ int src_params_general(struct processing_module *mod,
 		/* free any existing delay lines */
 		mod_free(mod, cd->delay_lines);
 
-		cd->delay_lines = mod_alloc(mod, delay_lines_size);
+		/* Align delay lines for SIMD circular buffer accesses */
+		cd->delay_lines = mod_alloc_align(mod, delay_lines_size, SOF_FRAME_BYTE_ALIGN);
 		if (!cd->delay_lines) {
 			comp_err(dev, "failed to alloc cd->delay_lines, delay_lines_size = %zu",
 				 delay_lines_size);

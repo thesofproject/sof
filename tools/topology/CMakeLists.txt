@@ -56,6 +56,34 @@ else()
 	message("-- alsatplg version: " ${ALSATPLG_VERSION_NUMBER})
 endif()
 
+# Check every topology2 binary like the Linux SOF driver would when
+# loading it, see validator/README.md. Errors fail the build, warnings
+# are only counted. Needs the python3 construct module.
+option(TPLG_VALIDATE "Validate topology2 binaries after building them" ON)
+set(TPLG_VALIDATOR "${CMAKE_CURRENT_SOURCE_DIR}/validator/tplg_validate.py")
+set(TPLG_VALIDATE_WAIVERS "${CMAKE_CURRENT_SOURCE_DIR}/validator/known-issues.txt")
+set(TPLG_VALIDATE_ENABLED FALSE)
+if(TPLG_VALIDATE)
+	find_package(Python3 COMPONENTS Interpreter)
+	if(Python3_Interpreter_FOUND)
+		execute_process(COMMAND ${Python3_EXECUTABLE} -c "import construct"
+		  RESULT_VARIABLE construct_status OUTPUT_QUIET ERROR_QUIET)
+	endif()
+	if(Python3_Interpreter_FOUND AND construct_status EQUAL 0)
+		set(TPLG_VALIDATE_ENABLED TRUE)
+		message("-- topology validation: enabled")
+		# recheck the binaries when the rules, the kernel schema or the
+		# waivers change
+		file(GLOB_RECURSE TPLG_VALIDATE_DEPENDS CONFIGURE_DEPENDS
+			"${CMAKE_CURRENT_SOURCE_DIR}/validator/*.py")
+		list(FILTER TPLG_VALIDATE_DEPENDS EXCLUDE REGEX "/tests/")
+		list(APPEND TPLG_VALIDATE_DEPENDS ${TPLG_VALIDATE_WAIVERS})
+	else()
+		message(WARNING "topology validation skipped: python3 with the construct "
+			"module not found (install python3-construct or set -DTPLG_VALIDATE=OFF)")
+	endif()
+endif()
+
 
 # This use of VERBOSE relies on original CMake behavior.
 # From the add_custom_command() manual:
@@ -111,6 +139,24 @@ macro(add_alsatplg2_command conf_header conf_target input_name output_name inclu
 		        -I ${include_path} -D "'${defines}'" -p -c ${output_name}.conf -o ${output_name}.tplg
 		${TPLG_USES_TERMINAL}
 		)
+
+	# Files the topology target must depend on, for the callers
+	set(tplg2_outputs ${output_name}.tplg)
+
+	# Validate in a separate command, so that a change to the validator
+	# or the waivers rechecks the binary without rebuilding it. A failed
+	# check leaves no stamp file, so the check is repeated next time.
+	if (TPLG_VALIDATE_ENABLED)
+		add_custom_command(
+			OUTPUT ${output_name}.tplg.validated
+			DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${output_name}.tplg ${TPLG_VALIDATE_DEPENDS}
+			COMMAND ${Python3_EXECUTABLE} ${TPLG_VALIDATOR} --quiet
+				--waivers ${TPLG_VALIDATE_WAIVERS} ${output_name}.tplg
+			COMMAND ${CMAKE_COMMAND} -E touch ${output_name}.tplg.validated
+			${TPLG_USES_TERMINAL}
+			)
+		list(APPEND tplg2_outputs ${output_name}.tplg.validated)
+	endif()
 endmacro()
 
 

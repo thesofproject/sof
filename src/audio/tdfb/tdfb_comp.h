@@ -14,7 +14,6 @@
 #include <sof/math/fir_hifi2ep.h>
 #include <sof/math/fir_hifi3.h>
 #include <sof/math/iir_df1.h>
-#include <sof/platform.h>
 #include <sof/common.h>
 
 /* TDFB and EQFIR depend on math FIR.
@@ -28,8 +27,8 @@
 #define TDFB_GENERIC	1
 #endif
 
-#define TDFB_IN_BUF_LENGTH (2 * PLATFORM_MAX_CHANNELS)
-#define TDFB_OUT_BUF_LENGTH (2 * PLATFORM_MAX_CHANNELS)
+#define TDFB_IN_BUF_LENGTH (2 * CONFIG_PLATFORM_MAX_CHANNELS)
+#define TDFB_OUT_BUF_LENGTH (2 * CONFIG_PLATFORM_MAX_CHANNELS)
 
 /* When set to one only one IPC is sent to host. There is not other requests
  * triggered. If set to zero the IPC sent will be empty and the driver will
@@ -45,12 +44,16 @@
 /* Process max 10% more frames than one period */
 #define TDFB_MAX_FRAMES_MULT_Q14 Q_CONVERT_FLOAT(1.10, 14)
 
+#if CONFIG_FORMAT_FLOAT
+#include <sof/math/fir_float.h>
+#endif
+
 /* TDFB component private data */
 
 struct tdfb_direction_data {
-	struct iir_state_df1 emphasis[PLATFORM_MAX_CHANNELS];
-	int32_t timediff[PLATFORM_MAX_CHANNELS];
-	int32_t timediff_iter[PLATFORM_MAX_CHANNELS];
+	struct iir_state_df1 emphasis[CONFIG_PLATFORM_MAX_CHANNELS];
+	int32_t timediff[CONFIG_PLATFORM_MAX_CHANNELS];
+	int32_t timediff_iter[CONFIG_PLATFORM_MAX_CHANNELS];
 	int64_t level_ambient;
 	uint32_t trigger;
 	int32_t level;
@@ -72,7 +75,12 @@ struct tdfb_direction_data {
 };
 
 struct tdfb_comp_data {
-	struct fir_state_32x16 fir[SOF_TDFB_FIR_MAX_COUNT]; /**< FIR state */
+	union {
+		struct fir_state_32x16 fir[SOF_TDFB_FIR_MAX_COUNT]; /**< FIR state */
+#if CONFIG_FORMAT_FLOAT
+		struct fir_state_float fir_f[SOF_TDFB_FIR_MAX_COUNT];
+#endif
+	};
 	struct comp_data_blob_handler *model_handler;
 	struct sof_tdfb_config *config;	    /**< pointer to setup blob */
 	struct sof_tdfb_angle *filter_angles;
@@ -80,50 +88,74 @@ struct tdfb_comp_data {
 	struct sof_ipc_ctrl_data *ctrl_data;
 	struct ipc_msg *msg;
 	struct tdfb_direction_data direction;
-	int32_t in[TDFB_IN_BUF_LENGTH];	    /**< input samples buffer */
-	int32_t out[TDFB_IN_BUF_LENGTH];    /**< output samples mix buffer */
+	union {
+		int32_t in[TDFB_IN_BUF_LENGTH];	    /**< input samples buffer */
+#if CONFIG_FORMAT_FLOAT
+		float in_f[TDFB_IN_BUF_LENGTH];
+#endif
+	};
+	union {
+		int32_t out[TDFB_IN_BUF_LENGTH];    /**< output samples mix buffer */
+#if CONFIG_FORMAT_FLOAT
+		float out_f[TDFB_IN_BUF_LENGTH];
+#endif
+	};
 	int32_t *fir_delay;		    /**< pointer to allocated RAM */
+#if CONFIG_FORMAT_FLOAT
+	float *fir_coef_f;
+	size_t fir_coef_f_size;
+	enum sof_ipc_frame source_format;
+#endif
 	int16_t *input_channel_select;	    /**< For each FIR define in ch */
 	int16_t *output_channel_mix;	    /**< For each FIR define out ch */
-	int16_t *output_stream_mix;         /**< for each FIR define stream */
+	int16_t *output_stream_mix;	    /**< for each FIR define stream */
 	int16_t az_value;		    /**< beam steer azimuth as in control enum */
 	int16_t az_value_estimate;	    /**< beam steer azimuth as in control enum */
 	int16_t source_channels;	    /**< source channel count cached for validator */
 	int16_t sink_channels;		    /**< sink channel count cached for validator */
+	size_t sample_bytes;		    /**< sample container size in bytes */
 	size_t config_size;		    /**< size of the configuration blob */
-	size_t fir_delay_size;              /**< allocated size */
+	size_t fir_delay_size;		    /**< allocated size */
 	unsigned int max_frames;	    /**< max frames to process */
 	bool direction_updates:1;	    /**< set true if direction angle control is updated */
 	bool direction_change:1;	    /**< set if direction value has significant change */
 	bool beam_on:1;			    /**< set true if beam is off */
 	bool update:1;			    /**< set true if control enum has been received */
 	void (*tdfb_func)(struct tdfb_comp_data *cd,
-			  struct input_stream_buffer *bsource,
-			  struct output_stream_buffer *bsink,
-			  int frames);
+			  struct cir_buf_source *source, unsigned int in_nch,
+			  struct cir_buf_sink *sink, unsigned int out_nch,
+			  size_t frames);
 };
 
 #if CONFIG_FORMAT_S16LE
 void tdfb_fir_s16(struct tdfb_comp_data *cd,
-		  struct input_stream_buffer *bsource,
-		  struct output_stream_buffer *bsink, int frames);
+		  struct cir_buf_source *source, unsigned int in_nch,
+		  struct cir_buf_sink *sink, unsigned int out_nch, size_t frames);
 #endif
 
 #if CONFIG_FORMAT_S24LE
 void tdfb_fir_s24(struct tdfb_comp_data *cd,
-		  struct input_stream_buffer *bsource,
-		  struct output_stream_buffer *bsink, int frames);
+		  struct cir_buf_source *source, unsigned int in_nch,
+		  struct cir_buf_sink *sink, unsigned int out_nch, size_t frames);
 #endif
 
 #if CONFIG_FORMAT_S32LE
 void tdfb_fir_s32(struct tdfb_comp_data *cd,
-		  struct input_stream_buffer *bsource,
-		  struct output_stream_buffer *bsink, int frames);
+		  struct cir_buf_source *source, unsigned int in_nch,
+		  struct cir_buf_sink *sink, unsigned int out_nch, size_t frames);
 #endif
 
-int tdfb_direction_init(struct processing_module *mod, int32_t fs, int channels);
-void tdfb_direction_copy_emphasis(struct tdfb_comp_data *cd, int channels, int *channel, int32_t x);
-void tdfb_direction_estimate(struct tdfb_comp_data *cd, int frames, int channels);
+#if CONFIG_FORMAT_FLOAT
+void tdfb_fir_float(struct tdfb_comp_data *cd,
+		    struct cir_buf_source *source, unsigned int in_nch,
+		    struct cir_buf_sink *sink, unsigned int out_nch,
+		    size_t frames);
+#endif
+
+int tdfb_direction_init(struct processing_module *mod, int32_t fs, unsigned int channels);
+void tdfb_direction_copy_emphasis(struct tdfb_comp_data *cd, unsigned int channels,
+				  unsigned int *channel, int32_t x);
+void tdfb_direction_estimate(struct tdfb_comp_data *cd, size_t frames, unsigned int channels);
 void tdfb_direction_free(struct processing_module *mod);
 
 static inline void tdfb_cinc_s16(int16_t **ptr, int16_t *end, size_t size)
@@ -147,7 +179,8 @@ int tdfb_set_ipc_config(struct processing_module *mod, uint32_t param_id,
 			enum module_cfg_fragment_position pos, uint32_t data_offset_size,
 			const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			size_t response_size);
-int tdfb_params(struct processing_module *mod);
+int tdfb_params(struct processing_module *mod, struct sof_source *source,
+		struct sof_sink *sink);
 
 #ifdef UNIT_TEST
 void sys_comp_module_tdfb_interface_init(void);

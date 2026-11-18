@@ -17,7 +17,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/trig.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
@@ -86,7 +85,7 @@ struct tone_state {
 struct comp_data {
 	uint32_t channels;
 	uint32_t rate;
-	struct tone_state sg[PLATFORM_MAX_CHANNELS];
+	struct tone_state sg[CONFIG_PLATFORM_MAX_CHANNELS];
 	int (*tone_func)(struct processing_module *mod, struct sof_sink *sink,
 			 struct sof_source *source);
 	int mode;
@@ -97,6 +96,8 @@ int tonegen_init(struct tone_state *sg, int32_t fs, int32_t f, int32_t a);
 void tonegen_update_f(struct tone_state *sg, int32_t f);
 int tone_s32_default(struct processing_module *mod, struct sof_sink *sink,
 		     struct sof_source *source);
+int tone_float_default(struct processing_module *mod, struct sof_sink *sink,
+		       struct sof_source *source);
 
 /* Set sine amplitude */
 static inline void tonegen_set_a(struct tone_state *sg, int32_t a)

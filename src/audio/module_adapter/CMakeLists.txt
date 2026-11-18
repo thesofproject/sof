@@ -73,6 +73,7 @@ endif()
 		iadk/module_initial_settings_concrete.cpp
 		iadk/iadk_module_adapter.cpp
 		iadk/system_agent.cpp
+		iadk/timestamping_service_provider.cpp
 		library/native_system_service.c
 	)
 	if(CONFIG_INTEL_MODULES AND CONFIG_COMP_KPB)
@@ -83,7 +84,6 @@ endif()
 	endif()
 
 	zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_PROXY
-		library/userspace_proxy.c
 		library/userspace_proxy_user.c
 	)
 

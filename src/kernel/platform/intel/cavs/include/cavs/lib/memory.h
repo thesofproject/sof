@@ -1,0 +1,63 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2019 Intel Corporation. All rights reserved.
+ *
+ * Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
+ */
+
+#ifdef __PLATFORM_LIB_MEMORY_H__
+
+#ifndef __CAVS_LIB_MEMORY_H__
+#define __CAVS_LIB_MEMORY_H__
+
+#include <sof/common.h>
+#include <rtos/cache.h>
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
+#include <sof/lib/cpu.h>
+#endif
+
+#define HEAP_BUF_ALIGNMENT		PLATFORM_DCACHE_ALIGN
+
+/** \brief EDF task's default stack size in bytes. */
+/* increase stack size for RTNR and GOOGLE_RTC_AUDIO_PROCESSING */
+#if defined(CONFIG_COMP_RTNR) || defined(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING)
+#define PLATFORM_TASK_DEFAULT_STACK_SIZE        0x2000
+#else
+#define PLATFORM_TASK_DEFAULT_STACK_SIZE	0x1000
+#endif
+
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
+
+struct sof;
+
+#if !defined UNIT_TEST && !defined __ZEPHYR__
+#define cache_to_uncache_init(address) \
+	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
+#else
+#define cache_to_uncache_init(address)	address
+#endif
+
+/**
+ * \brief Transforms pointer if necessary before freeing the memory.
+ * \param[in,out] ptr Pointer to the allocated memory.
+ * \return Appropriate pointer to the memory ready to be freed.
+ */
+static inline void *platform_rfree_prepare(void *ptr)
+{
+	return ptr;
+}
+
+void platform_init_memmap(struct sof *sof);
+
+#endif
+
+#define host_to_local(addr) (addr)
+#define local_to_host(addr) (addr)
+
+#endif /* __CAVS_LIB_MEMORY_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of platform/lib/memory.h"
+
+#endif /* __PLATFORM_LIB_MEMORY_H__ */

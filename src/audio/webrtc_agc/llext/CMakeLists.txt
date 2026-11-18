@@ -28,6 +28,8 @@ else()
             ${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/dot_product_with_scale.c
             ${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_by_2.c
             ${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_by_2_internal.c
+            ${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_fractional.c
+            ${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_48khz.c
     INCLUDES "${SOF_WEBRTC_APM_SRC_DIR}"
              "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/agc/legacy"
              "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/include"

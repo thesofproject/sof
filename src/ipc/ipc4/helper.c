@@ -12,6 +12,7 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <module/module/base.h>
 #include <sof/common.h>
 #include <rtos/interrupt.h>
@@ -21,35 +22,21 @@
 #include <ipc4/handler.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/mailbox.h>
-#include <sof/lib/memory.h>
 #include <sof/lib/vregion.h>
 #include <sof/list.h>
-#include <sof/platform.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/symbol.h>
 #include <rtos/wait.h>
 
-/* TODO: Remove platform-specific code, see https://github.com/thesofproject/sof/issues/7549 */
-#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE) || defined(CONFIG_INTEL_ADSP_CAVS)
-#define RIMAGE_MANIFEST 1
-#endif
-
-#ifdef RIMAGE_MANIFEST
-#include <adsp_memory.h>
-#endif
-
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
-#include <rimage/cavs/cavs_ext_manifest.h>
-#include <rimage/sof/user/manifest.h>
 #include <ipc4/base-config.h>
 #include <ipc/header.h>
 #include <ipc4/notification.h>
 #include <ipc4/pipeline.h>
 #include <ipc4/module.h>
 #include <ipc4/error_status.h>
-#include <sof/lib_manager.h>
 #include <sof/tlv.h>
 
 #include <errno.h>
@@ -60,11 +47,9 @@
 #include <sof/debug/telemetry/telemetry.h>
 #include <sof/debug/telemetry/performance_monitor.h>
 
+/* The IPC4 helpers that run in kernel mode are in src/kernel/ipc/ipc4/helper-kernel.c */
+
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
-
-extern struct tr_ctx comp_tr;
-
-static const struct comp_driver *ipc4_get_drv(const void *uuid);
 
 void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
 			   uint32_t id)
@@ -77,19 +62,8 @@ void ipc_build_comp_event(struct sof_ipc_comp_event *event, uint32_t type,
 {
 }
 
-bool ipc_trigger_trace_xfer(uint32_t avail)
-{
-	return avail >= DMA_TRACE_LOCAL_SIZE / 2;
-}
-
-void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
-{
-	posn->rhdr.hdr.cmd =  SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
-	posn->rhdr.hdr.size = 0;
-}
-
 #if CONFIG_LIBRARY
-static inline unsigned char *ipc4_get_comp_new_data(void)
+unsigned char *ipc4_get_comp_new_data(void)
 {
 	struct ipc *ipc = ipc_get();
 	unsigned char *data = (unsigned char *)ipc->comp_data +
@@ -97,13 +71,8 @@ static inline unsigned char *ipc4_get_comp_new_data(void)
 
 	return data;
 }
-
-static const struct comp_driver *ipc4_library_get_comp_drv(unsigned char *data)
-{
-	return ipc4_get_drv(data);
-}
 #else
-__cold static inline unsigned char *ipc4_get_comp_new_data(void)
+__cold unsigned char *ipc4_get_comp_new_data(void)
 {
 	assert_can_be_cold();
 
@@ -111,8 +80,8 @@ __cold static inline unsigned char *ipc4_get_comp_new_data(void)
 }
 #endif /* CONFIG_LIBRARY */
 
-__cold static int ipc4_comp_new_config(struct comp_ipc_config *ipc_config,
-				       const struct ipc4_module_init_instance *module_init)
+__cold int ipc4_comp_new_config(struct comp_ipc_config *ipc_config,
+				const struct ipc4_module_init_instance *module_init)
 {
 	uint32_t comp_id = IPC4_COMP_ID(module_init->primary.r.module_id,
 					module_init->primary.r.instance_id);
@@ -133,6 +102,7 @@ __cold static int ipc4_comp_new_config(struct comp_ipc_config *ipc_config,
 	ipc_config->id = comp_id;
 	ipc_config->pipeline_id = module_init->extension.r.ppl_instance_id;
 	ipc_config->core = module_init->extension.r.core_id;
+	ipc_config->ppl_core = ipc_config->core;
 	ipc_config->ipc_config_size = module_init->extension.r.param_block_size * sizeof(uint32_t);
 	ipc_config->ipc_extended_init = module_init->extension.r.extended_init;
 	if (ipc_config->ipc_config_size > MAILBOX_HOSTBOX_SIZE) {
@@ -150,130 +120,47 @@ __cold static int ipc4_comp_new_config(struct comp_ipc_config *ipc_config,
 		return -EINVAL;
 	}
 
-	return 0;
-}
-
-/* Only called from ipc4_init_module_instance(), which is __cold */
-__cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *module_init)
-{
-	struct comp_ipc_config ipc_config;
-	const struct comp_driver *drv;
-	struct comp_dev *dev;
-	unsigned char *data;
-	uint32_t comp_id = IPC4_COMP_ID(module_init->primary.r.module_id,
-					module_init->primary.r.instance_id);
-
-	assert_can_be_cold();
-
-	int ret = ipc4_comp_new_config(&ipc_config, module_init);
-
-	if (ret < 0)
-		return NULL;
-
 	/* Reject a module naming a non-existent parent pipeline: otherwise
 	 * dev->pipeline stays NULL and a later init path (e.g. the copier)
 	 * dereferences it. IPC4_INVALID_PIPELINE_ID is exempt - it marks base FW
 	 * modules with no parent pipeline. IPC_COMP_ALL: the pipeline may run on a
 	 * different core than this module.
 	 */
-	if (ipc_config.pipeline_id != IPC4_INVALID_PIPELINE_ID &&
-	    !ipc_get_comp_by_ppl_id(ipc_get(), COMP_TYPE_PIPELINE, ipc_config.pipeline_id,
-				    IPC_COMP_ALL)) {
-		tr_err(&ipc_tr, "comp 0x%x: parent pipeline %u does not exist", comp_id,
-		       (uint32_t)ipc_config.pipeline_id);
-		return NULL;
+	if (ipc_config->pipeline_id != IPC4_INVALID_PIPELINE_ID) {
+		struct ipc_comp_dev *ppl = ipc_get_comp_by_ppl_id(ipc_get(), COMP_TYPE_PIPELINE,
+								  ipc_config->pipeline_id,
+								  IPC_COMP_ALL);
+
+		if (!ppl) {
+			tr_err(&ipc_tr, "comp 0x%x: parent pipeline %u does not exist", comp_id,
+			       (uint32_t)ipc_config->pipeline_id);
+			return -EINVAL;
+		}
+
+		/* Without cross-core streams a stream is processed entirely on a
+		 * single core, so a module cannot live on another core than its
+		 * pipeline. With user-space LL, only DP modules can run on another
+		 * core: an LL module would need an own LL task on that core, which
+		 * is set up by the IDC handlers in kernel mode only.
+		 */
+		if (ppl->core != ipc_config->core &&
+		    (!IS_ENABLED(CONFIG_CROSS_CORE_STREAM) ||
+		     (IS_ENABLED(CONFIG_SOF_USERSPACE_LL) &&
+		      ipc_config->proc_domain != COMP_PROCESSING_DOMAIN_DP))) {
+			tr_err(&ipc_tr,
+			       "comp 0x%x: core %u != pipeline %u core %u, not supported",
+			       comp_id, (uint32_t)ipc_config->core,
+			       (uint32_t)ipc_config->pipeline_id, (uint32_t)ppl->core);
+			return -EINVAL;
+		}
+
+		ipc_config->ppl_core = ppl->core;
 	}
 
-#ifdef CONFIG_DCACHE_LINE_SIZE
-	if (!IS_ENABLED(CONFIG_LIBRARY))
-		sys_cache_data_invd_range((__sparse_force void __sparse_cache *)
-					  MAILBOX_HOSTBOX_BASE,
-					  ALIGN_UP(ipc_config.ipc_config_size,
-						   CONFIG_DCACHE_LINE_SIZE));
-#endif
-	data = ipc4_get_comp_new_data();
-#if CONFIG_LIBRARY
-	ipc_config.ipc_config_size -= sizeof(struct sof_uuid);
-	drv = ipc4_library_get_comp_drv(data + ipc_config.ipc_config_size);
-#else
-	drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp_id));
-#endif
-	if (!drv)
-		return NULL;
-
-	if (!drv->ops.create) {
-		tr_err(&ipc_tr, "comp 0x%x: module %u is not instantiable", comp_id,
-		       (uint32_t)IPC4_MOD_ID(comp_id));
-		return NULL;
-	}
-
-	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
-		const struct ipc_config_process spec = {
-			.data = data,
-			.size = ipc_config.ipc_config_size,
-		};
-
-		dev = drv->ops.create(drv, &ipc_config, &spec);
-	} else {
-		dev = drv->ops.create(drv, &ipc_config, data);
-	}
-	if (!dev)
-		return NULL;
-
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
-
-#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
-	/* init global performance measurement */
-	dev->perf_data.perf_data_item = perf_data_getnext();
-	/* this can be null, just no performance measurements in this case */
-	if (dev->perf_data.perf_data_item) {
-		dev->perf_data.perf_data_item->item.resource_id = comp_id;
-		if (perf_meas_get_state() != IPC4_PERF_MEASUREMENTS_DISABLED)
-			comp_init_performance_data(dev);
-	}
-#endif
-
-	ipc4_add_comp_dev(dev);
-
-	comp_update_ibs_obs_cpc(dev);
-
-	return dev;
+	return 0;
 }
 
 #ifdef CONFIG_SOF_USERSPACE_LL
-
-int ipc4_user_module_load(const struct comp_driver *drv,
-			  const struct ipc4_module_init_instance *mi)
-{
-	/*
-	 * A large part of module instantiation is executed in the userspace
-	 * mode, including calling the module's .init() method. But another part
-	 * of it has to be executed in the kernel mode, including calling
-	 * lib_manager_mod_create_priv(). This is the privileged part of module
-	 * instantiation.
-	 */
-	struct comp_ipc_config ipc_config;
-	int ret = ipc4_comp_new_config(&ipc_config, mi);
-
-	if (ret < 0)
-		return ret;
-
-	const struct ipc_config_process spec = {
-		.data = ipc4_get_comp_new_data(),
-		.size = ipc_config.ipc_config_size,
-	};
-
-#if CONFIG_DCACHE_LINE_SIZE && !CONFIG_LIBRARY
-	sys_cache_data_invd_range((__sparse_force void __sparse_cache *)spec.data, spec.size);
-#endif
-
-	struct userspace_context *userspace = NULL;
-	const struct module_interface *ops = NULL;
-
-	return lib_manager_mod_create_priv(drv, &ipc_config, &spec, NULL, &userspace, &ops);
-}
-
 /**
  * comp_new_ipc4_user - Create component in user-space IPC thread context.
  *
@@ -510,6 +397,7 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
+	telemetry_notify_pipeline_change();
 
 	return IPC4_SUCCESS;
 }
@@ -565,24 +453,11 @@ __cold int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	return ipc4_create_pipeline(pipe_desc, valid_pparams ? &pparams : NULL);
 }
 
-__cold static inline int ipc_comp_free_remote(struct comp_dev *dev)
-{
-	struct idc_msg msg = { IDC_MSG_FREE, IDC_MSG_FREE_EXT(dev->ipc_config.id),
-		dev->ipc_config.core,};
-
-	assert_can_be_cold();
-
-	return idc_send_msg(&msg, IDC_BLOCKING);
-}
-
-__cold static int ipc_pipeline_module_free(uint32_t pipeline_id)
+__cold static int ipc_pipeline_module_free(uint32_t pipeline_id, uint32_t ppl_core)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
 	int ret;
-#ifdef CONFIG_SOF_USERSPACE_LL
-	int ppl_core;
-#endif
 
 	assert_can_be_cold();
 
@@ -591,7 +466,11 @@ __cold static int ipc_pipeline_module_free(uint32_t pipeline_id)
 		return IPC4_SUCCESS;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
-	ppl_core = icd->core;
+	/*
+	 * Lock the pipeline core's LL scheduler. Not the core of the first
+	 * module, which can be a remote one: freeing a remote module takes
+	 * the LL lock of its core on that core.
+	 */
 	user_ll_lock_sched(ppl_core);
 #endif
 
@@ -658,29 +537,38 @@ __cold int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc4_process_on_core(ipc_pipe->core, false);
 
-	ret = ipc_pipeline_module_free(ipc_pipe->pipeline->pipeline_id);
+	ret = ipc_pipeline_module_free(ipc_pipe->pipeline->pipeline_id, ipc_pipe->core);
 	if (ret != IPC4_SUCCESS) {
 		tr_err(&ipc_tr, "module free () failed");
 		return ret;
 	}
 
-	/* free buffer, delete all tasks and remove from list */
-	ret = pipeline_free(ipc_pipe->pipeline);
-	if (ret < 0) {
-		tr_err(&ipc_tr, "pipeline_free() failed");
-		return IPC4_INVALID_RESOURCE_STATE;
-	}
+	/* Unlink from ipc->comp_list before freeing pipeline so concurrent
+	 * readers never observe a freed pipeline pointer.
+	 */
+	struct pipeline *pipe = ipc_pipe->pipeline;
 
 	ipc_pipe->pipeline = NULL;
 	list_item_del(&ipc_pipe->list);
+
+	/* free buffer, delete all tasks and free pipeline */
+	ret = pipeline_free(pipe);
+	if (ret < 0) {
+		tr_err(&ipc_tr, "pipeline_free() failed");
+		sof_heap_free(sof_sys_user_heap_get(), ipc_pipe);
+		return IPC4_INVALID_RESOURCE_STATE;
+	}
+
 	sof_heap_free(sof_sys_user_heap_get(), ipc_pipe);
+	telemetry_notify_pipeline_change();
 
 	return IPC4_SUCCESS;
 }
 
-__cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool is_shared,
-						uint32_t buf_size, uint32_t src_queue,
-						uint32_t dst_queue, struct mod_alloc_ctx *alloc)
+__cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool cross_core,
+						bool is_shared, uint32_t buf_size,
+						uint32_t src_queue, uint32_t dst_queue,
+						struct mod_alloc_ctx *alloc)
 {
 	struct sof_ipc_buffer ipc_buf;
 
@@ -696,7 +584,7 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 	 * while a cross-core bind is always processed on the primary core. cpu_get_id()
 	 * is privileged and so avoided here.
 	 */
-	ipc_buf.comp.core = is_shared ? PLATFORM_PRIMARY_CORE_ID : src->ipc_config.core;
+	ipc_buf.comp.core = cross_core ? PLATFORM_PRIMARY_CORE_ID : src->ipc_config.core;
 	assert(IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || ipc_buf.comp.core == cpu_get_id());
 
 	return buffer_new(alloc, &ipc_buf, is_shared);
@@ -720,19 +608,77 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
  */
 
 #if CONFIG_SOF_USERSPACE_LL
-#error "CONFIG_SOF_USERSPACE_LL not compatible with cross-core streams"
-#else
-#define ll_block(src_core, dst_core, flags) \
+/*
+ * Cores, whose LL threads can access the two modules or the buffer between
+ * them: the cores of the modules and of their pipelines. The pipeline core
+ * differs from the module core for DP modules on another core.
+ */
+__cold static uint32_t ll_block_cores(struct comp_dev *src, struct comp_dev *dst)
+{
+	assert_can_be_cold();
+
+	return BIT(src->ipc_config.core) | BIT(dst->ipc_config.core) |
+	       BIT(comp_ppl_core(src)) | BIT(comp_ppl_core(dst));
+}
+
+/*
+ * The LL thread holds its scheduler lock for the whole LL cycle, so taking
+ * the lock both blocks the next cycle and waits for the current one to
+ * finish. Take the locks in ascending core order to avoid deadlocks.
+ *
+ * Remote bind / unbind requests are sent to the other cores, while holding
+ * the locks. Reserve their cross-core request slots first: a request from
+ * an LL thread, in flight to such a core, may need one of the locks.
+ */
+__cold static void ll_lock_cores(uint32_t cores)
+{
+	int core;
+
+	assert_can_be_cold();
+
+	ipc_user_xcore_reserve(cores & ~BIT(cpu_get_id()));
+
+	for (core = 0; core < CONFIG_CORE_COUNT; core++)
+		if (cores & BIT(core))
+			user_ll_lock_sched(core);
+}
+
+__cold static void ll_unlock_cores(uint32_t cores)
+{
+	int core;
+
+	assert_can_be_cold();
+
+	for (core = CONFIG_CORE_COUNT - 1; core >= 0; core--)
+		if (cores & BIT(core))
+			user_ll_unlock_sched(core);
+
+	ipc_user_xcore_release(cores & ~BIT(cpu_get_id()));
+}
+
+#define ll_block(src, dst, flags) \
 	do { \
-		if (src_core != dst_core) \
+		ll_lock_cores(ll_block_cores(src, dst)); \
+		ARG_UNUSED(flags); \
+	} while (0)
+
+#define ll_unblock(src, dst, flags) \
+	do { \
+		ll_unlock_cores(ll_block_cores(src, dst)); \
+		ARG_UNUSED(flags); \
+	} while (0)
+#else
+#define ll_block(src, dst, flags) \
+	do { \
+		if ((src)->ipc_config.core != (dst)->ipc_config.core) \
 			domain_block(sof_get()->platform_timer_domain); \
 		else \
 			irq_local_disable(flags); \
 	} while (0)
 
-#define ll_unblock(src_core, dst_core, flags) \
+#define ll_unblock(src, dst, flags) \
 	do { \
-		if (src_core != dst_core) \
+		if ((src)->ipc_config.core != (dst)->ipc_config.core) \
 			domain_unblock(sof_get()->platform_timer_domain); \
 		else \
 			irq_local_enable(flags); \
@@ -742,8 +688,12 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 /* Calling both ll_block() and ll_wait_finished_on_core() makes sure LL will not start its
  * next cycle and its current cycle on specified core has finished.
  */
-static int ll_wait_finished_on_core(struct comp_dev *dev)
+__cold static int ll_wait_finished_on_core(struct comp_dev *dev)
 {
+#if CONFIG_SOF_USERSPACE_LL
+	/* ll_block() has already waited for the LL cycle to finish */
+	return 0;
+#else
 	/* To make sure (blocked) LL has finished its current cycle, it is
 	 * enough to send any blocking IDC to the core. Since IDC task has lower
 	 * priority then LL thread and cannot preempt it, execution of IDC task
@@ -752,6 +702,8 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 
 	int ret;
 	struct ipc4_base_module_cfg dummy;
+
+	assert_can_be_cold();
 
 	if (cpu_is_me(dev->ipc_config.core))
 		return 0;
@@ -765,25 +717,26 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 	}
 
 	return 0;
+#endif
 }
 
 #else /* CONFIG_CROSS_CORE_STREAM */
 
 #if CONFIG_SOF_USERSPACE_LL
-/* note: cross-core streams are disabled so src_core==dst_core */
-#define ll_block(src_core, dst_core, flags) \
+/* note: cross-core streams are disabled so src and dst are on the same core */
+#define ll_block(src, dst, flags) \
 	do {				      \
-		user_ll_lock_sched(src_core); \
+		user_ll_lock_sched((src)->ipc_config.core); \
 		ARG_UNUSED(flags); \
 	} while(0)
-#define ll_unblock(src_core, dst_core, flags) \
+#define ll_unblock(src, dst, flags) \
 	do { \
-		user_ll_unlock_sched(src_core); \
+		user_ll_unlock_sched((src)->ipc_config.core); \
 		ARG_UNUSED(flags); \
 	} while(0)
 #else
-#define ll_block(src_core, dst_core, flags)	irq_local_disable(flags)
-#define ll_unblock(src_core, dst_core, flags)	irq_local_enable(flags)
+#define ll_block(src, dst, flags)	irq_local_disable(flags)
+#define ll_unblock(src, dst, flags)	irq_local_enable(flags)
 #endif
 
 #endif /* CONFIG_CROSS_CORE_STREAM */
@@ -845,6 +798,24 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 		alloc = ipc->ll_alloc;
 #endif
 	bool cross_core_bind = source->ipc_config.core != sink->ipc_config.core;
+	/*
+	 * The buffers must be shared, if LL threads of different cores access
+	 * them. Besides the module cores, these include the pipeline cores: the
+	 * LL thread of the pipeline core copies the data between the buffer
+	 * and the queue of a DP module on another core.
+	 */
+	uint32_t cores = BIT(source->ipc_config.core) | BIT(sink->ipc_config.core) |
+			 BIT(comp_ppl_core(source)) | BIT(comp_ppl_core(sink));
+	bool shared_buffer = (cores & (cores - 1)) != 0;
+
+#if !CONFIG_CROSS_CORE_STREAM
+	/* reject early: the remote attribute/bind calls below are privileged */
+	if (cross_core_bind) {
+		tr_err(&ipc_tr, "Cross-core binding is disabled: can't bind %x to %x",
+		       src_id, sink_id);
+		return IPC4_INVALID_REQUEST;
+	}
+#endif
 
 	/* If both components are on same core -- process IPC on that core,
 	 * otherwise stay on core 0
@@ -911,8 +882,8 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 	else
 		buf_size = ibs * 2;
 
-	buffer = ipc4_create_buffer(source, cross_core_bind, buf_size, bu->extension.r.src_queue,
-				    bu->extension.r.dst_queue, alloc);
+	buffer = ipc4_create_buffer(source, cross_core_bind, shared_buffer, buf_size,
+				    bu->extension.r.src_queue, bu->extension.r.dst_queue, alloc);
 	if (!buffer) {
 		tr_err(&ipc_tr, "failed to allocate buffer to bind %#x to %#x", src_id, sink_id);
 		return IPC4_OUT_OF_MEMORY;
@@ -974,10 +945,10 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 	 * blocked on corresponding core(s) to prevent IPC or IDC task getting preempted which
 	 * could result in buffers being only half connected when a pipeline task gets executed.
 	 */
-	ll_block(source->ipc_config.core, sink->ipc_config.core, flags);
+	ll_block(source, sink, flags);
 
-	if (cross_core_bind) {
 #if CONFIG_CROSS_CORE_STREAM
+	if (cross_core_bind) {
 		/* Make sure LL has finished on both cores */
 		if (!cpu_is_me(source->ipc_config.core))
 			if (ll_wait_finished_on_core(source) < 0)
@@ -985,11 +956,8 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 		if (!cpu_is_me(sink->ipc_config.core))
 			if (ll_wait_finished_on_core(sink) < 0)
 				goto free;
-#else
-		tr_err(&ipc_tr, "Cross-core binding is disabled");
-		goto free;
-#endif
 	}
+#endif
 
 	ret = comp_buffer_connect(source, source->ipc_config.core, buffer,
 				  PPL_CONN_DIR_COMP_TO_BUFFER);
@@ -1031,7 +999,7 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 		source->direction_set = true;
 	}
 
-	ll_unblock(source->ipc_config.core, sink->ipc_config.core, flags);
+	ll_unblock(source, sink, flags);
 
 	return IPC4_SUCCESS;
 
@@ -1045,7 +1013,7 @@ e_src_bind:
 e_sink_connect:
 	pipeline_disconnect(source, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 free:
-	ll_unblock(source->ipc_config.core, sink->ipc_config.core, flags);
+	ll_unblock(source, sink, flags);
 	buffer_free(buffer);
 	return IPC4_INVALID_RESOURCE_STATE;
 }
@@ -1116,24 +1084,24 @@ __cold int ipc4_comp_disconnect(struct ipc *ipc, const struct ipc4_module_bind_u
 	 * IPC or IDC task getting preempted which could result in buffers being only half connected
 	 * when a pipeline task gets executed.
 	 */
-	ll_block(src->ipc_config.core, sink->ipc_config.core, flags);
+	ll_block(src, sink, flags);
 
 	if (cross_core_unbind) {
 #if CONFIG_CROSS_CORE_STREAM
 		/* Make sure LL has finished on both cores */
 		if (!cpu_is_me(src->ipc_config.core))
 			if (ll_wait_finished_on_core(src) < 0) {
-				ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
+				ll_unblock(src, sink, flags);
 				return IPC4_FAILURE;
 			}
 		if (!cpu_is_me(sink->ipc_config.core))
 			if (ll_wait_finished_on_core(sink) < 0) {
-				ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
+				ll_unblock(src, sink, flags);
 				return IPC4_FAILURE;
 			}
 #else
 		tr_err(&ipc_tr, "Cross-core binding is disabled");
-		ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
+		ll_unblock(src, sink, flags);
 		return IPC4_FAILURE;
 #endif /* CONFIG_CROSS_CORE_STREAM */
 	}
@@ -1150,7 +1118,7 @@ __cold int ipc4_comp_disconnect(struct ipc *ipc, const struct ipc4_module_bind_u
 	unbind_data.source = audio_buffer_get_source(&buffer->audio_buffer);
 	ret1 = comp_unbind(sink, &unbind_data);
 
-	ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
+	ll_unblock(src, sink, flags);
 
 	buffer_free(buffer);
 
@@ -1159,76 +1127,6 @@ __cold int ipc4_comp_disconnect(struct ipc *ipc, const struct ipc4_module_bind_u
 
 	return IPC4_SUCCESS;
 }
-
-#if CONFIG_COMP_CHAIN_DMA
-/* Only called from ipc4_process_chain_dma(), which is __cold */
-__cold int ipc4_chain_manager_create(const struct ipc4_chain_dma *cdma)
-{
-	const struct sof_uuid uuid = SOF_REG_UUID(chain_dma);
-	const struct comp_driver *drv;
-	struct comp_dev *dev;
-
-	assert_can_be_cold();
-
-	drv = ipc4_get_drv(&uuid);
-	if (!drv)
-		return -EINVAL;
-
-	dev = drv->ops.create(drv, NULL, cdma);
-	if (!dev)
-		return -EINVAL;
-
-	/* differentiate instance by unique ids assignment */
-	const uint32_t comp_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id
-					      + IPC4_MAX_MODULE_COUNT, 0);
-	dev->ipc_config.id = comp_id;
-	dev->ipc_config.pipeline_id = cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT;
-
-	return ipc4_add_comp_dev(dev);
-}
-
-/* Only called from ipc4_process_chain_dma(), which is __cold */
-__cold int ipc4_chain_dma_state(struct comp_dev *dev, const struct ipc4_chain_dma *cdma)
-{
-	const bool allocate = cdma->primary.r.allocate;
-	const bool enable = cdma->primary.r.enable;
-	struct ipc *ipc = ipc_get();
-	struct ipc_comp_dev *icd;
-	struct list_item *clist, *_tmp;
-	int ret;
-
-	assert_can_be_cold();
-
-	if (!dev)
-		return -EINVAL;
-
-	if (allocate) {
-		if (enable)
-			ret = comp_trigger(dev, COMP_TRIGGER_START);
-		else
-			ret = comp_trigger(dev, COMP_TRIGGER_PAUSE);
-	} else {
-		if (enable)
-			return -EINVAL;
-
-		/* remove chain part */
-		ret = comp_trigger(dev, COMP_TRIGGER_PAUSE);
-		if (ret < 0)
-			return ret;
-
-		list_for_item_safe(clist, _tmp, &ipc->comp_list) {
-			icd = container_of(clist, struct ipc_comp_dev, list);
-			if (icd->cd != dev)
-				continue;
-			list_item_del(&icd->list);
-			sof_heap_free(sof_sys_user_heap_get(), icd);
-			break;
-		}
-		comp_free(dev);
-	}
-	return ret;
-}
-#endif /* CONFIG_COMP_CHAIN_DMA */
 
 __cold static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
 {
@@ -1292,200 +1190,6 @@ int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id, uint32_t cmd)
 	return ipc_pipeline_complete(ipc, comp_id);
 }
 
-int ipc4_process_on_core(uint32_t core, bool blocking)
-{
-	int ret;
-
-	ret = ipc_process_on_core(core, blocking);
-	switch (ret) {
-	case 0:
-	case 1:
-		return IPC4_SUCCESS;
-	case -EACCES:
-		return IPC4_INVALID_CORE_ID;
-	case -ETIME:
-	case -EBUSY:
-		return IPC4_BUSY;
-	default:
-		return IPC4_FAILURE;
-	}
-
-	return IPC4_SUCCESS;
-}
-
-__cold static const struct comp_driver *ipc4_search_for_drv(const void *uuid)
-{
-	struct comp_driver_list *drivers = comp_drivers_get();
-	struct list_item *clist;
-	const struct comp_driver *drv = NULL;
-	struct comp_driver_info *info;
-
-	assert_can_be_cold();
-
-	/* search driver list with UUID */
-	list_for_item(clist, &drivers->list) {
-		info = container_of(clist, struct comp_driver_info, list);
-		if (!memcmp(info->drv->uid, uuid, UUID_SIZE)) {
-			tr_dbg(&comp_tr, "found type %d, uuid %pU",
-			       info->drv->type, SOF_DRV_UID_NAME(info->drv));
-			drv = info->drv;
-			break;
-		}
-	}
-
-	return drv;
-}
-
-__cold static const struct comp_driver *ipc4_get_drv(const void *uuid)
-{
-	const struct sof_uuid *const __maybe_unused sof_uuid = (const struct sof_uuid *)uuid;
-	const struct comp_driver *drv;
-
-	assert_can_be_cold();
-
-	drv = ipc4_search_for_drv(uuid);
-	if (!drv)
-		tr_err(&comp_tr,
-		       "the provided UUID (%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x) can't be found!",
-		       sof_uuid->a, sof_uuid->b, sof_uuid->c, sof_uuid->d[0], sof_uuid->d[1],
-		       sof_uuid->d[2], sof_uuid->d[3], sof_uuid->d[4], sof_uuid->d[5],
-		       sof_uuid->d[6], sof_uuid->d[7]);
-
-	return drv;
-}
-
-#if defined(CONFIG_ARCH_POSIX_LIBFUZZER) && !defined(RIMAGE_MANIFEST)
-/*
- * ipc4_get_fuzzer_drv - resolve a module driver for native_sim fuzz builds.
- *
- * native_sim fuzz builds have no rimage manifest, so the manifest lookup in
- * ipc4_get_comp_drv() can never resolve a driver and every module instance
- * verb (INIT_INSTANCE, CONFIG_GET/SET, LARGE_CONFIG, BIND, UNBIND,
- * DELETE_INSTANCE) would be unreachable from the fuzzer.
- *
- * Mirror the IPC3 whitebox hack in posix/ipc.c and treat module_id as a
- * 1-based index into the runtime component driver list, counting only
- * instantiable module-adapter drivers so the fuzzer's module_id space matches
- * what a real signed manifest would expose.
- */
-static const struct comp_driver *ipc4_get_fuzzer_drv(uint32_t module_id)
-{
-	static const struct sof_uuid basefw_reg_uuid = SOF_REG_UUID(basefw);
-	struct comp_driver_list *dlist = comp_drivers_get();
-	struct list_item *iter;
-	uint32_t idx = 0;
-
-	if (!module_id)
-		return ipc4_search_for_drv(&basefw_reg_uuid);
-
-	list_for_item(iter, &dlist->list) {
-		struct comp_driver_info *inf =
-			container_of(iter, struct comp_driver_info, list);
-
-		/*
-		 * Skip query-only entries (e.g. BaseFW) that cannot be
-		 * instantiated because they have no create op.
-		 */
-		if (!inf->drv->ops.create)
-			continue;
-
-		/*
-		 * A real signed manifest only lists module-adapter modules.
-		 * The internal gateway drivers (SOF_COMP_HOST, SOF_COMP_DAI)
-		 * are registered for IPC3 but are never IPC4 modules: on the
-		 * IPC4 path they receive no params() pass and cannot be
-		 * configured (e.g. their DMA buffer is never allocated). Skip
-		 * non-module-adapter drivers so the fuzzer's module_id space
-		 * matches a real manifest and cannot map to an unconfigurable
-		 * component.
-		 */
-		if (inf->drv->type != SOF_COMP_MODULE_ADAPTER)
-			continue;
-
-		if (++idx == module_id)
-			return inf->drv;
-	}
-
-	tr_err(&comp_tr, "no instantiable driver at module_id %u (%u available)",
-	       module_id, idx);
-	return NULL;
-}
-#endif /* defined(CONFIG_ARCH_POSIX_LIBFUZZER) && !defined(RIMAGE_MANIFEST) */
-
-/*
- * Called from
- * - ipc4_get_large_config_module_instance()
- * - ipc4_set_large_config_module_instance()
- * - comp_new_ipc4()
- * all of which are __cold
- */
-__cold const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
-{
-	const struct sof_man_fw_desc *desc = NULL;
-	const struct sof_man_module *mod;
-	uint32_t entry_index;
-
-	assert_can_be_cold();
-
-#ifdef RIMAGE_MANIFEST
-	desc = (const struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
-#elif defined(CONFIG_ARCH_POSIX_LIBFUZZER)
-	return ipc4_get_fuzzer_drv(module_id);
-#else
-	/* Non-rimage platforms have no component facility yet.
-	 * This needs to move to the platform layer.
-	 */
-	return NULL;
-#endif
-
-	uint32_t lib_idx = LIB_MANAGER_GET_LIB_ID(module_id);
-
-	if (lib_idx == 0) {
-		/* module_id 0 is used for base fw which is in entry 1 or 2 */
-		if (!module_id)
-			entry_index = 1 + IS_ENABLED(CONFIG_COLD_STORE_EXECUTE_DRAM);
-		else
-			entry_index = module_id;
-
-		if (entry_index >= desc->header.num_module_entries) {
-			tr_err(&comp_tr, "Error: entry index %d out of bounds.", entry_index);
-			return NULL;
-		}
-
-		mod = (const struct sof_man_module *)((const char *)desc +
-						      SOF_MAN_MODULE_OFFSET(entry_index));
-	} else {
-		/* Library index greater than 0 possible only when LIBRARY_MANAGER
-		 * support enabled.
-		 */
-#if CONFIG_LIBRARY_MANAGER
-		mod = lib_manager_get_module_manifest(module_id);
-
-		if (!mod) {
-			tr_err(&comp_tr, "Error: Couldn't find loadable module with id %#x.",
-			       module_id);
-			return NULL;
-		}
-#else
-		tr_err(&comp_tr, "Error: lib index:%d, while loadable libraries are not supported!!!",
-		       lib_idx);
-		return NULL;
-#endif
-	}
-
-#if CONFIG_LIBRARY_MANAGER
-	/* Check already registered components */
-	const struct comp_driver *drv = ipc4_search_for_drv(&mod->uuid);
-
-	if (drv)
-		return drv;
-
-	/* New module not registered yet. */
-	lib_manager_register_module(module_id);
-#endif
-	return ipc4_get_drv(&mod->uuid);
-}
-
 struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
 {
 	struct ipc_comp_dev *icd = ipc_get_comp_by_id(ipc_get(), comp_id);
@@ -1525,13 +1229,14 @@ __cold int ipc4_add_comp_dev(struct comp_dev *dev)
 	tr_dbg(&ipc_tr, "add comp 0x%x", icd->id);
 	/* add new component to the list */
 	list_item_append(&icd->list, &ipc->comp_list);
+	telemetry_notify_pipeline_change();
 
 	return IPC4_SUCCESS;
 };
 
 int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint32_t size)
 {
-#if ACE_VERSION > ACE_VERSION_1_5
+#if CONFIG_ACE_VERSION_2_0_OR_LATER
 	uint32_t *dma_config_id = GET_IPC_DMA_CONFIG_ID(data_buffer, size);
 
 	if (*dma_config_id != GTW_DMA_CONFIG_ID)
@@ -1549,13 +1254,15 @@ int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint3
  * Therefore, the above ipc4_find_dma_config() is still used as it can skip non-TLV
  * blob data at the beginning of data_buffer.
  */
-int ipc4_find_all_dma_configs_tlvs_only(struct ipc_config_dai *dai,
-					uint8_t *data_buffer, size_t size)
+__cold int ipc4_find_all_dma_configs_tlvs_only(struct ipc_config_dai *dai,
+					       uint8_t *data_buffer, size_t size)
 {
 	uintptr_t end_addr = (uintptr_t)data_buffer + size;
 	struct sof_tlv *tlvs;
 	struct ipc_dma_config *dma_cfg;
 	int count = 0;
+
+	assert_can_be_cold();
 
 	for (tlvs = (struct sof_tlv *)data_buffer;
 	     tlvs && (uintptr_t)tlvs + sizeof(*tlvs) <= end_addr;
@@ -1594,12 +1301,14 @@ int ipc4_find_all_dma_configs_tlvs_only(struct ipc_config_dai *dai,
 	return IPC4_SUCCESS;
 }
 
-int ipc4_find_dma_config_multiple(struct ipc_config_dai *dai, uint8_t *data_buffer,
-				  uint32_t size, uint32_t device_id, int dma_cfg_idx)
+__cold int ipc4_find_dma_config_multiple(struct ipc_config_dai *dai, uint8_t *data_buffer,
+					 uint32_t size, uint32_t device_id, int dma_cfg_idx)
 {
 	uintptr_t end_addr = (uintptr_t)data_buffer + size;
 	struct ipc_dma_config *dma_cfg;
 	struct sof_tlv *tlvs;
+
+	assert_can_be_cold();
 
 	for (tlvs = (struct sof_tlv *)data_buffer; tlvs && (uintptr_t)tlvs < end_addr;
 	     tlvs = tlv_next(tlvs)) {

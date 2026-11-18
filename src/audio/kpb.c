@@ -24,14 +24,13 @@
 #include <sof/ipc/msg.h>
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
-#include <rtos/clk.h>
 #include <rtos/init.h>
 #include <rtos/symbol.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <rtos/task.h>
@@ -56,7 +55,9 @@
 #include <sof/lib/notifier.h>
 #endif
 
-#ifdef KPB_HIFI3
+#ifdef KPB_HIFI4
+#include <xtensa/tie/xt_hifi4.h>
+#elif defined(KPB_HIFI3)
 #include <xtensa/tie/xt_hifi3.h>
 #endif
 
@@ -118,7 +119,14 @@ struct comp_data {
 #if CONFIG_KPB_CLI_Q
 #include <zephyr/kernel.h>
 
-static struct k_queue *kpb_q;
+/*
+ * Only a single KPB instance is currently supported: the queue, thread and
+ * dev below are global. Requests are copied by value, so user space never
+ * passes pointers to the kernel.
+ */
+K_MSGQ_DEFINE(kpb_cli_msgq, sizeof(struct kpb_client), KPB_MAX_NO_OF_CLIENTS,
+	      __alignof__(struct kpb_client));
+static struct comp_dev *kpb_cli_q_dev;
 static struct k_thread kpb_thread;
 K_KERNEL_STACK_DEFINE(kpb_stack, 4096);
 #endif
@@ -249,10 +257,12 @@ static void kpb_lock_init(struct comp_data *kpb)
  * \param[in] ipc_config - ipc config pointer.
  * \return: none.
  */
-static int kpb_set_verify_ipc_params(struct comp_dev *dev,
+__cold static int kpb_set_verify_ipc_params(struct comp_dev *dev,
 				     const struct ipc4_kpb_module_cfg *ipc_config)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 	kpb->config.channels = ipc_config->base_cfg.audio_fmt.channels_count;
 	kpb->config.sampling_freq =
@@ -348,12 +358,14 @@ static int kpb_get_attribute(struct comp_dev *dev,
  * \param[in] bind_data - bind/unbind data.
  * \return: none.
  */
-static int kpb_bind(struct comp_dev *dev, const struct bind_info *bind_data)
+__cold static int kpb_bind(struct comp_dev *dev, const struct bind_info *bind_data)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	const struct ipc4_module_bind_unbind *bu;
 	int buf_id;
 	int ret = 0;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "entry");
 
@@ -395,11 +407,13 @@ static int kpb_bind(struct comp_dev *dev, const struct bind_info *bind_data)
  * \param[in] data - ipc4 bind/unbind data.
  * \return: none.
  */
-static int kpb_unbind(struct comp_dev *dev, const struct bind_info *unbind_data)
+__cold static int kpb_unbind(struct comp_dev *dev, const struct bind_info *unbind_data)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	const struct ipc4_module_bind_unbind *bu;
 	int buf_id;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "entry");
 
@@ -423,11 +437,13 @@ static int kpb_unbind(struct comp_dev *dev, const struct bind_info *unbind_data)
  * \param[in] ipc_config - ipc config pointer type.
  * \return: none.
  */
-static int kpb_set_verify_ipc_params(struct comp_dev *dev,
+__cold static int kpb_set_verify_ipc_params(struct comp_dev *dev,
 				     const struct ipc_config_process *ipc_config)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	int ret;
+
+	assert_can_be_cold();
 
 	ret = memcpy_s(&kpb->config, sizeof(kpb->config), ipc_config->data,
 		       ipc_config->size);
@@ -470,37 +486,34 @@ static int kpb_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 #if CONFIG_KPB_CLI_Q
 static void kpb_thread_fn(void *p1, void *p2, void *p3)
 {
-	struct k_queue *q = p1;
+	struct comp_dev *dev = p1;
+	struct kpb_client cli;
 
 	for (;;) {
-		struct kpb_client *cli = k_queue_get(q, K_FOREVER);
-
-		kpb_init_draining(cli->dev, cli);
+		k_msgq_get(&kpb_cli_msgq, &cli, K_FOREVER);
+		/* keep the LL thread (kpb_copy()) from preempting draining setup */
+		k_sched_lock();
+		kpb_init_draining(dev, &cli);
+		k_sched_unlock();
 	}
 }
 
-void kpb_notifier_schedule(struct kpb_client *cli)
+int z_impl_kpb_notifier_schedule(uint32_t id, uint32_t drain_req)
 {
-	k_queue_alloc_append(cli->queue, cli);
-}
-EXPORT_SYMBOL(kpb_notifier_schedule);
+	struct kpb_client cli = {
+		.id = id,
+		.drain_req = drain_req,
+	};
 
-void z_impl_kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli)
-{
-	comp_dbg(dev, "adding new client to %p", kpb_q);
-	k_thread_access_grant(k_current_get(), kpb_q);
-	cli->queue = kpb_q;
-	cli->dev = dev;
-}
+	if (id >= KPB_MAX_NO_OF_CLIENTS || drain_req > KPB_MAX_DRAINING_REQ)
+		return -EINVAL;
 
-#include <zephyr/internal/syscall_handler.h>
-void z_vrfy_kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli)
-{
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(dev, sizeof(*dev)));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(cli, sizeof(*cli)));
-	z_impl_kpb_notifier_init(dev, cli);
+	if (!kpb_cli_q_dev)
+		return -ENODEV;
+
+	return k_msgq_put(&kpb_cli_msgq, &cli, K_NO_WAIT);
 }
-#include <zephyr/syscalls/kpb_notifier_init_mrsh.c>
+EXPORT_SYMBOL(z_impl_kpb_notifier_schedule);
 #endif
 
 /*
@@ -509,7 +522,7 @@ void z_vrfy_kpb_notifier_init(struct comp_dev *dev, struct kpb_client *cli)
  *
  * \return: a pointer to newly created KPB component.
  */
-static struct comp_dev *kpb_new(const struct comp_driver *drv,
+__cold static struct comp_dev *kpb_new(const struct comp_driver *drv,
 				const struct comp_ipc_config *config,
 				const void *spec)
 {
@@ -531,6 +544,8 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 	struct comp_data *kpb;
 	int ret;
 
+	assert_can_be_cold();
+
 	comp_cl_info(&comp_kpb, "entry");
 
 	/* make sure data size is not bigger than config space */
@@ -539,6 +554,13 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 			    ipc_config_size);
 		return NULL;
 	}
+
+#if CONFIG_KPB_CLI_Q
+	if (kpb_cli_q_dev) {
+		comp_cl_err(&comp_kpb, "only one KPB instance is supported with KPB_CLI_Q");
+		return NULL;
+	}
+#endif
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -597,18 +619,13 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 #endif
 
 #if CONFIG_KPB_CLI_Q
-	kpb_q = k_object_alloc(K_OBJ_QUEUE);
-	if (!kpb_q) {
-		comp_free_device(dev);
-		return NULL;
-	}
-
-	k_queue_init(kpb_q);
-	k_thread_create(&kpb_thread, kpb_stack, 4096, kpb_thread_fn, kpb_q, NULL, NULL,
+	k_msgq_purge(&kpb_cli_msgq);
+	k_thread_create(&kpb_thread, kpb_stack, 4096, kpb_thread_fn, dev, NULL, NULL,
 			1, 0, K_FOREVER);
 
 	k_thread_cpu_pin(&kpb_thread, cpu_get_id());
 	k_thread_start(&kpb_thread);
+	kpb_cli_q_dev = dev;
 #endif
 
 	return dev;
@@ -750,15 +767,18 @@ static void kpb_free_history_buffer(struct history_buffer *buff)
  *
  * \return none.
  */
-static void kpb_free(struct comp_dev *dev)
+__cold static void kpb_free(struct comp_dev *dev)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 	comp_info(dev, "entry");
 
 #if CONFIG_KPB_CLI_Q
+	kpb_cli_q_dev = NULL;
 	k_thread_abort(&kpb_thread);
-	k_object_free(kpb_q);
+	k_msgq_purge(&kpb_cli_msgq);
 #elif CONFIG_AMS
 	/* Unregister KPB as AMS consumer */
 	int ret;
@@ -1103,7 +1123,7 @@ static int kpb_reset(struct comp_dev *dev)
 	return ret;
 }
 
-#ifdef KPB_HIFI3
+#ifdef KPB_HIFI
 #if CONFIG_FORMAT_S16LE
 static void kpb_micselect_copy16(struct comp_buffer *sink,
 				 struct comp_buffer *source, size_t size,
@@ -1114,8 +1134,15 @@ static void kpb_micselect_copy16(struct comp_buffer *sink,
 	uint32_t ch;
 	size_t i;
 
+#ifdef KPB_HIFI4
+	AE_SETCBEGIN0(audio_stream_get_addr(istream));
+	AE_SETCEND0(audio_stream_get_end_addr(istream));
+	AE_SETCBEGIN1(audio_stream_get_addr(ostream));
+	AE_SETCEND1(audio_stream_get_end_addr(ostream));
+#else
 	AE_SETCBEGIN0(audio_stream_get_addr(ostream));
 	AE_SETCEND0(audio_stream_get_end_addr(ostream));
+#endif
 
 	const size_t samples_per_chan = size / (sizeof(ae_int16) * micsel_channels);
 
@@ -1127,14 +1154,35 @@ static void kpb_micselect_copy16(struct comp_buffer *sink,
 	ae_int16 *out_ptr;
 
 	for (ch = 0; ch < micsel_channels; ch++) {
-		const ae_int16 *input_data = (const ae_int16 *)(in_ptr) + offsets[ch];
+#ifdef KPB_HIFI4
+		const ae_int16 *input_data = in_ptr + offsets[ch];
+#else
+		const ae_int16 *input_frame = in_ptr;
+		size_t copied = 0;
+#endif
 
 		out_ptr = audio_stream_get_wptr(ostream);
 		out_ptr += ch;
+#ifdef KPB_HIFI4
 		for (i = 0; i < samples_per_chan; i++) {
-			AE_L16_XP(d16, input_data, in_offset);
-			AE_S16_0_XC(d16, out_ptr, out_offset);
+			AE_L16_XC(d16, input_data, in_offset);
+			AE_S16_0_XC1(d16, out_ptr, out_offset);
 		}
+#else
+		while (copied < samples_per_chan) {
+			size_t frames = audio_stream_frames_without_wrap(istream, input_frame);
+			const ae_int16 *input_data = input_frame + offsets[ch];
+
+			frames = MIN(frames, samples_per_chan - copied);
+			for (i = 0; i < frames; i++) {
+				AE_L16_XP(d16, input_data, in_offset);
+				AE_S16_0_XC(d16, out_ptr, out_offset);
+			}
+			input_frame = audio_stream_wrap(istream,
+						(void *)(input_frame + frames * in_channels));
+			copied += frames;
+		}
+#endif
 	}
 }
 #endif
@@ -1148,8 +1196,15 @@ static void kpb_micselect_copy32(struct comp_buffer *sink,
 	uint32_t ch;
 	size_t i;
 
+#ifdef KPB_HIFI4
+	AE_SETCBEGIN0(audio_stream_get_addr(istream));
+	AE_SETCEND0(audio_stream_get_end_addr(istream));
+	AE_SETCBEGIN1(audio_stream_get_addr(ostream));
+	AE_SETCEND1(audio_stream_get_end_addr(ostream));
+#else
 	AE_SETCBEGIN0(audio_stream_get_addr(ostream));
 	AE_SETCEND0(audio_stream_get_end_addr(ostream));
+#endif
 
 	const size_t samples_per_chan = size / (sizeof(ae_int32) * micsel_channels);
 
@@ -1162,14 +1217,35 @@ static void kpb_micselect_copy32(struct comp_buffer *sink,
 	ae_int32 *out_ptr;
 
 	for (ch = 0; ch < micsel_channels; ch++) {
-		const ae_int32 *input_data = (const ae_int32 *)(in_ptr) + offsets[ch];
+#ifdef KPB_HIFI4
+		const ae_int32 *input_data = in_ptr + offsets[ch];
+#else
+		const ae_int32 *input_frame = in_ptr;
+		size_t copied = 0;
+#endif
 
 		out_ptr = audio_stream_get_wptr(ostream);
 		out_ptr += ch;
+#ifdef KPB_HIFI4
 		for (i = 0; i < samples_per_chan; i++) {
-			AE_L32_XP(d32, input_data, in_offset);
-			AE_S32_L_XC(d32, out_ptr, out_offset);
+			AE_L32_XC(d32, input_data, in_offset);
+			AE_S32_L_XC1(d32, out_ptr, out_offset);
 		}
+#else
+		while (copied < samples_per_chan) {
+			size_t frames = audio_stream_frames_without_wrap(istream, input_frame);
+			const ae_int32 *input_data = input_frame + offsets[ch];
+
+			frames = MIN(frames, samples_per_chan - copied);
+			for (i = 0; i < frames; i++) {
+				AE_L32_XP(d32, input_data, in_offset);
+				AE_S32_L_XC(d32, out_ptr, out_offset);
+			}
+			input_frame = audio_stream_wrap(istream,
+						(void *)(input_frame + frames * in_channels));
+			copied += frames;
+		}
+#endif
 	}
 }
 #endif
@@ -1195,12 +1271,16 @@ static void kpb_micselect_copy16(struct comp_buffer *sink,
 		out_data = audio_stream_get_wptr(ostream);
 
 		for (size_t i = 0; i < samples_per_chan * in_channels; i += in_channels) {
+			const int16_t *in_sample = audio_stream_get_frag(istream, in_data,
+								       i + offsets[ch],
+								       sizeof(*in_sample));
+
 			if (&out_data[out_samples + ch]
 					>= (int16_t *)audio_stream_get_end_addr(ostream)) {
 				out_data = (int16_t *)audio_stream_get_addr(ostream);
 				out_samples = 0;
 			}
-			out_data[out_samples + ch] = in_data[i + offsets[ch]];
+			out_data[out_samples + ch] = *in_sample;
 			out_samples += micsel_channels;
 		}
 	}
@@ -1226,12 +1306,16 @@ static void kpb_micselect_copy32(struct comp_buffer *sink,
 		out_data = audio_stream_get_wptr(ostream);
 
 		for (size_t i = 0; i < samples_per_chan * in_channels; i += in_channels) {
+			const int32_t *in_sample = audio_stream_get_frag(istream, in_data,
+								       i + offsets[ch],
+								       sizeof(*in_sample));
+
 			if (&out_data[out_samples + ch]
 					>= (int32_t *)audio_stream_get_end_addr(ostream)) {
 				out_data = (int32_t *)audio_stream_get_addr(ostream);
 				out_samples = 0;
 			}
-			out_data[out_samples + ch] = in_data[i + offsets[ch]];
+			out_data[out_samples + ch] = *in_sample;
 			out_samples += micsel_channels;
 		}
 	}
@@ -1310,7 +1394,6 @@ static int kpb_copy(struct comp_dev *dev)
 	case KPB_STATE_RUN:
 		/* In normal RUN state we simply copy to our sink. */
 		sink = kpb->sel_sink;
-		ret = PPL_STATUS_PATH_STOP;
 
 		if (!sink) {
 			comp_err(dev, "no sink.");
@@ -1323,6 +1406,7 @@ static int kpb_copy(struct comp_dev *dev)
 			copy_bytes = audio_stream_get_avail_bytes(&source->stream);
 			comp_update_buffer_consume(source, copy_bytes);
 			comp_dbg(dev, "KD not active, dropping %zu bytes...", copy_bytes);
+			ret = PPL_STATUS_PATH_STOP;
 			break;
 		}
 
@@ -1338,7 +1422,8 @@ static int kpb_copy(struct comp_dev *dev)
 			comp_err(dev, "nothing to copy sink->free %u source->avail %u",
 				 audio_stream_get_free_bytes(&sink->stream),
 				 audio_stream_get_avail_bytes(&source->stream));
-			ret = PPL_STATUS_PATH_STOP;
+			if (!audio_stream_get_avail_bytes(&sink->stream))
+				ret = PPL_STATUS_PATH_STOP;
 			break;
 		}
 
@@ -1359,7 +1444,8 @@ static int kpb_copy(struct comp_dev *dev)
 				comp_err(dev, "nothing to copy sink->free %u source->avail %u",
 					 free,
 					 avail);
-				ret = PPL_STATUS_PATH_STOP;
+				if (!audio_stream_get_avail_bytes(&sink->stream))
+					ret = PPL_STATUS_PATH_STOP;
 				break;
 			}
 			kpb_micselect_copy(dev, sink, source, produced_bytes, channels);
@@ -1374,7 +1460,6 @@ static int kpb_copy(struct comp_dev *dev)
 				comp_err(dev, "internal buffering failed.");
 				break;
 			}
-			ret = PPL_STATUS_PATH_STOP;
 
 			/* Update buffered size. NOTE! We only record buffered
 			 * data up to the size of history buffer.
@@ -1692,7 +1777,6 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	bool is_sink_ready = (comp_buffer_get_sink_state(kpb->host_sink) == COMP_STATE_ACTIVE);
 	size_t sample_width = kpb->config.sampling_width;
 	size_t drain_req = (size_t)cli->drain_req * kpb->config.channels *
 			       (kpb->config.sampling_freq / 1000) *
@@ -1711,12 +1795,20 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	comp_info(dev, "requested draining of %d [ms] from history buffer",
 		  cli->drain_req);
 
+	/* The drain pin stays unbound when a client only signals detections. */
+	if (!kpb->host_sink) {
+		comp_dbg(dev, "no draining sink, ignoring request");
+		return;
+	}
+
 	if (kpb->state != KPB_STATE_RUN) {
 		comp_err(dev, "wrong KPB state");
 	} else if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
 		comp_err(dev, "wrong client id");
 	/* TODO: check also if client is registered */
-	} else if (!is_sink_ready) {
+	/* sel_sink is NULL before bind and after reset/unbind */
+	} else if (!kpb->sel_sink ||
+		   comp_buffer_get_sink_state(kpb->host_sink) != COMP_STATE_ACTIVE) {
 		comp_err(dev, "sink not ready for draining");
 	} else if (kpb->hd.buffered < drain_req ||
 		   cli->drain_req > KPB_MAX_DRAINING_REQ) {
@@ -2002,28 +2094,29 @@ static enum task_state kpb_draining_task(void *arg)
 		} else {
 			draining_data->next_copy_time = 0;
 		}
+	}
 
-		if (draining_data->drain_req == 0) {
-		/* We have finished draining of requested data however
-		 * while we were draining real time stream could provided
-		 * new data which needs to be copy to host.
+	/* also reached with a zero-length (no history) draining request */
+	if (draining_data->drain_req == 0) {
+	/* We have finished draining of requested data however
+	 * while we were draining real time stream could provided
+	 * new data which needs to be copy to host.
+	 */
+		comp_cl_info(&comp_kpb, "kpb: update drain_req by %zu",
+			     *rt_stream_update);
+		kpb_lock(kpb);
+		draining_data->drain_req += *rt_stream_update;
+		*rt_stream_update = 0;
+		if (!draining_data->drain_req && kpb->state == KPB_STATE_DRAINING) {
+		/* Draining is done. Now switch KPB to copy real time
+		 * stream to client's sink. This state is called
+		 * "draining on demand"
+		 * Note! If KPB state changed during draining due to
+		 * i.e reset request we should not change that state.
 		 */
-			comp_cl_info(&comp_kpb, "kpb: update drain_req by %zu",
-				     *rt_stream_update);
-			kpb_lock(kpb);
-			draining_data->drain_req += *rt_stream_update;
-			*rt_stream_update = 0;
-			if (!draining_data->drain_req && kpb->state == KPB_STATE_DRAINING) {
-			/* Draining is done. Now switch KPB to copy real time
-			 * stream to client's sink. This state is called
-			 * "draining on demand"
-			 * Note! If KPB state changed during draining due to
-			 * i.e reset request we should not change that state.
-			 */
-				kpb_change_state(kpb, KPB_STATE_HOST_COPY);
-			}
-			kpb_unlock(kpb);
+			kpb_change_state(kpb, KPB_STATE_HOST_COPY);
 		}
+		kpb_unlock(kpb);
 	}
 
 out:
@@ -2067,7 +2160,7 @@ out:
 	return SOF_TASK_STATE_COMPLETED;
 }
 
-#ifdef KPB_HIFI3
+#ifdef KPB_HIFI
 static void kpb_convert_24b_to_32b(const void *linear_source, int ioffset,
 				   struct audio_stream *sink, int ooffset,
 				   unsigned int n_samples)
@@ -2177,7 +2270,7 @@ static void kpb_drain_samples(void *source, struct audio_stream *sink,
 	}
 }
 
-#ifdef KPB_HIFI3
+#ifdef KPB_HIFI
 static void kpb_convert_32b_to_24b(const struct audio_stream *source, int ioffset,
 				   void *linear_sink, int ooffset, unsigned int n_samples)
 {
@@ -2335,7 +2428,7 @@ static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)
 	return ret;
 }
 
-#ifdef KPB_HIFI3
+#ifdef KPB_HIFI
 static void kpb_copy_24b_in_32b(const struct audio_stream *source, uint32_t ioffset,
 				struct audio_stream *sink, uint32_t ooffset,
 				uint32_t n_samples)
@@ -2539,7 +2632,7 @@ static inline void kpb_change_state(struct comp_data *kpb,
 	kpb->state_log = (kpb->state_log << 4) | state;
 }
 
-static int kpb_set_micselect(struct comp_dev *dev, const void *data,
+__cold static int kpb_set_micselect(struct comp_dev *dev, const void *data,
 			     int max_data_size)
 {
 	const struct kpb_micselector_config *mic_sel = data;
@@ -2547,6 +2640,8 @@ static int kpb_set_micselect(struct comp_dev *dev, const void *data,
 	size_t mic_cnt;
 	uint8_t valid_mask;
 	size_t i;
+
+	assert_can_be_cold();
 
 	if (max_data_size < (int)sizeof(*mic_sel)) {
 		comp_err(dev, "micselector payload too small: got %d, need %d",
@@ -2637,7 +2732,7 @@ static inline int alloc_fmt_module_list_item(struct kpb_fmt_dev_list *fmt_device
 	return -ENOMEM;
 }
 
-static int prepare_fmt_modules_list(struct comp_dev *kpb_dev,
+__cold static int prepare_fmt_modules_list(struct comp_dev *kpb_dev,
 				    uint32_t outpin_idx,
 				    const struct kpb_task_params *modules_to_prepare)
 {
@@ -2645,6 +2740,8 @@ static int prepare_fmt_modules_list(struct comp_dev *kpb_dev,
 	struct comp_dev *dev;
 	struct kpb_fmt_dev_list *fmt_device_list =
 		&((struct comp_data *)comp_get_drvdata(kpb_dev))->fmt_device_list;
+
+	assert_can_be_cold();
 
 	if (outpin_idx >= KPB_MAX_SINK_CNT)
 		return -EINVAL;
@@ -2731,9 +2828,11 @@ static int register_modules_list(struct fast_mode_task *fmt,
 	return -EINVAL;
 }
 
-static int configure_fast_mode_task(struct comp_dev *kpb_dev, const struct kpb_task_params *cfg,
-				    size_t pin)
+__cold static int configure_fast_mode_task(struct comp_dev *kpb_dev,
+					   const struct kpb_task_params *cfg, size_t pin)
 {
+	assert_can_be_cold();
+
 	if (pin >= KPB_MAX_SINK_CNT || pin == REALTIME_PIN_ID || !cfg)
 		return -EINVAL;
 
@@ -2760,7 +2859,7 @@ static int configure_fast_mode_task(struct comp_dev *kpb_dev, const struct kpb_t
 }
 #endif
 
-static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
+__cold static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
 				bool first_block,
 				bool last_block,
 				uint32_t data_offset,
@@ -2768,6 +2867,8 @@ static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
 {
 	/* We can use extended param id for both extended and standard param id */
 	union ipc4_extended_param_id extended_param_id;
+
+	assert_can_be_cold();
 
 	comp_info(dev, "entry");
 

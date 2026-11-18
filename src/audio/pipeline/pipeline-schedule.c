@@ -8,19 +8,18 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <rtos/alloc.h>
 #include <rtos/interrupt.h>
 #include <sof/lib/agent.h>
 #include <sof/list.h>
 #include <sof/schedule/ll_schedule.h>
-#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/task.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
-#include <rtos/userspace_helper.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -109,6 +108,7 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 		}
 
 		p->trigger.aborted = false;
+		telemetry_notify_pipeline_change();
 		return ret;
 	}
 
@@ -146,8 +146,10 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 			}
 		} else if (p->trigger.cmd != cmd) {
 			/* PRE stage completed */
-			if (p->trigger.delay)
+			if (p->trigger.delay) {
+				telemetry_notify_pipeline_change();
 				return SOF_TASK_STATE_RESCHEDULE;
+			}
 			/* No delay: the final stage has already run too */
 			err = SOF_TASK_STATE_RESCHEDULE;
 		} else if (p->status == COMP_STATE_PAUSED) {
@@ -165,6 +167,7 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 	}
 
 	p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
+	telemetry_notify_pipeline_change();
 
 	ipc_msg_reply(reply);
 
@@ -242,6 +245,7 @@ static enum task_state ipc3_pipeline_task(void *arg)
 		err = pipeline_xrun_recover(p);
 		if (err < 0) {
 			pipe_err(p, "xrun recovery failed! pipeline is stopped.");
+			telemetry_notify_pipeline_change();
 			/* failed - host will stop this pipeline */
 			return SOF_TASK_STATE_COMPLETED;
 		}
@@ -334,6 +338,7 @@ static enum task_state ipc4_pipeline_copy_task(void *arg)
 		err = pipeline_xrun_recover(p);
 		if (err < 0) {
 			pipe_err(p, "xrun recovery failed! pipeline is stopped.");
+			telemetry_notify_pipeline_change();
 			/* failed - host will stop this pipeline */
 			return SOF_TASK_STATE_COMPLETED;
 		}

@@ -156,9 +156,10 @@ zephyr_interface_library_named(SOF)
 cmake_path(SET sof_top_dir NORMALIZE "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(SOF_SRC_PATH "${sof_top_dir}/src")
 
-set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
-set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
-set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
+set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/kernel/platform")
+# platform headers that user-space code may include
+set(SOF_USER_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
+set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/kernel/drivers")
 
 set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
 
@@ -170,9 +171,16 @@ set(RIMAGE_CONFIG_PATH ${RIMAGE_TOP}/config CACHE PATH
 # default SOF includes
 target_include_directories(SOF INTERFACE ${RIMAGE_TOP}/src/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
-target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
+target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/kernel/arch/${ARCH}/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/third_party/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/zephyr/include)
+
+# Code that only runs in kernel mode, from src/kernel. It is built as a
+# library of its own so that it can later be given kernel-only include
+# directories. Created before modules_sof so that modules_sof stays the
+# current library here; src/kernel/CMakeLists.txt switches to this one.
+zephyr_library_named(sof_kernel)
+zephyr_library_link_libraries(SOF)
 
 # SOF module init
 zephyr_library_named(modules_sof)
@@ -230,16 +238,11 @@ add_subdirectory(../src/math/  math_unused_install/)
 # remaining directories (in alphabetical order)
 add_subdirectory(../src/audio/ audio_unused_install/)
 add_subdirectory(../src/debug/ debug_unused_install/)
-add_subdirectory(../src/idc/ idc_unused_install/)
-add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
+add_subdirectory(../src/kernel/ kernel_unused_install/)
 add_subdirectory(../src/lib/ lib_unused_install/)
-add_subdirectory(../src/library_manager/ library_manager_unused_install/)
-add_subdirectory(../src/logging/ logging_unused_install/)
-add_subdirectory(../src/probe/ probes_unused_install/)
 add_subdirectory(../src/samples/ samples_unused_install/)
 add_subdirectory(../src/schedule/  schedule_unused_install/)
-add_subdirectory(../src/trace/ trace_unused_install/)
 add_subdirectory(test/)
 
 # Old way below: all .c files added by this giant CMake file.
@@ -255,6 +258,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 
 	set(PLATFORM "tigerlake")
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
+	zephyr_include_directories(${SOF_USER_PLATFORM_PATH}/intel/cavs/include)
 endif()
 
 # Intel ACE 1.5 and newer platforms
@@ -307,6 +311,7 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 	endif()
 
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/ace/include)
+	zephyr_include_directories(${SOF_USER_PLATFORM_PATH}/intel/ace/include)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 endif()
 
@@ -361,7 +366,7 @@ if (CONFIG_SOC_MIMX8ML8_M7)
 	)
 
 	# SOF-specific linker script additions
-	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/platform/imx8m_cm7/linker/data-sections.ld)
+	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/kernel/platform/imx8m_cm7/linker/data-sections.ld)
 
 	set(PLATFORM "imx8m_cm7")
 
@@ -425,7 +430,7 @@ if (CONFIG_SOC_MIMX9596_M7)
 	)
 
 	# SOF-specific linker script additions
-	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/platform/imx95/linker/data-sections.ld)
+	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/kernel/platform/imx95/linker/data-sections.ld)
 
 	set(PLATFORM "imx95")
 
@@ -476,7 +481,7 @@ if (CONFIG_SOC_ACP_6_0)
 
 	# SOF core infrastructure - runs on top of Zephyr
 	zephyr_library_sources(
-		${SOF_SRC_PATH}/drivers/interrupt.c
+		${SOF_DRIVERS_PATH}/interrupt.c
 	)
 
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/rembrandt/include)
@@ -521,23 +526,23 @@ if (CONFIG_SOC_FAMILY_MTK)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/mtk/platform.c
 		${SOF_PLATFORM_PATH}/mtk/dai.c
-		${SOF_SRC_PATH}/drivers/mediatek/afe/afe-drv.c
+		${SOF_DRIVERS_PATH}/mediatek/afe/afe-drv.c
 	)
 
 	if (CONFIG_ZEPHYR_NATIVE_DRIVERS)
 		# Native Zephyr DMA/DAI path
 		zephyr_library_sources(
 			lib/dma.c
-			${SOF_SRC_PATH}/drivers/mediatek/afe/zephyr_mtk_afe_memif.c
-			${SOF_SRC_PATH}/drivers/mediatek/afe/zephyr_mtk_host_dma.c
-			${SOF_SRC_PATH}/drivers/mediatek/afe/zephyr_mtk_dai.c
+			${SOF_DRIVERS_PATH}/mediatek/afe/zephyr_mtk_afe_memif.c
+			${SOF_DRIVERS_PATH}/mediatek/afe/zephyr_mtk_host_dma.c
+			${SOF_DRIVERS_PATH}/mediatek/afe/zephyr_mtk_dai.c
 		)
 	else()
 		# Legacy DMA path
 		zephyr_library_sources(
 			${SOF_DRIVERS_PATH}/generic/dummy-dma.c
-			${SOF_SRC_PATH}/drivers/mediatek/afe/afe-memif.c
-			${SOF_SRC_PATH}/drivers/mediatek/afe/afe-dai.c
+			${SOF_DRIVERS_PATH}/mediatek/afe/afe-memif.c
+			${SOF_DRIVERS_PATH}/mediatek/afe/afe-dai.c
 		)
 	endif()
 endif()
@@ -563,6 +568,8 @@ if(NOT DEFINED PLATFORM)
 	message(FATAL_ERROR "PLATFORM is not defined, check your Kconfiguration?")
 endif()
 zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
+# not every platform has one yet, the compiler skips missing directories
+zephyr_include_directories(${SOF_USER_PLATFORM_PATH}/${PLATFORM}/include)
 
 if(CONFIG_SOF_USERSPACE_INTERFACE_DMA)
 	zephyr_library_sources(syscall/sof_dma.c)
@@ -574,7 +581,7 @@ endif()
 zephyr_library_sources(
 
 	# SOF core infrastructure - runs on top of Zephyr
-	${SOF_SRC_PATH}/arch/xtensa/drivers/cache_attr.c
+	${SOF_SRC_PATH}/kernel/arch/xtensa/drivers/cache_attr.c
 
 	# Bridge wrapper between SOF and Zephyr APIs - Will shrink over time.
 	wrapper.c
@@ -608,8 +615,12 @@ zephyr_library_sources_ifdef(CONFIG_SHELL
 
 zephyr_syscall_header(include/sof/lib/cpu.h)
 zephyr_library_sources_ifdef(CONFIG_USERSPACE syscall/cpu.c)
+zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_SYSCALL_CALLER_CHECK syscall/caller.c)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/audio/module_adapter/module/generic.h)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/audio/kpb.h)
+if(CONFIG_USERSPACE AND CONFIG_KPB_CLI_Q)
+	zephyr_library_sources(syscall/kpb.c)
+endif()
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/fast-get.h)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/ipc/ipc_reply.h)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/schedule/dp_schedule.h)
@@ -663,7 +674,27 @@ include(../scripts/cmake/version.cmake)
 
 include(../scripts/cmake/uuid-registry.cmake)
 
+# Everything under src/kernel belongs in sof_kernel, also the platform, driver
+# and architecture sources that this file lists itself rather than adding
+# them from src/kernel/CMakeLists.txt. Move them out of modules_sof.
+get_target_property(modules_sof_sources modules_sof SOURCES)
+cmake_path(SET sof_kernel_src_dir NORMALIZE "${SOF_SRC_PATH}/kernel/")
+set(sof_kernel_listed_sources)
+foreach(src ${modules_sof_sources})
+	cmake_path(ABSOLUTE_PATH src NORMALIZE OUTPUT_VARIABLE abs_src)
+	string(FIND "${abs_src}" "${sof_kernel_src_dir}" pos)
+	if(pos EQUAL 0)
+		list(APPEND sof_kernel_listed_sources ${src})
+	endif()
+endforeach()
+if(sof_kernel_listed_sources)
+	list(REMOVE_ITEM modules_sof_sources ${sof_kernel_listed_sources})
+	set_property(TARGET modules_sof PROPERTY SOURCES ${modules_sof_sources})
+	target_sources(sof_kernel PRIVATE ${sof_kernel_listed_sources})
+endif()
+
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)
+sof_append_relative_path_definitions(sof_kernel)
 
 endif() # CONFIG_SOF_FULL_ZEPHYR_APPLICATION

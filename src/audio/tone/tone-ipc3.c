@@ -19,7 +19,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/trig.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
@@ -67,7 +66,7 @@ static struct comp_dev *tone_new(const struct comp_driver *drv,
 	cd->rate = ipc_tone->sample_rate;
 
 	/* Reset tone generator and set channels volumes to default */
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		tonegen_reset(&cd->sg[i]);
 
 	dev->state = COMP_STATE_READY;
@@ -101,9 +100,21 @@ static int tone_params(struct comp_dev *dev,
 	comp_info(dev, "config->frame_fmt = %u",
 		  dev->ipc_config.frame_fmt);
 
-	/* Tone supports only S32_LE PCM format atm */
-	if (dev->ipc_config.frame_fmt != SOF_IPC_FRAME_S32_LE)
+	/* Tone supports S32_LE and optionally FLOAT format */
+	switch (dev->ipc_config.frame_fmt) {
+#if CONFIG_FORMAT_S32LE
+	case SOF_IPC_FRAME_S32_LE:
+		cd->tone_func = tone_s32_default;
+		break;
+#endif
+#if CONFIG_FORMAT_FLOAT
+	case SOF_IPC_FRAME_FLOAT:
+		cd->tone_func = tone_float_default;
+		break;
+#endif
+	default:
 		return -EINVAL;
+	}
 
 	audio_stream_set_frm_fmt(&sourceb->stream, dev->ipc_config.frame_fmt);
 	audio_stream_set_frm_fmt(&sinkb->stream, dev->ipc_config.frame_fmt);
@@ -162,7 +173,7 @@ static int tone_cmd_set_value(struct comp_dev *dev,
 			val = cdata->chanv[j].value;
 			comp_info(dev, "SOF_CTRL_CMD_SWITCH, ch = %u, val = %u",
 				  ch, val);
-			if (ch >= PLATFORM_MAX_CHANNELS) {
+			if (ch >= CONFIG_PLATFORM_MAX_CHANNELS) {
 				comp_err(dev, "ch >= PLATFORM_MAX_CHANNELS");
 				return -EINVAL;
 			}
@@ -366,7 +377,7 @@ static int tone_reset(struct comp_dev *dev)
 	comp_info(dev, "entry");
 
 	/* Initialize with the defaults */
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		tonegen_reset(&cd->sg[i]);
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);

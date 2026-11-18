@@ -9,11 +9,10 @@
 #if SOF_USE_HIFI(3, COPIER) || SOF_USE_HIFI(4, COPIER) || SOF_USE_HIFI(5, COPIER)
 
 #include <sof/audio/buffer.h>
-#include <sof/audio/component_ext.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <module/module/base.h>
 #include <stddef.h>
 #include <errno.h>
@@ -119,6 +118,14 @@ __cold int copier_gain_set_fade_params(struct comp_dev *dev, struct copier_gain_
 	} else {
 		gain_params->fade_sg_length = frames * fade_period;
 	}
+
+	/*
+	 * fade_sg_length derives from the host-supplied sampling frequency,
+	 * pipeline period and fade period, so it can legitimately round down to
+	 * zero. Leave the fade disabled rather than dividing by it below.
+	 */
+	if (!gain_params->fade_sg_length)
+		return 0;
 
 	/* High precision step for fade-in calculation, keeps accurate precision */
 	gain_params->step_i64 = INT64_MAX / gain_params->fade_sg_length;

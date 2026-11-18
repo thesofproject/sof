@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright 2026 Intel Corporation. All rights reserved.
+
+tests:
+  sof.unit.dsrc:
+    tags: dsrc
+    platform_allow: native_sim
+    integration_platforms:
+      - native_sim
+    build_only: false

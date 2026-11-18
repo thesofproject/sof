@@ -3,12 +3,10 @@
 // Copyright 2023 Intel Corporation. All rights reserved.
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/component_ext.h>
 #include <sof/audio/audio_buffer.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/trace/trace.h>
-#include <sof/lib/memory.h>
 #include <sof/ut.h>
 #include <sof/lib/mailbox.h>
 #include "copier.h"
@@ -116,8 +114,8 @@ static inline struct sof_sink *ipcgtw_get_sink(struct comp_dev *dev)
 	return mod->num_of_sinks ? mod->sinks[0] : NULL;
 }
 
-int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
-			  void *reply_payload, uint32_t *reply_payload_size)
+__cold int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
+				 void *reply_payload, uint32_t *reply_payload_size)
 {
 	const struct ipc4_ipc_gateway_cmd_data *in;
 	struct ipc4_ipc_gateway_cmd_data_reply *out;
@@ -126,6 +124,8 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 	struct comp_dev *dev;
 	uint32_t data_size;
 	int ret;
+
+	assert_can_be_cold();
 
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 sizeof(struct ipc4_ipc_gateway_cmd_data));
@@ -172,8 +172,8 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 
 	case IPC4_IPCGWCMD_SET_DATA:
 		if (sink) {
-			data_size = MIN(cmd->extension.r.data_size,
-					sink_get_free_size(sink));
+			data_size = MIN(cmd->extension.r.data_size, SOF_IPC_MSG_MAX_SIZE - 4);
+			data_size = MIN(data_size, sink_get_free_size(sink));
 			dcache_invalidate_region((__sparse_force void __sparse_cache *)
 						 MAILBOX_HOSTBOX_BASE,
 						 data_size +

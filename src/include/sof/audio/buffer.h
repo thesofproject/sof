@@ -169,9 +169,6 @@ struct comp_buffer {
 	struct list_item source_list;		/**< List node in source component's buffer list */
 	struct list_item sink_list;		/**< List node in sink component's buffer list */
 
-	/* list of buffers, to be used i.e. in raw data processing mode*/
-	struct list_item buffers_list;		/**< List of buffers used in raw data processing */
-
 #if CONFIG_PROBE
 	/** probe produce callback, called on buffer produce */
 	void (*probe_cb_produce)(void *arg, struct buffer_cb_transact *cb_data);

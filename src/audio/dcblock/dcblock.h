@@ -9,7 +9,6 @@
 #define __SOF_AUDIO_DCBLOCK_DCBLOCK_H__
 
 #include <stdint.h>
-#include <sof/platform.h>
 #include <ipc/stream.h>
 #include <sof/compiler_info.h>
 #include <sof/audio/sink_api.h>
@@ -25,8 +24,16 @@ struct cir_buf_source;
 struct cir_buf_sink;
 
 struct dcblock_state {
-	int32_t x_prev; /**< state variable referring to x[n-1] */
-	int32_t y_prev; /**< state variable referring to y[n-1] */
+	union {
+		struct {
+			int32_t x_prev; /**< state variable referring to x[n-1] */
+			int32_t y_prev; /**< state variable referring to y[n-1] */
+		};
+		struct {
+			float x_prev_f; /**< float state variable x[n-1] */
+			float y_prev_f; /**< float state variable y[n-1] */
+		};
+	};
 };
 
 /**
@@ -39,22 +46,23 @@ struct comp_data;
 typedef int (*dcblock_func)(struct comp_data *cd,
 			    struct cir_buf_source *source,
 			    struct cir_buf_sink *sink,
-			    uint32_t frames);
+			    size_t frames);
 
 /* DC Blocking Filter component private data */
 struct comp_data {
 	/**< filters state */
-	struct dcblock_state state[PLATFORM_MAX_CHANNELS];
+	struct dcblock_state state[CONFIG_PLATFORM_MAX_CHANNELS];
 
 	/** coefficients for the processing function */
-	int32_t R_coeffs[PLATFORM_MAX_CHANNELS];
+	int32_t R_coeffs[CONFIG_PLATFORM_MAX_CHANNELS];
+	float R_coeffs_f[CONFIG_PLATFORM_MAX_CHANNELS];
 
 	struct comp_data_blob_handler *model_handler;
 	int32_t *config; /**< pointer to setup blob */
 
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
-	int channels; /**< number of channels */
+	unsigned int channels; /**< number of channels */
 	dcblock_func dcblock_func; /**< processing function */
 };
 
@@ -77,7 +85,7 @@ extern const size_t dcblock_fncount;
  */
 static inline dcblock_func dcblock_find_func(enum sof_ipc_frame src_fmt)
 {
-	int i;
+	size_t i;
 
 	/* Find suitable processing function from map */
 	for (i = 0; i < dcblock_fncount; i++) {

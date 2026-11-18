@@ -25,6 +25,8 @@
 
 /* Zephyr includes */
 #include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/devicetree.h>
 #include <zephyr/app_memory/app_memdomain.h>
 #include <zephyr/logging/log.h>
 
@@ -184,6 +186,16 @@ void user_grant_dma_access_all(struct k_thread *thread)
 		k_thread_access_grant(thread, d->z_dev);
 		LOG_DBG("Granted DMA device access: %s to thread %p", d->z_dev->name, thread);
 	}
+}
+
+void user_grant_uaol_access_all(struct k_thread *thread)
+{
+#ifdef CONFIG_UAOL_INTEL_ADSP
+#define UAOL_GRANT(node) k_object_access_grant(DEVICE_DT_GET(node), thread);
+	DT_FOREACH_STATUS_OKAY(intel_adsp_uaol, UAOL_GRANT)
+#undef UAOL_GRANT
+	LOG_DBG("Granted UAOL access to thread %p", thread);
+#endif
 }
 
 #endif /* CONFIG_SOF_USERSPACE_LL */

@@ -16,7 +16,6 @@
 #include <zephyr/kernel.h>
 #include <sof/lib/cpu.h>
 #include <rtos/sof.h>
-#include <sof/platform.h>
 
 struct comp_dev;
 struct sof_ipc_stream_posn;

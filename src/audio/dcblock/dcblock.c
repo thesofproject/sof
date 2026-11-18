@@ -20,7 +20,6 @@
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
@@ -51,8 +50,10 @@ static void dcblock_set_passthrough(struct processing_module *mod)
 	comp_info(mod->dev, "entry");
 	int i;
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++) {
 		cd->R_coeffs[i] = ONE_Q2_30;
+		cd->R_coeffs_f[i] = 1.0f;
+	}
 }
 
 /**
@@ -62,8 +63,11 @@ static void dcblock_set_passthrough(struct processing_module *mod)
 static void dcblock_copy_coefficients(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
+	int i;
 
 	memcpy_s(cd->R_coeffs, sizeof(cd->R_coeffs), cd->config, sizeof(cd->R_coeffs));
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
+		cd->R_coeffs_f[i] = (float)cd->R_coeffs[i] / (float)ONE_Q2_30;
 }
 
 /**
@@ -158,8 +162,8 @@ static int dcblock_process(struct processing_module *mod,
 	size_t source_frame_bytes = source_get_frame_bytes(source);
 	size_t sink_frame_bytes = sink_get_frame_bytes(sink);
 	size_t source_bytes, sink_bytes, bytes;
-	uint32_t frames = source_get_data_frames_available(source);
-	uint32_t sink_frames = sink_get_free_frames(sink);
+	size_t frames = source_get_data_frames_available(source);
+	size_t sink_frames = sink_get_free_frames(sink);
 	int ret;
 
 	comp_dbg(dev, "entry");

@@ -35,7 +35,7 @@ out. Two paths:
    hardware.
 2. **Direct raw-data injection** (bring-up shortcut): a minimal pipeline where a
    host copier delivers `stream.raw` as an opaque byte buffer into the module's
-   `process_raw_data`, capturing PCM on the other side.
+   `process()`, capturing PCM on the other side.
 
 ## Verification paths
 
@@ -52,7 +52,7 @@ out. Two paths:
 ### B. Native testbench (no hardware) — decode-only check
 The module builds native (built-in, real libc — the LLEXT-only shims/alloc are
 excluded automatically, see `CMakeLists.txt`). Linking the **host** libavcodec
-and driving `process_raw_data` over `stream.raw` with `ref_s32le.raw` as the
+and driving `process()` over `stream.raw` with `ref_s32le.raw` as the
 oracle gives a bit-exact check without a DSP. This harness is not yet wired (the
 testbench file component is PCM-oriented; feeding compressed bytes needs a small
 adapter) and is the recommended next step for CI-friendly verification.

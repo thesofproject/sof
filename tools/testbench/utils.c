@@ -141,7 +141,7 @@ void tb_show_file_stats(struct testbench_prm *tp, int pipeline_id)
 		dev = icd->cd;
 		mod = comp_mod(dev);
 		fcd = get_file_comp_data(module_get_private_data(mod));
-		printf("file %s: id %d: type %d: samples %d copies %d\n",
+		printf("file %s: id %d: type %d: samples %zu copies %zu\n",
 		       fcd->fs.fn, dev->ipc_config.id, dev->drv->type, fcd->fs.n,
 		       fcd->fs.copy_count);
 	}
@@ -157,7 +157,7 @@ void tb_show_file_stats(struct testbench_prm *tp, int pipeline_id)
 		dev = icd->cd;
 		mod = comp_mod(dev);
 		fcd = get_file_comp_data(module_get_private_data(mod));
-		printf("file %s: id %d: type %d: samples %d copies %d\n",
+		printf("file %s: id %d: type %d: samples %zu copies %zu\n",
 		       fcd->fs.fn, dev->ipc_config.id, dev->drv->type, fcd->fs.n,
 		       fcd->fs.copy_count);
 	}

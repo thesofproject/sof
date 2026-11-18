@@ -17,6 +17,8 @@
 #include <sof/objpool.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/data_blob.h>
+#include <sof/debug/telemetry/performance_monitor.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/fast-get.h>
 #include <sof/lib/vregion.h>
 #include <sof/schedule/dp_schedule.h>
@@ -38,13 +40,15 @@ LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
  */
 static K_MUTEX_DEFINE(mod_res_lock);
 
-int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
+__cold int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 {
 	int ret;
 	struct module_config *dst;
 	/* loadable module must use module adapter */
 	struct processing_module *mod = comp_mod(dev);
 	struct module_data *md = &mod->priv;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "entry");
 
@@ -96,11 +100,13 @@ void mod_resource_init(struct processing_module *mod)
 	res->heap_high_water_mark = 0;
 }
 
-int module_init(struct processing_module *mod)
+__cold int module_init(struct processing_module *mod)
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
 	const struct module_interface *const interface = dev->drv->adapter_ops;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "entry");
 
@@ -115,10 +121,8 @@ int module_init(struct processing_module *mod)
 		return -EIO;
 	}
 
-	/* check interface, there must be one and only one of processing procedure */
-	if (!interface->init ||
-	    (!!interface->process + !!interface->process_audio_stream +
-	     !!interface->process_raw_data < 1)) {
+	/* check interface, there must be a processing procedure */
+	if (!interface->init || !interface->process) {
 		comp_err(dev, "comp is missing mandatory interfaces");
 		return -EIO;
 	}
@@ -232,6 +236,7 @@ void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t
 		res->heap_high_water_mark = res->heap_usage;
 
 	k_mutex_unlock(&mod_res_lock);
+	perf_data_update_module_resources(mod->dev);
 	return ptr;
 }
 EXPORT_SYMBOL(z_impl_mod_balloc_align);
@@ -285,6 +290,7 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 		res->heap_high_water_mark = res->heap_usage;
 
 	k_mutex_unlock(&mod_res_lock);
+	perf_data_update_module_resources(mod->dev);
 	return ptr;
 }
 EXPORT_SYMBOL(z_impl_mod_alloc_ext);
@@ -487,6 +493,8 @@ int z_impl_mod_free(struct processing_module *mod, const void *ptr)
 
 	if (ret < 0)
 		comp_err(mod->dev, "error: could not find memory pointed by %p", ptr);
+	else
+		perf_data_update_module_resources(mod->dev);
 
 	return ret;
 }
@@ -680,51 +688,6 @@ int module_prepare(struct processing_module *mod,
 	return 0;
 }
 
-int module_process_legacy(struct processing_module *mod,
-			  struct input_stream_buffer *input_buffers, int num_input_buffers,
-			  struct output_stream_buffer *output_buffers,
-			  int num_output_buffers)
-{
-	struct comp_dev *dev = mod->dev;
-	const struct module_interface *const ops = dev->drv->adapter_ops;
-	int ret;
-
-	comp_dbg(dev, "entry");
-
-#if CONFIG_IPC_MAJOR_3
-	struct module_data *md = &mod->priv;
-
-	if (md->state != MODULE_IDLE) {
-		comp_err(dev, "wrong state %d", md->state);
-		return -EPERM;
-	}
-
-	/* set state to processing */
-	md->state = MODULE_PROCESSING;
-#endif
-	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod))
-		ret = ops->process_audio_stream(mod, input_buffers, num_input_buffers,
-							     output_buffers, num_output_buffers);
-	else if (IS_PROCESSING_MODE_RAW_DATA(mod))
-		ret = ops->process_raw_data(mod, input_buffers, num_input_buffers,
-							 output_buffers, num_output_buffers);
-	else
-		ret = -EOPNOTSUPP;
-
-	if (ret && ret != -ENOSPC && ret != -ENODATA) {
-		comp_err(dev, "error %d", ret);
-		return ret;
-	}
-
-	comp_dbg(dev, "done");
-
-#if CONFIG_IPC_MAJOR_3
-	/* reset state to idle */
-	md->state = MODULE_IDLE;
-#endif
-	return 0;
-}
-
 int module_process_sink_src(struct processing_module *mod,
 			    struct sof_source **sources, int num_of_sources,
 			    struct sof_sink **sinks, int num_of_sinks)
@@ -821,12 +784,14 @@ int module_reset(struct processing_module *mod)
  *
  * This function is called automatically when the module is unloaded.
  */
-void z_impl_mod_free_all(struct processing_module *mod)
+__cold void z_impl_mod_free_all(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
 
 	/* Free all contents found in used containers */
 	struct mod_res_cb_arg cb_arg = {mod, NULL};
+
+	assert_can_be_cold();
 
 	k_mutex_lock(&mod_res_lock, K_FOREVER);
 	objpool_iterate(&res->objpool, mod_res_free, &cb_arg);
@@ -835,13 +800,16 @@ void z_impl_mod_free_all(struct processing_module *mod)
 
 	/* Make sure resource lists and accounting are reset */
 	mod_resource_init(mod);
+	perf_data_update_module_resources(mod->dev);
 }
 
-int module_free(struct processing_module *mod)
+__cold int module_free(struct processing_module *mod)
 {
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 	struct module_data *md = &mod->priv;
 	int ret = 0;
+
+	assert_can_be_cold();
 
 	if (ops->free) {
 		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL ||
@@ -892,11 +860,11 @@ int module_free(struct processing_module *mod)
  *
  * \return: 0 upon success or error upon failure
  */
-int module_set_configuration(struct processing_module *mod,
-			     uint32_t config_id,
-			     enum module_cfg_fragment_position pos, size_t data_offset_size,
-			     const uint8_t *fragment_in, size_t fragment_size, uint8_t *response,
-			     size_t response_size)
+__cold int module_set_configuration(struct processing_module *mod,
+				    uint32_t config_id,
+				    enum module_cfg_fragment_position pos, size_t data_offset_size,
+				    const uint8_t *fragment_in, size_t fragment_size,
+				    uint8_t *response, size_t response_size)
 {
 #if CONFIG_IPC_MAJOR_3
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment_in;
@@ -909,6 +877,8 @@ int module_set_configuration(struct processing_module *mod,
 	size_t offset = 0;
 	uint8_t *dst;
 	int ret;
+
+	assert_can_be_cold();
 
 	switch (pos) {
 	case MODULE_CFG_FRAGMENT_FIRST:
@@ -992,10 +962,12 @@ int module_set_configuration(struct processing_module *mod,
 }
 EXPORT_SYMBOL(module_set_configuration);
 
-int module_bind(struct processing_module *mod, const struct bind_info *bind_data)
+__cold int module_bind(struct processing_module *mod, const struct bind_info *bind_data)
 {
 	int ret;
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
+
+	assert_can_be_cold();
 
 	switch (bind_data->bind_type) {
 	case COMP_BIND_TYPE_SINK:
@@ -1025,10 +997,12 @@ int module_bind(struct processing_module *mod, const struct bind_info *bind_data
 	return ret;
 }
 
-int module_unbind(struct processing_module *mod, const struct bind_info *unbind_data)
+__cold int module_unbind(struct processing_module *mod, const struct bind_info *unbind_data)
 {
 	int ret;
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
+
+	assert_can_be_cold();
 
 	switch (unbind_data->bind_type) {
 	case COMP_BIND_TYPE_SINK:
@@ -1058,21 +1032,13 @@ int module_unbind(struct processing_module *mod, const struct bind_info *unbind_
 	return ret;
 }
 
-void module_update_buffer_position(struct input_stream_buffer *input_buffers,
-				   struct output_stream_buffer *output_buffers,
-				   uint32_t frames)
-{
-	struct audio_stream *source = input_buffers->data;
-	struct audio_stream *sink = output_buffers->data;
-
-	input_buffers->consumed += audio_stream_frame_bytes(source) * frames;
-	output_buffers->size += audio_stream_frame_bytes(sink) * frames;
-}
-EXPORT_SYMBOL(module_update_buffer_position);
-
 uint32_t module_get_deadline(struct processing_module *mod)
 {
+	/* a DP module can write mod: read the count once and bound it */
+	size_t num_of_sinks = mod->num_of_sinks;
 	uint32_t deadline;
+
+	num_of_sinks = MIN(num_of_sinks, ARRAY_SIZE(mod->sinks));
 
 	/* LL modules have no deadline - it is always "now" */
 	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
@@ -1084,9 +1050,14 @@ uint32_t module_get_deadline(struct processing_module *mod)
 
 	deadline = UINT32_MAX;
 	/* calculate the shortest LFT for all sinks */
-	for (size_t i = 0; i < mod->num_of_sinks; i++) {
-		uint32_t sink_lft = sink_get_last_feeding_time(mod->sinks[i]);
+	for (size_t i = 0; i < num_of_sinks; i++) {
+		struct sof_sink *sink = mod->sinks[i];
+		uint32_t sink_lft;
 
+		if (!sink)
+			continue;
+
+		sink_lft = sink_get_last_feeding_time(sink);
 		deadline = MIN(deadline, sink_lft);
 	}
 

@@ -16,10 +16,10 @@ SOF supports several privilege configurations. On PTL (`intel_adsp_ace30_ptl`) t
 config enables `CONFIG_USERSPACE` and `CONFIG_SOF_USERSPACE_PROXY`, running individual audio
 modules in isolated user threads via the proxy container. For Linux builds
 (`os_linux_overlay.conf`), `app/CMakeLists.txt` automatically includes
-`app/overlays/ptl/ll_userspace_overlay.conf`, which additionally enables
-`CONFIG_SOF_USERSPACE_LL` so the entire LL pipeline and the module-facing IPC run in user
-threads. This is the standard PTL Linux build configuration. The kernel keeps the OS/HAL,
-boot, drivers, and the syscall validators in both cases.
+`app/ll_userspace_overlay.conf` on Intel ACE3.x and newer targets (e.g. ptl, wcl, nvl), which
+additionally enables `CONFIG_SOF_USERSPACE_LL` so the entire LL pipeline and the module-facing
+IPC run in user threads. This is the standard Linux build configuration for these targets.
+The kernel keeps the OS/HAL, boot, drivers, and the syscall validators in both cases.
 
 The privilege boundary is real, but nothing in the source *layout* signals which side a given
 file belongs to. This document makes that explicit.
@@ -74,13 +74,15 @@ its subdirectories span all tiers.
 
 | Tier | Meaning | Directories |
 |------|---------|-------------|
-| **Kernel-only** | OS integration, HAL, boot, inter-core. Never executes in a user thread. Must not be reached directly from user code — only via a syscall. | `arch/`, `drivers/`, `idc/`, `init/`, `platform/`, `probe/` *, `logging/` *, `trace/` * |
-| **Boundary / bridge** | Owns the syscalls and the thread / memory-domain setup. Split internally: some translation units run kernel-side, some user-side (e.g. `handler-kernel.c` vs `handler-user.c`, `zephyr_ll.c` vs `zephyr_ll_user.c`). | `schedule/`, `ipc/`, `library_manager/` *, `debug/debug_stream/` *, and (in the Zephyr integration tree) `zephyr/syscall/` |
+| **Kernel-only** | OS integration, HAL, boot, inter-core. Never executes in a user thread. Must not be reached directly from user code — only via a syscall. | `kernel/` (see [its README](../../../kernel/README.md)) |
+| **Boundary / bridge** | Owns the syscalls and the thread / memory-domain setup. Split internally: some translation units run kernel-side, some user-side (e.g. `handler-kernel.c` vs `handler-user.c`). | `schedule/`, `ipc/`, `debug/debug_stream/`, and (in the Zephyr integration tree) `zephyr/syscall/` |
 | **Application** | Audio pipeline / component logic that runs in user threads under userspace configs. | `audio/` |
 | **Shared library** | Context-agnostic code linked into whichever context calls it. Must stay "user-safe": no privileged operations (no direct MMIO, no spinlocks held across syscalls, no raw kernel object access) so it is safe when pulled into a user build. | `math/`, `module/` |
 | **Mixed** | A directory whose files span more than one tier; see its own README for per-file classification. | `lib/` |
 
-Directories marked * do not yet have a "Runs in:" README banner.
+Kernel-only code lives under `src/kernel/`, which Zephyr builds into a library of its own,
+`sof_kernel`, instead of `modules_sof`. Source files that mix kernel and user code are split,
+and their kernel halves moved there, separately.
 
 Classification is grep-verifiable — see [Verifying the taxonomy](#verifying-the-taxonomy).
 
@@ -88,13 +90,13 @@ Classification is grep-verifiable — see [Verifying the taxonomy](#verifying-th
 > collects the validating half of several syscalls in one place — `zephyr/syscall/alloc.c`,
 > `cpu.c`, `vregion.c`, `dai.c`, `sof_dma.c` each hold the `z_vrfy_*` wrappers for their
 > subsystem, physically separated from the `z_impl_*` logic (in `zephyr/lib/*.c` and
-> `src/lib/*.c`). This is exactly the boundary-tier separation this document promotes; the
+> `src/kernel/lib/*.c`). This is exactly the boundary-tier separation this document promotes; the
 > migration opportunity is to move the *still-scattered* validators (IPC, module management,
 > library manager, scheduling, debug) toward the same convention.
 
-> Borderline cases (e.g. parts of `lib/` that host syscall *implementations* such as `dma.c`
-> and `dai.c`) behave as boundary code even though the directory is mostly shared-library. When
-> a single directory genuinely mixes tiers, its README states the exception explicitly.
+> Mixed files are split: the syscall *implementations* of `lib/dma.c` and `lib/dai.c`, for
+> example, are in `kernel/lib/dma-kernel.c` and `dai-kernel.c`. When a single directory
+> genuinely mixes tiers, its README states the exception explicitly.
 
 ## The boundary is the syscall set
 
@@ -112,21 +114,96 @@ syscall by subsystem:
 
 | Subsystem | Syscalls | Declared in | Validator (`z_vrfy_`) / logic (`z_impl_`) |
 |-----------|----------|-------------|-------------------------------------------|
-| IPC | `ipc_msg_send`, `ipc_msg_list_remove`, `ipc_msg_reply`, `ipc_compound_pre_start`, `ipc_compound_post_start`, `ipc_wait_for_compound_msg`, `send_resource_notif` | `sof/ipc/msg.h`, `sof/ipc/ipc_reply.h`, `ipc4/handler.h`, `ipc4/notification.h` | scattered: `ipc/ipc-common.c`, `ipc/ipc3/helper.c`, `ipc/ipc4/handler-kernel.c`, `ipc/ipc4/notification.c` |
+| IPC | `ipc_msg_send`, `ipc_msg_list_remove`, `ipc_msg_reply`, `ipc_compound_pre_start`, `ipc_compound_post_start`, `ipc_wait_for_compound_msg`, `send_resource_notif` | `sof/ipc/msg.h`, `sof/ipc/ipc_reply.h`, `ipc4/handler.h`, `ipc4/notification.h` | scattered: `ipc/ipc-common.c`, `kernel/ipc/ipc3/helper.c`, `kernel/ipc/ipc4/handler-kernel.c`, `kernel/ipc/ipc4/notification.c` |
 | Heap alloc | `sof_heap_alloc`, `sof_heap_free` | `rtos/alloc.h` | `zephyr/syscall/alloc.c` / `zephyr/lib/alloc.c` |
 | Virtual regions | `vregion_create_map`, `vregion_set_interim`, `vregion_get`, `vregion_put`, `vregion_alloc_align`, `vregion_alloc_coherent_align`, `vregion_free` | `sof/lib/vregion.h` | `zephyr/syscall/vregion.c` / `zephyr/lib/vregion.c` |
-| DMA | `sof_dma_get`, `sof_dma_put`, `sof_dma_get_attribute`, `sof_dma_request_channel`, `sof_dma_release_channel`, `sof_dma_config`, `sof_dma_start`, `sof_dma_stop`, `sof_dma_get_status`, `sof_dma_reload`, `sof_dma_suspend`, `sof_dma_resume` | `sof/lib/sof_dma.h` | `zephyr/syscall/sof_dma.c` / `lib/dma.c` (get/put); remaining 10 are `static inline z_impl_*` in `sof/lib/sof_dma.h` |
-| DAI | `dai_get_device` | `sof/lib/dai-zephyr.h` | `zephyr/syscall/dai.c` / `lib/dai.c` |
-| CPU | `cpu_get_id`, `sof_thread_cpu_pin` | `sof/lib/cpu.h` | `zephyr/syscall/cpu.c` / `zephyr/lib/cpu.c` |
-| Module management | `mod_balloc_align`, `mod_alloc_ext`, `mod_free`, `mod_free_all`, `mod_data_blob_handler_new`, `mod_fast_get` | `sof/audio/module_adapter/module/generic.h` | scattered: `audio/module_adapter/module/generic.c` |
-| Library manager | `lib_manager_free_module` | `sof/lib_manager.h` | scattered: `library_manager/lib_manager.c` |
-| Scheduling | `zephyr_ll_task_sem_alloc`, `zephyr_ll_task_sem_free`, `scheduler_dp_internal_free`, `scheduler_dp_ll_tick` | `sof/schedule/ll_schedule_domain.h`, `sof/schedule/dp_schedule.h` | scattered: `schedule/zephyr_ll.c`, `schedule/zephyr_dp_schedule*.c` |
-| Debug | `debug_stream_slot_send_record` | `user/debug_stream_slot.h` | scattered: `debug/debug_stream/debug_stream_slot.c` |
+| DMA | `sof_dma_get`, `sof_dma_put`, `sof_dma_get_attribute`, `sof_dma_request_channel`, `sof_dma_release_channel`, `sof_dma_config`, `sof_dma_start`, `sof_dma_stop`, `sof_dma_get_status`, `sof_dma_reload`, `sof_dma_suspend`, `sof_dma_resume` | `sof/lib/sof_dma.h` | `zephyr/syscall/sof_dma.c` / `kernel/lib/dma-kernel.c` (get/put); remaining 10 are `static inline z_impl_*` in `sof/lib/sof_dma.h` |
+| DAI | `dai_get_device` | `sof/lib/dai-zephyr.h` | `zephyr/syscall/dai.c` / `kernel/lib/dai-kernel.c` |
+| CPU | `cpu_get_id` | `sof/lib/cpu.h` | `zephyr/syscall/cpu.c` / `zephyr/lib/cpu.c` |
+| Module management | `mod_balloc_align`, `mod_alloc_ext`, `mod_free`, `mod_free_all`, `mod_data_blob_handler_new`, `mod_data_blob_set`, `mod_fast_get` | `sof/audio/module_adapter/module/generic.h` | scattered: `audio/module_adapter/module/generic.c` |
+| Library manager | `lib_manager_free_module` | `sof/lib_manager.h` | scattered: `kernel/library_manager/lib_manager.c` |
+| Scheduling | `zephyr_ll_task_sem_alloc`, `zephyr_ll_task_sem_free`, `scheduler_dp_internal_free`, `scheduler_dp_ll_tick`, `scheduler_dp_kick` | `sof/schedule/ll_schedule_domain.h`, `sof/schedule/dp_schedule.h` | scattered: `kernel/schedule/zephyr_ll-kernel.c`, `kernel/schedule/zephyr_dp_schedule*-kernel.c` |
+| Debug | `debug_stream_slot_send_record` | `user/debug_stream_slot.h` | `kernel/debug/debug_stream/debug_stream_slot.c` |
+| KPB | `kpb_notifier_schedule` | `sof/audio/kpb.h` | `zephyr/syscall/kpb.c` / `audio/kpb.c` |
+
+### Allowed callers
+
+Zephyr lets any user thread invoke any syscall. With
+`CONFIG_SOF_USERSPACE_SYSCALL_CALLER_CHECK` (default `y` with `SOF_USERSPACE_LL`), each
+validator first calls `SOF_SYSCALL_CALLER_CHECK()` from
+[`sof/userspace/syscall_caller.h`](syscall_caller.h). That kills any calling thread that is
+not registered with an allowed role. The registry is kernel-only; never identify the caller
+from user-writable data such as `ipc_user->thread[]`.
+
+| Allowed callers | Syscalls |
+|-----------------|----------|
+| Any user thread, including DP module threads | `cpu_get_id`, all module management syscalls (`mod_*`), `ipc_msg_send`, `ipc_msg_list_remove`, `send_resource_notif`, `kpb_notifier_schedule` |
+| IPC user thread only | `ipc_compound_pre_start`, `ipc_compound_post_start`, `ipc_wait_for_compound_msg`, `lib_manager_free_module` |
+| LL user thread only | `scheduler_dp_ll_tick`, `scheduler_dp_kick` |
+| LL or IPC user thread | all other SOF syscalls |
+
+With `CONFIG_SOF_USERSPACE_APPLICATION`, the DP task list and task memory are writable by DP
+threads, so the kernel does not walk them. The DP readiness and deadline calculation runs in
+the LL user thread (`scheduler_dp_ll_post_tick()`), which passes its results to
+`scheduler_dp_kick()`; the kernel takes the DP thread and event objects from its own task
+records. `scheduler_dp_ll_tick` is not built when `CONFIG_SOF_USERSPACE_LL` is also set.
+
+DP modules only get the syscalls needed to implement the module interface. That includes
+sending notifications: modules queue messages from `mod_ipc_msg_init()` with
+`ipc_msg_send()` and free them with `mod_ipc_msg_free()`, and `dp_task_run()` reports
+processing errors with `send_resource_notif()`. DP modules have no access to the other IPC
+syscalls or to heap, vregion, DMA, DAI or scheduler syscalls.
+
+A message sent by a user thread is never linked into the kernel send queue. `ipc_msg_send()`
+copies its header and payload (at most `CONFIG_SOF_IPC_USER_MSG_MAX_SIZE` bytes) once into
+one of `CONFIG_SOF_IPC_USER_MSG_SLOTS` kernel-owned slots and queues the slot. The slot is
+found again by the address of the user message and the memory domain of the sender, so
+sending a queued message again updates the queued copy, and `ipc_msg_list_remove()` only
+removes messages of the caller's own domain. `msg->list` and `msg->callback` of a user
+message are not used. With `CONFIG_SOF_USERSPACE_LL`, the send queue, its lock and the IPC
+processing task are kept in kernel-only `struct ipc_kstate`, not in the user-writable
+`struct ipc`; kernel code accesses them with `ipc_ks()`.
 
 The `zephyr/syscall/*.c` files hold the validators in one place per subsystem; the rows marked
 **scattered** keep their `z_vrfy_` next to the kernel logic and are the migration targets.
 
 Most syscall declarations are gated by `#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)`; outside that guard (non-Zephyr host-test and ztest builds) the same name is a plain macro or inline calling `z_impl_*` directly. Non-userspace Zephyr builds (no `CONFIG_USERSPACE`) still use the `__syscall` declaration path, which Zephyr compiles to a direct `z_impl_*` call without the privilege-elevation trap.
+
+## LL memory region
+
+With `CONFIG_SOF_USERSPACE_LL`, the memory of the LL and IPC user threads is one region of
+`CONFIG_SOF_ZEPHYR_SYS_USER_HEAP_SIZE` bytes, allocated from the kernel heap at boot
+(`src/kernel/schedule/zephyr_ll_user.c`) and split into page-aligned parts:
+
+| Part | Mapping in the LL memory domain | Allocator |
+|------|---------------------------------|-----------|
+| Kernel RO area (`CONFIG_SOF_ZEPHYR_LL_KAREA_RO_SIZE`) | read-only | `zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RO, ...)` |
+| Kernel RW area (`CONFIG_SOF_ZEPHYR_LL_KAREA_RW_SIZE`) | read-write | `zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, ...)` |
+| LL user heap (the rest) | read-write | `sof_heap_alloc(sof_sys_user_heap_get(), ...)` |
+
+The kernel areas are for objects that kernel code creates and LL user threads access. Their
+allocator is a bump allocator with kernel-only state and no free, so use it for objects that
+live until the firmware is reset. The Xtensa MMU has one write permission for both rings, so
+the RO area is also read-only to kernel code running in the LL memory domain, such as system
+calls from LL threads: only kernel threads can write objects there.
+
+Objects in the kernel areas:
+
+- RO: the user scheduler list heads and descriptors (`struct schedule_data`, including the
+  scheduler ops), and the LL allocation context `ipc->ll_alloc`. Kernel code finds the user
+  scheduler lists through a kernel-only copy of the per-core list heads.
+- RW: `struct ipc_user`, the IPC data buffer `ipc->comp_data`, the LL scheduler state
+  (`struct zephyr_ll`), the LL scheduling domain and its Zephyr domain data, the DP scheduler
+  data, and the LL tasks that kernel threads create at boot together with their task data.
+
+The LL timer interrupt and the LL thread setup and teardown use kernel-only copies of the
+domain data pointer, the per-core semaphores and the LL threads, not the user-writable domain
+data.
+
+The LL user heap keeps its `sys_heap` metadata in user-writable memory. Kernel code is being
+moved off it; `CONFIG_SOF_ZEPHYR_LL_HEAP_KERNEL_TRACE` logs the remaining uses by kernel
+threads. Kernel code still follows some pointers stored in user-writable memory, for example
+`task->sch` and the domain `ops`.
 
 ## Memory-partition markers
 
@@ -147,10 +224,11 @@ ordinary variables in non-userspace builds.
 marker at its declaration site.* Conversely, marked data is **user-writable**, so kernel code
 must never trust it — re-validate on every use. DP modules running under
 `SOF_USERSPACE_APPLICATION` access data through their per-module memory domain set up by the
-proxy or DP thread infrastructure, not through `APP_TASK_*` / `APP_SYSUSER_*` markers. See the warning in
-[`schedule/zephyr_ll_user.c`](../../../schedule/zephyr_ll_user.c) around `zephyr_ll_heap`, and
-`zephyr_ll_user_heap_verify()` which exists precisely because the user-visible heap pointer
-cannot be trusted.
+proxy or DP thread infrastructure, not through `APP_TASK_*` / `APP_SYSUSER_*` markers. See
+[`kernel/schedule/zephyr_ll_user.c`](../../../kernel/schedule/zephyr_ll_user.c): `zephyr_ll_user_heap()`
+returns the address of the kernel-only heap object rather than a pointer stored in
+user-writable memory, and `zephyr_ll_user_heap_verify()` checks the heap pointer that user
+threads pass to the heap system calls.
 
 ## Kconfig hierarchy
 
@@ -179,7 +257,7 @@ graph TD
 Key options:
 
 - **`SOF_USERSPACE_LL`** — run LL pipelines in user threads (`depends on USERSPACE`; selects
-  the ALLOC/DMA/VREGION interfaces). This is what the PTL overlay turns on.
+  the ALLOC/DMA/VREGION interfaces). This is what `ll_userspace_overlay.conf` turns on.
 - **`SOF_USERSPACE_PROXY`** — run modules inside a proxy container that forwards kernel-side
   calls to user-privileged module code (selects the driver + shared heaps).
 - **`SOF_USERSPACE_APPLICATION`** — not user-settable; a shortcut for
@@ -195,7 +273,11 @@ Key options:
    `audio/`. Reusable pure code → a shared-library directory (keep it user-safe).
 2. **Cross the boundary only via a syscall.** Add a `__syscall` declaration, put the
    `z_vrfy_` validator in the boundary tier — preferably in `zephyr/syscall/<subsystem>.c`
-   alongside the existing ones — and validate every argument.
+   alongside the existing ones — and validate every argument. Start the validator with
+   `SOF_SYSCALL_CALLER_CHECK()` and add the syscall to the
+   [allowed callers](#allowed-callers) table. Read each field of a user structure once
+   (`k_usermode_from_copy()`), and never let the kernel follow, free through or link a
+   pointer that lives in user-writable memory.
 3. **Mark shared globals.** Any global a kernel-managed user thread (LL user thread, userspace
    IPC thread, proxy worker) reads/writes gets `APP_TASK_*`, `APP_SYSUSER_*`, or a `K_APP_*`
    partition marker — and the kernel re-validates it. DP modules in application mode use their

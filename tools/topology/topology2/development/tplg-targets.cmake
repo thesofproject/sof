@@ -221,11 +221,29 @@ DEEPBUFFER_FW_DMA_MS=false,HDA_ANALOG_CAPTURE_RATE=96000,HDA_ANALOG_PLAYBACK_RAT
 # HDA generic with a compress PCM driven by the FFmpeg (libavcodec) decoder
 # widget (ffmpeg_dec) instead of the Cadence decoder. COMPR_FFMPEG gates
 # compr-ffmpeg.conf independently of COMPRESSED (which gates the Cadence
+# compr.conf), so the stock compress path stays off here.
 # Default (COMPR_FFMPEG_CODEC=flac) carries the FLAC STREAMINFO codec-setup
-# control; the mp3 and aac variants omit it (both are self-describing streams).
+# control; the mp3, aac, and opus variants omit it.
 "sof-hda-generic\;sof-hda-generic-ffmpeg-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true"
 "sof-hda-generic\;sof-hda-generic-ffmpeg-mp3-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=mp3"
 "sof-hda-generic\;sof-hda-generic-ffmpeg-aac-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=aac,COMPR_FFMPEG_DEC_HEAP=901120"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-opus-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=opus,COMPR_FFMPEG_DEC_HEAP=524288"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-alac-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=alac"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-sbc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=sbc"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-g722-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=g722"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-aptx-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=aptx"
+# Compress capture (encode: PCM -> MP3 via libshine, AAC-LC via vo-aacenc,
+# lossless FLAC/ALAC, or Bluetooth/voice SBC/G.722/aptX via libavcodec) driven
+# by ffmpeg_enc. COMPR_FFMPEG_ENC
+# gates compr-capture-ffmpeg.conf, which taps the HDA analog capture BE, so it
+# may be built alongside or independently of the decode COMPR_FFMPEG path above.
+"sof-hda-generic\;sof-hda-generic-ffmpeg-mp3-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-aac-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-flac-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-alac-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-sbc-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-g722-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-aptx-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
 
 # SDW + DMIC + HDMI, with 16 kHz DMIC1
 "cavs-sdw\;sof-mtl-sdw-cs42l42-l0-max98363-l2-4ch-48k-16k\;PLATFORM=mtl,\
@@ -333,6 +351,9 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-ns2.bin"
 # snd_sof.tplg_filename=sof-hda-generic-uaol.tplg
 "development/sof-hda-generic-uaol\;sof-hda-generic-uaol\;HDA_CONFIG=mix,HDA_MIC_ENHANCED_CAPTURE=true,\
 EFX_HDA_MIC_TDFB_PARAMS=line2_pass,EFX_HDA_MIC_DRC_PARAMS=passthrough"
+# The same for a machine without an HDA codec, HDMI only, load it with
+# snd_sof.tplg_filename=sof-hda-generic-idisp-uaol.tplg
+"development/sof-hda-generic-uaol\;sof-hda-generic-idisp-uaol\;"
 
 # SSP test topology for Data Processing SRC on MTL
 "cavs-nocodec\;sof-mtl-nocodec-dp-test\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
@@ -467,6 +488,13 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt721-4ch-echoref.bin,DMIC0_ENHANCED_CAPTURE=true,\
 EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default,\
 DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,SDW_JACK_ECHO_REF=true,SDW_SPK_ECHO_REF=true,SDW_ECHO_REF_DAI=true"
+
+# RT713 headset on link 3 and RT1320 amplifiers on links 1 and 2 with mono
+# 16 kHz WebRTC AEC of the SoundWire DMIC against the speaker echo reference
+"cavs-sdw\;sof-ptl-rt713-l3-rt1320-l12-aec\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=2,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+SDW_SPK_ECHO_REF=true,SDW_ECHO_REF_DAI=true,SDW_SPK_AEC_CAPTURE_PCM=true"
 
 # RT721 eval board with PCH-DMIC, sof_sdw_quirk_table with SOC_SDW_PCH_DMIC
 # Enable echo reference capture from jack and speaker output

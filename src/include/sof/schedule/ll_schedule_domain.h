@@ -18,8 +18,11 @@
 #include <rtos/panic.h>
 #include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
+#ifndef __ZEPHYR__
+/* for clock_ms_to_ticks() in domain_init() */
 #include <rtos/clk.h>
-#include <sof/lib/memory.h>
+#endif
+#include <sof/schedule/ll_schedule.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
@@ -31,22 +34,6 @@
 /** \addtogroup scheduling_api
  *  @{
  */
-
-#if defined(CONFIG_AMD)
-/** @brief Low-Latency timer scheduling period in microseconds (500us for AMD ACP platforms). */
-#define LL_TIMER_PERIOD_US	500ULL
-#else
-/** @brief Default Low-Latency timer scheduling period in microseconds (1000us / 1ms). */
-#define LL_TIMER_PERIOD_US	1000ULL
-#endif
-
-/**
- * @brief Default Low-Latency watchdog timeout in microseconds.
- *
- * Configured as two periods to provide a safe margin between watchdog start
- * and initial task feeding.
- */
-#define LL_WATCHDOG_TIMEOUT_US	(2 * LL_TIMER_PERIOD_US)
 
 struct dma;
 struct ll_schedule_domain;
@@ -225,12 +212,6 @@ static inline struct ll_schedule_domain *dma_domain_get(void)
 struct task *zephyr_ll_task_alloc(void);
 
 /**
- * @brief Get the user-space heap for Low-Latency scheduling structures.
- * @return Pointer to the k_heap instance.
- */
-struct k_heap *zephyr_ll_user_heap(void);
-
-/**
  * @brief Verify that a pointer belongs to the user-space LL heap.
  * @param[in] heap Heap handle to check.
  * @return true if valid, false otherwise.
@@ -242,34 +223,50 @@ bool zephyr_ll_user_heap_verify(struct k_heap *heap);
  */
 void zephyr_ll_user_resources_init(void);
 
+/** @brief Kernel-managed areas of the LL user memory region */
+enum zephyr_ll_karea {
+	ZEPHYR_LL_KAREA_RW,	/**< read-write for LL user threads */
+	ZEPHYR_LL_KAREA_RO,	/**< read-only for LL user threads */
+	ZEPHYR_LL_KAREA_COUNT,
+};
+
+/**
+ * @brief Allocate from a kernel-managed area of the LL user memory region.
+ *
+ * For objects that kernel code creates and LL user threads access. The
+ * allocator state is kernel-only and memory is never freed, so use this
+ * for objects that live until the firmware is reset. Objects in
+ * ZEPHYR_LL_KAREA_RO can only be written by kernel threads, not by kernel
+ * code running in the LL memory domain, such as system calls from LL
+ * threads. Kernel context only.
+ *
+ * @param[in] area The area to allocate from.
+ * @param[in] flags SOF_MEM_FLAG_COHERENT for an uncached pointer.
+ * @param[in] bytes Size in bytes.
+ * @param[in] alignment Required alignment in bytes, 0 for the cache line size.
+ * @return Pointer to the memory, or NULL if the area is full.
+ */
+void *zephyr_ll_karea_alloc(enum zephyr_ll_karea area, uint32_t flags, size_t bytes,
+			    size_t alignment);
+
+/**
+ * @brief Check that memory lies in a kernel-managed area of the LL region.
+ * @param[in] area The area to check.
+ * @param[in] ptr Start of the memory, cached or uncached alias.
+ * @param[in] bytes Size in bytes.
+ * @return true if [ptr, ptr + bytes) lies in the area.
+ */
+bool zephyr_ll_karea_contains(enum zephyr_ll_karea area, const void *ptr, size_t bytes);
+
 /**
  * @brief Grant thread access to per-core Low-Latency mutexes.
+ *
+ * Kernel context only.
  * @param[in,out] thread Target thread.
  * @param[in] core Target core ID.
  */
 void user_ll_grant_access(struct k_thread *thread, int core);
 
-/**
- * @brief Acquire per-core user Low-Latency scheduling lock.
- * @param[in] core Target core ID.
- */
-void user_ll_lock_sched(int core);
-
-/**
- * @brief Release per-core user Low-Latency scheduling lock.
- * @param[in] core Target core ID.
- */
-void user_ll_unlock_sched(int core);
-
-#ifdef CONFIG_ASSERT
-/**
- * @brief Assert that the calling context holds the user Low-Latency lock for a core.
- * @param[in] core Target core ID.
- */
-void user_ll_assert_locked(int core);
-#else
-static inline void user_ll_assert_locked(int core) { ARG_UNUSED(core); }
-#endif
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 /**
@@ -291,8 +288,9 @@ static inline struct ll_schedule_domain *domain_init
 	struct ll_schedule_domain *domain;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
-	domain = sof_heap_alloc(zephyr_ll_user_heap(), SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-				sizeof(*domain), sizeof(void *));
+	/* created at boot by kernel code and never freed */
+	domain = zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, SOF_MEM_FLAG_COHERENT,
+				       sizeof(*domain), 0);
 	if (domain)
 		memset(domain, 0, sizeof(*domain));
 #else
@@ -317,10 +315,8 @@ static inline struct ll_schedule_domain *domain_init
 #ifdef CONFIG_SOF_USERSPACE_LL
 	/* Allocate mutex dynamically for userspace access */
 	domain->lock = k_object_alloc(K_OBJ_MUTEX);
-	if (!domain->lock) {
-		sof_heap_free(zephyr_ll_user_heap(), domain);
+	if (!domain->lock)
 		return NULL;
-	}
 	k_mutex_init(domain->lock);
 #else
 	k_spinlock_init(&domain->lock);

@@ -44,6 +44,8 @@ ZTEST(objpool_suite, test_objpool_wrong_size)
 	zassert_ok(objpool_free(&head, block3));
 	zassert_not_ok(objpool_free(&head, block4 + 1));
 	zassert_ok(objpool_free(&head, block4));
+
+	objpool_prune(&head);
 }
 
 ZTEST(objpool_suite, test_objpool)
@@ -73,6 +75,8 @@ ZTEST(objpool_suite, test_objpool)
 
 	while (k--)
 		zassert_ok(objpool_free(&head, blocks[k]), "free failed");
+
+	objpool_prune(&head);
 }
 
 struct test_objpool_data {
@@ -113,6 +117,8 @@ ZTEST(objpool_suite, test_objpool_iterate)
 
 	/* Reset for a possible rerun */
 	test_objpool_check = 0;
+
+	objpool_prune(&head);
 }
 
 ZTEST_SUITE(objpool_suite, NULL, NULL, NULL, NULL, NULL);

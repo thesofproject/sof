@@ -16,7 +16,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
@@ -151,8 +150,6 @@ static int mixin_init(struct processing_module *mod)
 		md->sink_config[i].gain = IPC4_MIXIN_UNITY_GAIN;
 	}
 
-	mod->skip_src_buffer_invalidate = true;
-
 	mod->max_sinks = MIXIN_MAX_SINKS;
 	return 0;
 }
@@ -169,8 +166,6 @@ static int mixout_init(struct processing_module *mod)
 		return -ENOMEM;
 
 	mod->priv.private = mo_data;
-
-	mod->skip_sink_buffer_writeback = true;
 
 	mod->max_sources = MIXOUT_MAX_SOURCES;
 	return 0;
@@ -738,6 +733,9 @@ static int mixin_prepare(struct processing_module *mod,
 	case SOF_IPC_FRAME_S16_LE:
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
+#if CONFIG_FORMAT_FLOAT
+	case SOF_IPC_FRAME_FLOAT:
+#endif
 		mixin_get_processing_functions(fmt, &md->mix, &md->gain_mix);
 		break;
 	default:

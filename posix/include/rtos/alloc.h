@@ -120,6 +120,9 @@ void sof_heap_free(struct k_heap *heap, void *addr);
 struct k_heap *sof_sys_heap_get(void);
 struct k_heap *sof_sys_user_heap_get(void);
 
+/* trace and log memory allocation statistics across all heaps */
+void heap_trace_all(int force);
+
 /* Posix version of struct mod_alloc_ctx without vregion support */ 
 struct vregion;
 

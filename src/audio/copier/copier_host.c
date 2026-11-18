@@ -4,13 +4,11 @@
 //
 // Author: Baofeng Tian <baofeng.tian@intel.com>
 
-#include <sof/audio/component_ext.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/cold.h>
 #include <sof/tlv.h>
 #include <sof/trace/trace.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/lib/mailbox.h>
-#include <rtos/userspace_helper.h>
 #include "copier.h"
 #include "host_copier.h"
 

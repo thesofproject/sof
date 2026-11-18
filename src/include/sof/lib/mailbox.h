@@ -14,7 +14,6 @@
 #include <platform/lib/mailbox.h>
 #include <rtos/panic.h>
 #include <rtos/cache.h>
-#include <sof/lib/memory.h>
 #include <rtos/string.h>
 #include <stddef.h>
 #include <stdint.h>

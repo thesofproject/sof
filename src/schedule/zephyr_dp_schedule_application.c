@@ -6,15 +6,13 @@
  */
 
 #include <rtos/task.h>
-#include <rtos/userspace_helper.h>
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
 #include <sof/common.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <sof/ipc/common.h>
-#include <sof/lib/mailbox.h>
 #include <sof/list.h>
-#include <sof/llext_manager.h>
 #include <sof/objpool.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/schedule.h>
@@ -29,57 +27,14 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "zephyr_dp_schedule.h"
+#include <sof/schedule/zephyr_dp_schedule.h>
 
 LOG_MODULE_DECLARE(dp_schedule, CONFIG_SOF_LOG_LEVEL);
 extern struct tr_ctx dp_tr;
 
-static struct objpool_head dp_mdom_head = {.list = LIST_INIT(dp_mdom_head.list)};
-
-/* Synchronization semaphore for the scheduler thread to wait for DP startup */
-#define DP_SYNC_INIT(i, _)	Z_SEM_INITIALIZER(dp_sync[i], 0, 1)
-#define DP_SYNC_INIT_LIST	LISTIFY(CONFIG_CORE_COUNT, DP_SYNC_INIT, (,))
-static STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_sync, CONFIG_CORE_COUNT) = { DP_SYNC_INIT_LIST };
-
-struct ipc4_flat {
-	unsigned int cmd;
-	int ret;
-	union {
-		struct {
-			struct ipc4_module_bind_unbind bu;
-			enum bind_type type;
-		} bind;
-		struct {
-			unsigned int trigger_cmd;
-			enum ipc4_pipeline_state state;
-			int n_sources;
-			int n_sinks;
-			struct sof_source *source[CONFIG_MODULE_MAX_CONNECTIONS];
-			struct sof_sink *sink[CONFIG_MODULE_MAX_CONNECTIONS];
-		} pipeline_state;
-		/*
-		 * SOF_IPC4_MOD_INIT_INSTANCE: a by-value copy of the caller's
-		 * ext_data. The original lives on the calling thread's stack,
-		 * which the DP thread's memory domain doesn't have access to.
-		 * The pointers it contains reference the IPC mailbox, which stays
-		 * valid and is covered by the DP thread's SOF_DP_PART_CFG partition.
-		 */
-		struct module_ext_init_data init_instance;
-		struct {
-			uint32_t param_id;
-			enum module_cfg_fragment_position position;
-			uint32_t data_offset_size;
-			size_t fragment_size;
-			const char *data;
-		} set_config;
-		struct {
-			uint32_t param_id;
-			uint32_t data_offset_size;
-			size_t fragment_size;
-			char *data;
-		} get_config;
-	};
-};
+/* The DP thread creation and the scheduler_dp_internal_free() system call, which run
+ * in kernel mode, are in src/kernel/schedule/zephyr_dp_schedule_application-kernel.c
+ */
 
 /* Pack IPC input data */
 static int ipc_thread_flatten(unsigned int cmd, const union scheduler_dp_thread_ipc_param *param,
@@ -141,14 +96,6 @@ static int ipc_thread_flatten(unsigned int cmd, const union scheduler_dp_thread_
 
 	return 0;
 }
-
-/* memory allocation helper structure */
-struct scheduler_dp_task_memory {
-	struct task task;
-	struct task_dp_pdata pdata;
-	struct comp_driver drv;
-	struct ipc4_flat flat;
-};
 
 /* Unpack IPC data and execute a callback */
 static void ipc_thread_unflatten_run(struct processing_module *pmod, struct ipc4_flat *flat)
@@ -231,14 +178,34 @@ static void ipc_thread_unflatten_run(struct processing_module *pmod, struct ipc4
 int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 			    union scheduler_dp_thread_ipc_param *param)
 {
+	const void *config_data;
+	struct k_event *event;
+	struct ipc4_flat *flat;
+	unsigned int core;
+	int ret;
+
 	if (!pmod) {
 		tr_err(&dp_tr, "no thread module");
 		return -EINVAL;
 	}
 
-	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
-	unsigned int core = pmod->dev->task->core;
-	int ret;
+	if (k_is_user_context()) {
+		struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
+
+		event = pdata->event;
+		flat = pdata->flat;
+		config_data = NULL;
+		core = pmod->dev->task->core;
+	} else {
+		/*
+		 * The module and its task memory are writable by user threads,
+		 * so the kernel takes the DP task objects from its own record.
+		 */
+		if (scheduler_dp_task_ipc_params(pmod, &event, &flat, &config_data, &core)) {
+			tr_err(&dp_tr, "no DP task for module");
+			return -EINVAL;
+		}
+	}
 
 	if (cmd == SOF_IPC4_MOD_INIT_INSTANCE) {
 		/* Wait for the DP thread to start */
@@ -252,11 +219,11 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 	unsigned int lock_key = scheduler_dp_lock(core);
 
 	/* IPCs are serialised */
-	pdata->flat->ret = -ENOSYS;
+	flat->ret = -ENOSYS;
 
-	ret = ipc_thread_flatten(cmd, param, pdata->flat);
+	ret = ipc_thread_flatten(cmd, param, flat);
 	if (!ret)
-		k_event_post(pdata->event, DP_TASK_EVENT_IPC);
+		k_event_post(event, DP_TASK_EVENT_IPC);
 
 	scheduler_dp_unlock(lock_key);
 
@@ -270,14 +237,26 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 		return ret;
 	}
 
-	if (!pdata->flat->ret && cmd == SOF_IPC4_MOD_LARGE_CONFIG_GET) {
-		/* A single case of returning data */
-		param->get_config.data_offset_size = pdata->flat->get_config.data_offset_size;
+	ret = flat->ret;
+	if (!ret && cmd == SOF_IPC4_MOD_LARGE_CONFIG_GET) {
+		/*
+		 * A single case of returning data. The kernel only copies from
+		 * the buffer in its record, which is NULL if the module had no
+		 * get_configuration at init. User threads use the pointer set by
+		 * the DP thread, they cannot read more through it than they can
+		 * read anyway.
+		 */
+		if (k_is_user_context())
+			config_data = flat->get_config.data;
+		if (!config_data)
+			return -EINVAL;
+
+		param->get_config.data_offset_size = flat->get_config.data_offset_size;
 		return memcpy_s(param->get_config.data, SOF_IPC_MSG_MAX_SIZE,
-				pdata->flat->get_config.data, param->get_config.fragment_size);
+				config_data, param->get_config.fragment_size);
 	}
 
-	return pdata->flat->ret;
+	return ret;
 }
 
 /* Go through all DP tasks and recalculate their readiness and deadlines
@@ -285,15 +264,25 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
  */
 void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 {
+	struct scheduler_dp_kick kicks[SCHEDULER_DP_KICK_MAX];
 	struct list_item *tlist;
 	struct task *curr_task;
 	struct task_dp_pdata *pdata;
+	unsigned int n = 0;
 
+	/*
+	 * The task list and task memory are writable by DP threads. This may
+	 * run in the LL user thread, see scheduler_dp_ll_post_tick(), so the
+	 * DP thread objects are only acted on by scheduler_dp_kick(), which
+	 * takes them from the kernel-only task records.
+	 */
 	list_for_item(tlist, &dp_sch->tasks) {
 		curr_task = container_of(tlist, struct task, list);
 		pdata = curr_task->priv_data;
 		struct processing_module *mod = pdata->mod;
 		bool trigger_task = false;
+		uint32_t flags = 0;
+		uint32_t deadline_cycles = 0;
 
 		/* decrease number of LL ticks/cycles left till the module reaches its deadline */
 		if (mod->dp_startup_delay && pdata->ll_cycles_to_start) {
@@ -310,13 +299,22 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 			/* trigger the task */
 			curr_task->state = SOF_TASK_STATE_RUNNING;
 			trigger_task = true;
-			k_event_post(pdata->event, DP_TASK_EVENT_PROCESS);
+			flags |= SCHEDULER_DP_KICK_PROCESS;
 		}
 
 		if (curr_task->state == SOF_TASK_STATE_RUNNING) {
 			/* (re) calculate deadline for all running tasks */
 			/* get module deadline in us */
 			uint32_t deadline = module_get_deadline(mod);
+
+			if (!trigger_task && !mod->dp_startup_delay &&
+			    pdata->deadline_clock_ticks &&
+			    (deadline == 0 ||
+			     (int32_t)(dp_sch->last_ll_tick_timestamp -
+				       pdata->deadline_clock_ticks) > 0)) {
+				telemetry_notify_dp_deadline_miss(curr_task->core);
+				pdata->deadline_clock_ticks = 0;
+			}
 
 			/* if a deadline cannot be calculated, use a fixed value relative to its
 			 * first start
@@ -331,17 +329,34 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 				/* calculate number of ticks */
 				deadline = deadline * (CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000);
 
-				/* add to "NOW", overflows are OK  */
-				deadline = dp_sch->last_ll_tick_timestamp + deadline;
+				if (trigger_task) {
+					/* add to "NOW", overflows are OK */
+					uint32_t abs_deadline = dp_sch->last_ll_tick_timestamp +
+								deadline;
 
-				/* set in Zephyr. Note that it may be in past, it does not matter,
-				 * Zephyr still will schedule the thread with earlier deadline
-				 * first
-				 */
-				k_thread_absolute_deadline_set(pdata->thread_id, deadline);
+					pdata->deadline_clock_ticks = abs_deadline ? abs_deadline : 1U;
+				}
+
+				/* scheduler_dp_kick() adds "NOW" and sets the deadline in Zephyr */
+				deadline_cycles = deadline;
+				flags |= SCHEDULER_DP_KICK_DEADLINE;
 			}
 		}
+
+		if (!flags)
+			continue;
+
+		kicks[n].task = curr_task;
+		kicks[n].flags = flags;
+		kicks[n].deadline = deadline_cycles;
+		if (++n == ARRAY_SIZE(kicks)) {
+			scheduler_dp_kick(kicks, n);
+			n = 0;
+		}
 	}
+
+	if (n)
+		scheduler_dp_kick(kicks, n);
 }
 
 /* Thread function called in component context, on target core */
@@ -405,6 +420,11 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
 			 * if not, set the state returned by run procedure
 			 */
 			if (ready && task->state == SOF_TASK_STATE_RUNNING) {
+				if (!pmod->dp_startup_delay &&
+				    task_pdata->deadline_clock_ticks)
+					scheduler_dp_check_deadline(task->core,
+								    task_pdata->deadline_clock_ticks);
+				task_pdata->deadline_clock_ticks = 0;
 				task->state = state;
 				switch (state) {
 				case SOF_TASK_STATE_RESCHEDULE:
@@ -422,6 +442,7 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
 					k_oops();
 				}
 			} else {
+				task_pdata->deadline_clock_ticks = 0;
 				task->state = SOF_TASK_STATE_QUEUED;
 			}
 		} else {
@@ -439,328 +460,3 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
 	if (task->state == SOF_TASK_STATE_COMPLETED)
 		task_complete(task);
 }
-
-/*
- * Safe to call with partial successful initialisation,
- * k_mem_domain_remove_partition() then just returns -ENOENT
- */
-static void scheduler_dp_domain_free(struct task_dp_pdata *pdata)
-{
-	struct processing_module *pmod = pdata->mod;
-	struct k_mem_domain *mdom = pmod->mdom;
-
-	llext_manager_rm_domain(pmod->dev->ipc_config.id, mdom);
-
-	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_HEAP);
-	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_HEAP_CACHE);
-	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_CFG);
-	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_CFG_CACHE);
-
-	if (mdom->num_partitions) {
-		/* Violation: all partitions should be freed by now */
-		unsigned int n = mdom->num_partitions;
-
-		LOG_WRN("%u domain partition(s) not freed, force-freeing them all", n);
-
-		for (unsigned int i = 0; i < arch_mem_domain_max_partitions_get() && n; i++) {
-			struct k_mem_partition *dpart = &mdom->partitions[i];
-
-			if (dpart->size) {
-				k_mem_domain_remove_partition(mdom, dpart);
-				n--;
-			}
-		}
-	}
-
-	/* All partitions removed, the domain can be freed now */
-	pmod->mdom = NULL;
-	k_mem_domain_deinit(mdom);
-	objpool_free(&dp_mdom_head, mdom);
-}
-
-void z_impl_scheduler_dp_internal_free(struct task *task)
-{
-	struct task_dp_pdata *pdata = task->priv_data;
-
-	k_object_free(pdata->event);
-	k_object_free(pdata->thread);
-	scheduler_dp_domain_free(pdata);
-
-	mod_free(pdata->mod, container_of(task, struct scheduler_dp_task_memory, task));
-}
-
-#ifdef CONFIG_THREAD_NAME
-static void scheduler_dp_thread_name_set(k_tid_t thread_id, struct processing_module *mod)
-{
-	char name[CONFIG_THREAD_MAX_NAME_LEN];
-
-	snprintf(name, sizeof(name), "DP:%#x", mod->dev->ipc_config.id);
-
-	k_thread_name_set(thread_id, name);
-}
-#else
-/* k_thread_name_set() is a no-op so skip constructing a thread name */
-#define scheduler_dp_thread_name_set(x, y)
-#endif
-
-/* Called only in IPC context in kernel mode (this can change) */
-int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
-			   const struct task_ops *ops, struct processing_module *mod,
-			   uint16_t core, size_t stack_size, uint32_t options)
-{
-	k_thread_stack_t *p_stack;
-	struct scheduler_dp_task_memory *task_memory;
-
-	int ret;
-
-	/* must be called on the same core the task will be bound to */
-	assert(cpu_get_id() == core);
-	assert(!k_is_user_context());
-
-	/*
-	 * allocate memory
-	 * to avoid multiple malloc operations allocate all required memory as a single structure
-	 * and return pointer to task_memory->task
-	 * As the structure contains zephyr kernel specific data, it must be located in
-	 * shared, non cached memory
-	 */
-	task_memory = mod_alloc_ext(mod, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-				    sizeof(*task_memory), 0);
-	if (!task_memory) {
-		tr_err(&dp_tr, "memory alloc failed");
-		return -ENOMEM;
-	}
-
-	memset(task_memory, 0, sizeof(*task_memory));
-
-	const struct comp_driver *drv = mod->dev->drv;
-
-	task_memory->drv = *mod->dev->drv;
-	mod->dev->drv = &task_memory->drv;
-
-	/* allocate stack - must be aligned and cached so a separate alloc */
-	p_stack = user_stack_allocate(stack_size, options);
-	if (!p_stack) {
-		tr_err(&dp_tr, "stack alloc failed");
-		ret = -ENOMEM;
-		goto e_tmem;
-	}
-
-	struct task *ptask = &task_memory->task;
-
-	/* internal SOF task init */
-	ret = schedule_task_init(ptask, uid, SOF_SCHEDULE_DP, 0, ops->run, mod, core, options);
-	if (ret < 0) {
-		tr_err(&dp_tr, "schedule_task_init failed");
-		goto e_stack;
-	}
-
-	struct task_dp_pdata *pdata = &task_memory->pdata;
-
-	if (mod->dev->drv->adapter_ops->get_configuration) {
-		pdata->ipc_config_data = mod_alloc_ext(mod, SOF_MEM_FLAG_USER, SOF_IPC_MSG_MAX_SIZE,
-						       0);
-		if (!pdata->ipc_config_data) {
-			tr_err(&dp_tr, "Failed to allocate memory for get-config");
-			ret = -ENOMEM;
-			goto e_stack;
-		}
-	} else {
-		pdata->ipc_config_data = NULL;
-	}
-
-	pdata->flat = &task_memory->flat;
-
-	pdata->event = k_object_alloc(K_OBJ_EVENT);
-	if (!pdata->event) {
-		tr_err(&dp_tr, "Event object allocation failed");
-		ret = -ENOMEM;
-		goto e_config;
-	}
-
-	pdata->thread = k_object_alloc(K_OBJ_THREAD);
-	if (!pdata->thread) {
-		tr_err(&dp_tr, "Thread object allocation failed");
-		ret = -ENOMEM;
-		goto e_event;
-	}
-	memset(&pdata->thread->arch, 0, sizeof(pdata->thread->arch));
-
-	/* success, fill the structures */
-	pdata->p_stack = p_stack;
-	pdata->mod = mod;
-
-	/* initialize other task structures */
-	ptask->ops.complete = ops->complete;
-	ptask->ops.get_deadline = ops->get_deadline;
-	ptask->priv_data = pdata;
-	list_init(&ptask->list);
-
-	/* create a zephyr thread for the task */
-	pdata->thread_id = k_thread_create(pdata->thread, p_stack,
-					   stack_size, dp_thread_fn, ptask, NULL, NULL,
-					   CONFIG_DP_THREAD_PRIORITY, ptask->flags, K_FOREVER);
-	scheduler_dp_thread_name_set(pdata->thread_id, mod);
-
-	unsigned int pidx;
-	size_t size;
-	uintptr_t start;
-	bool on_pool = false;
-
-#ifdef CONFIG_SCHED_CPU_MASK
-	/* pin the thread to specific core */
-	ret = k_thread_cpu_pin(pdata->thread_id, core);
-	if (ret < 0) {
-		tr_err(&dp_tr, "zephyr task pin to core failed");
-		goto e_thread;
-	}
-#endif
-
-	k_thread_access_grant(pdata->thread_id, pdata->event, &dp_sync[core]);
-	scheduler_dp_grant(pdata->thread_id, core);
-#if CONFIG_SOF_USERSPACE_LL
-	struct k_thread *thread_ipc = ipc_thread_user(core);
-
-	k_thread_access_grant(thread_ipc, pdata->event, pdata->thread_id, p_stack, &dp_sync[core]);
-	scheduler_dp_grant(thread_ipc, core);
-	scheduler_dp_grant(zephyr_ll_domain_thread(), core);
-#endif
-
-	struct k_mem_domain *mdom = objpool_alloc(&dp_mdom_head, sizeof(*mdom),
-						  SOF_MEM_FLAG_COHERENT);
-
-	if (!mdom) {
-		tr_err(&dp_tr, "objpool allocation failed");
-		ret = -ENOMEM;
-		goto e_thread;
-	}
-
-	on_pool = true;
-
-	mod->mdom = mdom;
-
-	if (!mdom->arch.ptables) {
-		ret = k_mem_domain_init(mdom, 0, NULL);
-		if (ret < 0)
-			goto e_thread;
-	}
-
-	/* Module heap partition */
-	mod_heap_info(mod, &size, &start);
-	pdata->mpart[SOF_DP_PART_HEAP] = (struct k_mem_partition){
-		.start = (uintptr_t)sys_cache_uncached_ptr_get((void *)start),
-		.size = size,
-		.attr = K_MEM_PARTITION_P_RW_U_RW,
-	};
-	pdata->mpart[SOF_DP_PART_HEAP_CACHE] = (struct k_mem_partition){
-		.start = start,
-		.size = size,
-		.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB,
-	};
-	/* Host mailbox partition for additional IPC parameters: read-only */
-	pdata->mpart[SOF_DP_PART_CFG] = (struct k_mem_partition){
-		.start = (uintptr_t)sys_cache_uncached_ptr_get((void *)MAILBOX_HOSTBOX_BASE),
-		.size = MAILBOX_HOSTBOX_SIZE,
-		.attr = K_MEM_PARTITION_P_RO_U_RO,
-	};
-	pdata->mpart[SOF_DP_PART_CFG_CACHE] = (struct k_mem_partition){
-		.start = (uintptr_t)MAILBOX_HOSTBOX_BASE,
-		.size = MAILBOX_HOSTBOX_SIZE,
-		.attr = K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB,
-	};
-
-	for (pidx = 0; pidx < SOF_DP_PART_TYPE_COUNT; pidx++) {
-		ret = k_mem_domain_add_partition(mdom, pdata->mpart + pidx);
-		if (ret < 0)
-			goto e_dom;
-	}
-
-	ret = llext_manager_add_domain(mod->dev->ipc_config.id, mdom);
-	if (ret < 0) {
-		tr_err(&dp_tr, "failed to add LLEXT to domain %d", ret);
-		goto e_dom;
-	}
-
-	/*
-	 * Keep this call last, able to fail, otherwise domain will be removed
-	 * before its thread
-	 */
-	ret = k_mem_domain_add_thread(mdom, pdata->thread_id);
-	if (ret < 0) {
-		tr_err(&dp_tr, "failed to add thread to domain %d", ret);
-		goto e_dom;
-	}
-
-	/* start the thread, it should immediately stop at the semaphore */
-	k_event_init(pdata->event);
-	k_thread_start(pdata->thread_id);
-
-	/* ptask points into task_memory, so only publish it once it cannot be freed */
-	*task = ptask;
-
-	return 0;
-
-e_dom:
-	scheduler_dp_domain_free(pdata);
-	on_pool = false;
-e_thread:
-	if (on_pool)
-		objpool_free(&dp_mdom_head, mdom);
-	k_thread_abort(pdata->thread_id);
-	k_object_free(pdata->thread);
-e_event:
-	k_object_free(pdata->event);
-e_config:
-	mod_free(mod, pdata->ipc_config_data);
-e_stack:
-	user_stack_free(p_stack);
-e_tmem:
-	/* the copy lives in task_memory, so stop pointing at it before freeing */
-	mod->dev->drv = drv;
-	mod_free(mod, task_memory);
-	return ret;
-}
-
-#ifdef CONFIG_USERSPACE
-#include <zephyr/internal/syscall_handler.h>
-
-static void scheduler_dp_mod_vrfy(struct processing_module *mod)
-{
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod->dev, sizeof(*mod->dev)));
-	K_OOPS(K_SYSCALL_MEMORY_READ(mod->dev->drv, sizeof(*mod->dev->drv)));
-
-	struct mod_alloc_ctx *alloc = mod->priv.resources.alloc;
-
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(alloc, sizeof(*alloc)));
-	if (alloc->heap) {
-		size_t h_size = 0;
-		uintptr_t h_start;
-
-		mod_heap_info(mod, &h_size, &h_start);
-		if (h_size)
-			K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
-	}
-	if (alloc->vreg) {
-		size_t vr_size = 0;
-		uintptr_t vr_start;
-
-		vregion_mem_info(alloc->vreg, &vr_size, &vr_start);
-		K_OOPS(K_SYSCALL_MEMORY_WRITE(vr_start, vr_size));
-	}
-}
-
-void z_vrfy_scheduler_dp_internal_free(struct task *task)
-{
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(task, sizeof(*task)));
-
-	struct task_dp_pdata *pdata = task->priv_data;
-
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(pdata, sizeof(*pdata)));
-	K_OOPS(K_SYSCALL_OBJ(pdata->event, K_OBJ_EVENT));
-	K_OOPS(K_SYSCALL_OBJ_INIT(pdata->thread, K_OBJ_THREAD));
-	scheduler_dp_mod_vrfy(pdata->mod);
-	return z_impl_scheduler_dp_internal_free(task);
-}
-#include <zephyr/syscalls/scheduler_dp_internal_free_mrsh.c>
-#endif /* CONFIG_USERSPACE */

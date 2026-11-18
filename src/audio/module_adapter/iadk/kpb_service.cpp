@@ -2,7 +2,7 @@
 //
 // Copyright 2026 Intel Corporation. All rights reserved.
 
-#include <rtos/userspace_helper.h>
+#include <rtos/userspace_data.h>
 #include <sof/audio/module_adapter/iadk/iadk_kpb_service.h>
 #include <sof/audio/module_adapter/iadk/kpb_interface.h>
 #include <sof/audio/module_adapter/library/kpb_service.h>

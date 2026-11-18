@@ -5,7 +5,7 @@
 #ifndef PLATFORM_POSIX_LIB_MAILBOX_H
 #define PLATFORM_POSIX_LIB_MAILBOX_H
 
-#include <platform/lib/memory.h>
+#include <platform/lib/mailbox_layout.h>
 
 static inline uint32_t mailbox_sw_reg_read(size_t offset)
 {

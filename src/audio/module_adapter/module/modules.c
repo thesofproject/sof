@@ -7,10 +7,8 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
-#include <rtos/userspace_helper.h>
 #include <utilities/array.h>
 #include <iadk_module_adapter.h>
-#include <sof/lib_manager.h>
 #include <sof/audio/module_adapter/module/module_interface.h>
 
 /* Intel module adapter is an extension to SOF module adapter component that allows to integrate
@@ -63,7 +61,6 @@ static int modules_init(struct processing_module *mod)
 	md->mpd.in_buff_size = src_cfg->ibs;
 	md->mpd.out_buff_size = src_cfg->obs;
 
-	mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
 	return iadk_wrapper_init(module_get_private_data(mod));
 }
 

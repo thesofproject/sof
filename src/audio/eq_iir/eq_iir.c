@@ -23,7 +23,6 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/iir_df1.h>
-#include <sof/platform.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
@@ -134,7 +133,7 @@ static int eq_iir_walk_config(struct comp_dev *dev,
 	int i;
 	uint32_t j;
 
-	if (config->channels_in_config > PLATFORM_MAX_CHANNELS ||
+	if (config->channels_in_config > CONFIG_PLATFORM_MAX_CHANNELS ||
 	    !config->channels_in_config) {
 		comp_err(dev, "invalid channels_in_config %u", config->channels_in_config);
 		return -EINVAL;
@@ -217,13 +216,13 @@ static int eq_iir_init_coef(struct processing_module *mod, unsigned int nch,
 	size_t size_sum = 0;
 	int resp = 0;
 	unsigned int i;
-	int s;
+	size_t s;
 	int ret;
 
 	comp_info(mod->dev, "%u responses, %u channels, stream %u channels",
 		  config->number_of_responses, config->channels_in_config, nch);
 
-	if (nch > PLATFORM_MAX_CHANNELS) {
+	if (nch > CONFIG_PLATFORM_MAX_CHANNELS) {
 		comp_err(mod->dev, "invalid stream channels %u", nch);
 		return -EINVAL;
 	}
@@ -263,10 +262,9 @@ static int eq_iir_init_coef(struct processing_module *mod, unsigned int nch,
 		eq = lookup[resp];
 		s = iir_delay_size_df1(eq);
 		if (s > 0) {
-			size_sum += (size_t)s;
+			size_sum += s;
 		} else {
-			comp_err(mod->dev, "sections count %d exceeds max",
-				 eq->num_sections);
+			comp_err(mod->dev, "sections count %d exceeds max", eq->num_sections);
 			return -EINVAL;
 		}
 
@@ -305,8 +303,19 @@ void eq_iir_free_delaylines(struct processing_module *mod)
 	mod_free(mod, cd->iir_delay);
 	cd->iir_delay = NULL;
 	cd->iir_delay_size = 0;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
 		iir[i].delay = NULL;
+
+#if CONFIG_FORMAT_FLOAT
+	mod_free(mod, cd->iir_delay_float);
+	mod_free(mod, cd->iir_coef_float);
+	cd->iir_delay_float = NULL;
+	cd->iir_coef_float = NULL;
+	cd->iir_delay_float_size = 0;
+	cd->iir_coef_float_size = 0;
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++)
+		iir_reset_df1_float(&cd->iir_float[i]);
+#endif
 }
 
 void eq_iir_pass(struct processing_module *mod, const struct cir_buf_source *source,
@@ -316,6 +325,7 @@ void eq_iir_pass(struct processing_module *mod, const struct cir_buf_source *sou
 	const uint8_t *src = source->ptr;
 	uint8_t *dst = sink->ptr;
 	size_t bytes = frames * cd->frame_bytes;
+	int ret;
 
 	while (bytes) {
 		size_t src_contiguous = (const uint8_t *)source->buf_end - src;
@@ -328,7 +338,8 @@ void eq_iir_pass(struct processing_module *mod, const struct cir_buf_source *sou
 			continue;
 		}
 
-		assert(!memcpy_s(dst, dst_contiguous, src, copy));
+		ret = memcpy_s(dst, dst_contiguous, src, copy);
+		assert(!ret);
 		bytes -= copy;
 		src = source_cir_buf_wrap(src + copy, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst + copy, sink->buf_start, sink->buf_end);
@@ -374,6 +385,136 @@ int eq_iir_setup(struct processing_module *mod, unsigned int nch)
 	return 0;
 }
 
+#if CONFIG_FORMAT_FLOAT
+int eq_iir_setup_float(struct processing_module *mod, unsigned int nch)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct sof_eq_iir_config *config = cd->config;
+	struct sof_eq_iir_header *lookup[SOF_EQ_IIR_MAX_RESPONSES];
+	int32_t *assign_response;
+	size_t delay_size = 0;
+	size_t coef_size = 0;
+	int resp = 0;
+	unsigned int i;
+	int ret;
+
+	cd->channels = nch;
+
+	eq_iir_free_delaylines(mod);
+
+	if (nch > CONFIG_PLATFORM_MAX_CHANNELS)
+		return -EINVAL;
+
+	ret = eq_iir_walk_config(mod->dev, config, cd->config_size, lookup);
+	if (ret < 0)
+		return ret;
+
+	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
+	for (i = 0; i < nch; i++) {
+		if (i < config->channels_in_config)
+			resp = assign_response[i];
+
+		if (resp < 0 || resp >= config->number_of_responses) {
+			iir_reset_df1_float(&cd->iir_float[i]);
+			continue;
+		}
+
+		struct sof_eq_iir_header *eq = lookup[resp];
+		size_t ds = iir_delay_size_df1_float(eq);
+		size_t cs = iir_coef_size_df1_float(eq);
+		if (!ds || !cs)
+			return -EINVAL;
+		delay_size += ds;
+		coef_size += cs;
+	}
+
+	if (!delay_size)
+		return 0;
+
+	cd->iir_delay_float = mod_zalloc(mod, delay_size);
+	cd->iir_coef_float = mod_zalloc(mod, coef_size);
+	if (!cd->iir_delay_float || !cd->iir_coef_float) {
+		eq_iir_free_delaylines(mod);
+		return -ENOMEM;
+	}
+
+	cd->iir_delay_float_size = delay_size;
+	cd->iir_coef_float_size = coef_size;
+	cd->iir_delay_size = delay_size; /* non-zero marks active */
+
+	float *delay_ptr = cd->iir_delay_float;
+	float *coef_ptr = cd->iir_coef_float;
+
+	for (i = 0; i < nch; i++) {
+		if (i < config->channels_in_config)
+			resp = assign_response[i];
+
+		if (resp < 0 || resp >= config->number_of_responses) {
+			iir_reset_df1_float(&cd->iir_float[i]);
+			continue;
+		}
+
+		struct sof_eq_iir_header *eq = lookup[resp];
+		iir_init_coef_df1_float(&cd->iir_float[i], eq, &coef_ptr);
+		iir_init_delay_df1_float(&cd->iir_float[i], &delay_ptr);
+	}
+
+	return 0;
+}
+
+void eq_iir_float_default(struct processing_module *mod, const struct cir_buf_source *source,
+			  struct cir_buf_sink *sink, size_t frames)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	const float *x0;
+	float *y0;
+	const float *x;
+	float *y;
+	size_t nmax;
+	size_t n1;
+	size_t n2;
+	unsigned int i;
+	size_t j;
+	size_t n;
+	const unsigned int nch = cd->channels;
+	const size_t samples = frames * nch;
+	size_t processed = 0;
+
+	x = source->ptr;
+	y = sink->ptr;
+	while (processed < samples) {
+		nmax = samples - processed;
+		n1 = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n2 = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+		n = MIN(n1, n2);
+		n = MIN(n, nmax);
+		for (i = 0; i < nch; i++) {
+			x0 = x + i;
+			y0 = y + i;
+			struct iir_state_df1_float *filter = &cd->iir_float[i];
+
+			if (!filter->biquads) {
+				for (j = 0; j < n; j += nch) {
+					*y0 = *x0;
+					x0 += nch;
+					y0 += nch;
+				}
+				continue;
+			}
+
+			for (j = 0; j < n; j += nch) {
+				*y0 = iir_df1_float(filter, *x0);
+				x0 += nch;
+				y0 += nch;
+			}
+		}
+		processed += n;
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+	}
+}
+#endif
+
 /*
  * End of EQ setup code. Next the standard component methods.
  */
@@ -405,8 +546,12 @@ static int eq_iir_init(struct processing_module *mod)
 	 */
 	comp_data_blob_set_validator(cd->model_handler, eq_iir_validate_config);
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++) {
 		iir_reset_df1(&cd->iir[i]);
+#if CONFIG_FORMAT_FLOAT
+		iir_reset_df1_float(&cd->iir_float[i]);
+#endif
+	}
 
 	return 0;
 }
@@ -624,8 +769,12 @@ static int eq_iir_reset(struct processing_module *mod)
 	cd->eq_iir_func = NULL;
 	cd->channels = 0;
 	cd->frame_bytes = 0;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < CONFIG_PLATFORM_MAX_CHANNELS; i++) {
 		iir_reset_df1(&cd->iir[i]);
+#if CONFIG_FORMAT_FLOAT
+		iir_reset_df1_float(&cd->iir_float[i]);
+#endif
+	}
 
 	return 0;
 }
@@ -682,26 +831,33 @@ static int eq_iir_static_apply_switch(struct comp_dev *dev, uint32_t channels, i
 		/* Disable EQ by engaging pass-through routine */
 		cd->eq_iir_func = eq_iir_pass;
 	} else if (cd->iir_delay_size) {
-		/* Re-enable EQ processing matching configured valid bit depth */
-		unsigned int valid_bit_depth = mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth;
+#if CONFIG_IPC_MAJOR_4
+#if CONFIG_FORMAT_FLOAT
+		if (mod->priv.cfg.base_cfg.audio_fmt.s_type == IPC4_TYPE_FLOAT) {
+			cd->eq_iir_func = eq_iir_float_default;
+		} else
+#endif
+		{
+			/* Re-enable EQ processing matching configured valid bit depth */
+			unsigned int valid_bit_depth = mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth;
 
-		switch (valid_bit_depth) {
+			switch (valid_bit_depth) {
 #if CONFIG_FORMAT_S16LE
-		case IPC4_DEPTH_16BIT:
-			cd->eq_iir_func = eq_iir_s16_default;
-			break;
+			case IPC4_DEPTH_16BIT:
+				cd->eq_iir_func = eq_iir_s16_default;
+				break;
 #endif
 #if CONFIG_FORMAT_S24LE
-		case IPC4_DEPTH_24BIT:
-			cd->eq_iir_func = eq_iir_s24_default;
-			break;
+			case IPC4_DEPTH_24BIT:
+				cd->eq_iir_func = eq_iir_s24_default;
+				break;
 #endif
 #if CONFIG_FORMAT_S32LE
-		case IPC4_DEPTH_32BIT:
-			cd->eq_iir_func = eq_iir_s32_default;
-			break;
+			case IPC4_DEPTH_32BIT:
+				cd->eq_iir_func = eq_iir_s32_default;
+				break;
 #endif
-		default:
+			default:
 			/* Fallback inspecting producer stream frame format */
 			{
 				struct comp_buffer *sourceb = comp_dev_get_first_data_producer(dev);
@@ -721,6 +877,16 @@ static int eq_iir_static_apply_switch(struct comp_dev *dev, uint32_t channels, i
 					cd->eq_iir_func = eq_iir_s24_default;
 					break;
 #endif
+#if CONFIG_FORMAT_FLOAT
+				case SOF_IPC_FRAME_FLOAT:
+					cd->eq_iir_func = eq_iir_float_default;
+					break;
+#endif
+#if CONFIG_FORMAT_S32LE
+				case SOF_IPC_FRAME_S32_LE:
+					cd->eq_iir_func = eq_iir_s32_default;
+					break;
+#endif
 				default:
 #if CONFIG_FORMAT_S32LE
 					cd->eq_iir_func = eq_iir_s32_default;
@@ -734,7 +900,49 @@ static int eq_iir_static_apply_switch(struct comp_dev *dev, uint32_t channels, i
 			}
 			break;
 		}
+		}
+#else
+		/* Under IPC3: inspect producer stream frame format directly */
+		struct comp_buffer *sourceb = comp_dev_get_first_data_producer(dev);
+		enum sof_ipc_frame fmt = sourceb ?
+			audio_stream_get_frm_fmt(&sourceb->stream) :
+			SOF_IPC_FRAME_S32_LE;
+
+		switch (fmt) {
+#if CONFIG_FORMAT_S16LE
+		case SOF_IPC_FRAME_S16_LE:
+			cd->eq_iir_func = eq_iir_s16_default;
+			break;
+#endif
+#if CONFIG_FORMAT_S24LE
+		case SOF_IPC_FRAME_S24_4LE:
+		case SOF_IPC_FRAME_S24_3LE:
+			cd->eq_iir_func = eq_iir_s24_default;
+			break;
+#endif
+#if CONFIG_FORMAT_FLOAT
+		case SOF_IPC_FRAME_FLOAT:
+			cd->eq_iir_func = eq_iir_float_default;
+			break;
+#endif
+#if CONFIG_FORMAT_S32LE
+		case SOF_IPC_FRAME_S32_LE:
+			cd->eq_iir_func = eq_iir_s32_default;
+			break;
+#endif
+		default:
+#if CONFIG_FORMAT_S32LE
+			cd->eq_iir_func = eq_iir_s32_default;
+#elif CONFIG_FORMAT_S16LE
+			cd->eq_iir_func = eq_iir_s16_default;
+#else
+			cd->eq_iir_func = eq_iir_pass;
+#endif
+			break;
+		}
+#endif
 	}
+
 	return 0;
 }
 

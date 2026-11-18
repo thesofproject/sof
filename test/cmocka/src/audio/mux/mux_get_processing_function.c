@@ -55,7 +55,7 @@ static struct sof_ipc_comp_process *create_mux_comp_ipc(struct test_data *td)
 	mux->num_streams = MUX_MAX_STREAMS;
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
 		mux->streams[i].pipeline_id = i;
-		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j)
+		for (j = 0; j < CONFIG_PLATFORM_MAX_CHANNELS; ++j)
 			mux->streams[i].mask[j] = 0;
 	}
 
@@ -102,19 +102,31 @@ static int teardown_test_case(void **state)
 }
 
 #if CONFIG_FORMAT_FLOAT
-static void test_mux_get_processing_function_invalid_float(void **state)
+static void test_mux_get_processing_function_valid_float(void **state)
+{
+	struct test_data *td = *state;
+	mux_func func = NULL;
+
+	audio_stream_set_frm_fmt(&td->sink->stream, SOF_IPC_FRAME_FLOAT);
+
+	func = mux_get_processing_function(td->mod);
+
+	assert_ptr_not_equal(func, NULL);
+}
+#endif /* CONFIG_FORMAT_FLOAT */
+
+static void test_mux_get_processing_function_invalid_format(void **state)
 {
 	struct test_data *td = *state;
 	mux_func func = NULL;
 
 	/* set frame format value to unsupported value */
-	audio_stream_set_frm_fmt(&td->sink->stream, SOF_IPC_FRAME_FLOAT);
+	audio_stream_set_frm_fmt(&td->sink->stream, SOF_IPC_FRAME_INVALID);
 
 	func = mux_get_processing_function(td->mod);
 
 	assert_ptr_equal(func, NULL);
 }
-#endif /* CONFIG_FORMAT_FLOAT */
 
 #if CONFIG_FORMAT_S16LE
 static void test_mux_get_processing_function_valid_s16le(void **state)
@@ -167,8 +179,9 @@ int main(void)
 {
 	const struct CMUnitTest tests[] = {
 #if CONFIG_FORMAT_FLOAT
-		TEST_CASE(test_mux_get_processing_function_invalid_float),
+		TEST_CASE(test_mux_get_processing_function_valid_float),
 #endif /* CONFIG_FORMAT_FLOAT */
+		TEST_CASE(test_mux_get_processing_function_invalid_format),
 #if CONFIG_FORMAT_S16LE
 		TEST_CASE(test_mux_get_processing_function_valid_s16le),
 #endif /* CONFIG_FORMAT_S16LE */

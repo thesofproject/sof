@@ -14,43 +14,33 @@
 # [zephyr-kernel-headers] which is relative to ZEPHYR_BASE. "*" also
 # matches "/".
 
-# Sources that must be user-space safe.
+# Sources that must be user-space safe: everything in src/ that is not
+# kernel code. Kernel code is in src/kernel/ and the zephyr/ directory.
 [user-sources]
-src/audio/*
-src/math/*
-src/module/*
-src/samples/*
-src/ipc/ipc-helper.c
-src/ipc/ipc4/ams_helpers.c
-src/ipc/ipc4/dai.c
-src/ipc/ipc4/notification-user.c
-src/lib/objpool.c
+src/*
 
-# Kernel sources inside the directories above.
+# Kernel sources inside src/: src/kernel/ and the legacy drivers.
 [not-user-sources]
-src/audio/base_fw.c
-src/audio/base_fw_intel.c
+src/kernel/*
 src/audio/dai-legacy.c
 src/audio/host-legacy.c
-src/audio/intel_uaol.c
-src/audio/mic_privacy_manager/*
-src/audio/module_adapter/library/userspace_proxy.c
 
 # SOF headers that only kernel code may include.
 # Not listed on purpose: rtos/init.h, which only provides the
-# SOF_MODULE_INIT() registration hook used by every module.
+# SOF_MODULE_INIT() registration hook used by every module, and
+# sof/lib/mailbox.h: the mailbox windows are mapped into the user-space
+# LL and IPC threads, and their layout is in the user-space platform
+# headers in src/platform.
 [kernel-headers]
 src/include/sof/drivers/*
 src/include/sof/platform.h
 src/include/sof/llext_manager.h
 src/include/sof/ipc/driver.h
-src/include/sof/trace/dma-trace.h
 src/include/sof/lib/agent.h
 src/include/sof/lib/cpu-clk-manager.h
-src/include/sof/lib/mailbox.h
 src/include/sof/lib/perf_cnt.h
 src/include/sof/lib/watchdog.h
-src/platform/*
+src/kernel/platform/*
 zephyr/include/rtos/clk.h
 zephyr/include/rtos/idc.h
 zephyr/include/rtos/interrupt.h
@@ -67,7 +57,32 @@ zephyr/include/sof/lib/vpage.h
 
 # Zephyr headers that only kernel code may include: kernel internals and
 # driver APIs that are not system calls.
+# Not listed on purpose: zephyr/drivers/dma.h. Its types and constants are
+# the arguments of the sof_dma_*() system calls in sof/lib/sof_dma.h, so
+# user-space code needs them. User-space code must not call its dma_*()
+# driver functions directly, which this include check cannot catch.
 [zephyr-kernel-headers]
 kernel/include/*
-include/zephyr/drivers/dma.h
 include/zephyr/pm/device_runtime.h
+
+# User-space sources that still include kernel-only headers, removed one
+# by one by the partition work (#11306). With --strict, a leak in any
+# other user-space source is an error, so this list must only shrink.
+# It covers the CI build configurations and the user-space overlays.
+[leak-baseline]
+src/audio/component.c
+src/audio/copier/copier.c
+src/audio/dai-zephyr.c
+src/audio/kpb.c
+src/audio/pipeline/pipeline-graph.c
+src/audio/pipeline/pipeline-schedule.c
+src/audio/pipeline/pipeline-stream.c
+src/audio/pipeline/pipeline-xrun.c
+src/debug/tester/tester_simple_dram_test.c
+src/ipc/ipc-helper.c
+src/ipc/ipc4/dai.c
+src/ipc/ipc4/helper.c
+src/lib/notifier.c
+src/schedule/zephyr_domain.c
+src/schedule/zephyr_dp_schedule.c
+src/schedule/zephyr_ll.c

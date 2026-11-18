@@ -62,6 +62,33 @@ extern struct tr_ctx ipc_tr;
 #define IPC_DSP_CORE_COUNT 1
 #endif
 
+/** @brief Maximum payload size of a cross-core request between user threads */
+#define IPC_USER_XCORE_PAYLOAD_SIZE	128
+
+/**
+ * @brief Cross-core request slot of a user-space IPC thread.
+ *
+ * User-space threads can't use IDC. Instead, they pass IDC messages for
+ * another core to the user-space IPC thread of that core via this slot.
+ */
+struct ipc_user_xcore {
+	/** @brief Serializes senders to this core */
+	struct k_sem *lock;
+	/** @brief Thread, which has reserved the slot, or NULL */
+	struct k_thread *owner;
+	/** @brief Signalled by the target core when the request is done */
+	struct k_sem *done;
+	/** @brief IDC message header and extension */
+	uint32_t header;
+	uint32_t extension;
+	/** @brief Result from the target core */
+	int result;
+	/** @brief Copy of IPC4 bind / unbind message, referenced by the payload */
+	uint32_t ipc4_bind_data[2];
+	/** @brief Copy of the IDC message payload */
+	uint8_t payload[IPC_USER_XCORE_PAYLOAD_SIZE] __aligned(8);
+};
+
 struct ipc_user {
 	struct k_thread *thread[IPC_DSP_CORE_COUNT];
 	/** @brief Per-core helper thread objects used for INIT_INSTANCE processing */
@@ -78,6 +105,11 @@ struct ipc_user {
 	uint32_t ipc_msg_pri;
 	/** @brief Copy of IPC4 message extension word forwarded to user thread */
 	uint32_t ipc_msg_ext;
+	/**
+	 * @brief SET_PIPELINE_STATE phase(s) to run for a forwarded single
+	 * pipeline (IDC_PPL_STATE_PHASE_*), or 0 to process the message fully
+	 */
+	uint32_t ppl_phase;
 	/** @brief Result code from user thread processing */
 	int result;
 	/** @brief Reply extension word from user thread (e.g. CONFIG_GET result) */
@@ -90,7 +122,6 @@ struct ipc_user {
 	struct k_thread *audio_thread[IPC_DSP_CORE_COUNT];
 	/** @brief Original kernel driver pointer for restoring dev->drv after create */
 	const struct comp_driver *init_drv;
-	bool init_needed[IPC_DSP_CORE_COUNT];
 	/**
 	 * @brief User-accessible copy of comp_driver + tr_ctx for create().
 	 *
@@ -100,27 +131,75 @@ struct ipc_user {
 	 * Size verified by BUILD_ASSERT in handler-user.c.
 	 */
 	uint8_t init_drv_data[160] __aligned(4);
+	/** @brief Cross-core request slots, one per target core */
+	struct ipc_user_xcore xcore[IPC_DSP_CORE_COUNT];
 };
 
-struct ipc {
-	struct k_spinlock lock;	/* locking mechanism */
-	void *comp_data;
-
-	/* PM */
-	int pm_prepare_D3;	/* do we need to prepare for D3 */
-
+#ifdef CONFIG_SOF_USERSPACE_LL
+/**
+ * Kernel-only IPC state.
+ *
+ * With CONFIG_SOF_USERSPACE_LL, struct ipc is in a partition that the LL and
+ * IPC user threads can write. The send queue, its lock, the completion
+ * state and the IPC processing task are used by kernel code only, so they
+ * are kept here instead. The field names match the struct ipc fields used
+ * without CONFIG_SOF_USERSPACE_LL, so code accesses both through ipc_ks().
+ *
+ * comp_data stays in struct ipc for the IPC user thread, but kernel code
+ * must use the copy here, ipc_ks(ipc)->comp_data, to find the buffer.
+ */
+struct ipc_kstate {
+	struct k_spinlock lock;		/* locking mechanism */
+	void *comp_data;		/* kernel copy of ipc->comp_data */
+	int pm_prepare_D3;		/* do we need to prepare for D3 */
 	struct list_item msg_list;	/* queue of messages to be sent */
-	bool is_notification_pending;	/* notification is being sent to host */
 	uint32_t task_mask;		/* tasks to be completed by this IPC */
-	unsigned int core;		/* core, processing the IPC */
 
-	struct list_item comp_list;	/* list of component devices */
-
-	/* processing task */
+	/* processing task, run by the kernel scheduler */
 #if CONFIG_TWB_IPC_TASK
 	struct task *ipc_task;
 #else
 	struct task ipc_task;
+#endif
+};
+
+/** Kernel context only. */
+struct ipc_kstate *ipc_kstate_get(void);
+
+struct ipc;
+
+static inline struct ipc_kstate *ipc_ks(struct ipc *ipc)
+{
+	(void)ipc;
+
+	return ipc_kstate_get();
+}
+#else
+#define ipc_ks(ipc) (ipc)
+#endif
+
+struct ipc {
+#ifndef CONFIG_SOF_USERSPACE_LL
+	/* in struct ipc_kstate with CONFIG_SOF_USERSPACE_LL, use ipc_ks() */
+	struct k_spinlock lock;		/* locking mechanism */
+	int pm_prepare_D3;		/* do we need to prepare for D3 */
+	struct list_item msg_list;	/* queue of messages to be sent */
+	uint32_t task_mask;		/* tasks to be completed by this IPC */
+#endif
+	void *comp_data;
+
+	bool is_notification_pending;	/* notification is being sent to host */
+	unsigned int core;		/* core, processing the IPC */
+
+	struct list_item comp_list;	/* list of component devices */
+
+#ifndef CONFIG_SOF_USERSPACE_LL
+	/* processing task, in struct ipc_kstate with CONFIG_SOF_USERSPACE_LL */
+#if CONFIG_TWB_IPC_TASK
+	struct task *ipc_task;
+#else
+	struct task ipc_task;
+#endif
 #endif
 
 #ifdef CONFIG_SOF_USERSPACE_LL
@@ -134,11 +213,6 @@ struct ipc {
 	struct io_perf_data_item *io_perf_out_msg_count;
 #endif
 
-#ifdef __ZEPHYR__
-	struct k_work_delayable z_delayed_work;
-	struct k_work_q ipc_send_wq;
-#endif
-
 	void *private;
 };
 
@@ -148,6 +222,18 @@ struct ipc {
 	((ipc)->private)
 
 extern struct task_ops ipc_task_ops;
+
+#ifdef __ZEPHYR__
+/**
+ * Return the IPC send work queue.
+ *
+ * The queue is kept outside struct ipc on purpose: with
+ * CONFIG_SOF_USERSPACE_LL, struct ipc is in a partition that user threads
+ * can write, and the queue embeds its supervisor-mode thread object.
+ * Kernel context only.
+ */
+struct k_work_q *ipc_send_wq_get(void);
+#endif
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 
@@ -209,12 +295,6 @@ int ipc_process_host_buffer(struct ipc *ipc,
 			    uint32_t direction,
 			    struct dma_sg_elem_array *elem_array,
 			    uint32_t *ring_size);
-
-/**
- * \brief Send DMA trace host buffer position to host.
- * @return 0 on success.
- */
-int ipc_dma_trace_send_position(void);
 
 /**
  * \brief send a IPC buffer status notify message
@@ -330,6 +410,20 @@ void ipc_complete_cmd(struct ipc *ipc);
 extern bool ipc_enter_gdb;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
+/* Events that wake the user-space IPC thread */
+#define IPC_USER_EVENT_CMD      BIT(0)
+#define IPC_USER_EVENT_STOP     BIT(1)
+#define IPC_USER_EVENT_XCORE    BIT(2)
+
+/**
+ * @brief User-space IPC thread entry point.
+ *
+ * @param p1 struct ipc_user shared with the kernel
+ * @param p2 Core ID
+ * @param p3 Unused
+ */
+void ipc_user_thread_fn(void *p1, void *p2, void *p3);
+
 /**
  * @brief Forward an IPC command to the user-space thread and wait for it.
  *
@@ -342,6 +436,24 @@ extern bool ipc_enter_gdb;
  * @return Result code from user thread processing
  */
 int ipc_user_forward_cmd(uint32_t primary, uint32_t extension, unsigned int core);
+
+/**
+ * @brief Reserve the cross-core request slots of the given cores.
+ *
+ * Reserve the slots before taking LL scheduler locks, if requests to the
+ * cores are sent while holding the locks. Otherwise a request in flight to
+ * such a core, that needs one of the locks, would deadlock with the sender.
+ *
+ * @param cores Bitmask of target cores, not including the current core
+ */
+void ipc_user_xcore_reserve(uint32_t cores);
+
+/**
+ * @brief Release the slots reserved with ipc_user_xcore_reserve().
+ *
+ * @param cores Bitmask of target cores, as passed to ipc_user_xcore_reserve()
+ */
+void ipc_user_xcore_release(uint32_t cores);
 
 /**
  * @brief Protocol-specific dispatch of a forwarded IPC command.
@@ -367,5 +479,20 @@ int ipc_user_init_secondary(unsigned int core);
  * \brief get pointer to the userspace IPC thread for core
  */
 struct k_thread *ipc_thread_user(unsigned int core);
+
+/**
+ * Wait until the IPC user thread of core has finished its initialization.
+ * Kernel context only.
+ */
+void ipc_user_wait_core_init(unsigned int core);
+
+/**
+ * Return the IPC user thread context.
+ *
+ * Use this instead of ipc->ipc_user_pdata in kernel code: the pointer is
+ * kept in kernel-only storage, so user threads can not redirect it.
+ * Kernel context only.
+ */
+struct ipc_user *ipc_user_get(void);
 
 #endif /* __SOF_DRIVERS_IPC_H__ */

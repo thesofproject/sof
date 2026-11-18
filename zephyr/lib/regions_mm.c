@@ -8,7 +8,11 @@
 #include <zephyr/init.h>
 
 #if defined(CONFIG_MM_DRV)
+#include <sof/lib/cold.h>
 #include <sof/lib/regions_mm.h>
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+#include <sof/debug/telemetry/telemetry.h>
+#endif
 
 LOG_MODULE_DECLARE(mem_allocator, CONFIG_SOF_LOG_LEVEL);
 
@@ -52,11 +56,14 @@ struct vmh_heap {
  * @retval ptr to a new heap if successful.
  * @retval NULL on creation failure.
  */
-struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocating_continuously)
+__cold struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
+				     bool allocating_continuously)
 {
 	const struct sys_mm_drv_region *virtual_memory_regions =
 		sys_mm_drv_query_memory_regions();
 	int i;
+
+	assert_can_be_cold();
 
 	struct vmh_heap *new_heap =
 		rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*new_heap));
@@ -792,5 +799,53 @@ void vmh_get_default_heap_config(const struct sys_mm_drv_region *region,
 		cfg->block_bundles_table[i].number_of_blocks = block_count;
 	}
 }
+
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+#ifndef CONFIG_SYS_MEM_BLOCKS_RUNTIME_STATS
+static uint16_t vmh_max_used_blocks[SOF_TEL_MAX_VMH_BUNDLES];
+#endif
+
+void vmh_fill_telemetry_stats(struct vmh_heap *heap, struct sof_tel_mem_section *mem)
+{
+	uint16_t bundle_cnt = 0;
+	uint16_t oom_total = 0;
+
+	if (!heap || !mem)
+		return;
+
+	mem->vmh_region_size = heap->virtual_region ? (uint32_t)heap->virtual_region->size : 0;
+
+	for (int idx = 0; idx < MAX_MEMORY_ALLOCATORS_COUNT &&
+	     bundle_cnt < SOF_TEL_MAX_VMH_BUNDLES; idx++) {
+		struct sys_mem_blocks *blk = heap->physical_blocks_allocators[idx];
+		uint32_t used = 0;
+
+		if (!blk)
+			continue;
+
+		if (blk->bitmap && blk->bitmap->bundles) {
+			for (size_t k = 0; k < blk->bitmap->num_bundles; k++)
+				used += POPCOUNT(blk->bitmap->bundles[k]);
+		}
+
+		mem->vmh_bundles[bundle_cnt].blk_sz_shift = blk->info.blk_sz_shift;
+		mem->vmh_bundles[bundle_cnt].total_blocks = (uint16_t)blk->info.num_blocks;
+		mem->vmh_bundles[bundle_cnt].used_blocks = (uint16_t)used;
+#ifdef CONFIG_SYS_MEM_BLOCKS_RUNTIME_STATS
+		mem->vmh_bundles[bundle_cnt].max_blocks_or_oom =
+			(uint16_t)blk->info.max_used_blocks;
+		oom_total += (uint16_t)heap->out_of_blocks[idx];
+#else
+		if ((uint16_t)used > vmh_max_used_blocks[bundle_cnt])
+			vmh_max_used_blocks[bundle_cnt] = (uint16_t)used;
+		mem->vmh_bundles[bundle_cnt].max_blocks_or_oom = vmh_max_used_blocks[bundle_cnt];
+#endif
+		bundle_cnt++;
+	}
+
+	mem->vmh_bundle_count = bundle_cnt;
+	mem->vmh_oom_total = oom_total;
+}
+#endif
 
 #endif /* if defined (CONFIG_MM_DRV) */

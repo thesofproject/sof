@@ -6,8 +6,7 @@
 
 #include <sof/common.h>
 #include <rtos/panic.h>
-#include <rtos/idc.h>
-#include <rtos/interrupt.h>
+#include <rtos/idc_msg.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/cpu.h>

@@ -10,7 +10,6 @@
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sof/audio/format.h>
-#include <sof/lib/memory.h>
 #include <user/trace.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include "asrc_farrow.h"

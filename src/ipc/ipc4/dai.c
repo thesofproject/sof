@@ -9,14 +9,11 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
-#include <rtos/idc.h>
 #include <rtos/alloc.h>
 #include <rtos/mutex.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/mailbox.h>
-#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
-#include <sof/platform.h>
 #include <rtos/sof.h>
 #include <rtos/timer.h>
 #include <ipc4/gateway.h>
@@ -30,6 +27,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#ifdef CONFIG_UAOL_INTEL_ADSP
+#include <sof/audio/intel_uaol.h>
+#endif
 
 #include "../audio/copier/copier.h"
 #include "../audio/copier/dai_copier.h"
@@ -42,7 +42,7 @@ void dai_set_link_hda_config(uint16_t *link_config,
 			     struct ipc_config_dai *common_config,
 			     const void *spec_config)
 {
-#if ACE_VERSION > ACE_VERSION_1_5
+#if CONFIG_ACE_VERSION_2_0_OR_LATER
 	const struct ipc4_audio_format *gtw_fmt = common_config->gtw_fmt;
 	union hdalink_cfg link_cfg;
 
@@ -76,8 +76,25 @@ void dai_set_link_hda_config(uint16_t *link_config,
 		return;
 	}
 	*link_config = link_cfg.full;
-#endif /* ACE_VERSION > ACE_VERSION_1_5 */
+#endif /* CONFIG_ACE_VERSION_2_0_OR_LATER */
 }
+
+#ifdef CONFIG_UAOL_INTEL_ADSP
+/* Link config of the UAOL feedback stream: a single 3-byte sample per packet */
+uint16_t dai_uaol_feedback_link_config(const struct ipc_config_dai *common_config)
+{
+	union hdalink_cfg link_cfg = { .full = 0 };
+	const struct ipc_dma_config *fb_dma = common_config->host_dma_config[1];
+
+	if (common_config->direction != SOF_IPC_STREAM_PLAYBACK || !fb_dma ||
+	    !fb_dma->pre_allocated_by_host)
+		return 0;
+
+	link_cfg.part.stream = fb_dma->stream_id;
+
+	return link_cfg.full;
+}
+#endif
 
 int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void *spec_config)
 {
@@ -90,13 +107,13 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 		COMPILER_FALLTHROUGH;
 	case SOF_DAI_INTEL_DMIC:
 		channel = 0;
-#if ACE_VERSION > ACE_VERSION_1_5
+#if CONFIG_ACE_VERSION_2_0_OR_LATER
 		if (dai->host_dma_config[0]->pre_allocated_by_host)
 			channel = dai->host_dma_config[0]->dma_channel_id;
 #endif
 		break;
 	case SOF_DAI_INTEL_HDA:
-#if ACE_VERSION > ACE_VERSION_1_5
+#if CONFIG_ACE_VERSION_2_0_OR_LATER
 		if (copier_cfg->gtw_cfg.node_id.f.dma_type == ipc4_alh_link_output_class ||
 		    copier_cfg->gtw_cfg.node_id.f.dma_type == ipc4_alh_link_input_class) {
 			struct processing_module *mod = comp_mod(dev);
@@ -114,7 +131,7 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 			}
 			break;
 		}
-#endif /* ACE_VERSION > ACE_VERSION_1_5 */
+#endif /* CONFIG_ACE_VERSION_2_0_OR_LATER */
 		channel = copier_cfg->gtw_cfg.node_id.f.v_index;
 		break;
 	case SOF_DAI_INTEL_ALH:
@@ -123,7 +140,7 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 		 */
 		channel = 0;
 		break;
-#if ACE_VERSION > ACE_VERSION_1_5
+#if CONFIG_ACE_VERSION_2_0_OR_LATER
 	case SOF_DAI_INTEL_UAOL:
 		channel = 0;
 		if (dai->host_dma_config[0]->pre_allocated_by_host)
@@ -185,8 +202,18 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 			 dev->ipc_config.frame_fmt, dd->stream_id);
 
 		break;
-	case SOF_DAI_INTEL_UAOL:
+#ifdef CONFIG_UAOL_INTEL_ADSP
+	case SOF_DAI_INTEL_UAOL: {
+		int ret = dai_get_uaol_stream_id(dd->dai, &dd->uaol.link_id,
+						 &dd->uaol.stream_id);
+
+		if (ret < 0) {
+			comp_err(dev, "Failed to get UAOL stream id: %d", ret);
+			return ret;
+		}
 		break;
+	}
+#endif
 	default:
 		/* other types of DAIs not handled for now */
 		comp_warn(dev, "Unknown dai type %d", dai->type);
@@ -243,6 +270,15 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 		sof_dma_release_channel(dd->dma, dd->chan_index);
 		dd->chan_index = -EINVAL;
 	}
+
+#ifdef CONFIG_UAOL_INTEL_ADSP
+	/* also stop and release the UAOL feedback DMA channel */
+	if (dd->uaol.fb_chan_idx >= 0) {
+		sof_dma_stop(dd->uaol.fb_dma, dd->uaol.fb_chan_idx);
+		sof_dma_release_channel(dd->uaol.fb_dma, dd->uaol.fb_chan_idx);
+		dd->uaol.fb_chan_idx = -EINVAL;
+	}
+#endif
 }
 
 void dai_release_llp_slot(struct dai_data *dd)

@@ -1,9 +1,14 @@
 # Inter-Processor Communication (IPC) Core Architecture
 
 > **Runs in:** Boundary / bridge — the kernel receives and dispatches IPC, then forwards
-> module-facing commands to a user thread. The split is visible in the file names
-> (`ipc4/handler-kernel.c` vs `ipc4/handler-user.c`, `ipc4/notification-user.c`), and this
-> subsystem hosts the `ipc_msg_*`, `ipc_compound_*` and `send_resource_notif` syscalls. See
+> module-facing commands to a user thread. The kernel halves of the mixed files are in
+> `src/kernel/ipc` (`ipc-common-kernel.c`, `ipc4/handler-kernel.c`,
+> `ipc4/handler-user-kernel.c`, `ipc4/handler-ll-user.c`, `ipc4/handler-ll-kernel.c`,
+> `ipc4/helper-kernel.c`), the user halves stay here (`ipc-common.c`, `ipc4/handler-user.c`,
+> `ipc4/helper.c`, `ipc4/notification-user.c`), and this subsystem hosts the `ipc_msg_*`,
+> `ipc_compound_*` and `send_resource_notif` syscalls. Which IPC4 messages are handled in the
+> kernel, in user space or in both is listed in
+> [IPC4 User/Kernel Partitioning](ipc4/README.md#userkernel-partitioning). See also
 > [User/kernel split](../include/sof/userspace/README.md).
 
 This directory contains the common foundation for all Inter-Processor Communication (IPC) within the Sound Open Firmware (SOF) project. It bridges the gap between hardware mailbox interrupts and the version-specific (IPC3/IPC4) message handlers.
@@ -44,7 +49,7 @@ graph TD
 
 ## Processing Flow
 
-When the host writes a command to the IPC mailbox and triggers an interrupt, the hardware-specific driver (`src/platform/...`) catches the IRQ and eventually calls down into the IPC framework.
+When the host writes a command to the IPC mailbox and triggers an interrupt, the hardware-specific driver (`src/kernel/platform/...`) catches the IRQ and eventually calls down into the IPC framework.
 
 Different RTOS environments (Zephyr vs. bare metal SOF native) handle the thread handoff differently. In Zephyr, this leverages the `k_work` queues heavily for `ipc_work_handler`.
 

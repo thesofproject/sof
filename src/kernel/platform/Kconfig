@@ -1,0 +1,543 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+menu "Platform"
+
+choice
+	prompt "Platform"
+	default ZEPHYR_POSIX if ARCH_POSIX
+	# It's not really 'optional' but no value is much less confusing
+	# than falling back on a totally random value.
+	optional
+
+config TIGERLAKE
+	bool "Build for Tigerlake"
+	select CAVS
+	select CAVS_VERSION_2_5
+	help
+	  Select if your target platform is Tigerlake-compatible
+
+config METEORLAKE
+	bool "Build for Meteorlake"
+	select ACE
+	select ACE_VERSION_1_5
+	help
+	  Select if your target platform is Meteorlake-compatible
+
+config LUNARLAKE
+	bool "Build for Lunarlake"
+	select ACE
+	select ACE_VERSION_2_0
+	help
+	  Select if your target platform is Lunarlake-compatible
+
+config PANTHERLAKE
+	bool "Build for Pantherlake"
+	select ACE
+	select ACE_VERSION_3_0
+	help
+	  Select if your target platform is Pantherlake-compatible
+
+config WILDCATLAKE
+	bool "Build for Wildcatlake"
+	select ACE
+	select ACE_VERSION_3_0
+	help
+	  Select if your target platform is Wildcatlake-compatible
+
+config NOVALAKE
+	bool "Build for Novalake"
+	select ACE
+	select ACE_VERSION_4_0
+	help
+	  Select if your target platform is Novalake-compatible
+
+config LIBRARY
+	bool "Build Library"
+	help
+	  Select if you want to build a library.
+	  It is generic/mock configuration not tied to some specific platform.
+	  Library builds are not intended to be run on DSP, but to be used by
+	  user-space applications.
+
+config ZEPHYR_POSIX
+	bool "Build for Zephyr native_posix board"
+	help
+	  Select if you are building a host unit test using
+	  native_posix.  This is similar to LIBRARY in that it builds
+	  host binaries, but is tied to the Zephyr posix architecture
+	  and thus able to instrument and test the whole OS
+	  environment.
+
+if ZEPHYR_POSIX && ARCH_POSIX_LIBFUZZER
+
+config ZEPHYR_POSIX_FUZZ_IRQ
+       int "OS interrupt via which to deliver fuzz cases"
+       default 31
+       help
+         New fuzz cases are delivered to Zephyr via interrupts.  The
+         IRQ should be otherwise unused, but can be any value desired
+         by the app.
+
+config ZEPHYR_POSIX_FUZZ_TICKS
+       int "Ticks to allow for fuzz case processing"
+       default 2
+       help
+         Fuzz interrupts are delivered, from the perspective of the
+         OS, at a steady cadence in simulated time.  In general most
+         apps won't require much time to reach an idle state
+         following a unit-test style case, so the default is short to
+         prevent interaction with regular timer workloads.
+
+endif # ZEPHYR_POSIX && ARCH_POSIX_LIBFUZZER
+
+config IMX8
+	bool "Build for NXP i.MX8"
+	select XT_HAVE_RESET_VECTOR_ROM
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_3
+	select HOST_PTABLE
+	select DUMMY_DMA
+	select XT_WAITI_DELAY
+	select IMX
+	help
+	  Select if your target platform is imx8-compatible
+
+config IMX8X
+	bool "Build for NXP i.MX8X"
+	select XT_HAVE_RESET_VECTOR_ROM
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_3
+	select HOST_PTABLE
+	select DUMMY_DMA
+	select XT_WAITI_DELAY
+	select IMX
+	help
+	  Select if your target platform is imx8x-compatible
+
+config IMX8M
+	bool "Build for NXP i.MX8M"
+	select XT_HAVE_RESET_VECTOR_ROM
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_3
+	select HOST_PTABLE
+	select DUMMY_DMA
+	select XT_WAITI_DELAY
+	select IMX
+	help
+	  Select if your target platform is imx8m-compatible
+
+config IMX8M_CM7
+	bool "Build for NXP i.MX8MP CM7 core"
+	select BUILD_OUTPUT_BIN
+	select HOST_PTABLE
+	select IMX
+	help
+	  Select if your target platform is imx8mp-compatible with cm7 core.
+
+config IMX8ULP
+	bool "Build for NXP i.MX8ULP"
+	select XT_HAVE_RESET_VECTOR_ROM
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_3
+	select HOST_PTABLE
+	select DUMMY_DMA
+	select XT_WAITI_DELAY
+	select IMX
+	help
+	 Select if your target platform is imx8ulp-compatible.
+	 imx.8ulp support dsp.
+
+config IMX93_A55
+	bool "Build for NXP i.MX93 arm64 architecture (Zephyr-only)"
+	select BUILD_OUTPUT_BIN
+	select ZEPHYR_LOG
+	select HOST_PTABLE
+	select IMX
+	help
+	 Select if your target platform is imx93-compatible.
+
+config IMX95
+	bool "Build for NXP i.MX95"
+	select ZEPHYR_LOG
+	select BUILD_OUTPUT_BIN
+	select HOST_PTABLE
+	select IMX
+	help
+	  Select if your target platform is imx95-compatible.
+
+config REMBRANDT
+	bool "Build for Rembrandt"
+	select XT_INTERRUPT_LEVEL_5
+	select XT_INTERRUPT_LEVEL_3
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_4
+	select XT_WAITI_DELAY
+	select XTENSA_EXCLUSIVE
+	select AMD
+	select SCHEDULE_DMA_MULTI_CHANNEL
+	help
+	 Select if your target platform is rembrandt-compatible
+
+config ACP_7_0
+	bool "Build for ACP_7_0"
+	select XT_INTERRUPT_LEVEL_5
+	select XT_INTERRUPT_LEVEL_3
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_4
+	select XT_WAITI_DELAY
+	select XTENSA_EXCLUSIVE
+	select AMD
+	select AMD_BINARY_BUILD
+	help
+	 Select if your target platform is acp_7_0-compatible
+
+config ACP_7_X
+	bool "Build for ACP_7_X"
+	select XT_INTERRUPT_LEVEL_5
+	select XT_INTERRUPT_LEVEL_3
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_4
+	select XT_WAITI_DELAY
+	select XTENSA_EXCLUSIVE
+	select AMD
+	select AMD_BINARY_BUILD
+	help
+	 Select if your target platform is acp_7_x-compatible
+
+config MTK
+	bool "Build for Mediatek (Zephyr)"
+	select SCHEDULE_DMA_MULTI_CHANNEL if !ZEPHYR_NATIVE_DRIVERS
+	select HOST_PTABLE
+	help
+	  Select if your target is a Mediatek DSP.  Builds Zephyr firmware.
+
+endchoice
+
+config ESP32P4_PIE_SIMD
+	bool "Enable ESP32-P4 PIE (Xespv2p2) 128-bit vector SIMD acceleration"
+	default y
+	depends on PLATFORM_ESP32P4 || SOC_SERIES_ESP32P4
+	help
+	  Enable ESP32-P4 custom Processor Instruction Extensions (PIE / Xespv2p2)
+	  128-bit vector SIMD engine for audio processing kernels (volume, mixer, etc.).
+
+#
+# For non-Zephyr builds like testbench and cmocka,
+# set core count separately.
+#
+if !ZEPHYR_SOF_MODULE
+
+config MP_MAX_NUM_CPUS
+	int
+	default 1
+	help
+	  Maximum number of cores per configuration
+
+endif # !ZEPHYR_SOF_MODULE
+
+config PLATFORM_MAX_CHANNELS
+	int
+	default 4 if ZEPHYR_SOF_MODULE && (IMX8 || IMX8X || IMX8ULP || IMX8M_CM7 || IMX93_A55 || IMX95 || MTK)
+	default 8
+	help
+	  Maximum number of channels in an audio stream that the processing
+	  components support. Many components size their per-channel state
+	  with it. Host builds (testbench, unit tests) use 8. Not user
+	  configurable: some component state is sized for at most eight
+	  channels.
+
+config PLATFORM_MAX_STREAMS
+	int
+	default 5 if ZEPHYR_SOF_MODULE && (IMX8 || IMX8X || IMX8ULP || IMX8M_CM7 || IMX93_A55 || IMX95 || MTK || AMD)
+	default 8 if ZEPHYR_SOF_MODULE && (IMX8M || BOARD_QEMU_XTENSA)
+	default 16
+	help
+	  Maximum number of input or output streams of a processing
+	  component, e.g. the number of mixer inputs. Components size their
+	  per-stream state with it. Host builds (testbench, unit tests)
+	  use 16.
+
+config MAX_CORE_COUNT
+	int
+	default MP_MAX_NUM_CPUS
+	help
+	  Maximum number of cores per configuration
+
+config CORE_COUNT
+	int "Number of cores"
+	default MP_MAX_NUM_CPUS
+	range 1 MP_MAX_NUM_CPUS
+	help
+	  Number of used cores
+	  Lowering available core count could result in lower power consumption
+
+config MULTICORE
+	bool
+	default CORE_COUNT > 1
+	help
+	  Indicates that architecture uses multiple cores
+
+config INTEL
+	bool
+	help
+	  This has to be selected for every Intel platform.
+	  It enables Intel platforms-specific features.
+
+config HOST
+	bool
+	help
+	  This has to be selected for building linux test targets.
+
+config IMX
+	bool
+	select COMPILER_WORKAROUND_CACHE_ATTR if XTENSA
+	help
+	  This has to be selected for every i.MX NXP platform.
+	  It enables NXP platforms-specific features.
+
+config AMD
+	bool
+	help
+	  This has to be selected for every AMD platform.
+	  It enables AMD platforms-specific features.
+
+config CAVS
+	bool
+	select INTEL
+	select SOF_ZEPHYR_NO_SOF_CLOCK
+
+config CAVS_VERSION_2_5
+	depends on CAVS
+	bool
+	help
+	  Select for CAVS version 2.5
+
+config ACE
+	bool
+	select INTEL
+
+config ACE_VERSION_1_5
+	depends on ACE
+	bool
+	help
+	  Select for ACE version 1.5
+
+config ACE_VERSION_2_0
+	depends on ACE
+	bool
+	help
+	  Select for ACE version 2.0
+
+config ACE_VERSION_3_0
+	depends on ACE
+	bool
+	help
+	  Select for ACE version 3.0
+
+config ACE_VERSION_4_0
+	depends on ACE
+	bool
+	help
+	  Select for ACE version 4.0
+
+config ACE_VERSION_2_0_OR_LATER
+	bool
+	default y if ACE && !ACE_VERSION_1_5
+	help
+	  ACE version 2.0 or later. Lets code that differs between ACE 1.5
+	  and later versions test the version without including the
+	  platform headers.
+
+config HP_MEMORY_BANKS
+	int "HP memory banks count"
+	depends on CAVS
+	default 8
+	help
+	  Available memory banks count for High Performance memory
+	  Lowering available banks could result in lower power consumption
+	  Too low count should result in unresponsive/crashing image due to not
+	  enough space for FW base image
+	  Banks are 64kb in size.
+
+config LP_MEMORY_BANKS
+	int "LP memory banks count"
+	depends on CAVS
+	default 0
+	help
+	  Available memory banks count for Low Power memory.
+	  It can be used to turn ON/OFF LPSRAM bank/s.
+	  Firmware will turn on only as many banks as are defined here.
+
+config LP_SRAM
+	bool
+	default LP_MEMORY_BANKS > 0
+	help
+	  Indicates that platform uses LPSRAM.
+
+config L1_DRAM
+	bool "L1 DRAM memory support"
+	help
+	  Indicates that platform does support L1 DATA RAM.
+
+config L1_DRAM_MEMORY_BANKS
+	int "L1 DRAM memory banks count"
+	depends on L1_DRAM
+	default 0
+	help
+	  Available memory banks count for L1 DATA RAM.
+	  It can be used to turn ON/OFF L1 DRAM bank/s.
+	  Firmware will turn on only as many banks as specified.
+
+config L1_DRAM_MEMORY_BANK_SIZE
+	int "L1 DRAM memory bank size"
+	depends on L1_DRAM
+	default 0
+	help
+	  Specifies DRAM block size.
+	  It can be used to calculate DRAM size.
+
+config CAVS_USE_LPRO_IN_WAITI
+	bool "Use low power ring oscillator in WFI"
+	depends on CAVS
+	help
+	  Select if we want to use LPRO clock in waiti.
+	  After waiti exit clock source will be restored.
+	  Choose n if unclear.
+
+config KCPS_DYNAMIC_CLOCK_CONTROL
+	bool "Use KCPS budget to determine DSP clock"
+	depends on IPC_MAJOR_4
+	help
+	  Select if we want to use compute budget
+	  expressed in Kilo Cycles Per Second (KCPS) to determine DSP clock.
+
+config L3_HEAP
+	bool "Use L3 memory heap"
+	depends on ACE
+	help
+	  Select this if L3 memory is supported on the platform and
+	  it is intended to be used for dynamic allocations.
+	  For Intel ACE platform the L3 memory is called
+	  IMR (Isolated Memory Region). Feature has been
+	  only tested on ACE platform.
+	  Choose n if unclear.
+
+config CAVS_IMR_D3_PERSISTENT
+	bool "Intel IMR content persistent on DSP in D3"
+	depends on CAVS
+	default y
+	help
+	  Select this if the Intel cAVS platform can keep the
+	  IMR (Isolated Memory Region) content persistent when
+	  the DSP is in power off (D3) mode, which means we
+	  don't need to re-downloading firmware binary to DSP
+	  SRAM so fast D3->D0 transition can be supported.
+	  Choose n if unclear.
+
+# TODO: it should just take manifest version and offsets
+config RIMAGE_SIGNING_SCHEMA
+	string "Rimage firmware signing schema name"
+	default "tgl" if TIGERLAKE
+	default "imx8" if IMX8
+	default "imx8x" if IMX8X
+	default "imx8m" if IMX8M
+	default "imx8m_cm7" if IMX8M_CM7
+	default "imx8ulp" if IMX8ULP
+	default "imx95" if IMX95
+	default "rmb" if REMBRANDT
+	default "acp_7_0" if ACP_7_0
+	default "acp_7_x" if ACP_7_X
+	default ""
+	help
+	  Signing schema name used by rimage to decide how to build final binary
+
+config SYSTICK_PERIOD
+	int "System tick period in microseconds"
+	default 1000
+	help
+	  Defines platform system tick period. It is used
+	  as a timeout check value for system agent.
+	  Value should be provided in microseconds.
+
+config HAVE_AGENT
+	bool "Enable system agent"
+	default y
+	help
+	  Enables system agent. It can be disabled on systems
+	  which are still unstable and cannot assure that
+	  system agent will always execute on time or systems
+	  with DMA based scheduling, where asynchronous interrupts
+	  can potentially starve the agent.
+
+config AMS
+	bool "Enable Async Messaging Service"
+	depends on IPC_MAJOR_4
+	help
+	  Enables Async Messaging Service.
+	  Async messages are used to send messages between modules.
+
+config AGENT_PANIC_ON_DELAY
+	bool "Enable system agent time verification panic"
+	depends on HAVE_AGENT
+	help
+	  Enables system agent time verification panic.
+	  If scheduler timing verification fails, SA will
+	  call a DSP panic.
+
+config XTENSA_EXCLUSIVE
+	bool
+	help
+	  This has to be selected for xtensa exclusive instructions.
+	  There is a definition for EXCLUSIVE option in xtensa-config.h
+
+config FORCE_DMA_COPY_WHOLE_BLOCK
+	bool
+	depends on HOST_PTABLE
+	help
+	  The host component forces DMA to copy the block size to avoid
+	  copying byte jitter between the components of the same pipeline.
+
+config SOF_STACK_SIZE
+	int "Primary core SOF stack size"
+	default 4096
+	help
+	  Size of the primary core stack. This is the stack used by all
+	  IPC calls. Increasing it allows deeper call stack on those IPC
+	  and might be useful when creating more complex audio processing
+	  components.
+
+config SECONDARY_CORE_DISABLING_TIMEOUT
+	int
+	default 400
+	depends on MULTICORE
+	help
+	  Timeout value (in ms) for secondary core to enter D3 state.
+
+if XTENSA
+
+config INCOHERENT
+	bool "Enable cached data access via the Coherent API"
+	default y if CAVS || ACE
+	help
+	  The architecture is cache incoherent. i.e FW has to manually manage
+	  cache coherency amongst objects that are used on multiple cores.
+	  This setting should only be disabled for cache incoherent
+	  architectures for testing without cached access to shared data.
+
+endif
+
+config LL_WATCHDOG
+	bool "Enable watchdog support in ll scheduler"
+	depends on ACE
+	help
+	  Select if you want to protect ll scheduler with a watchdog timer.
+	  The watchdog is enabled after creating a ll thread for specified
+	  core. When all tasks are finished, the watchdog will be disabled
+	  before stopping the thread. Periodically, after each tick has been
+	  handled, the watchdog counter is reseted.
+
+endmenu

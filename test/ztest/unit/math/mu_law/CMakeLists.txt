@@ -12,8 +12,9 @@ set(SOF_ROOT "${PROJECT_SOURCE_DIR}/../../../../..")
 target_include_directories(app PRIVATE
 	${SOF_ROOT}/zephyr/include
 	${SOF_ROOT}/src/include
-	# Share the reference vectors with the legacy CMocka test.
-	${SOF_ROOT}/test/cmocka/src/math/arithmetic
+	# ref_chirp_mono_8k_s16.h is shared with the a_law suite; mu_law_codec.h
+	# is colocated with this test.
+	${SOF_ROOT}/test/ztest/unit/math/arithmetic
 )
 
 target_compile_definitions(app PRIVATE

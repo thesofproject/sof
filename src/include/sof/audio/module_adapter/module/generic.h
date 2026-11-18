@@ -24,14 +24,6 @@
 
 #include <sof/compiler_attributes.h>
 
-/*
- * helpers to determine processing type
- * Needed till all the modules use PROCESSING_MODE_SINK_SOURCE
- */
-#define IS_PROCESSING_MODE_AUDIO_STREAM(mod) ((mod)->proc_type == MODULE_PROCESS_TYPE_STREAM)
-#define IS_PROCESSING_MODE_RAW_DATA(mod) ((mod)->proc_type == MODULE_PROCESS_TYPE_RAW)
-#define IS_PROCESSING_MODE_SINK_SOURCE(mod) ((mod)->proc_type == MODULE_PROCESS_TYPE_SOURCE_SINK)
-
 #if CONFIG_IPC_MAJOR_4
 #define IPC_MOD_CMD(v)
 #elif CONFIG_IPC_MAJOR_3
@@ -426,6 +418,9 @@ bool generic_module_is_ready_to_process(struct processing_module *mod,
 {
 	int i;
 
+	if (!num_of_sources && !num_of_sinks)
+		return false;
+
 	for (i = 0; i < num_of_sources; i++)
 		if (source_get_data_available(sources[i]) < source_get_min_available(sources[i]))
 			return false;
@@ -462,10 +457,6 @@ bool module_is_ready_to_process(struct processing_module *mod,
 int module_process_sink_src(struct processing_module *mod,
 			    struct sof_source **sources, int num_of_sources,
 			    struct sof_sink **sinks, int num_of_sinks);
-int module_process_legacy(struct processing_module *mod,
-			  struct input_stream_buffer *input_buffers, int num_input_buffers,
-			  struct output_stream_buffer *output_buffers,
-			  int num_output_buffers);
 int module_reset(struct processing_module *mod);
 int module_free(struct processing_module *mod);
 int module_set_configuration(struct processing_module *mod,
@@ -481,8 +472,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 struct userspace_context;
 struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 					const struct comp_ipc_config *config, const void *spec,
-					void *mod_priv, struct userspace_context *user_ctx,
-					const struct module_interface *ops);
+					void *mod_priv, struct userspace_context *user_ctx);
 int module_adapter_prepare(struct comp_dev *dev);
 int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
 int module_adapter_copy(struct comp_dev *dev);
@@ -539,16 +529,6 @@ uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
 	return 0;
 }
 
-static inline int module_process_endpoint(struct processing_module *mod,
-					  struct input_stream_buffer *input_buffers,
-					  int num_input_buffers,
-					  struct output_stream_buffer *output_buffers,
-					  int num_output_buffers)
-{
-	return module_process_legacy(mod, input_buffers, num_input_buffers,
-				     output_buffers, num_output_buffers);
-}
-
 #else
 int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
 			    bool last_block, uint32_t data_offset, const char *data);
@@ -560,18 +540,6 @@ int module_adapter_bind(struct comp_dev *dev, const struct bind_info *bind_data)
 int module_adapter_unbind(struct comp_dev *dev, const struct bind_info *unbind_data);
 uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
 						 uint32_t stream_no, bool input);
-
-static inline int module_process_endpoint(struct processing_module *mod,
-					  struct input_stream_buffer *input_buffers,
-					  int num_input_buffers,
-					  struct output_stream_buffer *output_buffers,
-					  int num_output_buffers)
-{
-	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
-
-	return ops->process_audio_stream(mod, input_buffers, num_input_buffers,
-					 output_buffers, num_output_buffers);
-}
 
 #endif
 
@@ -587,9 +555,6 @@ int module_adapter_ts_get_op(struct comp_dev *dev, struct dai_ts_data *tsd);
 int module_adapter_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd);
 #endif
 
-void module_update_buffer_position(struct input_stream_buffer *input_buffers,
-				   struct output_stream_buffer *output_buffers,
-				   uint32_t frames);
 struct module_ext_init_data;
 #if CONFIG_IPC_MAJOR_4
 int module_ext_init_decode(const struct comp_driver *drv, struct module_ext_init_data *ext_data,
@@ -607,8 +572,6 @@ int module_adapter_init_data(struct comp_dev *dev,
 			     const struct comp_ipc_config *config,
 			     const void *spec);
 void module_adapter_reset_data(struct module_config *dst);
-void module_adapter_check_data(struct processing_module *mod, struct comp_dev *dev,
-			       struct comp_buffer *sink);
 void module_adapter_set_params(struct processing_module *mod, struct sof_ipc_stream_params *params);
 int module_adapter_set_state(struct processing_module *mod, struct comp_dev *dev,
 			     int cmd);

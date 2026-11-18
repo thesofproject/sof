@@ -78,7 +78,10 @@
 #define SND_AUDIOCODEC_ALAC                  ((uint32_t) 0x0000000F)
 #define SND_AUDIOCODEC_APE                   ((uint32_t) 0x00000010)
 #define SND_AUDIOCODEC_OPUS_RAW              ((uint32_t) 0x00000011)
-#define SND_AUDIOCODEC_MAX                   SND_AUDIOCODEC_OPUS_RAW
+#define SND_AUDIOCODEC_SBC                   ((uint32_t) 0x00000012)
+#define SND_AUDIOCODEC_G722                  ((uint32_t) 0x00000013)
+#define SND_AUDIOCODEC_APTX                  ((uint32_t) 0x00000014)
+#define SND_AUDIOCODEC_MAX                   SND_AUDIOCODEC_APTX
 
 /*
  * Profile and modes are listed with bit masks. This allows for a

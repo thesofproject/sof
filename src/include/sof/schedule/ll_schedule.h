@@ -29,6 +29,72 @@
 
 struct ll_schedule_domain;
 
+#if defined(CONFIG_AMD)
+/** @brief Low-Latency timer scheduling period in microseconds (500us for AMD ACP platforms). */
+#define LL_TIMER_PERIOD_US	500ULL
+#else
+/** @brief Default Low-Latency timer scheduling period in microseconds (1000us / 1ms). */
+#define LL_TIMER_PERIOD_US	1000ULL
+#endif
+
+/**
+ * @brief Default Low-Latency watchdog timeout in microseconds.
+ *
+ * Configured as two periods to provide a safe margin between watchdog start
+ * and initial task feeding.
+ */
+#define LL_WATCHDOG_TIMEOUT_US	(2 * LL_TIMER_PERIOD_US)
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+/**
+ * @brief Acquire per-core user Low-Latency scheduling lock.
+ * @param[in] core Target core ID.
+ */
+void user_ll_lock_sched(int core);
+
+/**
+ * @brief Release per-core user Low-Latency scheduling lock.
+ * @param[in] core Target core ID.
+ */
+void user_ll_unlock_sched(int core);
+
+/**
+ * @brief Release all holds of the calling thread on a per-core user
+ * Low-Latency scheduling lock.
+ *
+ * Must be paired with user_ll_relock_sched().
+ * @param[in] core Target core ID.
+ * @return Number of holds released, 0 if the calling thread doesn't hold
+ *	   the lock.
+ */
+unsigned int user_ll_unlock_sched_all(int core);
+
+/**
+ * @brief Re-take holds released by user_ll_unlock_sched_all().
+ * @param[in] core Target core ID.
+ * @param[in] depth Value returned by user_ll_unlock_sched_all().
+ */
+void user_ll_relock_sched(int core, unsigned int depth);
+
+#ifdef CONFIG_ASSERT
+/**
+ * @brief Assert that the calling context holds the user Low-Latency lock for a core.
+ * @param[in] core Target core ID.
+ */
+void user_ll_assert_locked(int core);
+#else
+static inline void user_ll_assert_locked(int core) { ARG_UNUSED(core); }
+#endif
+
+struct k_heap;
+
+/**
+ * @brief Get the user-space heap for Low-Latency scheduling structures.
+ * @return Pointer to the k_heap instance.
+ */
+struct k_heap *zephyr_ll_user_heap(void);
+#endif /* CONFIG_SOF_USERSPACE_LL */
+
 /* ll tracing */
 extern struct tr_ctx ll_tr;
 

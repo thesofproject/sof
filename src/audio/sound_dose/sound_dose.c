@@ -92,6 +92,10 @@ int sound_dose_filters_init(struct processing_module *mod)
 	/* Apply the first responses in the blobs */
 	iir_coef = (struct sof_eq_iir_header *)&iir_config->data[iir_config->channels_in_config];
 	iir_size = iir_delay_size_df1(iir_coef);
+	if (!iir_size) {
+		comp_err(dev, "Invalid iir coef");
+		return -EINVAL;
+	}
 	alloc_size = cd->channels * iir_size;
 	cd->delay_lines = rzalloc(SOF_MEM_FLAG_USER, alloc_size);
 	if (!cd->delay_lines) {

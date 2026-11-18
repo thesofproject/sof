@@ -181,10 +181,10 @@ int tdfb_set_ipc_config(struct processing_module *mod, uint32_t param_id,
 	}
 }
 
-int tdfb_params(struct processing_module *mod)
+int tdfb_params(struct processing_module *mod, struct sof_source *source,
+		struct sof_sink *sink)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
 	if (mod->priv.cfg.nb_input_pins != SOF_TDFB_NUM_INPUT_PINS) {
@@ -200,12 +200,8 @@ int tdfb_params(struct processing_module *mod)
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
 
-	/* The caller has verified source and sink buffer validity */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.input_pins[0].audio_fmt);
-
-	sinkb = comp_dev_get_first_data_consumer(dev);
-	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.output_pins[0].audio_fmt);
+	ipc4_update_source_format(source, &mod->priv.cfg.input_pins[0].audio_fmt);
+	ipc4_update_sink_format(sink, &mod->priv.cfg.output_pins[0].audio_fmt);
 	return 0;
 }
 

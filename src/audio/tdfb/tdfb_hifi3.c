@@ -16,36 +16,27 @@
 #include <sof/math/fir_hifi3.h>
 
 #if CONFIG_FORMAT_S16LE
-void tdfb_fir_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
-		  struct output_stream_buffer *bsink, int frames)
+void tdfb_fir_s16(struct tdfb_comp_data *cd, struct cir_buf_source *source, unsigned int in_nch,
+		  struct cir_buf_sink *sink, unsigned int out_nch, size_t frames)
 {
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct sof_tdfb_config *cfg = cd->config;
 	struct fir_state_32x16 *f;
 	ae_int16x4 d;
 	ae_int32 y0;
 	ae_int32 y1;
-	ae_int16 *x = audio_stream_get_rptr(source);
-	ae_int16 *y = audio_stream_get_wptr(sink);
-	int shift;
-	int is2;
-	int is;
-	int om;
-	int i;
-	int j;
-	int k;
-	int in_nch = audio_stream_get_channels(source);
-	int out_nch = audio_stream_get_channels(sink);
-	int emp_ch = 0;
-	int n, nmax;
-	int remaining_frames = frames;
+	const ae_int16 *x = source->ptr;
+	ae_int16 *y = sink->ptr;
+	int is, is2, om, shift;
+	unsigned int i, k;
+	size_t j, n, nmax;
+	unsigned int emp_ch = 0;
+	size_t remaining_frames = frames;
 	const int inc = sizeof(ae_int16);
 
 	while (remaining_frames) {
-		nmax = audio_stream_frames_without_wrap(source, x);
+		nmax = circ_buf_frames_without_wrap(x, source->buf_end, sizeof(ae_int16), in_nch);
 		n = MIN(remaining_frames, nmax);
-		nmax = audio_stream_frames_without_wrap(sink, y);
+		nmax = circ_buf_frames_without_wrap(y, sink->buf_end, sizeof(ae_int16), out_nch);
 		n = MIN(n, nmax);
 
 		for (j = 0; j < n; j += 2) {
@@ -99,43 +90,34 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 			}
 		}
 		remaining_frames -= n;
-		x = audio_stream_wrap(source, x);
-		y = audio_stream_wrap(sink, y);
+		x = source_cir_buf_wrap(x, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
 	}
 }
 #endif
 
 #if CONFIG_FORMAT_S24LE
-void tdfb_fir_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
-		  struct output_stream_buffer *bsink, int frames)
+void tdfb_fir_s24(struct tdfb_comp_data *cd, struct cir_buf_source *source, unsigned int in_nch,
+		  struct cir_buf_sink *sink, unsigned int out_nch, size_t frames)
 {
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct sof_tdfb_config *cfg = cd->config;
 	struct fir_state_32x16 *f;
 	ae_int32x2 d;
 	ae_int32 y0;
 	ae_int32 y1;
-	ae_int32 *x = audio_stream_get_rptr(source);
-	ae_int32 *y = audio_stream_get_wptr(sink);
-	int shift;
-	int is2;
-	int is;
-	int om;
-	int i;
-	int j;
-	int k;
-	int in_nch = audio_stream_get_channels(source);
-	int out_nch = audio_stream_get_channels(sink);
-	int emp_ch = 0;
-	int n, nmax;
-	int remaining_frames = frames;
+	const ae_int32 *x = source->ptr;
+	ae_int32 *y = sink->ptr;
+	int is, is2, om, shift;
+	unsigned int i, k;
+	size_t j, n, nmax;
+	unsigned int emp_ch = 0;
+	size_t remaining_frames = frames;
 	const int inc = sizeof(ae_int32);
 
 	while (remaining_frames) {
-		nmax = audio_stream_frames_without_wrap(source, x);
+		nmax = circ_buf_frames_without_wrap(x, source->buf_end, sizeof(ae_int32), in_nch);
 		n = MIN(remaining_frames, nmax);
-		nmax = audio_stream_frames_without_wrap(sink, y);
+		nmax = circ_buf_frames_without_wrap(y, sink->buf_end, sizeof(ae_int32), out_nch);
 		n = MIN(n, nmax);
 
 		for (j = 0; j < n; j += 2) {
@@ -189,43 +171,34 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 			}
 		}
 		remaining_frames -= n;
-		x = audio_stream_wrap(source, x);
-		y = audio_stream_wrap(sink, y);
+		x = source_cir_buf_wrap(x, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
 	}
 }
 #endif
 
 #if CONFIG_FORMAT_S32LE
-void tdfb_fir_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
-		  struct output_stream_buffer *bsink, int frames)
+void tdfb_fir_s32(struct tdfb_comp_data *cd, struct cir_buf_source *source, unsigned int in_nch,
+		  struct cir_buf_sink *sink, unsigned int out_nch, size_t frames)
 {
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	struct sof_tdfb_config *cfg = cd->config;
 	struct fir_state_32x16 *f;
 	ae_int32x2 d;
 	ae_int32 y0;
 	ae_int32 y1;
-	ae_int32 *x = audio_stream_get_rptr(source);
-	ae_int32 *y = audio_stream_get_wptr(sink);
-	int shift;
-	int is2;
-	int is;
-	int om;
-	int i;
-	int j;
-	int k;
-	int in_nch = audio_stream_get_channels(source);
-	int out_nch = audio_stream_get_channels(sink);
-	int emp_ch = 0;
-	int n, nmax;
-	int remaining_frames = frames;
+	const ae_int32 *x = source->ptr;
+	ae_int32 *y = sink->ptr;
+	int is, is2, om, shift;
+	unsigned int i, k;
+	size_t j, n, nmax;
+	unsigned int emp_ch = 0;
+	size_t remaining_frames = frames;
 	const int inc = sizeof(ae_int32);
 
 	while (remaining_frames) {
-		nmax = audio_stream_frames_without_wrap(source, x);
+		nmax = circ_buf_frames_without_wrap(x, source->buf_end, sizeof(ae_int32), in_nch);
 		n = MIN(remaining_frames, nmax);
-		nmax = audio_stream_frames_without_wrap(sink, y);
+		nmax = circ_buf_frames_without_wrap(y, sink->buf_end, sizeof(ae_int32), out_nch);
 		n = MIN(n, nmax);
 
 		for (j = 0; j < n; j += 2) {
@@ -277,8 +250,8 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 			}
 		}
 		remaining_frames -= n;
-		x = audio_stream_wrap(source, x);
-		y = audio_stream_wrap(sink, y);
+		x = source_cir_buf_wrap(x, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
 	}
 }
 #endif

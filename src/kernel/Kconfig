@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+# Code that only runs in kernel mode, see scripts/kernel_user_partition.txt.
+
+rsource "debug/telemetry/Kconfig"
+
+rsource "drivers/Kconfig"
+
+rsource "idc/Kconfig"
+
+rsource "library_manager/Kconfig"
+
+rsource "logging/Kconfig"
+
+rsource "probe/Kconfig"

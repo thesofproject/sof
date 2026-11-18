@@ -236,6 +236,8 @@ static struct test_data *create_test_data(const struct test_parameters *params)
 	struct processing_module *mod;
 	struct sof_ipc_comp_process *ipc;
 	struct comp_dev *dev;
+	struct sof_source *sources[1];
+	struct sof_sink *sinks[1];
 	size_t src_size;
 	size_t sink_size;
 	int ret;
@@ -277,7 +279,9 @@ static struct test_data *create_test_data(const struct test_parameters *params)
 	if (!td->source || !td->sink)
 		goto error;
 
-	ret = module_prepare(mod, NULL, 0, NULL, 0);
+	sources[0] = audio_buffer_get_source(&td->source->audio_buffer);
+	sinks[0] = audio_buffer_get_sink(&td->sink->audio_buffer);
+	ret = module_prepare(mod, sources, 1, sinks, 1);
 	if (ret)
 		goto error;
 

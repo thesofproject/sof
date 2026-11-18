@@ -221,9 +221,19 @@ struct schedulers **arch_schedulers_get(void);
  * Invokes cpu_get_id(), so this function must only be called from kernel context.
  * User-space callers should use @ref arch_user_schedulers_get_for_core instead.
  *
+ * Returns the kernel-only copy of the list head. After changing it, call
+ * arch_user_schedulers_publish() to make it visible to user threads.
+ *
  * @return Pointer to the per-core user schedulers list head pointer, or NULL if user LL is disabled.
  */
 struct schedulers **arch_user_schedulers_get(void);
+
+/**
+ * @brief Make the user scheduler list of the current core visible to user threads.
+ *
+ * Kernel context only.
+ */
+void arch_user_schedulers_publish(void);
 
 /**
  * @brief Retrieve registered schedulers for user-space threads on a specific core.
@@ -235,6 +245,21 @@ struct schedulers **arch_user_schedulers_get(void);
  */
 struct schedulers **arch_user_schedulers_get_for_core(int core);
 
+/**
+ * @brief Check whether a scheduler type is managed in user space.
+ * @param[in] type Scheduler type identifier (SOF_SCHEDULE_*).
+ * @return true for the LL timer and DP schedulers.
+ */
+static inline bool scheduler_is_user(int type)
+{
+	/*
+	 * currently only LL managed in user-space, but longterm
+	 * goal is to move all audio application level scheduling
+	 * to user-space and only keep Zephyr scheduler logic in
+	 * kernel
+	 */
+	return type == SOF_SCHEDULE_LL_TIMER || type == SOF_SCHEDULE_DP;
+}
 /**
  * @brief Lookup scheduler private context data by scheduler type from a schedulers container.
  * @param[in] schedulers Schedulers list container.

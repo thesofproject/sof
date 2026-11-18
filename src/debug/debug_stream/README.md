@@ -1,5 +1,13 @@
 # SOF Debug Stream
 
+> **Runs in:** Boundary / bridge — the debug stream clients here (`ds_msg()` and `ds_vamsg()`
+> in `debug_stream_text_msg.c`) can run in user threads and send their records through the
+> `debug_stream_slot_send_record()` syscall. The kernel parts are in
+> `src/kernel/debug/debug_stream`: the debug window slot with both halves of the syscall
+> (`debug_stream_slot.c`), the thread info client (`debug_stream_thread_info.c`) and the
+> exception dump hook with `assert_print()` (`debug_stream_text_msg-kernel.c`). See
+> [User/kernel split](../../include/sof/userspace/README.md).
+
 The `debug_stream` framework is an abstract logging and live-data streaming mechanism allowing the DSP to asynchronously push structured or freeform diagnostic records immediately out to the host.
 
 ## Feature Overview

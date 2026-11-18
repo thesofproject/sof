@@ -16,9 +16,26 @@
 typedef struct { uint32_t dummy[64]; } DigitalAgc;
 #endif
 
-#define WEBRTC_AGC_CHANNELS_MAX		4
-#define WEBRTC_AGC_FRAME_SAMPLES_MAX	480 /* 10 ms @ 48 kHz */
-#define WEBRTC_AGC_FIFO_FRAMES		(WEBRTC_AGC_FRAME_SAMPLES_MAX * 2)
+#define WEBRTC_AGC_CHANNELS_MAX			4
+/*
+ * WebRTC's WebRtcAgc_ProcessDigital() algorithm operates on a fixed 10 ms frame
+ * (10 x 1 ms subframes); the module's internal framing FIFO decouples this from
+ * the SOF pipeline period.
+ */
+#define WEBRTC_AGC_FRAME_MS			10
+/* 10 x 1 ms subframes per 10 ms frame; 11 envelope boundary points (0..10) */
+#define WEBRTC_AGC_SUBFRAMES			10
+#define WEBRTC_AGC_GAIN_ENVELOPE_LEN		(WEBRTC_AGC_SUBFRAMES + 1)
+#define WEBRTC_AGC_BAND_RATE_HZ			16000
+#define WEBRTC_AGC_MAX_RATE_HZ			48000
+#define WEBRTC_AGC_BAND_SAMPLES			\
+	((WEBRTC_AGC_BAND_RATE_HZ * WEBRTC_AGC_FRAME_MS) / 1000)
+#define WEBRTC_AGC_SUBFRAME_BAND_SAMPLES	\
+	(WEBRTC_AGC_BAND_SAMPLES / WEBRTC_AGC_SUBFRAMES)
+#define WEBRTC_AGC_FRAME_SAMPLES_MAX		\
+	((WEBRTC_AGC_MAX_RATE_HZ * WEBRTC_AGC_FRAME_MS) / 1000)
+#define WEBRTC_AGC_FIFO_FRAMES			WEBRTC_AGC_FRAME_SAMPLES_MAX
+#define WEBRTC_AGC_RESAMP_TMPMEM_LEN		(WEBRTC_AGC_FRAME_SAMPLES_MAX + 16)
 
 struct webrtc_agc_backend {
 	const char *name;
@@ -33,6 +50,10 @@ struct webrtc_agc_backend {
 
 struct webrtc_agc_channel {
 	DigitalAgc inst;
+#if !CONFIG_COMP_WEBRTC_AGC_STUB
+	int32_t down_state_32_to_16[8];
+	WebRtcSpl_State48khzTo16khz state_48_to_16;
+#endif
 	int16_t in_fifo[WEBRTC_AGC_FIFO_FRAMES];
 	int16_t out_fifo[WEBRTC_AGC_FIFO_FRAMES];
 };
@@ -40,6 +61,14 @@ struct webrtc_agc_channel {
 struct webrtc_agc_comp_data {
 	struct webrtc_agc_channel ch_data[WEBRTC_AGC_CHANNELS_MAX];
 	const struct webrtc_agc_backend *backend;
+
+#if !CONFIG_COMP_WEBRTC_AGC_STUB
+	/* Scratch buffers for multi-band (32/48 kHz) processing */
+	int16_t vad_buf[WEBRTC_AGC_BAND_SAMPLES];
+	int16_t probe[WEBRTC_AGC_BAND_SAMPLES];
+	int32_t gains[WEBRTC_AGC_GAIN_ENVELOPE_LEN];
+	int32_t resamp_tmpmem[WEBRTC_AGC_RESAMP_TMPMEM_LEN];
+#endif
 
 	int channels;
 	int rate;

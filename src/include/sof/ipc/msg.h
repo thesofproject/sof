@@ -13,9 +13,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <rtos/alloc.h>
-#include <sof/lib/memory.h>
 #include <sof/list.h>
-#include <sof/platform.h>
 #include <rtos/task.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
@@ -115,6 +113,22 @@ void z_impl_ipc_msg_send(struct ipc_msg *msg, void *data,
 #define ipc_msg_send z_impl_ipc_msg_send
 #endif
 
+#ifdef CONFIG_USERSPACE
+struct k_mem_domain;
+
+/**
+ * \brief Drop queued messages sent by user threads of a memory domain.
+ *
+ * Messages sent by user threads are queued as kernel copies, found by the
+ * address of the user message and the memory domain of the sender. Call
+ * this before a memory domain is reused, so that a message still queued
+ * from its previous threads is not taken as theirs. Kernel context only.
+ *
+ * @param domain The memory domain.
+ */
+void ipc_user_msg_purge(struct k_mem_domain *domain);
+#endif
+
 /**
  * \brief Send an IPC message directly for emergency.
  * @param msg The IPC message to be freed.
@@ -139,17 +153,5 @@ void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
  */
 void ipc_build_comp_event(struct sof_ipc_comp_event *event, uint32_t type,
 			  uint32_t id);
-
-/**
- * \brief Check if trace buffer is ready for transmission.
- * @param[in,out] avail Data available in trace buffer
- */
-bool ipc_trigger_trace_xfer(uint32_t avail);
-
-/**
- * \brief Build trace position IPC message.
- * @param[in,out] posn Trace position message
- */
-void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn);
 
 #endif

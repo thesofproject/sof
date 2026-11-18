@@ -10,30 +10,30 @@
 
 #include "src_config.h"
 
-#if SRC_GENERIC
-
 #include <sof/audio/format.h>
 #include <stddef.h>
 #include <stdint.h>
 
 #include "src_common.h"
 
+#if SRC_GENERIC
+
 #if SRC_SHORT /* 16 bit coefficients version */
 
 static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 				      int32_t *fir_start, int32_t *fir_end,
-				      const int taps_x_nch,
+				      const size_t taps_x_nch,
 				      const int shift, const int nch)
 {
 	int64_t y0;
 	int64_t y1;
 	int32_t *data;
 	const int16_t *coef;
-	int i;
+	size_t i;
 	int j;
-	int n1;
-	int n2;
-	int frames;
+	size_t n1;
+	size_t n2;
+	size_t frames;
 	const int qshift = 15 + shift; /* Q2.46 -> Q2.31 */
 	const int32_t rnd = 1 << (qshift - 1); /* Half LSB */
 	int32_t *d = rp;
@@ -115,7 +115,7 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 
 static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 				      int32_t *fir_start, int32_t *fir_end,
-				      const int taps_x_nch, const int shift,
+				      const size_t taps_x_nch, const int shift,
 				      const int nch)
 {
 	int64_t y0;
@@ -123,11 +123,11 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 	int32_t scaled_coef;
 	int32_t *data;
 	const int32_t *coef;
-	int i;
+	size_t i;
 	int j;
-	int frames;
-	int n1;
-	int n2;
+	size_t frames;
+	size_t n1;
+	size_t n2;
 
 	const int qshift = 23 + shift; /* Qx.54 -> Qx.31 */
 	const int32_t rnd = 1 << (qshift - 1); /* Half LSB */
@@ -212,12 +212,12 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 void src_polyphase_stage_cir(struct src_stage_prm *s)
 {
-	int i;
+	size_t i;
 	int n;
-	int m;
-	int n_wrap_buf;
-	int n_wrap_fir;
-	int n_min;
+	size_t m;
+	size_t n_wrap_buf;
+	size_t n_wrap_fir;
+	size_t n_min;
 	int32_t *rp;
 	int32_t *wp;
 
@@ -229,13 +229,13 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	const void *cp; /* Can be int32_t or int16_t */
 	const size_t out_size = fir->out_delay_size * sizeof(int32_t);
 	const int nch = s->nch;
-	const int nch_x_odm = cfg->odm * nch;
-	const int blk_in_words = nch * cfg->blk_in;
-	const int blk_out_words = nch * cfg->num_of_subfilters;
-	const int rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
-	const int nch_x_idm = nch * cfg->idm;
+	const size_t nch_x_odm = cfg->odm * nch;
+	const size_t blk_in_words = nch * cfg->blk_in;
+	const size_t blk_out_words = nch * cfg->num_of_subfilters;
+	const size_t rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
+	const size_t nch_x_idm = nch * cfg->idm;
 	const size_t fir_size = fir->fir_delay_size * sizeof(int32_t);
-	const int taps_x_nch = cfg->subfilter_length * nch;
+	const size_t taps_x_nch = cfg->subfilter_length * nch;
 	int32_t *x_rptr = (int32_t *)s->x_rptr;
 	int32_t *y_wptr = (int32_t *)s->y_wptr;
 	int32_t *x_end_addr = (int32_t *)s->x_end_addr;
@@ -310,12 +310,12 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 #if CONFIG_FORMAT_S16LE
 void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 {
-	int i;
+	size_t i;
 	int n;
-	int m;
-	int n_wrap_buf;
-	int n_wrap_fir;
-	int n_min;
+	size_t m;
+	size_t n_wrap_buf;
+	size_t n_wrap_fir;
+	size_t n_min;
 	int32_t *rp;
 	int32_t *wp;
 
@@ -327,13 +327,13 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	const void *cp; /* Can be int32_t or int16_t */
 	const size_t out_size = fir->out_delay_size * sizeof(int32_t);
 	const int nch = s->nch;
-	const int nch_x_odm = cfg->odm * nch;
-	const int blk_in_words = nch * cfg->blk_in;
-	const int blk_out_words = nch * cfg->num_of_subfilters;
-	const int rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
-	const int nch_x_idm = nch * cfg->idm;
+	const size_t nch_x_odm = cfg->odm * nch;
+	const size_t blk_in_words = nch * cfg->blk_in;
+	const size_t blk_out_words = nch * cfg->num_of_subfilters;
+	const size_t rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
+	const size_t nch_x_idm = nch * cfg->idm;
 	const size_t fir_size = fir->fir_delay_size * sizeof(int32_t);
-	const int taps_x_nch = cfg->subfilter_length * nch;
+	const size_t taps_x_nch = cfg->subfilter_length * nch;
 	int16_t *x_rptr = (int16_t *)s->x_rptr;
 	int16_t *y_wptr = (int16_t *)s->y_wptr;
 	int16_t *x_end_addr = (int16_t *)s->x_end_addr;
@@ -404,5 +404,183 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	s->y_wptr = y_wptr;
 }
 #endif /* CONFIG_FORMAT_S16LE */
+#endif /* SRC_GENERIC */
 
+#if CONFIG_FORMAT_FLOAT
+static inline void fir_filter_generic_float(float *rp, const void *cp, float *wp0,
+					    float *fir_start, float *fir_end,
+					    const int taps_x_nch,
+					    const int nch)
+{
+	float y0, y1;
+	float *data;
+	int i, j;
+	int frames, n1, n2;
+	float *d = rp;
+	float *wp = wp0;
+
+#if SRC_SHORT
+	const int16_t *coef = (const int16_t *)cp;
+	const float inv_coef_scale = 1.0f / 32768.0f;
+#else
+	const int32_t *coef = (const int32_t *)cp;
+	const float inv_coef_scale = 1.0f / 8388608.0f;
 #endif
+
+	if (nch == 2) {
+		data = d - 1;
+		y0 = 0.0f;
+		y1 = 0.0f;
+		frames = fir_end - data;
+		n1 = ((taps_x_nch < frames) ? taps_x_nch : frames) >> 1;
+		n2 = (taps_x_nch >> 1) - n1;
+
+		for (i = 0; i < n1; i++, coef++, data += 2) {
+#if SRC_SHORT
+			float c = (float)(*coef) * inv_coef_scale;
+#else
+			float c = (float)(*coef >> 8) * inv_coef_scale;
+#endif
+			y0 += c * data[0];
+			y1 += c * data[1];
+		}
+
+		data = fir_start;
+		for (i = 0; i < n2; i++, coef++, data += 2) {
+#if SRC_SHORT
+			float c = (float)(*coef) * inv_coef_scale;
+#else
+			float c = (float)(*coef >> 8) * inv_coef_scale;
+#endif
+			y0 += c * data[0];
+			y1 += c * data[1];
+		}
+
+		*wp = y1;
+		*(wp + 1) = y0;
+		return;
+	}
+
+	for (j = 0; j < nch; j++) {
+		data = d--;
+		y0 = 0.0f;
+#if SRC_SHORT
+		coef = (const int16_t *)cp;
+#else
+		coef = (const int32_t *)cp;
+#endif
+		frames = fir_end - data + nch - j - 1;
+		n1 = (taps_x_nch < frames) ? taps_x_nch : frames;
+		n2 = taps_x_nch - n1;
+
+		for (i = 0; i < n1; i += nch, coef++, data += nch) {
+#if SRC_SHORT
+			float c = (float)(*coef) * inv_coef_scale;
+#else
+			float c = (float)(*coef >> 8) * inv_coef_scale;
+#endif
+			y0 += c * (*data);
+		}
+
+		data = fir_start + nch - j - 1;
+		for (i = 0; i < n2; i += nch, coef++, data += nch) {
+#if SRC_SHORT
+			float c = (float)(*coef) * inv_coef_scale;
+#else
+			float c = (float)(*coef >> 8) * inv_coef_scale;
+#endif
+			y0 += c * (*data);
+		}
+
+		*wp = y0;
+		wp++;
+	}
+}
+
+void src_polyphase_stage_cir_float(struct src_stage_prm *s)
+{
+	int i, n, m;
+	int n_wrap_buf, n_wrap_fir, n_min;
+	float *rp, *wp;
+
+	struct src_state *fir = s->state;
+	const struct src_stage *cfg = s->stage;
+	float *fir_delay = (float *)fir->fir_delay;
+	float *fir_end = (float *)&fir->fir_delay[fir->fir_delay_size];
+	float *out_delay_end = (float *)&fir->out_delay[fir->out_delay_size];
+	float *fir_wp = (float *)fir->fir_wp;
+	float *out_rp = (float *)fir->out_rp;
+	const void *cp;
+	const size_t out_size = fir->out_delay_size * sizeof(float);
+	const int nch = s->nch;
+	const int nch_x_odm = cfg->odm * nch;
+	const int blk_in_words = nch * cfg->blk_in;
+	const int blk_out_words = nch * cfg->num_of_subfilters;
+	const int rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
+	const int nch_x_idm = nch * cfg->idm;
+	const size_t fir_size = fir->fir_delay_size * sizeof(float);
+	const int taps_x_nch = cfg->subfilter_length * nch;
+	float *x_rptr = (float *)s->x_rptr;
+	float *y_wptr = (float *)s->y_wptr;
+	float *x_end_addr = (float *)s->x_end_addr;
+	float *y_end_addr = (float *)s->y_end_addr;
+
+#if SRC_SHORT
+	const size_t subfilter_size = cfg->subfilter_length * sizeof(int16_t);
+#else
+	const size_t subfilter_size = cfg->subfilter_length * sizeof(int32_t);
+#endif
+
+	for (n = 0; n < s->times; n++) {
+		m = blk_in_words;
+		while (m > 0) {
+			n_wrap_buf = x_end_addr - x_rptr;
+			n_wrap_fir = fir_wp - fir_delay + 1;
+			n_min = MIN(n_wrap_fir, n_wrap_buf);
+			n_min = MIN(m, n_min);
+			m -= n_min;
+			for (i = 0; i < n_min; i++) {
+				*fir_wp = *x_rptr;
+				fir_wp--;
+				x_rptr++;
+			}
+			src_dec_wrap((int32_t **)&fir_wp, (int32_t *)fir_delay, fir_size);
+			src_inc_wrap((int32_t **)&x_rptr, (int32_t *)x_end_addr, s->x_size);
+		}
+
+		cp = cfg->coefs;
+		rp = fir_wp + rewind;
+		src_inc_wrap((int32_t **)&rp, (int32_t *)fir_end, fir_size);
+		wp = out_rp;
+		for (i = 0; i < cfg->num_of_subfilters; i++) {
+			fir_filter_generic_float(rp, cp, wp, fir_delay, fir_end,
+						 taps_x_nch, nch);
+			wp += nch_x_odm;
+			cp = (char *)cp + subfilter_size;
+			src_inc_wrap((int32_t **)&wp, (int32_t *)out_delay_end, out_size);
+			rp -= nch_x_idm;
+			src_dec_wrap((int32_t **)&rp, (int32_t *)fir_delay, fir_size);
+		}
+
+		m = blk_out_words;
+		while (m > 0) {
+			n_wrap_fir = out_delay_end - out_rp;
+			n_wrap_buf = y_end_addr - y_wptr;
+			n_min = MIN(n_wrap_fir, n_wrap_buf);
+			n_min = MIN(m, n_min);
+			m -= n_min;
+			for (i = 0; i < n_min; i++) {
+				*y_wptr = *out_rp;
+				y_wptr++;
+				out_rp++;
+			}
+			src_inc_wrap((int32_t **)&y_wptr, (int32_t *)y_end_addr, s->y_size);
+			src_inc_wrap((int32_t **)&out_rp, (int32_t *)out_delay_end, out_size);
+		}
+	}
+	fir->fir_wp = (int32_t *)fir_wp;
+	fir->out_rp = (int32_t *)out_rp;
+	s->x_rptr = x_rptr;
+	s->y_wptr = y_wptr;
+}
+#endif /* CONFIG_FORMAT_FLOAT */

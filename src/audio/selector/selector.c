@@ -173,11 +173,18 @@ static struct comp_dev *selector_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, cd);
 
-	ret = memcpy_s(&cd->config, sizeof(cd->config), ipc_process->data, bs);
-	if (ret) {
-		rfree(cd);
-		comp_free_device(dev);
-		return NULL;
+	if (ipc_process && ipc_process->data && bs > 0) {
+		ret = memcpy_s(&cd->config, sizeof(cd->config), ipc_process->data, bs);
+		if (ret) {
+			rfree(cd);
+			comp_free_device(dev);
+			return NULL;
+		}
+	} else {
+		/* Defaults: 2 channels in/out, channel 0 selected */
+		cd->config.in_channels_count = 2;
+		cd->config.out_channels_count = 2;
+		cd->config.sel_channel = 0;
 	}
 
 	dev->state = COMP_STATE_READY;
@@ -388,12 +395,30 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 	case COMP_CMD_GET_DATA:
 		ret = selector_ctrl_get_data(dev, cdata, max_data_size);
 		break;
-	case COMP_CMD_SET_VALUE:
-		comp_dbg(dev, "COMP_CMD_SET_VALUE");
+	case COMP_CMD_SET_VALUE: {
+		struct comp_data *cd = comp_get_drvdata(dev);
+		if (cd && cdata->cmd == SOF_CTRL_CMD_ENUM) {
+			if (cdata->num_elems != 1)
+				return -EINVAL;
+			uint32_t val = cdata->chanv[0].value;
+			struct comp_buffer *sourceb = comp_dev_get_first_data_producer(dev);
+			uint32_t in_ch = sourceb ? audio_stream_get_channels(&sourceb->stream) :
+						  CONFIG_PLATFORM_MAX_CHANNELS;
+			if (val >= in_ch || val >= CONFIG_PLATFORM_MAX_CHANNELS)
+				return -EINVAL;
+			cd->config.sel_channel = val;
+		}
 		break;
-	case COMP_CMD_GET_VALUE:
-		comp_dbg(dev, "COMP_CMD_GET_VALUE");
+	}
+	case COMP_CMD_GET_VALUE: {
+		struct comp_data *cd = comp_get_drvdata(dev);
+		if (cd && cdata->cmd == SOF_CTRL_CMD_ENUM) {
+			cdata->num_elems = 1;
+			cdata->chanv[0].channel = 0;
+			cdata->chanv[0].value = cd->config.sel_channel;
+		}
 		break;
+	}
 	default:
 		comp_err(dev, "invalid command");
 		ret = -EINVAL;
@@ -642,10 +667,12 @@ static void build_config(struct comp_data *cd, struct module_config *cfg)
 				    &frame_fmt, &valid_fmt,
 				    cfg->base_cfg.audio_fmt.s_type);
 	cd->source_format = frame_fmt;
+	cd->source_valid_format = valid_fmt;
 
 	audio_stream_fmt_conversion(out_fmt->depth, out_fmt->valid_bit_depth,
 				    &frame_fmt, &valid_fmt, out_fmt->s_type);
 	cd->sink_format = frame_fmt;
+	cd->sink_valid_format = valid_fmt;
 
 	cd->config.in_channels_count = cfg->base_cfg.audio_fmt.channels_count;
 	cd->config.out_channels_count = out_fmt->channels_count;
@@ -746,7 +773,7 @@ static void set_selector_params(struct processing_module *mod,
 
 	comp_dev_for_each_consumer(dev, sink_buf) {
 		ipc4_update_buffer_format(sink_buf, out_fmt);
-		audio_stream_set_channels(&sink_buf->stream, params->channels);
+		audio_stream_set_channels(&sink_buf->stream, cd->config.out_channels_count);
 		audio_stream_set_rate(&sink_buf->stream, params->rate);
 	}
 
@@ -788,9 +815,11 @@ static int selector_verify_params(struct processing_module *mod,
 	/* apply input/output channels count according to stream direction */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		params->channels = out_channels;
+		params->frame_fmt = cd->sink_format;
 		buffer = comp_dev_get_first_data_consumer(dev);
 	} else {
 		params->channels = in_channels;
+		params->frame_fmt = cd->source_format;
 		buffer = comp_dev_get_first_data_producer(dev);
 	}
 	buffer_set_params(buffer, params, BUFFER_UPDATE_FORCE);
@@ -988,7 +1017,9 @@ static int selector_find_coefficients(struct processing_module *mod)
 	/* The pass-through copy function can be used if coefficients are a unit matrix for
 	 * 1:1 stream copy.
 	 */
-	if (source_channels == sink_channels) {
+	if (source_channels == sink_channels &&
+	    cd->source_format == cd->sink_format &&
+	    cd->source_valid_format == cd->sink_valid_format) {
 		cd->passthrough = true;
 		for (i = 0; i < sink_channels; i++) {
 			for (j = 0; j < source_channels; j++) {
@@ -1113,6 +1144,7 @@ static int selector_prepare(struct processing_module *mod,
 
 	/* get sink data format and period bytes */
 	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
+	cd->sink_valid_format = audio_stream_get_valid_fmt(&sinkb->stream);
 	cd->sink_period_bytes = audio_stream_period_bytes(&sinkb->stream, dev->frames);
 	sink_size = audio_stream_get_size(&sinkb->stream);
 	md->mpd.in_buff_size = cd->source_period_bytes;
@@ -1325,6 +1357,8 @@ static int sel_static_apply_enum(struct comp_dev *dev, uint32_t channel, int32_t
 	 * output channel counts match and coeffs form an identity matrix.
 	 */
 	if (cd->config.in_channels_count == cd->config.out_channels_count &&
+	    cd->source_format == cd->sink_format &&
+	    cd->source_valid_format == cd->sink_valid_format &&
 	    cd->config.in_channels_count > 0) {
 		cd->passthrough = true;
 		for (uint32_t i = 0; i < cd->config.out_channels_count; i++) {
@@ -1354,5 +1388,12 @@ static struct sof_static_module_ops sel4_static_ops = {
 	.apply_enum = sel_static_apply_enum,
 };
 DECLARE_STATIC_MODULE_OPS(selector4, &sel4_static_ops);
+#else
+static struct sof_static_module_ops sel_static_ops = {
+	.uuid = &selector_uuid,
+	.create = sel_static_create,
+	.apply_enum = sel_static_apply_enum,
+};
+DECLARE_STATIC_MODULE_OPS(selector, &sel_static_ops);
 #endif
 #endif /* CONFIG_STATIC_PIPELINE */

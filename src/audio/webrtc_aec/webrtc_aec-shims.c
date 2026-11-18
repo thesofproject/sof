@@ -73,7 +73,6 @@ void *webrtc_realloc(void *ptr, size_t size)
 		return NULL;
 	}
 
-	/* Not called by AEC3 */
-	k_panic();
+	/* Not called by AECm; k_panic() is not exported to LLEXT modules */
 	return NULL;
 }

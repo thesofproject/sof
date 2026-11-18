@@ -19,7 +19,6 @@
 #include <native_system_service.h>
 #include <sof/lib_manager.h>
 #include <module/module/logger.h>
-#include <rtos/userspace_helper.h>
 
 #define RSIZE_MAX 0x7FFFFFFF
 #define IADK_NOTIFICATION_HEADER_SIZE 48

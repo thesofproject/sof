@@ -23,6 +23,52 @@
 		 (sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *) \
 				     (WIN3_MBASE + WIN3_OFFSET))))
 
+struct comp_dev;
+
+/* Memory Window 3 extended partition constants (8,192 B window) */
+#define SOF_TEL_MW3_MAGIC		0x32574D50U /* "PMW2" */
+#define SOF_TEL_MW3_MOD_HOT_OFFSET	0x1080U
+#define SOF_TEL_MW3_MOD_COLD_OFFSET	0x1200U
+#define SOF_TEL_MW3_IO_PERF_OFFSET	0x1800U
+#define SOF_TEL_MW3_HDR_OFFSET		0x1FC0U
+#define SOF_TEL_MW3_MAX_IO_ITEMS	128U
+
+/* Dense hot per-component counter (4 B -> 16 components per 64B cache line) */
+struct sof_tel_mod_hot {
+	uint16_t cpc_violation_count;
+	uint16_t xrun_count;
+} __packed;
+
+/* Cold per-component module resource record (16 B -> 4 components per 64B cache line) */
+struct sof_tel_mod_cold {
+	uint32_t resource_id;
+	uint32_t heap_usage;
+	uint32_t heap_high_water_mark;
+	uint32_t configured_cpc;
+} __packed;
+
+/* MW3 partition footer directory at 0x1FC0 (64 B = 1 cache line) */
+struct sof_tel_mw3_hdr {
+	uint32_t magic;			/* SOF_TEL_MW3_MAGIC ("PMW2") */
+	uint16_t version;
+	uint16_t max_comp_entries;
+	uint16_t max_io_entries;
+	uint16_t mod_hot_offset;
+	uint16_t mod_cold_offset;
+	uint16_t io_perf_offset;
+	uint8_t  rsvd[48];
+} __packed;
+
+#if IS_ENABLED(CONFIG_SOF_TELEMETRY_MODULE_RESOURCES)
+void perf_data_update_module_resources(struct comp_dev *dev);
+void perf_data_inc_cpc_violation(struct comp_dev *dev);
+void perf_data_inc_xrun(struct comp_dev *dev);
+#else
+static inline void perf_data_update_module_resources(struct comp_dev *dev) { (void)dev; }
+static inline void perf_data_inc_cpc_violation(struct comp_dev *dev) { (void)dev; }
+static inline void perf_data_inc_xrun(struct comp_dev *dev) { (void)dev; }
+#endif
+
 #if IS_ENABLED(CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS) || defined(__DOXYGEN__)
 /**
  * \brief Initializer for component performance data record.

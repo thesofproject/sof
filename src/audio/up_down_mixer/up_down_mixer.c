@@ -13,6 +13,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/cache.h>
 #include <rtos/init.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -34,14 +35,16 @@ SOF_DEFINE_REG_UUID(up_down_mixer);
 
 int32_t custom_coeffs[UP_DOWN_MIX_COEFFS_LENGTH];
 
-static int set_downmix_coefficients(struct processing_module *mod,
-				    const struct ipc4_audio_format *format,
-				    const enum ipc4_channel_config out_channel_config,
-				    const downmix_coefficients downmix_coefficients)
+__cold static int set_downmix_coefficients(struct processing_module *mod,
+					   const struct ipc4_audio_format *format,
+					   const enum ipc4_channel_config out_channel_config,
+					   const downmix_coefficients downmix_coefficients)
 {
 	struct up_down_mixer_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	int ret;
+
+	assert_can_be_cold();
 
 	if (cd->downmix_coefficients) {
 		ret = memcpy_s(&custom_coeffs, sizeof(custom_coeffs), downmix_coefficients,
@@ -103,9 +106,11 @@ static int set_downmix_coefficients(struct processing_module *mod,
 	return 0;
 }
 
-static up_down_mixer_routine select_mix_out_stereo(struct comp_dev *dev,
-						   const struct ipc4_audio_format *format)
+__cold static up_down_mixer_routine select_mix_out_stereo(struct comp_dev *dev,
+							  const struct ipc4_audio_format *format)
 {
+	assert_can_be_cold();
+
 	if (format->depth == IPC4_DEPTH_16BIT) {
 		switch (format->ch_cfg) {
 		case IPC4_CHANNEL_CONFIG_MONO:
@@ -168,9 +173,11 @@ static up_down_mixer_routine select_mix_out_stereo(struct comp_dev *dev,
 	}
 }
 
-static up_down_mixer_routine select_mix_out_mono(struct comp_dev *dev,
-						 const struct ipc4_audio_format *format)
+__cold static up_down_mixer_routine select_mix_out_mono(struct comp_dev *dev,
+							const struct ipc4_audio_format *format)
 {
+	assert_can_be_cold();
+
 	if (format->depth == IPC4_DEPTH_16BIT) {
 		switch (format->ch_cfg) {
 		case IPC4_CHANNEL_CONFIG_STEREO:
@@ -219,9 +226,11 @@ static up_down_mixer_routine select_mix_out_mono(struct comp_dev *dev,
 	}
 }
 
-static up_down_mixer_routine select_mix_out_5_1(struct comp_dev *dev,
-						const struct ipc4_audio_format *format)
+__cold static up_down_mixer_routine select_mix_out_5_1(struct comp_dev *dev,
+						       const struct ipc4_audio_format *format)
 {
+	assert_can_be_cold();
+
 	if (format->depth == IPC4_DEPTH_16BIT) {
 		switch (format->ch_cfg) {
 		case IPC4_CHANNEL_CONFIG_MONO:
@@ -253,13 +262,81 @@ static up_down_mixer_routine select_mix_out_5_1(struct comp_dev *dev,
 	}
 }
 
-static int init_mix(struct processing_module *mod,
-		    const struct ipc4_audio_format *format,
-		    enum ipc4_channel_config out_channel_config,
-		    const downmix_coefficients downmix_coefficients)
+/**
+ * \brief Resolve the output slots of the 5.1 surround pair.
+ * \param[in,out] cd Component private data with out_channel_map already set.
+ *
+ * A 5.1 Surround map names the side pair instead of the surround pair, so when
+ * both surround channels are absent the side pair takes their place. The slots
+ * are stored once here so the mix routines do not repeat the lookup.
+ */
+__cold static void set_out_surround_slots(struct up_down_mixer_data *cd)
+{
+	cd->out_left_surround_slot = get_channel_location(cd->out_channel_map,
+							  CHANNEL_LEFT_SURROUND);
+	cd->out_right_surround_slot = get_channel_location(cd->out_channel_map,
+							   CHANNEL_RIGHT_SURROUND);
+
+	/* Must support also 5.1 Surround */
+	if (cd->out_left_surround_slot == CHANNEL_INVALID &&
+	    cd->out_right_surround_slot == CHANNEL_INVALID) {
+		cd->out_left_surround_slot = get_channel_location(cd->out_channel_map,
+								  CHANNEL_LEFT_SIDE);
+		cd->out_right_surround_slot = get_channel_location(cd->out_channel_map,
+								   CHANNEL_RIGHT_SIDE);
+	}
+}
+
+/**
+ * \brief Check that every channel the mix routines write lies inside the output frame.
+ * \param[in] cd Component private data with out_channel_map and the surround slots set.
+ * \param[in] out_channel_config Output channel configuration.
+ * \return true if each produced channel maps to a slot below the output channel count.
+ *
+ * The 5.1 and 7.1 output routines place each channel at the slot returned by
+ * get_channel_location() without any further check, so a channel missing from
+ * the map (CHANNEL_INVALID) or mapped at or above the channel count is written
+ * past the output frame. The map is host supplied when coefficients_select is
+ * DEFAULT_COEFFICIENTS_WITH_CHANNEL_MAP or CUSTOM_COEFFICIENTS_WITH_CHANNEL_MAP.
+ */
+__cold static bool out_channel_map_valid(const struct up_down_mixer_data *cd,
+					 enum ipc4_channel_config out_channel_config)
+{
+	const channel_map map = cd->out_channel_map;
+
+	switch (out_channel_config) {
+	case IPC4_CHANNEL_CONFIG_5_POINT_1:
+		return get_channel_location(map, CHANNEL_LEFT) < 6 &&
+		       get_channel_location(map, CHANNEL_CENTER) < 6 &&
+		       get_channel_location(map, CHANNEL_RIGHT) < 6 &&
+		       cd->out_left_surround_slot < 6 &&
+		       cd->out_right_surround_slot < 6 &&
+		       get_channel_location(map, CHANNEL_LFE) < 6;
+	case IPC4_CHANNEL_CONFIG_7_POINT_1:
+		/* All eight channels present means every slot is below 8 */
+		return get_channel_location(map, CHANNEL_LEFT) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_CENTER) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_RIGHT) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_LEFT_SURROUND) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_RIGHT_SURROUND) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_LFE) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_LEFT_SIDE) != CHANNEL_INVALID &&
+		       get_channel_location(map, CHANNEL_RIGHT_SIDE) != CHANNEL_INVALID;
+	default:
+		/* The mono and stereo output routines do not use the output map */
+		return true;
+	}
+}
+
+__cold static int init_mix(struct processing_module *mod,
+			   const struct ipc4_audio_format *format,
+			   enum ipc4_channel_config out_channel_config,
+			   const downmix_coefficients downmix_coefficients)
 {
 	struct up_down_mixer_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+
+	assert_can_be_cold();
 
 	if (!format)
 		return -EINVAL;
@@ -314,6 +391,13 @@ static int init_mix(struct processing_module *mod,
 		return -EINVAL;
 	}
 
+	set_out_surround_slots(cd);
+	if (!out_channel_map_valid(cd, out_channel_config)) {
+		comp_err(dev, "invalid output channel map 0x%08x for out=%d",
+			 cd->out_channel_map, out_channel_config);
+		return -EINVAL;
+	}
+
 	/* Update audio format. */
 	cd->out_fmt[0].valid_bit_depth = IPC4_DEPTH_24BIT;
 	cd->out_fmt[0].depth = IPC4_DEPTH_32BIT;
@@ -325,9 +409,11 @@ static int init_mix(struct processing_module *mod,
 	return set_downmix_coefficients(mod, format, out_channel_config, downmix_coefficients);
 }
 
-static int up_down_mixer_free(struct processing_module *mod)
+__cold static int up_down_mixer_free(struct processing_module *mod)
 {
 	struct up_down_mixer_data *cd = module_get_private_data(mod);
+
+	assert_can_be_cold();
 
 	if (!cd)
 		return 0;
@@ -339,7 +425,7 @@ static int up_down_mixer_free(struct processing_module *mod)
 	return 0;
 }
 
-static int up_down_mixer_init(struct processing_module *mod)
+__cold static int up_down_mixer_init(struct processing_module *mod)
 {
 	struct module_config *dst = &mod->priv.cfg;
 	const struct ipc4_up_down_mixer_module_cfg *up_down_mixer = dst->init_data;
@@ -347,6 +433,8 @@ static int up_down_mixer_init(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct up_down_mixer_data *cd;
 	int ret;
+
+	assert_can_be_cold();
 
 	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)

@@ -44,9 +44,9 @@ int iir_init_coef_df1(struct iir_state_df1 *iir,
 /**
  * @brief Calculate required delay line buffer size in bytes for a DF1 configuration.
  * @param config Pointer to IIR equalizer configuration header.
- * @return Required delay buffer size in bytes.
+ * @return Required delay buffer size in bytes or 0 in case of error.
  */
-int iir_delay_size_df1(struct sof_eq_iir_header *config);
+size_t iir_delay_size_df1(struct sof_eq_iir_header *config);
 
 /**
  * @brief Assign and initialize delay line state memory for DF1 filter.

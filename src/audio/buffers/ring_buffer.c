@@ -5,6 +5,7 @@
 
 #include <sof/common.h>
 #include <sof/trace/trace.h>
+#include <sof/lib/cold.h>
 #include <sof/lib/uuid.h>
 #include <sof/lib/vregion.h>
 
@@ -91,8 +92,10 @@ static inline void ring_buffer_writeback_shared(struct ring_buffer *ring_buffer,
 /**
  * @brief remove the queue from the list, free memory
  */
-static void ring_buffer_free(struct sof_audio_buffer *audio_buffer)
+__cold static void ring_buffer_free(struct sof_audio_buffer *audio_buffer)
 {
+	assert_can_be_cold();
+
 	if (!audio_buffer)
 		return;
 
@@ -245,9 +248,11 @@ static int ring_buffer_release_data(struct sof_source *source, size_t free_size)
 	return 0;
 }
 
-int ring_buffer_module_unbind(struct sof_sink *sink)
+__cold int ring_buffer_module_unbind(struct sof_sink *sink)
 {
 	struct ring_buffer *ring_buffer = ring_buffer_from_sink(sink);
+
+	assert_can_be_cold();
 
 	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
 
@@ -285,15 +290,17 @@ static const struct audio_buffer_ops audio_buffer_ops = {
 	.reset = ring_buffer_reset,
 };
 
-struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_available,
-				       size_t min_free_space, bool is_shared,
-				       uint32_t id)
+__cold struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_available,
+					      size_t min_free_space, bool is_shared,
+					      uint32_t id)
 {
 	struct ring_buffer *ring_buffer;
 	struct mod_alloc_ctx *alloc = dev->mod->priv.resources.alloc;
 	struct k_heap *heap = alloc->heap;
 	int memory_flags = (is_shared ? SOF_MEM_FLAG_COHERENT : 0) |
 			   user_get_buffer_memory_region(dev->drv);
+
+	assert_can_be_cold();
 
 	/* allocate ring_buffer structure */
 	ring_buffer = sof_ctx_alloc(alloc, memory_flags, sizeof(*ring_buffer), 0);

@@ -1,7 +1,8 @@
 # Module Adapter Architecture
 
 > **Runs in:** Boundary / bridge — the module adapter is the container that runs audio modules
-> in **user** threads (DP threads, or the userspace proxy in `library/userspace_proxy.c`) while
+> in **user** threads (DP threads, or the userspace proxy in `library/userspace_proxy_user.c`,
+> whose kernel half is `src/kernel/audio/module_adapter/library/userspace_proxy.c`) while
 > being driven from the **kernel** pipeline. It hosts the `mod_*` allocation syscalls and sets
 > up per-module memory domains and object grants. See
 > [User/kernel split](../../include/sof/userspace/README.md).
@@ -65,7 +66,7 @@ sequenceDiagram
 
     Pipe->>ModAd: comp_prepare()
     activate ModAd
-    ModAd->>ModAd: Calculate chunks (period bytes, deep_buff_bytes)
+    ModAd->>ModAd: Calculate period bytes
     ModAd->>Mod: module_prepare()
     Mod-->>ModAd: External DSP prepared internal states
     ModAd-->>Pipe: Prepared (Buffer formats synced)
@@ -81,7 +82,7 @@ To unify components operating directly in interrupt boundaries (DMA Low Latency 
 For LL modules, processing is fully synchronous within the pipeline tick:
 
 1. `comp_copy()` invokes `module_adapter_copy()`.
-2. Data is fetched directly into `module_process_legacy()` or `module_process_sink_src()`.
+2. Data is fetched directly into `module_process_sink_src()`.
 3. `ops->process()` consumes upstream arrays and produces downstream arrays.
 
 ### Data Processing (DP) Execution

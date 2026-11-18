@@ -10,7 +10,6 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
-#include <sof/platform.h>
 #include <ipc/stream.h>
 #include <user/rtnr.h>
 #include <stdint.h>

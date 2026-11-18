@@ -85,4 +85,56 @@ static inline crossover_split crossover_find_split_func(int32_t num_sinks)
 	return crossover_split_fnmap[num_sinks - CROSSOVER_2WAY_NUM_SINKS];
 }
 
+#if CONFIG_FORMAT_FLOAT
+#include <sof/math/iir_df1_float.h>
+
+/**
+ * Stores the state of one channel of the Crossover filter (Float)
+ */
+struct crossover_state_float {
+	/* Store the state for each LR4 filter. */
+	struct iir_state_df1_float lowpass[CROSSOVER_MAX_LR4];
+	struct iir_state_df1_float highpass[CROSSOVER_MAX_LR4];
+};
+
+typedef void (*crossover_split_float)(float in, float out[],
+				      struct crossover_state_float *state);
+
+extern const crossover_split_float crossover_split_float_fnmap[];
+
+int crossover_init_coef_ch_float(struct processing_module *mod,
+				 struct sof_eq_iir_biquad *coef,
+				 struct crossover_state_float *ch_state,
+				 int32_t num_sinks);
+
+static inline void crossover_reset_state_lr4_float(struct processing_module *mod,
+						   struct iir_state_df1_float *lr4)
+{
+	mod_free(mod, lr4->coef);
+	mod_free(mod, lr4->delay);
+
+	lr4->coef = NULL;
+	lr4->delay = NULL;
+}
+
+static inline void crossover_reset_state_ch_float(struct processing_module *mod,
+						  struct crossover_state_float *ch_state)
+{
+	int i;
+
+	for (i = 0; i < CROSSOVER_MAX_LR4; i++) {
+		crossover_reset_state_lr4_float(mod, &ch_state->lowpass[i]);
+		crossover_reset_state_lr4_float(mod, &ch_state->highpass[i]);
+	}
+}
+
+static inline crossover_split_float crossover_find_split_func_float(int32_t num_sinks)
+{
+	if (num_sinks < CROSSOVER_2WAY_NUM_SINKS ||
+	    num_sinks > CROSSOVER_4WAY_NUM_SINKS)
+		return NULL;
+	return crossover_split_float_fnmap[num_sinks - CROSSOVER_2WAY_NUM_SINKS];
+}
+#endif /* CONFIG_FORMAT_FLOAT */
+
 #endif /* __SOF_CROSSOVER_COMMON_H__ */

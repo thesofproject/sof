@@ -10,7 +10,7 @@
 #ifndef __PLATFORM_LIB_MAILBOX_H__
 #define __PLATFORM_LIB_MAILBOX_H__
 
-#include <sof/lib/memory.h>
+#include <platform/lib/mailbox_layout.h>
 #include <stddef.h>
 #include <stdint.h>
 

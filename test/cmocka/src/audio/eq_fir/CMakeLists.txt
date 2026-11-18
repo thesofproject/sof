@@ -18,6 +18,7 @@ add_library(audio_for_eq_fir STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir_hifi2ep.c
 	${PROJECT_SOURCE_DIR}/src/audio/eq_fir/eq_fir_hifi3.c
 	${PROJECT_SOURCE_DIR}/src/math/fir_generic.c
+	${PROJECT_SOURCE_DIR}/src/math/fir_float.c
 	${PROJECT_SOURCE_DIR}/src/math/fir_hifi2ep.c
 	${PROJECT_SOURCE_DIR}/src/math/fir_hifi3.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
@@ -34,8 +35,9 @@ add_library(audio_for_eq_fir STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/data_blob.c
 	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
 	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
-	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
+	${PROJECT_SOURCE_DIR}/src/kernel/ipc/ipc-common-kernel.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/lib/objpool.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c

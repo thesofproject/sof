@@ -35,7 +35,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.29.4
+      image: thesofproject/zephyr-lite:v0.30.0
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -85,7 +85,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.29.4
+      image: thesofproject/zephyr-lite:v0.30.0
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -116,7 +116,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.29.4
+      image: thesofproject/zephyr-lite:v0.30.0
     strategy:
       fail-fast: false
       matrix:
@@ -235,18 +235,22 @@ jobs:
             --no-tarball \
             ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
 
-      # Informational only for now, see scripts/check_kernel_includes.py
-      - name: kernel/user-space include report
+      # Fails when a user-space source outside of the [leak-baseline] in
+      # scripts/kernel_user_partition.txt includes a kernel-only header,
+      # see scripts/check_kernel_includes.py
+      - name: kernel/user-space include check
         if: always()
         env:
           PLATFORMS: ${{ matrix.IPC_platforms }}
         run: |
+          rc=0
           for p in $PLATFORMS; do
             test -f build-"$p"/build.ninja || continue
             printf '\n==== %s ====\n' "$p"
             ZEPHYR_BASE="$(pwd)"/zephyr \
-              python3 sof/scripts/check_kernel_includes.py --summary build-"$p" || true
+              python3 sof/scripts/check_kernel_includes.py --strict --summary build-"$p" || rc=1
           done
+          exit $rc
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1

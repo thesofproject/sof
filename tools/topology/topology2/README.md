@@ -14,6 +14,22 @@ Topology v2 introduces an object-oriented pre-processing layer directly into the
 Building topologies requires `alsatplg` version 1.2.7 or later. The version check is
 enforced in `CMakeLists.txt` at configure time.
 
+### HDA benchmarks
+
+The generic HDA benchmark (`BENCH_CONFIG=benchmark,HDA_CONFIG=benchmark`)
+provides its own DAI pipelines. The default component-benchmark DAI gateways
+are only instantiated with `HDA_CONFIG=none` to avoid duplicate widget names
+and overlapping pipeline IDs.
+
+The MFCC and MFCC-mel HDA benchmarks use 16 kHz throughout, including the HDA
+link. Their copiers convert sample formats, not sample rates. Use 16 kHz when
+running these benchmarks; MFCC output carries feature data, not listenable
+audio.
+
+The HDA mix topology uses a 40 Hz capture high-pass at both 48 kHz and
+96 kHz. At 96 kHz it reuses the 20 Hz / 48 kHz coefficients, which have
+the same normalized cutoff.
+
 ## Key Advantages
 
 - **Object-Oriented Syntax**: Topology v2 allows for the definition of classes (`Class.Widget`, `Class.Pipeline`) and object instantiation, making the topology files much easier to read, maintain, and extend.
@@ -143,6 +159,14 @@ To build a specific topology target:
 make sof-lnl-sdw-cs42l43-l0-cs35l56-l12
 ```
 
+Each built binary is checked by the [topology validator](../validator/README.md), which repeats
+the checks the Linux SOF driver does when loading a topology. A validation error fails the
+build of that topology. To check a binary by hand, for example to see warnings too:
+
+```bash
+tools/topology/validator/tplg_validate.py build_tools/topology/topology2/production/sof-mtl-rt711-4ch.tplg
+```
+
 ## Best Practices for Adding New Topology Definitions
 
 ### Topology Structure
@@ -242,11 +266,13 @@ default ID ranges for the same endpoint types.
 | Jack Echo Ref | 11 | `SDW_JACK_ECHO_REF_PCM_ID` |
 | Speaker Echo Ref | 12 | `SDW_SPK_ECHO_REF_PCM_ID` |
 | Bluetooth | 2 or 20 | `BT_PCM_ID` |
-| USB Audio Offload (UAOL) | 21 | `UAOL_PCM_ID` |
-| Deepbuffer UAOL | 22 | `DEEP_BUFFER_PCM_ID` |
-| Deep Buffer (Jack) | 31 | `DEEP_BUFFER_PCM_ID` |
-| Deep Buffer (Speaker) | 35 | `DEEP_BUFFER_PCM_ID_2` |
-| DMIC Deep Buffer | 46 | `DMIC0_DEEP_BUFFER_PCM_ID` |
+| USB Offload 0 (playback/capture) | 21 | `UAOL_PCM_ID` |
+| USB Offload 1 (playback/capture) | 22 | `UAOL_PCM1_ID` |
+| Deepbuffer USB Offload 0 | 23 | `UAOL_DB_PCM_ID` |
+| Deepbuffer USB Offload 1 | 24 | `UAOL_DB1_PCM_ID` |
+| Deepbuffer Jack Out | 31 | `DEEP_BUFFER_PCM_ID` |
+| Deepbuffer Speaker | 35 | `DEEP_BUFFER_PCM_ID_2` |
+| Deepbuffer DMIC | 46 | `DMIC0_DEEP_BUFFER_PCM_ID` |
 | Compress Jack Out | 50 | `COMPR_PCM_ID` |
 | Compress Speaker | 52 | `COMPR_2_PCM_ID` |
 
@@ -263,8 +289,35 @@ default ID ranges for the same endpoint types.
 | HDMI 2 | 4 | `HDMI2_PCM_ID` |
 | HDMI 3 | 5 | `HDMI3_PCM_ID` |
 | DMIC0 | 6 | `DMIC0_PCM_ID` |
-| Deep Buffer | 31 | `DEEP_BUFFER_PCM_ID` |
+| USB Offload 0 (playback/capture) | 21 | `UAOL_PCM_ID` |
+| USB Offload 1 (playback/capture) | 22 | `UAOL_PCM1_ID` |
+| Deepbuffer USB Offload 0 | 23 | `UAOL_DB_PCM_ID` |
+| Deepbuffer USB Offload 1 | 24 | `UAOL_DB1_PCM_ID` |
+| Deepbuffer HDA Analog | 31 | `DEEP_BUFFER_PCM_ID` |
 | Compress HDA Analog | 50 | `COMPR_PCM_ID` |
+
+**Intel HDA Backend DAI Link IDs:**
+
+These IDs match the fixed backend DAI-link IDs defined by the kernel machine
+driver. They are independent of PCM IDs and pipeline indexes. The kernel defines
+base IDs for iDisp HDMI, HDA, and UAOL. The HDA helper increments the iDisp and
+HDA base IDs when it creates additional links; UAOL stream backends also use
+consecutive IDs.
+
+| Backend | DAI Link ID | Kernel Define | Topology Variable |
+|---|---:|---|---|
+| iDisp HDMI 1 | 1 | `IDISP_HDMI_BE_ID` | `HDMI1_ID` |
+| iDisp HDMI 2 | 2 | `IDISP_HDMI_BE_ID + 1` | `HDMI2_ID` |
+| iDisp HDMI 3 | 3 | `IDISP_HDMI_BE_ID + 2` | `HDMI3_ID` |
+| HDA Analog | 4 | `HDA_BE_ID` | Hard-coded as `id 4` |
+| HDA Digital | 5 | `HDA_BE_ID + 1` | — |
+| DMIC01 | 6 | `DMIC01_BE_ID` | `DMIC0_ID` |
+| DMIC 16 kHz | 7 | `DMIC16K_BE_ID` | `DMIC1_ID` |
+| Bluetooth Offload | 8 | `BT_OFFLOAD_BE_ID` | Not used by HDA generic |
+| UAOL Play0 | 9 | `UAOL_BE_ID` | `UAOL_PB_BE_ID` |
+| UAOL Cap0 | 10 | `UAOL_BE_ID + 1` | `UAOL_CP_BE_ID` |
+| UAOL Play1 | 11 | `UAOL_BE_ID + 2` | `UAOL_PB1_BE_ID` |
+| UAOL Cap1 | 12 | `UAOL_BE_ID + 3` | `UAOL_CP1_BE_ID` |
 
 Key rules:
 
@@ -303,9 +356,12 @@ is at N1 (50/51, 60/61, 70/71, 80/81).
 | HDMI 4 Host / DAI | 80 / 81 | `HDMI4_HOST_PIPELINE_ID` / `HDMI4_DAI_PIPELINE_ID` |
 | Compress Jack / Speaker | 90 / 92 | `COMPR_PIPELINE_ID` / `COMPR_2_PIPELINE_ID` |
 | PCH DMIC0 Host / DAI | 100 / 101 | `DMIC0_HOST_PIPELINE_ID` / `DMIC0_DAI_PIPELINE_ID` |
-| UAOL Playback Host / DAI | 210 / 211 | `UAOL_PB_HOST_PIPELINE_ID` / `UAOL_PB_DAI_PIPELINE_ID` |
-| UAOL Capture Host / DAI | 212 / 213 | `UAOL_CP_HOST_PIPELINE_ID` / `UAOL_CP_DAI_PIPELINE_ID` |
-| UAOL Deepbuffer | 214 | `DEEP_BUFFER_PIPELINE_ID` |
+| UAOL0 Playback Host / DAI | 210 / 211 | `UAOL_PB_HOST_PIPELINE_ID` / `UAOL_PB_DAI_PIPELINE_ID` |
+| UAOL0 Capture Host / DAI | 212 / 213 | `UAOL_CP_HOST_PIPELINE_ID` / `UAOL_CP_DAI_PIPELINE_ID` |
+| UAOL0 Deepbuffer | 214 | `UAOL_DB_PIPELINE_ID` |
+| UAOL1 Playback Host / DAI | 215 / 216 | `UAOL_PB1_HOST_PIPELINE_ID` / `UAOL_PB1_DAI_PIPELINE_ID` |
+| UAOL1 Capture Host / DAI | 217 / 218 | `UAOL_CP1_HOST_PIPELINE_ID` / `UAOL_CP1_DAI_PIPELINE_ID` |
+| UAOL1 Deepbuffer | 219 | `UAOL_DB1_PIPELINE_ID` |
 
 **Intel HDA Pipeline IDs:**
 

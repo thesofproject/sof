@@ -21,6 +21,7 @@
 #include <sof/audio/audio_stream.h>
 #include <ipc4/aec.h>
 #include <ipc4/header.h>
+#include <ipc4/module.h>
 #include <sof/math/numbers.h>
 #include <rtos/init.h>
 #include <rtos/string.h>
@@ -229,17 +230,17 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 	if (num_of_sources == 1) {
 		cd->mic_src = 0;
 		cd->ref_src = -1;
-	} else if (source_get_pipeline_id(sources[0]) == sink_get_pipeline_id(sinks[0]) &&
-	    source_get_pipeline_id(sources[1]) != sink_get_pipeline_id(sinks[0])) {
-		cd->mic_src = 0;
-		cd->ref_src = 1;
-	} else if (source_get_pipeline_id(sources[1]) == sink_get_pipeline_id(sinks[0]) &&
-		   source_get_pipeline_id(sources[0]) != sink_get_pipeline_id(sinks[0])) {
-		cd->mic_src = 1;
-		cd->ref_src = 0;
 	} else {
-		cd->mic_src = 0;
-		cd->ref_src = 1;
+#ifdef CONFIG_IPC_MAJOR_4
+		/* Bind order is arbitrary, input pin 0 is mic and pin 1 is reference */
+		cd->mic_src = IPC4_SINK_QUEUE_ID(source_get_id(sources[0])) == 0 ? 0 : 1;
+#else
+		/* The mic is the source in the same pipeline as the output */
+		cd->mic_src = source_get_pipeline_id(sources[1]) == sink_get_pipeline_id(sinks[0]) &&
+			      source_get_pipeline_id(sources[0]) != sink_get_pipeline_id(sinks[0]) ?
+			      1 : 0;
+#endif
+		cd->ref_src = 1 - cd->mic_src;
 	}
 
 	mic_fmt  = source_get_frm_fmt(sources[cd->mic_src]);
@@ -313,9 +314,14 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 
 #ifdef CONFIG_IPC_MAJOR_4
 	/* Apply reference format override from topology pin descriptor. */
-	if (cd->ref_src >= 0)
+	if (cd->ref_src >= 0) {
+		if (!mod->priv.cfg.input_pins || mod->priv.cfg.nb_input_pins < 2) {
+			comp_err(dev, "webrtc_aec: no reference pin format");
+			return -EINVAL;
+		}
 		ipc4_update_source_format(sources[cd->ref_src],
 					  &mod->priv.cfg.input_pins[1].audio_fmt);
+	}
 #endif
 
 	if (cd->backend->configure) {
@@ -641,14 +647,35 @@ static int webrtc_aec_get_config(struct processing_module *mod, uint32_t config_
 	return -EINVAL;
 }
 
+static bool webrtc_aec_is_ready_to_process(struct processing_module *mod,
+					   struct sof_source **sources,
+					   int num_of_sources,
+					   struct sof_sink **sinks,
+					   int num_of_sinks)
+{
+	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
+	struct sof_source *mic;
+	struct sof_sink *out;
+
+	if (!cd || !cd->configured || num_of_sources <= cd->mic_src || num_of_sinks < 1)
+		return false;
+
+	mic = sources[cd->mic_src];
+	out = sinks[0];
+
+	return source_get_data_available(mic) >= source_get_min_available(mic) &&
+	       sink_get_free_size(out) >= sink_get_min_free_space(out);
+}
+
 static const struct module_interface webrtc_aec_interface = {
-	.init              = webrtc_aec_init,
-	.prepare           = webrtc_aec_prepare,
-	.process           = webrtc_aec_process,
-	.set_configuration = webrtc_aec_set_config,
-	.get_configuration = webrtc_aec_get_config,
-	.reset             = webrtc_aec_reset,
-	.free              = webrtc_aec_free,
+	.init                = webrtc_aec_init,
+	.prepare             = webrtc_aec_prepare,
+	.is_ready_to_process = webrtc_aec_is_ready_to_process,
+	.process             = webrtc_aec_process,
+	.set_configuration   = webrtc_aec_set_config,
+	.get_configuration   = webrtc_aec_get_config,
+	.reset               = webrtc_aec_reset,
+	.free                = webrtc_aec_free,
 };
 
 #if CONFIG_COMP_WEBRTC_AEC_MODULE
@@ -657,9 +684,19 @@ static const struct module_interface webrtc_aec_interface = {
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("WRTCAEC", &webrtc_aec_interface, 2,
-				  SOF_REG_UUID(webrtc_aec), 40);
+static const struct sof_man_module_manifest mod_manifest __section(".module") __used = {
+	.module = {
+		.name = "WRTCAEC",
+		.uuid = SOF_REG_UUID(webrtc_aec),
+		.entry_point = (uint32_t)(&webrtc_aec_interface),
+		.instance_max_count = 40,
+		.type = {
+			.load_type = SOF_MAN_MOD_TYPE_LLEXT,
+			.domain_dp = 1,
+		},
+		.affinity_mask = 2,
+	}
+};
 
 SOF_LLEXT_BUILDINFO;
 

@@ -83,8 +83,8 @@ struct smart_amp_model_data {
 struct sof_smart_amp_config {
 	uint32_t size;
 	uint32_t feedback_channels;
-	int8_t source_ch_map[PLATFORM_MAX_CHANNELS];
-	int8_t feedback_ch_map[PLATFORM_MAX_CHANNELS];
+	int8_t source_ch_map[CONFIG_PLATFORM_MAX_CHANNELS];
+	int8_t feedback_ch_map[CONFIG_PLATFORM_MAX_CHANNELS];
 };
 
 #if CONFIG_IPC_MAJOR_4
