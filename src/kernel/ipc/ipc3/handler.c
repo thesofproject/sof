@@ -23,7 +23,7 @@
 #include <rtos/interrupt.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <sof/ipc/schedule.h>
 #include <sof/lib/agent.h>
 #include <rtos/alloc.h>

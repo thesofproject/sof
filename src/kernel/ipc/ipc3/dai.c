@@ -11,7 +11,7 @@
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <sof/audio/component_dai.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/mailbox.h>

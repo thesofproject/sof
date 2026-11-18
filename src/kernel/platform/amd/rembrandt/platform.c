@@ -9,7 +9,7 @@
 #include <sof/debug/debug.h>
 #include <rtos/interrupt.h>
 #include <sof/drivers/acp_dai_dma.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <rtos/timer.h>
 #include <sof/fw-ready-metadata.h>
 #include <sof/lib/agent.h>

@@ -11,7 +11,7 @@
 #include <sof/lib/mm_heap.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/msg.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>

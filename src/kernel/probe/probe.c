@@ -16,7 +16,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/topology.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <rtos/timer.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>

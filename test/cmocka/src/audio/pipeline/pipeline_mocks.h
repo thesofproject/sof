@@ -7,7 +7,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/schedule.h>

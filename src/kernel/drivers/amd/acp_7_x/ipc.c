@@ -9,7 +9,7 @@
 
 #include <rtos/panic.h>
 #include <rtos/interrupt.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/schedule.h>
 #include <rtos/alloc.h>
