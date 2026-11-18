@@ -8,7 +8,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/debug/telemetry/telemetry.h>
-#include <sof/llext_manager.h>
+#include <sof/kernel/llext_manager.h>
 #include <rtos/task.h>
 #include <rtos/userspace_helper.h>
 #include <sof/schedule/dp_schedule.h>

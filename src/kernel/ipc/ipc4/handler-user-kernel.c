@@ -22,7 +22,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
-#include <sof/llext_manager.h>
+#include <sof/kernel/llext_manager.h>
 #include <sof/math/numbers.h>
 #include <sof/tlv.h>
 #include <sof/trace/trace.h>
