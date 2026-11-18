@@ -24,6 +24,70 @@ DECLARE_TR_CTX(usb_audio_tr, SOF_UUID(usb_audio_uuid), LOG_LEVEL_INFO);
 
 static struct usb_audio_data *g_playback_data;
 static struct usb_audio_data *g_capture_data;
+static bool s_tone_enabled;
+
+/* 1000 Hz stereo 48-sample lookup tables for optional test tone generation */
+static const float s_sine48_f[48] = {
+	0.000000f,  0.130526f,  0.258819f,  0.382683f,  0.500000f,  0.608761f,
+	0.707107f,  0.793353f,  0.866025f,  0.923880f,  0.965926f,  0.991445f,
+	1.000000f,  0.991445f,  0.965926f,  0.923880f,  0.866025f,  0.793353f,
+	0.707107f,  0.608761f,  0.500000f,  0.382683f,  0.258819f,  0.130526f,
+	0.000000f, -0.130526f, -0.258819f, -0.382683f, -0.500000f, -0.608761f,
+	-0.707107f, -0.793353f, -0.866025f, -0.923880f, -0.965926f, -0.991445f,
+	-1.000000f, -0.991445f, -0.965926f, -0.923880f, -0.866025f, -0.793353f,
+	-0.707107f, -0.608761f, -0.500000f, -0.382683f, -0.258819f, -0.130526f,
+};
+
+static const int16_t s_sine48_s16[48] = {
+	0, 4276, 8472, 12510, 16384, 19947, 23170, 25996,
+	28377, 30273, 31650, 32487, 32767, 32487, 31650, 30273,
+	28377, 25996, 23170, 19947, 16384, 12510, 8472, 4276,
+	0, -4276, -8472, -12510, -16384, -19947, -23170, -25996,
+	-28377, -30273, -31650, -32487, -32767, -32487, -31650, -30273,
+	-28377, -25996, -23170, -19947, -16384, -12510, -8472, -4276,
+};
+
+static void fill_sine_float(float *dst, uint32_t frames, uint32_t *phase_idx)
+{
+	for (uint32_t i = 0; i < frames; i++) {
+		float s = 0.5f * s_sine48_f[(*phase_idx + i) % 48];
+
+		dst[2 * i] = s;
+		dst[2 * i + 1] = s;
+	}
+	*phase_idx = (*phase_idx + frames) % 48;
+}
+
+static void fill_sine_s16(int16_t *dst, uint32_t frames, uint32_t *phase_idx)
+{
+	for (uint32_t i = 0; i < frames; i++) {
+		int16_t s = (int32_t)s_sine48_s16[(*phase_idx + i) % 48] * 7 / 10;
+
+		dst[2 * i] = s;
+		dst[2 * i + 1] = s;
+	}
+	*phase_idx = (*phase_idx + frames) % 48;
+}
+
+void usb_audio_set_tone(bool enable)
+{
+	s_tone_enabled = enable;
+}
+
+bool usb_audio_get_tone(void)
+{
+	return s_tone_enabled;
+}
+
+bool usb_audio_is_capture_active(void)
+{
+	return g_capture_data && g_capture_data->active;
+}
+
+bool usb_audio_is_playback_active(void)
+{
+	return g_playback_data && g_playback_data->active;
+}
 
 static void ring_write_locked(struct usb_audio_ring_buffer *ring,
 			      const uint8_t *src, size_t bytes)
@@ -329,6 +393,18 @@ static int usb_audio_copy(struct comp_dev *dev)
 				struct usb_audio_ring_buffer *ring = &uad->ring;
 				k_spinlock_key_t key = k_spin_lock(&ring->lock);
 
+				if (s_tone_enabled) {
+					static uint32_t s_pb_tone_f_idx;
+
+					fill_sine_float(f_buf, frames_to_copy, &s_pb_tone_f_idx);
+					k_spin_unlock(&ring->lock, key);
+					audio_stream_copy_from_linear(f_buf, 0, &sink->stream,
+								      0, frames_to_copy * 2);
+					comp_update_buffer_produce(sink,
+								   frames_to_copy * 2 * sizeof(float));
+					return 0;
+				}
+
 				if (!uad->started) {
 					if (ring->count < USB_AUDIO_PREBUFFER_BYTES) {
 						k_spin_unlock(&ring->lock, key);
@@ -368,6 +444,19 @@ static int usb_audio_copy(struct comp_dev *dev)
 				size_t chunk = MIN((size_t)uad->period_bytes, sizeof(temp_buf));
 				struct usb_audio_ring_buffer *ring = &uad->ring;
 				k_spinlock_key_t key = k_spin_lock(&ring->lock);
+
+				if (s_tone_enabled) {
+					static uint32_t s_pb_tone_s16_idx;
+					uint32_t frames_to_copy = chunk / (2 * sizeof(int16_t));
+
+					fill_sine_s16((int16_t *)temp_buf, frames_to_copy,
+						      &s_pb_tone_s16_idx);
+					k_spin_unlock(&ring->lock, key);
+					audio_stream_copy_from_linear(temp_buf, 0, &sink->stream, 0,
+								      chunk / audio_stream_sample_bytes(&sink->stream));
+					comp_update_buffer_produce(sink, chunk);
+					return 0;
+				}
 
 				if (!uad->started) {
 					if (ring->count < USB_AUDIO_PREBUFFER_BYTES) {
@@ -437,6 +526,30 @@ static int usb_audio_copy(struct comp_dev *dev)
 					ring->count -= drop;
 				}
 
+				size_t free_space = USB_AUDIO_RING_BUFFER_SIZE - ring->count;
+				size_t to_copy = MIN(s16_bytes, free_space);
+
+				ring_write_locked(ring, (const uint8_t *)s16_buf, to_copy);
+				k_spin_unlock(&ring->lock, key);
+			} else if (s_tone_enabled) {
+				int16_t s16_buf[96];
+				uint32_t frames_to_copy = MIN(dev->frames ? dev->frames : 48U, 48U);
+				size_t s16_bytes = frames_to_copy * 2 * sizeof(int16_t);
+				struct usb_audio_ring_buffer *ring = &uad->ring;
+				k_spinlock_key_t key;
+				static uint32_t s_cap_tone_f_idx;
+
+				fill_sine_s16(s16_buf, frames_to_copy, &s_cap_tone_f_idx);
+				key = k_spin_lock(&ring->lock);
+				if (ring->count + s16_bytes > USB_AUDIO_RING_BUFFER_SIZE) {
+					size_t drop = (ring->count + s16_bytes) - USB_AUDIO_RING_BUFFER_SIZE;
+
+					drop = (drop + 3) & ~((size_t)3);
+					if (drop > ring->count)
+						drop = ring->count;
+					ring->tail = (ring->tail + drop) % USB_AUDIO_RING_BUFFER_SIZE;
+					ring->count -= drop;
+				}
 				size_t free_space = USB_AUDIO_RING_BUFFER_SIZE - ring->count;
 				size_t to_copy = MIN(s16_bytes, free_space);
 

@@ -14,8 +14,12 @@
 
 /* 16 KB (85 ms at 48 kHz stereo S16_LE) lock-protected ring buffer */
 #define USB_AUDIO_RING_BUFFER_SIZE 16384
-/* Prebuffer 10 ms (1920 bytes) at stream start to absorb USB/PLL jitter */
+/* Prebuffer to absorb USB/PLL jitter at stream start */
+#if defined(CONFIG_PLATFORM_RP2350)
+#define USB_AUDIO_PREBUFFER_BYTES  384
+#else
 #define USB_AUDIO_PREBUFFER_BYTES  1920
+#endif
 
 struct usb_audio_ring_buffer {
 	uint8_t buf[USB_AUDIO_RING_BUFFER_SIZE];
@@ -42,5 +46,9 @@ bool usb_audio_peek_capture_data(void *dst, size_t bytes);
 void usb_audio_consume_capture_data(size_t bytes);
 void usb_audio_set_playback_rate(uint32_t rate);
 void usb_audio_set_capture_rate(uint32_t rate);
+void usb_audio_set_tone(bool enable);
+bool usb_audio_get_tone(void);
+bool usb_audio_is_capture_active(void);
+bool usb_audio_is_playback_active(void);
 
 #endif /* __SOF_AUDIO_USB_AUDIO_H__ */

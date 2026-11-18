@@ -21,6 +21,10 @@
 
 #if defined(CONFIG_USBD_AUDIO2_CLASS) && defined(CONFIG_COMP_USB_AUDIO)
 #include <sof/audio/usb_audio.h>
+#if defined(CONFIG_COMP_BT_AUDIO)
+#include <sof/audio/bt_audio.h>
+#include <sof/audio/bt_service.h>
+#endif
 #include <zephyr/kernel.h>
 #include <zephyr/usb/class/usbd_uac2.h>
 #endif
@@ -338,8 +342,13 @@ K_MEM_SLAB_DEFINE_STATIC(uac2_tx_slab, UAC2_BUF_BLOCK_SIZE, 64, 64);
 static uint32_t s_uac2_sample_rate = 48000;
 static uint32_t s_uac2_cap_frame_sz = 4;
 static uint8_t s_uac2_capture_term_id;
+static uint32_t s_uac2_capture_pipe_id;
+static uint32_t s_uac2_playback_pipe_id;
 static bool s_uac2_capture_active;
+static bool s_uac2_playback_active;
 static bool s_uac2_microframes;
+static bool s_uac2_capture_mute;
+static bool s_uac2_playback_mute;
 
 static void sof_uac2_send_capture_pending(const struct device *dev)
 {
@@ -361,19 +370,45 @@ static void sof_uac2_send_capture_pending(const struct device *dev)
 
 	for (int iter = 0; iter < 2; iter++) {
 		void *buf = NULL;
+		bool have_data;
+		bool use_bt = false;
 		int ret;
 
 		if (k_mem_slab_alloc(&uac2_tx_slab, &buf, K_NO_WAIT) != 0)
 			break;
 
-		if (!usb_audio_peek_capture_data(buf, frame_bytes)) {
+#if defined(CONFIG_COMP_BT_AUDIO)
+		if (bt_service_get_route() == SOF_AUDIO_ROUTE_USB_BT) {
+			use_bt = true;
+			have_data = bt_audio_peek_capture_data(buf, frame_bytes);
+		} else
+#endif
+		{
+			have_data = usb_audio_peek_capture_data(buf, frame_bytes);
+		}
+
+		if (!have_data) {
+#if defined(CONFIG_PLATFORM_RP2350)
+			/* Keep isochronous IN streaming continuous on RP2350 to avoid ALSA -EIO */
+			memset(buf, 0, frame_bytes);
+#else
 			k_mem_slab_free(&uac2_tx_slab, buf);
 			break;
+#endif
+		} else if (s_uac2_capture_mute) {
+			memset(buf, 0, frame_bytes);
 		}
 
 		ret = usbd_uac2_send(dev, s_uac2_capture_term_id, buf, (uint16_t)frame_bytes);
 		if (ret == 0) {
-			usb_audio_consume_capture_data(frame_bytes);
+			if (have_data && !s_uac2_capture_mute) {
+#if defined(CONFIG_COMP_BT_AUDIO)
+				if (use_bt)
+					bt_audio_consume_capture_data(frame_bytes);
+				else
+#endif
+					usb_audio_consume_capture_data(frame_bytes);
+			}
 		} else {
 			k_mem_slab_free(&uac2_tx_slab, buf);
 			break;
@@ -384,6 +419,15 @@ static void sof_uac2_send_capture_pending(const struct device *dev)
 static void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 {
 	ARG_UNUSED(user_data);
+
+#if defined(CONFIG_PLATFORM_RP2350)
+	if (s_uac2_capture_active && s_uac2_capture_pipe_id) {
+		struct pipeline *pipe = sof_static_pipeline_get(s_uac2_capture_pipe_id);
+
+		if (pipe && pipe->status == COMP_STATE_ACTIVE)
+			pipeline_copy(pipe);
+	}
+#endif
 
 	if (s_uac2_capture_active && dev)
 		sof_uac2_send_capture_pending(dev);
@@ -403,17 +447,26 @@ static void sof_uac2_terminal_update_cb(const struct device *dev, uint8_t termin
 		for (size_t i = 0; i < topo->num_comps; i++) {
 			const struct sof_static_comp *cdesc = &topo->comps[i];
 
-			if (cdesc->type == SOF_STATIC_COMP_HOST &&
-			    cdesc->ep.usb.terminal_id == terminal &&
-			    cdesc->direction == SOF_IPC_STREAM_CAPTURE) {
+			if (cdesc->type != SOF_STATIC_COMP_HOST ||
+			    cdesc->ep.usb.terminal_id != terminal)
+				continue;
+
+			if (cdesc->direction == SOF_IPC_STREAM_CAPTURE) {
 				uint32_t ch = cdesc->caps.max_channels ?
 					      cdesc->caps.max_channels : 2;
-				uint32_t bps = (cdesc->caps.default_fmt == SOF_IPC_FRAME_S16_LE) ?
+				/* UAC2 USB wire subslot is 16-bit for S16_LE and FLOAT pipelines */
+				uint32_t bps = (cdesc->caps.default_fmt == SOF_IPC_FRAME_S16_LE ||
+						cdesc->caps.default_fmt == SOF_IPC_FRAME_FLOAT) ?
 					       2 : 4;
 
 				s_uac2_cap_frame_sz = ch * bps;
 				s_uac2_capture_term_id = terminal;
+				s_uac2_capture_pipe_id = cdesc->pipeline_id;
 				s_uac2_capture_active = enabled;
+				break;
+			} else if (cdesc->direction == SOF_IPC_STREAM_PLAYBACK) {
+				s_uac2_playback_pipe_id = cdesc->pipeline_id;
+				s_uac2_playback_active = enabled;
 				break;
 			}
 		}
@@ -447,8 +500,26 @@ static void sof_uac2_data_recv_cb(const struct device *dev, uint8_t terminal,
 	ARG_UNUSED(terminal);
 	ARG_UNUSED(user_data);
 
-	if (buf && size > 0)
-		usb_audio_feed_playback_data(buf, size);
+	if (buf && size > 0) {
+		if (s_uac2_playback_mute)
+			memset(buf, 0, size);
+
+#if defined(CONFIG_COMP_BT_AUDIO)
+		if (bt_service_get_route() == SOF_AUDIO_ROUTE_USB_BT)
+			bt_audio_feed_playback_data(buf, size);
+		else
+#endif
+			usb_audio_feed_playback_data(buf, size);
+
+#if defined(CONFIG_PLATFORM_RP2350)
+		if (s_uac2_playback_active && s_uac2_playback_pipe_id) {
+			struct pipeline *pipe = sof_static_pipeline_get(s_uac2_playback_pipe_id);
+
+			if (pipe && pipe->status == COMP_STATE_ACTIVE)
+				pipeline_copy(pipe);
+		}
+#endif
+	}
 
 	if (buf)
 		k_mem_slab_free(&uac2_rx_slab, buf);
@@ -527,8 +598,31 @@ static int sof_uac2_set_sample_rate(const struct device *dev, uint8_t clock_id,
 static int sof_uac2_set_feature_mute(const struct device *dev, uint8_t entity_id,
 				     uint8_t channel, bool mute, void *user_data)
 {
+	const struct sof_static_topology *topo = sof_static_topology_get();
+
 	ARG_UNUSED(dev);
 	ARG_UNUSED(user_data);
+
+	if (topo && channel == 0) {
+		for (size_t i = 0; i < topo->num_controls; i++) {
+			const struct sof_static_kcontrol *ctl = &topo->controls[i];
+
+			if (ctl->uac2_entity_id != entity_id ||
+			    ctl->type != SOF_STATIC_CTRL_SWITCH)
+				continue;
+
+			for (size_t c = 0; c < topo->num_comps; c++) {
+				if (topo->comps[c].id == ctl->comp_id) {
+					if (topo->comps[c].direction == SOF_IPC_STREAM_PLAYBACK)
+						s_uac2_playback_mute = mute;
+					else if (topo->comps[c].direction == SOF_IPC_STREAM_CAPTURE)
+						s_uac2_capture_mute = mute;
+					break;
+				}
+			}
+			break;
+		}
+	}
 
 	return sof_static_kcontrol_set_by_uac2(entity_id, channel, mute ? 1 : 0, false);
 }

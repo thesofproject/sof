@@ -156,6 +156,8 @@ endif()
 
 sof_list_append_ifdef(CONFIG_COMP_BLOB base_files data_blob.c)
 sof_list_append_ifdef(CONFIG_COMP_USB_AUDIO base_files usb_audio.c)
+sof_list_append_ifdef(CONFIG_COMP_BT_AUDIO base_files bt_audio.c bt_service.c)
+sof_list_append_ifdef(CONFIG_COMP_I2S_AUDIO base_files i2s_audio.c)
 
 ### (end of common files)
 
