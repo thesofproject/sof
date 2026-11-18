@@ -22,7 +22,7 @@
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
 #include <sof/lib/regions_mm.h>
-#include <sof/llext_manager.h>
+#include <sof/kernel/llext_manager.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
 #include <sof/schedule/ll_schedule_domain.h>

@@ -15,7 +15,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/lib/mailbox.h>
 #include <sof/list.h>
-#include <sof/llext_manager.h>
+#include <sof/kernel/llext_manager.h>
 #include <sof/objpool.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/schedule.h>

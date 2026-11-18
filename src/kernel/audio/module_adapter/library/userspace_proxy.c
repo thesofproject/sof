@@ -26,7 +26,7 @@
 #include <stdint.h>
 
 #include <sof/lib_manager.h>
-#include <sof/llext_manager.h>
+#include <sof/kernel/llext_manager.h>
 #include <sof/audio/component.h>
 #include <sof/ipc/msg.h>
 #include <sof/schedule/dp_schedule.h>

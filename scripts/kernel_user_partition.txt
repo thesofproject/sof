@@ -34,7 +34,6 @@ src/audio/host-legacy.c
 [kernel-headers]
 src/kernel/include/*
 src/include/sof/drivers/*
-src/include/sof/llext_manager.h
 src/include/sof/lib/agent.h
 src/include/sof/lib/cpu-clk-manager.h
 src/include/sof/lib/perf_cnt.h

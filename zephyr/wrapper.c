@@ -7,7 +7,7 @@
 
 #include <sof/init.h>
 #include <sof/boot_test.h>
-#include <sof/llext_manager.h>
+#include <sof/kernel/llext_manager.h>
 #include <rtos/idc.h>
 #include <rtos/interrupt.h>
 #include <sof/drivers/interrupt-map.h>

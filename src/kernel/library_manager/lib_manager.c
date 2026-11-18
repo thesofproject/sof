@@ -25,7 +25,7 @@
 #include <sof/lib/cold.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
-#include <sof/llext_manager.h>
+#include <sof/kernel/llext_manager.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
 #include <sof/audio/module_adapter/library/userspace_proxy.h>
