@@ -50,6 +50,21 @@ void cpu_notify_state_exit(enum pm_state state);
  */
 #if defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall int cpu_get_id(void);
+
+struct k_thread;
+
+/**
+ * @brief Pin a (not yet started) thread to a single DSP core.
+ *
+ * k_thread_cpu_pin() is a plain kernel function that takes the scheduler
+ * lock and therefore cannot be called from user mode. This system call
+ * lets a user-mode thread pin a helper thread it has just created.
+ *
+ * @param thread Thread object the caller has access to
+ * @param cpu    Target core id
+ * @return 0 on success, negative error code otherwise
+ */
+__syscall int sof_thread_cpu_pin(struct k_thread *thread, int cpu);
 #endif
 
 /* let the compiler optimise when in single core mode */
