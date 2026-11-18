@@ -19,11 +19,16 @@
 [user-sources]
 src/*
 
-# Kernel sources inside src/: src/kernel/ and the legacy drivers.
+# Kernel sources inside src/: src/kernel/, and the legacy drivers and LL
+# scheduling domains, which go with the legacy drivers.
 [not-user-sources]
 src/kernel/*
 src/audio/dai-legacy.c
 src/audio/host-legacy.c
+src/schedule/dma_multi_chan_domain.c
+src/schedule/dma_single_chan_domain.c
+src/schedule/ll_schedule_xtos.c
+src/schedule/zephyr_dma_domain.c
 
 # SOF headers that only kernel code may include.
 # Not listed on purpose: rtos/init.h, which only provides the
