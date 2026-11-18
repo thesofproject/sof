@@ -74,12 +74,13 @@ static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 /* Update detector average across 32 frames */
 void drc_update_detector_average(struct drc_state *state,
 				 const struct sof_drc_params *p,
-				 int nbyte,
-				 int nch)
+				 size_t nbyte,
+				 unsigned int nch)
 {
 	int32_t detector_average = state->detector_average;
 	int32_t abs_input_array[DRC_DIVISION_FRAMES];
-	int div_start, i, ch;
+	int div_start, i;
+	unsigned int ch;
 	const int16_t *sample16_p;
 	const int32_t *sample32_p;
 	int32_t gain;
@@ -240,8 +241,8 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
 /* Compress output across 4-frame unrolled iterations */
 void drc_compress_output(struct drc_state *state,
 			 const struct sof_drc_params *p,
-			 int nbyte,
-			 int nch)
+			 size_t nbyte,
+			 unsigned int nch)
 {
 	const int div_start = state->pre_delay_read_index;
 	const int count = DRC_DIVISION_FRAMES >> 2;
@@ -250,7 +251,8 @@ void drc_compress_output(struct drc_state *state,
 	int32_t post_warp_compressor_gain;
 	int32_t total_gain;
 	int32_t tmp;
-	int i, j, ch, inc;
+	int i, j, inc;
+	unsigned int ch;
 	int16_t *sample16_p;
 	int32_t *sample32_p;
 	int32_t lshift;

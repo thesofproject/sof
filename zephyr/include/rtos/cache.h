@@ -31,17 +31,21 @@
 #endif /* defined(CONFIG_XTENSA) && defined(CONFIG_INTEL) */
 
 /* sanity check - make sure CONFIG_DCACHE_LINE_SIZE is valid */
-#if !defined(CONFIG_DCACHE_LINE_SIZE_DETECT) && (CONFIG_DCACHE_LINE_SIZE > 0)
+#if !defined(CONFIG_DCACHE_LINE_SIZE_DETECT) && defined(CONFIG_DCACHE_LINE_SIZE) && (CONFIG_DCACHE_LINE_SIZE > 0)
 #define DCACHE_LINE_SIZE CONFIG_DCACHE_LINE_SIZE
 #else
 #if defined(CONFIG_LIBRARY) || defined(CONFIG_ZEPHYR_POSIX)
 #define DCACHE_LINE_SIZE 64
-#elif defined(CONFIG_CPU_CORTEX_M)
+#elif defined(CONFIG_CPU_CORTEX_M) || defined(CONFIG_PLATFORM_NORDIC) || \
+	defined(CONFIG_PLATFORM_RP2350) || defined(CONFIG_PLATFORM_ESP32C6) || \
+	defined(CONFIG_SOC_SERIES_ESP32C6) || defined(CONFIG_PLATFORM_ESP32S3) || \
+	defined(CONFIG_SOC_SERIES_ESP32S3) || defined(CONFIG_PLATFORM_ESP32P4) || \
+	defined(CONFIG_SOC_SERIES_ESP32P4)
 #define DCACHE_LINE_SIZE 32
 #else
 #error "Invalid cache configuration."
 #endif /* defined(CONFIG_LIBRARY) || defined(CONFIG_ZEPHYR_POSIX) */
-#endif /* !defined(CONFIG_DCACHE_LINE_SIZE_DETECT) && (CONFIG_DCACHE_LINE_SIZE > 0) */
+#endif /* !defined(CONFIG_DCACHE_LINE_SIZE_DETECT) && defined(CONFIG_DCACHE_LINE_SIZE) && (CONFIG_DCACHE_LINE_SIZE > 0) */
 
 /** Alignment that keeps a buffer on data cache lines of its own */
 #define PLATFORM_DCACHE_ALIGN	DCACHE_LINE_SIZE

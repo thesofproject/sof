@@ -151,6 +151,8 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 	case SOF_DAI_IMX_SPDIF:
 	case SOF_DAI_IMX_ESAI:
 	case SOF_DAI_IMX_MICFIL:
+	case SOF_DAI_ESP32_I2S:
+	case SOF_DAI_ESP32_PDM:
 		channel = 0;
 		break;
 	default:
@@ -225,6 +227,10 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 	case SOF_DAI_IMX_ESAI:
 	case SOF_DAI_IMX_MICFIL:
 		dd->config.burst_elems = 2;
+		break;
+	case SOF_DAI_ESP32_I2S:
+	case SOF_DAI_ESP32_PDM:
+		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
 		break;
 	default:
 		/* other types of DAIs not handled for now */
@@ -370,12 +376,14 @@ static int dai_init_llp_info(struct dai_data *dd, struct comp_dev *dev)
 	copier_cfg = dd->dai_spec_config;
 	node = copier_cfg->gtw_cfg.node_id;
 
-	/* HDA and i.MX DAIs don't use llp slot */
+	/* HDA, i.MX, and ESP32 DAIs don't use llp slot */
 	if (dd->ipc_config.type == SOF_DAI_INTEL_HDA ||
 	    dd->ipc_config.type == SOF_DAI_IMX_SAI ||
 	    dd->ipc_config.type == SOF_DAI_IMX_SPDIF ||
 	    dd->ipc_config.type == SOF_DAI_IMX_ESAI ||
-	    dd->ipc_config.type == SOF_DAI_IMX_MICFIL)
+	    dd->ipc_config.type == SOF_DAI_IMX_MICFIL ||
+	    dd->ipc_config.type == SOF_DAI_ESP32_I2S ||
+	    dd->ipc_config.type == SOF_DAI_ESP32_PDM)
 		return 0;
 
 	/* don't support more gateway like EVAD */

@@ -98,11 +98,14 @@ static int pipeline_comp_params(struct comp_dev *current,
 		return err;
 
 	/* set comp direction */
-	current->direction = ppl_data->params->params.direction;
+	current->direction = stream_direction;
+	ppl_data->params->params.direction = stream_direction;
 
 	err = comp_params(current, &ppl_data->params->params);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
+
+	ppl_data->params->params.direction = stream_direction;
 
 	return pipeline_for_each_comp(current, ctx, dir);
 }

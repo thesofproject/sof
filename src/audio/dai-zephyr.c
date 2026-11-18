@@ -267,6 +267,18 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg.type = DAI_MEDIATEK_AFE;
 		cfg_params = &sof_cfg->afe;
 		break;
+	case SOF_DAI_ESP32_I2S:
+		cfg.type = DAI_ESP32_I2S;
+		cfg.channels = 2;
+		cfg.word_size = 16;
+		cfg_params = NULL;
+		break;
+	case SOF_DAI_ESP32_PDM:
+		cfg.type = DAI_ESP32_PDM;
+		cfg.channels = 2;
+		cfg.word_size = 16;
+		cfg_params = NULL;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -277,6 +289,8 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		case SOF_DAI_IMX_SPDIF:
 		case SOF_DAI_IMX_ESAI:
 		case SOF_DAI_IMX_MICFIL:
+		case SOF_DAI_ESP32_I2S:
+		case SOF_DAI_ESP32_PDM:
 			if (size >= SOF_DAI_CONFIG_HW_SPEC_OFFSET)
 				dai_cfg_size -= SOF_DAI_CONFIG_HW_SPEC_OFFSET;
 			else
@@ -1479,7 +1493,8 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 	}
 
 	/* clear dma buffer to avoid pop noise */
-	buffer_zero(dd->dma_buffer);
+	if (dd->dma_buffer)
+		buffer_zero(dd->dma_buffer);
 #ifdef CONFIG_UAOL_INTEL_ADSP
 	if (dd->uaol.fb_dma_buf)
 		memset(dd->uaol.fb_dma_buf, 0, dd->uaol.fb_dma_buf_size);
@@ -1904,8 +1919,14 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 	/* limit bytes per copy to one period for the whole pipeline in order to avoid high load
 	 * spike if FAST_MODE is enabled, then one period limitation is omitted.
 	 */
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_ESP32C6) || \
+	defined(CONFIG_PLATFORM_ESP32S3)
+	/* On ESP32, allow bursting up to 4 periods to absorb scheduling jitter and drain DMA */
+	frames = MIN(frames, dev->frames ? (dev->frames * 4) : 192);
+#else
 	if (!(dd[0]->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
 		frames = MIN(frames, dev->frames);
+#endif
 	comp_dbg(dev, "dir: %d copy frames= 0x%x",
 		 dev->direction, frames);
 
@@ -2115,8 +2136,14 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	 * in order to avoid high load spike
 	 * if FAST_MODE is enabled, then one period limitation is omitted
 	 */
+#if defined(CONFIG_PLATFORM_ESP32P4) || defined(CONFIG_PLATFORM_ESP32C6) || \
+	defined(CONFIG_PLATFORM_ESP32S3)
+	if (!dd->fast_mode && dev->direction != SOF_IPC_STREAM_CAPTURE)
+		frames = MIN(frames, dev->frames);
+#else
 	if (!dd->fast_mode)
 		frames = MIN(frames, dev->frames);
+#endif
 
 	copy_bytes = frames * audio_stream_frame_bytes(&dd->dma_buffer->stream);
 
