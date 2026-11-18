@@ -469,6 +469,10 @@ SOF_DEFINE_REG_UUID(sec_core_init);
 static K_THREAD_STACK_ARRAY_DEFINE(ipc_user_stack, CONFIG_CORE_COUNT,
 				   CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE);
 
+/* Stacks for the per-core helper threads spawned by the IPC user thread */
+static K_THREAD_STACK_ARRAY_DEFINE(ipc_init_stack, CONFIG_CORE_COUNT,
+				   CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE);
+
 /*
  * Kernel-only copies of the IPC user thread state. struct ipc_user and the
  * ipc->ipc_user_pdata pointer are both writable by user threads, so kernel
@@ -513,7 +517,7 @@ int ipc_user_forward_cmd(uint32_t primary, uint32_t extension, unsigned int core
 	pdata->ipc_msg_pri = primary;
 	pdata->ipc_msg_ext = extension;
 	pdata->ipc = ipc;
-
+	pdata->cmd_core = core;
 	/* Prevent host completion until user thread finishes */
 	key = k_spin_lock(&ipc_ks(ipc)->lock);
 	ipc_ks(ipc)->task_mask |= IPC_TASK_IN_THREAD;
@@ -545,6 +549,7 @@ __cold static int ipc_user_init_thread(struct ipc_user *ipc_user, unsigned int c
 {
 	char thread_name[] = "ll_user0";
 	struct k_thread *thread;
+	struct k_thread *init_thread;
 	struct k_event *event;
 	int ret;
 
@@ -570,6 +575,13 @@ __cold static int ipc_user_init_thread(struct ipc_user *ipc_user, unsigned int c
 		goto e_event;
 	}
 
+	init_thread = k_object_alloc(K_OBJ_THREAD);
+	if (!init_thread) {
+		LOG_ERR("user IPC init thread alloc failed");
+		ret = -ENOMEM;
+		goto e_thread;
+	}
+
 	k_thread_create(thread, ipc_user_stack[core],
 			CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE,
 			ipc_user_thread_fn, ipc_user, UINT_TO_POINTER(core), NULL,
@@ -584,6 +596,7 @@ __cold static int ipc_user_init_thread(struct ipc_user *ipc_user, unsigned int c
 	 * and signal completion on the primary core semaphore
 	 */
 	k_thread_access_grant(thread, ipc_user_ksem, event);
+	k_thread_access_grant(thread, init_thread, ipc_init_stack[core]);
 	user_grant_dai_access_all(thread);
 	user_grant_dma_access_all(thread);
 	k_mem_domain_add_thread(zephyr_ll_mem_domain(), thread);
@@ -597,9 +610,11 @@ __cold static int ipc_user_init_thread(struct ipc_user *ipc_user, unsigned int c
 	/* for ipc_user_thread_fn() and ipc_thread_user() in user context */
 	ipc_user->event[core] = event;
 	ipc_user->thread[core] = thread;
-
+	ipc_user->init_thread[core] = init_thread;
+	ipc_user->init_stack[core] = ipc_init_stack[core];
 	return 0;
-
+e_thread:
+	k_object_free(thread);
 e_event:
 	k_object_free(event);
 
