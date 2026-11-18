@@ -12,5 +12,6 @@
 
 struct usbd_context *sample_usbd_init_device(usbd_msg_cb_t msg_cb);
 struct usbd_context *sample_usbd_setup_device(usbd_msg_cb_t msg_cb);
+enum usbd_speed sample_usbd_get_speed(void);
 
 #endif /* ZEPHYR_SAMPLES_SUBSYS_USB_COMMON_SAMPLE_USBD_H */
