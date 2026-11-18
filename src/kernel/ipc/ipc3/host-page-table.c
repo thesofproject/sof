@@ -5,7 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <rtos/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>

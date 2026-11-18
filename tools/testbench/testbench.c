@@ -6,7 +6,7 @@
 //         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <sof/ipc/topology.h>
 #include <sof/list.h>
 #include <tplg_parser/topology.h>

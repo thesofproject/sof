@@ -13,7 +13,7 @@
 #include <sof/audio/source_api.h>
 #include <sof/audio/stream.h>
 #include <sof/lib/dai.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <ipc/stream.h>
 #include <rtos/init.h>
 #include <rtos/clk.h>

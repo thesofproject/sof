@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright(c) 2022 Google LLC.  All rights reserved.
 // Author: Andy Ross <andyross@google.com>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <rtos/clk.h>
 #include <rtos/task.h>
 #include <sof/kernel/platform.h>

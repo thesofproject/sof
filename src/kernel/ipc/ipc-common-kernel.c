@@ -15,7 +15,7 @@
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <sof/ipc/schedule.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>

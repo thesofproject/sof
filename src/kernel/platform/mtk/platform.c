@@ -6,7 +6,7 @@
 #include <kernel/ext_manifest.h>
 #include <sof/kernel/platform.h>
 #include <sof/debug/debug.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/agent.h>
 #include <sof/lib/dma.h>

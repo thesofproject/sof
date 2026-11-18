@@ -11,7 +11,7 @@
 #include <sof_versions.h>
 #include <stdint.h>
 #include <zephyr/pm/policy.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 
 LOG_MODULE_REGISTER(power, CONFIG_SOF_LOG_LEVEL);
 

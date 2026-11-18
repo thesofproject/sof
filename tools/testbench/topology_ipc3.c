@@ -10,7 +10,7 @@
 #if CONFIG_IPC_MAJOR_3
 
 #include <sof/audio/component.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <sof/ipc/topology.h>
 #include <rtos/string.h>
 #include <sof/common.h>

@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <cmocka.h>
 #include <sof/list.h>
-#include <sof/ipc/driver.h>
+#include <sof/kernel/ipc/driver.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/schedule.h>
