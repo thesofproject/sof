@@ -329,16 +329,17 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 				/* calculate number of ticks */
 				deadline = deadline * (CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000);
 
-				/* calculate number of ticks, scheduler_dp_kick() adds "NOW" */
-				deadline_cycles = deadline *
-					(CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000);
-				flags |= SCHEDULER_DP_KICK_DEADLINE;
+				if (trigger_task) {
+					/* add to "NOW", overflows are OK */
+					uint32_t abs_deadline = dp_sch->last_ll_tick_timestamp +
+								deadline;
 
-				/* set in Zephyr. Note that it may be in past, it does not matter,
-				 * Zephyr still will schedule the thread with earlier deadline
-				 * first
-				 */
-				k_thread_absolute_deadline_set(pdata->thread_id, deadline);
+					pdata->deadline_clock_ticks = abs_deadline ? abs_deadline : 1U;
+				}
+
+				/* scheduler_dp_kick() adds "NOW" and sets the deadline in Zephyr */
+				deadline_cycles = deadline;
+				flags |= SCHEDULER_DP_KICK_DEADLINE;
 			}
 		}
 
