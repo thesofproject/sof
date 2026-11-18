@@ -10,7 +10,7 @@
 #include <sof/kernel/llext_manager.h>
 #include <rtos/idc.h>
 #include <rtos/interrupt.h>
-#include <sof/drivers/interrupt-map.h>
+#include <sof/kernel/drivers/interrupt-map.h>
 #include <sof/lib/dma.h>
 #include <sof/schedule/schedule.h>
 #include <sof/lib/io.h>

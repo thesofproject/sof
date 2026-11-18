@@ -16,7 +16,7 @@
 #include <sof_versions.h>
 #include <kernel/abi.h>
 #include <kernel/ext_manifest.h>
-#include <sof/drivers/mu.h>
+#include <sof/kernel/drivers/mu.h>
 
 static const struct sof_ipc_fw_ready ready = {
 	.hdr = {

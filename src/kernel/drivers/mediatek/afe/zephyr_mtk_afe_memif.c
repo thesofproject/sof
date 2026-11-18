@@ -6,8 +6,8 @@
 
 #include <zephyr/drivers/dma.h>
 #include <zephyr/logging/log.h>
-#include <sof/drivers/afe-drv.h>
-#include <sof/drivers/afe-dai.h>
+#include <sof/kernel/drivers/afe-drv.h>
+#include <sof/kernel/drivers/afe-dai.h>
 #include <ipc/dai.h>
 
 #define DT_DRV_COMPAT mediatek_afe_memif_dma

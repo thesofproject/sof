@@ -8,7 +8,7 @@
 
 #include <sof/common.h>
 #include <platform/fw_scratch_mem.h>
-#include <sof/drivers/acp_dai_dma.h>
+#include <sof/kernel/drivers/acp_dai_dma.h>
 #include <rtos/interrupt.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>

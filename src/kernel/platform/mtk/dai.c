@@ -5,7 +5,7 @@
 #include <sof/lib/dai-legacy.h>
 #endif
 #include <ipc/dai.h>
-#include <sof/drivers/afe-drv.h>
+#include <sof/kernel/drivers/afe-drv.h>
 #include <stdbool.h>
 #include <errno.h>
 #include <zephyr/devicetree.h>

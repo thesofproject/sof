@@ -7,7 +7,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/dai.h>
 #include <zephyr/logging/log.h>
-#include <sof/drivers/afe-drv.h>
+#include <sof/kernel/drivers/afe-drv.h>
 #include <ipc/stream.h>
 #include <ipc/dai.h>
 #include <ipc/dai-mediatek.h>

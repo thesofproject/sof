@@ -6,10 +6,10 @@
 
 #include <sof/compiler_info.h>
 #include <sof/debug/debug.h>
-#include <sof/drivers/edma.h>
+#include <sof/kernel/drivers/edma.h>
 #include <rtos/interrupt.h>
 #include <sof/kernel/ipc/driver.h>
-#include <sof/drivers/mu.h>
+#include <sof/kernel/drivers/mu.h>
 #include <rtos/timer.h>
 #include <sof/fw-ready-metadata.h>
 #include <sof/lib/agent.h>

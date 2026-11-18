@@ -22,8 +22,8 @@ src/include/sof/audio/mux.h		@fkwasowi
 src/include/sof/audio/up_down_mixer/*	@abonislawski
 src/include/sof/audio/codec_adapter/*	@cujomalainey @abonislawski @dbaluta
 src/include/sof/audio/module_adapter/*	@ranj063 @jxstelter
-src/include/sof/drivers/acp_dai_dma.h	@bhiregoudar @sunilkumardommati
-src/include/sof/drivers/afe*		@yaochunhung
+src/kernel/include/sof/kernel/drivers/acp_dai_dma.h	@bhiregoudar @sunilkumardommati
+src/kernel/include/sof/kernel/drivers/afe*	@yaochunhung
 
 # audio component
 src/audio/src*				@singalsu @abonislawski

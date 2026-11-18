@@ -9,7 +9,7 @@
 #include <platform/chip_registers.h>
 #include <platform/fw_scratch_mem.h>
 #include <platform/chip_offset_byte.h>
-#include <sof/drivers/acp_dai_dma.h>
+#include <sof/kernel/drivers/acp_dai_dma.h>
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
 #include <sof/lib/dma.h>

@@ -9,7 +9,7 @@
  */
 
 #include <sof/audio/component.h>
-#include <sof/drivers/afe-drv.h>
+#include <sof/kernel/drivers/afe-drv.h>
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
 #include <sof/lib/dai.h>

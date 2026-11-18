@@ -7,7 +7,7 @@
 #ifdef CONFIG_COMPILER_WORKAROUND_CACHE_ATTR
 
 #include <xtensa/config/core.h>
-#include <sof/drivers/cache_attr.h>
+#include <sof/kernel/drivers/cache_attr.h>
 
 /*
  * We want to avoid buggy compiler optimization (function inlining).

@@ -12,7 +12,7 @@
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
-#include <sof/drivers/mu.h>
+#include <sof/kernel/drivers/mu.h>
 #include <sof/lib/mailbox.h>
 #include <stddef.h>
 #include <stdint.h>
