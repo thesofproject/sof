@@ -11,6 +11,8 @@ manifest:
       url-base: https://github.com/thesofproject
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
+    - name: lgirdwood
+      url-base: https://github.com/lgirdwood
 
   # When upgrading projects here please run git log --oneline in the
   # project and if not too long then include the output in your commit
@@ -87,8 +89,8 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      revision: 25851fa15cdc2dc9c395807bce97fa81c46c10ee
-      remote: zephyrproject
+      revision: feature/mcu-dai-ports
+      remote: lgirdwood
 
       # Import some projects listed in zephyr/west.yml@revision
       #
@@ -97,13 +99,23 @@ manifest:
       # 'revision:' of zephyr/west.yml is used.
       import:
         name-whitelist:
-          - hal_xtensa
+          - cmsis_6
+          - hal_nordic
           - hal_nxp
+          - hal_rpi_pico
+          - hal_xtensa
+          - lz4
           - mbedtls
           - mipi-sys-t
-          - lz4
+          - picolibc
           - tinycrypt
-          - cmsis_6
+
+    - name: hal_espressif
+      repo-path: hal_espressif
+      path: modules/hal/espressif
+      revision: esp32p4-uac2
+      remote: lgirdwood
+      west-commands: west/west-commands.yml
 
   self:
     # Changes to submanifests/*.yml files _are_ effective; these have no
