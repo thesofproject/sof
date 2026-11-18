@@ -52,9 +52,12 @@ void scheduler_dp_unlock(unsigned int key)
 
 #if CONFIG_SOF_USERSPACE_APPLICATION && CONFIG_SOF_USERSPACE_LL
 /* Runs in the LL user thread, see scheduler_dp_ll_post_tick() documentation */
-void scheduler_dp_ll_post_tick(void)
+void scheduler_dp_ll_post_tick(unsigned int core)
 {
-	struct scheduler_dp_data *dp_sch = scheduler_get_user_data(SOF_SCHEDULE_DP);
+	/* user context: the kernel-only lookup and cpu_get_id() are not usable */
+	struct scheduler_dp_data *dp_sch =
+		scheduler_list_get_data(*arch_user_schedulers_get_for_core(core),
+					SOF_SCHEDULE_DP);
 	unsigned int lock_key;
 
 	/*
@@ -64,12 +67,12 @@ void scheduler_dp_ll_post_tick(void)
 	if (!dp_sch || list_is_empty(&dp_sch->tasks))
 		return;
 
-	lock_key = scheduler_dp_lock(cpu_get_id());
+	lock_key = scheduler_dp_lock(core);
 	scheduler_dp_recalculate(dp_sch);
 	scheduler_dp_unlock(lock_key);
 }
 #else
-void scheduler_dp_ll_post_tick(void)
+void scheduler_dp_ll_post_tick(unsigned int core)
 {
 	scheduler_dp_ll_tick();
 }

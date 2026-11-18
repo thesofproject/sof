@@ -147,8 +147,10 @@ static inline void scheduler_dp_check_deadline(uint16_t core, uint32_t deadline_
  * memory is writable by the DP threads, so the calculation runs in the calling
  * LL user thread, and only its results are passed to the kernel with
  * scheduler_dp_kick(). Otherwise this calls scheduler_dp_ll_tick().
+ *
+ * @param[in] core Core ID of the calling LL scheduler.
  */
-void scheduler_dp_ll_post_tick(void);
+void scheduler_dp_ll_post_tick(unsigned int core);
 
 #if CONFIG_SOF_BOOT_TEST_STANDALONE && CONFIG_SOF_USERSPACE_APPLICATION
 /* Test hooks: add and remove kernel-only DP task records without a DP task */
