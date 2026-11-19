@@ -30,6 +30,10 @@
 
 /* Zephyr includes */
 #include <zephyr/arch/cpu.h>
+#if defined(CONFIG_XTENSA) && defined(CONFIG_USERSPACE)
+/* Zephyr arch-internal header, from zephyr/arch/xtensa/include */
+#include <xtensa_internal.h>
+#endif
 #include <zephyr/device.h>
 #include <zephyr/fatal.h>
 #include <zephyr/kernel_structs.h>
