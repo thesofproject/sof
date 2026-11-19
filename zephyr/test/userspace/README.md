@@ -19,6 +19,11 @@ Available tests:
      create tasks for audio pipeline logic.
 - test_mailbox.c
    - Test use of sof/mailbox.h interface from a Zephyr user thread.
+- test_ll_user_heap.c
+   - Test the LL user heap, whose allocator runs in user mode. Checks
+     that kernel code refuses to use it, that a user thread corrupting
+     its metadata only faults user threads, and that the DP module
+     resource system calls reject LL modules and forged contexts.
 
 Building for Intel Panther Lake:
 ./scripts/xtensa-build-zephyr.py --cmake-args=-DCONFIG_SOF_BOOT_TEST_STANDALONE=y \
