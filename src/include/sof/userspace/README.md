@@ -87,8 +87,8 @@ and their kernel halves moved there, separately.
 Classification is grep-verifiable — see [Verifying the taxonomy](#verifying-the-taxonomy).
 
 > **`zephyr/syscall/` is the model to grow toward.** The Zephyr integration tree already
-> collects the validating half of several syscalls in one place — `zephyr/syscall/alloc.c`,
-> `cpu.c`, `vregion.c`, `dai.c`, `sof_dma.c` each hold the `z_vrfy_*` wrappers for their
+> collects the validating half of several syscalls in one place — `zephyr/syscall/cpu.c`,
+> `vregion.c`, `dai.c`, `sof_dma.c` each hold the `z_vrfy_*` wrappers for their
 > subsystem, physically separated from the `z_impl_*` logic (in `zephyr/lib/*.c` and
 > `src/kernel/lib/*.c`). This is exactly the boundary-tier separation this document promotes; the
 > migration opportunity is to move the *still-scattered* validators (IPC, module management,
@@ -115,12 +115,11 @@ syscall by subsystem:
 | Subsystem | Syscalls | Declared in | Validator (`z_vrfy_`) / logic (`z_impl_`) |
 |-----------|----------|-------------|-------------------------------------------|
 | IPC | `ipc_msg_send`, `ipc_msg_list_remove`, `ipc_msg_reply`, `ipc_compound_pre_start`, `ipc_compound_post_start`, `ipc_wait_for_compound_msg`, `send_resource_notif` | `sof/ipc/msg.h`, `sof/ipc/ipc_reply.h`, `ipc4/handler.h`, `ipc4/notification.h` | scattered: `ipc/ipc-common.c`, `kernel/ipc/ipc3/helper.c`, `kernel/ipc/ipc4/handler-kernel.c`, `kernel/ipc/ipc4/notification.c` |
-| Heap alloc | `sof_heap_alloc`, `sof_heap_free` | `rtos/alloc.h` | `zephyr/syscall/alloc.c` / `zephyr/lib/alloc.c` |
 | Virtual regions | `vregion_create_map`, `vregion_set_interim`, `vregion_get`, `vregion_put`, `vregion_alloc_align`, `vregion_alloc_coherent_align`, `vregion_free` | `sof/lib/vregion.h` | `zephyr/syscall/vregion.c` / `zephyr/lib/vregion.c` |
 | DMA | `sof_dma_get`, `sof_dma_put`, `sof_dma_get_attribute`, `sof_dma_request_channel`, `sof_dma_release_channel`, `sof_dma_config`, `sof_dma_start`, `sof_dma_stop`, `sof_dma_get_status`, `sof_dma_reload`, `sof_dma_suspend`, `sof_dma_resume` | `sof/lib/sof_dma.h` | `zephyr/syscall/sof_dma.c` / `kernel/lib/dma-kernel.c` (get/put); remaining 10 are `static inline z_impl_*` in `sof/lib/sof_dma.h` |
 | DAI | `dai_get_device` | `sof/lib/dai-zephyr.h` | `zephyr/syscall/dai.c` / `kernel/lib/dai-kernel.c` |
 | CPU | `cpu_get_id` | `sof/lib/cpu.h` | `zephyr/syscall/cpu.c` / `zephyr/lib/cpu.c` |
-| Module management | `mod_balloc_align`, `mod_alloc_ext`, `mod_free`, `mod_free_all`, `mod_data_blob_handler_new`, `mod_data_blob_set`, `mod_fast_get` | `sof/audio/module_adapter/module/generic.h` | scattered: `audio/module_adapter/module/generic.c` |
+| Module management | `mod_dp_balloc_align`, `mod_dp_alloc_ext`, `mod_dp_free`, `mod_dp_free_all`, `mod_dp_data_blob_handler_new`, `mod_dp_data_blob_set`, `mod_dp_fast_get` | `sof/audio/module_adapter/module/generic.h` | scattered: `audio/module_adapter/module/generic.c` |
 | Library manager | `lib_manager_free_module` | `sof/lib_manager.h` | scattered: `kernel/library_manager/lib_manager.c` |
 | Scheduling | `zephyr_ll_task_sem_alloc`, `zephyr_ll_task_sem_free`, `scheduler_dp_internal_free`, `scheduler_dp_ll_tick`, `scheduler_dp_kick` | `sof/schedule/ll_schedule_domain.h`, `sof/schedule/dp_schedule.h` | scattered: `kernel/schedule/zephyr_ll-kernel.c`, `kernel/schedule/zephyr_dp_schedule*-kernel.c` |
 | Debug | `debug_stream_slot_send_record` | `user/debug_stream_slot.h` | `kernel/debug/debug_stream/debug_stream_slot.c` |
@@ -137,7 +136,7 @@ from user-writable data such as `ipc_user->thread[]`.
 
 | Allowed callers | Syscalls |
 |-----------------|----------|
-| Any user thread, including DP module threads | `cpu_get_id`, all module management syscalls (`mod_*`), `ipc_msg_send`, `ipc_msg_list_remove`, `send_resource_notif`, `kpb_notifier_schedule` |
+| Any user thread, including DP module threads | `cpu_get_id`, all module management syscalls (`mod_dp_*`), `ipc_msg_send`, `ipc_msg_list_remove`, `send_resource_notif`, `kpb_notifier_schedule` |
 | IPC user thread only | `ipc_compound_pre_start`, `ipc_compound_post_start`, `ipc_wait_for_compound_msg`, `lib_manager_free_module` |
 | LL user thread only | `scheduler_dp_ll_tick`, `scheduler_dp_kick` |
 | LL or IPC user thread | all other SOF syscalls |
@@ -152,7 +151,16 @@ DP modules only get the syscalls needed to implement the module interface. That 
 sending notifications: modules queue messages from `mod_ipc_msg_init()` with
 `ipc_msg_send()` and free them with `mod_ipc_msg_free()`, and `dp_task_run()` reports
 processing errors with `send_resource_notif()`. DP modules have no access to the other IPC
-syscalls or to heap, vregion, DMA, DAI or scheduler syscalls.
+syscalls or to vregion, DMA, DAI or scheduler syscalls.
+
+Modules call the module resource functions without the `dp` prefix (`mod_alloc_ext()`,
+`mod_free()`, `mod_fast_get()` and so on), which are plain functions. For an LL module in the
+LL or IPC user thread they run in user mode, on the module's resource pool and the LL user
+heap, under a `sys_mutex` in LL memory. `mod_fast_get()` then makes a private copy, as the
+shared copies are kernel state. For DP modules, and in kernel code, they call the `mod_dp_*`
+syscalls. Those validators reject LL modules and DP modules whose allocation context has no
+live vregion, and pin the vregion during the call. They still read the context from DP memory,
+so a DP thread that rewrites it during the call is not stopped.
 
 A message sent by a user thread is never linked into the kernel send queue. `ipc_msg_send()`
 copies its header and payload (at most `CONFIG_SOF_IPC_USER_MSG_MAX_SIZE` bytes) once into
@@ -179,7 +187,7 @@ With `CONFIG_SOF_USERSPACE_LL`, the memory of the LL and IPC user threads is one
 |------|---------------------------------|-----------|
 | Kernel RO area (`CONFIG_SOF_ZEPHYR_LL_KAREA_RO_SIZE`) | read-only | `zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RO, ...)` |
 | Kernel RW area (`CONFIG_SOF_ZEPHYR_LL_KAREA_RW_SIZE`) | read-write | `zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, ...)` |
-| LL user heap (the rest) | read-write | `sof_heap_alloc(sof_sys_user_heap_get(), ...)` |
+| LL user heap (the rest) | read-write | `sof_heap_alloc(sof_sys_user_heap_get(), ...)`, in user mode only |
 
 The kernel areas are for objects that kernel code creates and LL user threads access. Their
 allocator is a bump allocator with kernel-only state and no free, so use it for objects that
@@ -218,12 +226,21 @@ User threads can write the `dma[]` array, so kernel code drives DMA through the 
 wrappers, which take the Zephyr device from `struct sof_dma_kinfo` (`sof_dma_kdev()`), and
 never calls the Zephyr DMA API on `dma->z_dev`.
 
-The LL user heap keeps its `sys_heap` metadata in user-writable memory. Kernel threads no
-longer allocate from it or free to it; `CONFIG_SOF_ZEPHYR_LL_HEAP_KERNEL_TRACE` logs any use
-by a kernel thread. User threads still allocate from it through the `sof_heap_alloc()` and
-`sof_heap_free()` system calls, so the allocator still runs in supervisor mode on this
-metadata. Kernel code still follows some pointers stored in user-writable memory, for example
-`task->sch` and the domain `ops`.
+The LL user heap keeps its `sys_heap` metadata in user-writable memory, so its allocator runs
+in user mode only ([`schedule/zephyr_ll_user_heap.c`](../../../schedule/zephyr_ll_user_heap.c)).
+The `sys_heap` object, its `sys_mutex` lock and the usage counters are in the system user
+partition. The kernel initialises the heap at boot and does not parse it after that: in
+kernel mode, including system calls, `sof_heap_alloc()` and `sof_heap_free()` refuse the LL
+user heap and log the caller, and telemetry reads only the usage counters, as numbers. In user
+mode they call the allocator directly, with no system call, and kill the thread for any other
+heap. A user thread that corrupts the heap can only make LL and IPC user threads fault.
+`zephyr_ll_user_heap()` returns a kernel-only `struct k_heap` that is never initialised: its
+address only selects the LL user heap.
+
+Large `fast_get()` copies for DP modules are taken from `vpage_alloc()` instead of the heap of
+the module allocation context, which is the LL user heap, and mapped read-only into the domain
+of each user. Kernel code still follows some pointers stored in user-writable memory, for
+example `task->sch` and the domain `ops`.
 
 ## Memory-partition markers
 
@@ -246,9 +263,8 @@ must never trust it — re-validate on every use. DP modules running under
 `SOF_USERSPACE_APPLICATION` access data through their per-module memory domain set up by the
 proxy or DP thread infrastructure, not through `APP_TASK_*` / `APP_SYSUSER_*` markers. See
 [`kernel/schedule/zephyr_ll_user.c`](../../../kernel/schedule/zephyr_ll_user.c): `zephyr_ll_user_heap()`
-returns the address of the kernel-only heap object rather than a pointer stored in
-user-writable memory, and `zephyr_ll_user_heap_verify()` checks the heap pointer that user
-threads pass to the heap system calls.
+returns the address of a kernel-only heap handle rather than a pointer stored in
+user-writable memory.
 
 ## Kconfig hierarchy
 
@@ -258,11 +274,9 @@ The userspace behaviour is assembled from a small option tree (source of truth:
 ```mermaid
 graph TD
     US["USERSPACE (Zephyr MMU)"]
-    US --> ALLOC[SOF_USERSPACE_INTERFACE_ALLOC]
     US --> DMA[SOF_USERSPACE_INTERFACE_DMA]
     US --> VREG["SOF_USERSPACE_INTERFACE_VREGION (needs SOF_VREGIONS)"]
     US --> LL[SOF_USERSPACE_LL]
-    LL -.selects.-> ALLOC
     LL -.selects.-> DMA
     LL -.selects if SOF_VREGIONS.-> VREG
     US --> SHEAP[SOF_USERSPACE_USE_SHARED_HEAP]
@@ -277,7 +291,7 @@ graph TD
 Key options:
 
 - **`SOF_USERSPACE_LL`** — run LL pipelines in user threads (`depends on USERSPACE`; selects
-  the ALLOC/DMA/VREGION interfaces). This is what `ll_userspace_overlay.conf` turns on.
+  the DMA/VREGION interfaces). This is what `ll_userspace_overlay.conf` turns on.
 - **`SOF_USERSPACE_PROXY`** — run modules inside a proxy container that forwards kernel-side
   calls to user-privileged module code (selects the driver + shared heaps).
 - **`SOF_USERSPACE_APPLICATION`** — not user-settable; a shortcut for
