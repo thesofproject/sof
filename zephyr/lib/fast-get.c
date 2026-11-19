@@ -12,6 +12,9 @@
 #include <sof/debug/telemetry/telemetry.h>
 #include <sof/lib/fast-get.h>
 #include <sof/lib/vregion.h>
+#if CONFIG_SOF_USERSPACE_LL && CONFIG_SOF_VREGIONS
+#include <sof/kernel/lib/vpage.h>
+#endif
 #include <sof/objpool.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
@@ -30,13 +33,47 @@ struct sof_fast_get_entry {
 };
 
 struct sof_fast_get_data {
+#if CONFIG_SOF_USERSPACE_LL
+	/* held while allocating large copies, see fast_get_large_alloc() */
+	struct k_mutex lock;
+#else
 	struct k_spinlock lock;
+#endif
 	struct objpool_head pool;
 };
 
 static struct sof_fast_get_data fast_get_data = {
+#if CONFIG_SOF_USERSPACE_LL
+	.lock = Z_MUTEX_INITIALIZER(fast_get_data.lock),
+#endif
 	.pool.list = LIST_INIT(fast_get_data.pool.list),
 };
+
+#if CONFIG_SOF_USERSPACE_LL
+typedef int fast_get_key_t;
+
+static fast_get_key_t fast_get_lock(void)
+{
+	return k_mutex_lock(&fast_get_data.lock, K_FOREVER);
+}
+
+static void fast_get_unlock(fast_get_key_t key)
+{
+	k_mutex_unlock(&fast_get_data.lock);
+}
+#else
+typedef k_spinlock_key_t fast_get_key_t;
+
+static fast_get_key_t fast_get_lock(void)
+{
+	return k_spin_lock(&fast_get_data.lock);
+}
+
+static void fast_get_unlock(fast_get_key_t key)
+{
+	k_spin_unlock(&fast_get_data.lock, key);
+}
+#endif
 
 #ifdef CONFIG_SOF_TELEMETRY_MEMORY
 static uint32_t fast_get_total_calls;
@@ -138,22 +175,55 @@ static int fast_get_access_grant(struct k_mem_domain *mdom, void *addr, size_t s
 }
 #endif /* CONFIG_USERSPACE */
 
+/* large copies are page aligned and shared, see fast_get() */
+static bool fast_get_is_large(size_t size)
+{
+	return IS_ENABLED(CONFIG_USERSPACE) && size > FAST_GET_MAX_COPY_SIZE;
+}
+
+#if CONFIG_SOF_USERSPACE_LL && CONFIG_SOF_VREGIONS
+/*
+ * The heap of the allocation contexts is the LL user heap, which kernel code
+ * must not allocate from, since user threads can write its metadata. Take
+ * large copies, which are page aligned and mapped read-only into the memory
+ * domain of each user, from the page allocator instead.
+ */
+static void *fast_get_large_alloc(struct k_heap *heap, uint32_t flags, size_t size)
+{
+	return vpage_alloc(size / PAGE_SZ);
+}
+
+static void fast_get_large_free(struct k_heap *heap, void *ptr)
+{
+	vpage_free(ptr);
+}
+#else
+static void *fast_get_large_alloc(struct k_heap *heap, uint32_t flags, size_t size)
+{
+	return sof_heap_alloc(heap, flags, size, PAGE_SZ);
+}
+
+static void fast_get_large_free(struct k_heap *heap, void *ptr)
+{
+	sof_heap_free(heap, ptr);
+}
+#endif
+
 const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t size)
 {
 	struct k_heap *heap = alloc ? alloc->heap : NULL;
 #if CONFIG_USERSPACE
 	bool current_is_userspace = thread_is_userspace(k_current_get());
 #endif
-	struct sof_fast_get_data *data = &fast_get_data;
 	uint32_t alloc_flags = SOF_MEM_FLAG_USER;
 	struct sof_fast_get_entry *entry;
 	size_t alloc_size, alloc_align;
 	const void *alloc_ptr;
-	k_spinlock_key_t key;
+	fast_get_key_t key;
 	void *ret;
 
-	key = k_spin_lock(&data->lock);
-	if (IS_ENABLED(CONFIG_USERSPACE) && size > FAST_GET_MAX_COPY_SIZE) {
+	key = fast_get_lock();
+	if (fast_get_is_large(size)) {
 		alloc_size = ALIGN_UP(size, PAGE_SZ);
 		alloc_align = PAGE_SZ;
 		alloc_flags |= SOF_MEM_FLAG_LARGE_BUFFER;
@@ -246,6 +316,8 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 		/* A userspace allocation, that won't be shared */
 		ret = vregion_alloc_align(alloc->vreg, alloc_size,
 					  alloc_align);
+	else if (fast_get_is_large(size))
+		ret = fast_get_large_alloc(heap, alloc_flags, alloc_size);
 	else
 		ret = sof_heap_alloc(heap, alloc_flags, alloc_size, alloc_align);
 	if (!ret)
@@ -268,7 +340,7 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 
 		if (err < 0) {
 			LOG_ERR("failed to grant access err=%d", err);
-			sof_heap_free(heap, ret);
+			fast_get_large_free(heap, ret);
 			ret = NULL;
 			goto out;
 		}
@@ -291,7 +363,7 @@ out:
 	if (!ret)
 		fast_get_fail_count++;
 #endif
-	k_spin_unlock(&data->lock, key);
+	fast_get_unlock(key);
 	LOG_DBG("get %p, %p, size %u, refcnt %u", dram_ptr, ret, size, entry ? entry->refcount : 0);
 
 	return ret;
@@ -327,11 +399,10 @@ static bool fast_put_find_entry(void *data, void *arg)
 void fast_put(struct mod_alloc_ctx *alloc, struct k_mem_domain *mdom, const void *sram_ptr)
 {
 	struct k_heap *heap = alloc ? alloc->heap : NULL;
-	struct sof_fast_get_data *data = &fast_get_data;
 	struct sof_fast_get_entry *entry;
-	k_spinlock_key_t key;
+	fast_get_key_t key;
 
-	key = k_spin_lock(&fast_get_data.lock);
+	key = fast_get_lock();
 
 	struct fast_get_find find = {
 		.ptr = sram_ptr,
@@ -355,8 +426,14 @@ void fast_put(struct mod_alloc_ctx *alloc, struct k_mem_domain *mdom, const void
 			fast_get_live_bytes = 0;
 #endif
 		LOG_DBG("freeing buffer %p", sram_ptr);
+		/*
+		 * Free pages while the domain still maps them: vpage_free()
+		 * writes back and invalidates the cache in the current domain.
+		 */
 		if (alloc && alloc->vreg && entry->size <= FAST_GET_MAX_COPY_SIZE)
 			vregion_free(alloc->vreg, entry->sram_ptr);
+		else if (fast_get_is_large(entry->size))
+			fast_get_large_free(heap, entry->sram_ptr);
 		else
 			sof_heap_free(heap, entry->sram_ptr);
 	}
@@ -391,6 +468,6 @@ void fast_put(struct mod_alloc_ctx *alloc, struct k_mem_domain *mdom, const void
 out:
 	LOG_DBG("put %p, DRAM %p size %u refcnt %u", sram_ptr, entry ? entry->dram_ptr : 0,
 		entry ? entry->size : 0, entry ? entry->refcount : 0);
-	k_spin_unlock(&data->lock, key);
+	fast_get_unlock(key);
 }
 EXPORT_SYMBOL(fast_put);
