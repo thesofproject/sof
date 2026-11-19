@@ -16,6 +16,8 @@
 #include <sof/audio/pipeline.h>
 #include <rtos/task.h>
 #include <rtos/userspace_helper.h>
+#include <sof/userspace/syscall_caller.h>
+#include <sof/lib/cpu.h>
 #include <ipc4/fw_reg.h>
 
 #include <zephyr/kernel.h>
@@ -96,7 +98,13 @@ ZTEST(userspace_ll, ll_task_test)
 	ll_task_test();
 }
 
-static void pipeline_check(void)
+#define USER_STACKSIZE	4096
+
+static struct k_thread user_thread;
+static K_THREAD_STACK_DEFINE(user_stack, USER_STACKSIZE);
+
+/* the LL user heap allocator runs in user mode, so do this in a user thread */
+static void pipeline_check_user(void *p1, void *p2, void *p3)
 {
 	struct pipeline *p;
 	struct k_heap *heap;
@@ -104,6 +112,8 @@ static void pipeline_check(void)
 	uint32_t priority = 5;
 	uint32_t comp_id = 10;
 	int ret;
+
+	zassert_true(k_is_user_context(), "isn't user");
 
 	heap = zephyr_ll_user_heap();
 	zassert_not_null(heap, "user heap not found");
@@ -123,6 +133,23 @@ static void pipeline_check(void)
 	/* Free pipeline */
 	ret = pipeline_free(p);
 	zassert_ok(ret, "pipeline free failed");
+}
+
+static void pipeline_check(void)
+{
+	int ret;
+
+	k_thread_create(&user_thread, user_stack, USER_STACKSIZE,
+			pipeline_check_user, NULL, NULL, NULL, -1, K_USER, K_FOREVER);
+	k_mem_domain_add_thread(zephyr_ll_mem_domain(), &user_thread);
+	pipeline_posn_grant_access(&user_thread);
+	/* pipelines are created by the IPC user thread, which may use vregions */
+	sof_sysuser_thread_set(SOF_SYSUSER_IPC, PLATFORM_PRIMARY_CORE_ID, &user_thread);
+
+	k_thread_start(&user_thread);
+	ret = k_thread_join(&user_thread, K_FOREVER);
+	sof_sysuser_thread_set(SOF_SYSUSER_IPC, PLATFORM_PRIMARY_CORE_ID, NULL);
+	zassert_equal(ret, 0, "user thread join failed: %d", ret);
 }
 
 ZTEST(userspace_ll, pipeline_check)
