@@ -47,6 +47,10 @@ config SOF_USERSPACE_INTERFACE_VREGION
 config SOF_USERSPACE_LL
 	bool "Run Low-Latency pipelines in userspace threads"
 	depends on USERSPACE
+	# DP modules then use their resources through the mod_dp_*() system
+	# calls, which need the module vregion
+	depends on !ZEPHYR_DP_SCHEDULER || \
+		   (SOF_USERSPACE_APPLICATION && !SOF_USERSPACE_USE_DRIVER_HEAP)
 	select SOF_USERSPACE_INTERFACE_ALLOC
 	select SOF_USERSPACE_INTERFACE_DMA
 	select SOF_USERSPACE_INTERFACE_VREGION if SOF_VREGIONS
@@ -54,7 +58,9 @@ config SOF_USERSPACE_LL
 	help
 	  Run Low-Latency (LL) pipelines in userspace threads. This adds
 	  memory protection between operating system resources and
-	  audio application threads.
+	  audio application threads. With the DP scheduler, DP modules
+	  must run in userspace with a vregion each, so the userspace
+	  proxy and the driver heap are not supported.
           If unsure, select "N".
 
 config SOF_USERSPACE_SYSCALL_CALLER_CHECK
