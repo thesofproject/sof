@@ -237,12 +237,12 @@ __cold static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	if (err < 0)
 		return err;
 
-	channel = dma_request_channel(dma->dc.dmac->z_dev, &channel);
-	if (channel < 0) {
+	err = dma_request_channel(dma->dc.dmac->z_dev, &channel);
+	if (err < 0) {
 		tr_err(&pr_tr, "dma_request_channel() failed");
 		return -EINVAL;
 	}
-	dma->dc.chan = &dma->dc.dmac->chan[channel];
+	dma->dc.chan = &dma->dc.dmac->chan[err];
 
 	/* initialize dma buffer */
 	err = probe_dma_buffer_init(&dma->dmapb, PROBE_BUFFER_LOCAL_SIZE, addr_align);
