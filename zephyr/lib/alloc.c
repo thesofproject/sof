@@ -834,41 +834,25 @@ EXPORT_SYMBOL(rfree);
  * To match the fall-back SOF main heap all private heaps should also be in the
  * uncached address range.
  */
-#if CONFIG_SOF_ZEPHYR_LL_HEAP_KERNEL_TRACE
-/* Log use of the LL user heap by kernel threads, see the Kconfig help */
-static void ll_heap_kernel_trace(const char *op, struct k_heap *heap, const void *ptr,
-				 size_t bytes, const void *caller)
+#ifdef CONFIG_SOF_USERSPACE_LL
+/*
+ * The LL user heap metadata is in memory that user threads can write, so
+ * kernel code, including system calls made by user threads, must not run its
+ * allocator. Only LL and IPC user threads allocate from it, in user mode.
+ */
+static void ll_heap_kernel_refuse(const char *op, const void *ptr, size_t bytes,
+				  const void *caller)
 {
 	struct k_thread *thread = k_current_get();
 
-	if (heap != zephyr_ll_user_heap() || (thread->base.user_options & K_USER))
-		return;
-
-	tr_warn(&zephyr_tr, "LL heap %s by kernel thread %s: %p %zu bytes, caller %p", op,
-		k_thread_name_get(thread) ? k_thread_name_get(thread) : "?", ptr, bytes, caller);
-}
-#else
-static inline void ll_heap_kernel_trace(const char *op, struct k_heap *heap, const void *ptr,
-					size_t bytes, const void *caller)
-{
+	tr_err(&zephyr_tr, "LL user heap %s in kernel mode refused, thread %s: %p %zu bytes, caller %p",
+	       op, k_thread_name_get(thread) ? k_thread_name_get(thread) : "?", ptr, bytes,
+	       caller);
 }
 #endif
 
-static void *sof_heap_alloc_impl(struct k_heap *heap, uint32_t flags, size_t bytes,
-				 size_t alignment);
-
 void *z_impl_sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 			    size_t alignment)
-{
-	void *ptr = sof_heap_alloc_impl(heap, flags, bytes, alignment);
-
-	ll_heap_kernel_trace("alloc", heap, ptr, bytes, __builtin_return_address(0));
-
-	return ptr;
-}
-
-static void *sof_heap_alloc_impl(struct k_heap *heap, uint32_t flags, size_t bytes,
-				 size_t alignment)
 {
 #if CONFIG_SOF_USERSPACE_USE_SHARED_HEAP
 	/*
@@ -892,8 +876,10 @@ static void *sof_heap_alloc_impl(struct k_heap *heap, uint32_t flags, size_t byt
 	}
 
 #ifdef CONFIG_SOF_USERSPACE_LL
-	if (heap == zephyr_ll_user_heap())
-		return zephyr_ll_user_heap_alloc(flags, bytes, alignment);
+	if (heap == zephyr_ll_user_heap()) {
+		ll_heap_kernel_refuse("alloc", NULL, bytes, __builtin_return_address(0));
+		return NULL;
+	}
 #endif
 
 	void *ptr;
@@ -915,8 +901,6 @@ static void *sof_heap_alloc_impl(struct k_heap *heap, uint32_t flags, size_t byt
 
 void z_impl_sof_heap_free(struct k_heap *heap, void *addr)
 {
-	ll_heap_kernel_trace("free", heap, addr, 0, __builtin_return_address(0));
-
 #ifdef CONFIG_SOF_USERSPACE_LL
 	/*
 	 * The kernel-managed LL areas are inside a kernel heap block and are
@@ -930,7 +914,9 @@ void z_impl_sof_heap_free(struct k_heap *heap, void *addr)
 	}
 
 	if (heap == zephyr_ll_user_heap()) {
-		zephyr_ll_user_heap_free(addr);
+		/* leaks the memory, but leaves the kernel heap intact */
+		if (addr)
+			ll_heap_kernel_refuse("free", addr, 0, __builtin_return_address(0));
 		return;
 	}
 #endif
@@ -953,12 +939,43 @@ void z_impl_sof_heap_free(struct k_heap *heap, void *addr)
 void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 		     size_t alignment)
 {
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/* the LL and IPC user threads only have the LL user heap */
+	if (k_is_user_context()) {
+		if (heap != zephyr_ll_user_heap())
+			k_oops();
+
+		return zephyr_ll_user_heap_alloc(flags, bytes, alignment);
+	}
+
+	if (heap == zephyr_ll_user_heap()) {
+		ll_heap_kernel_refuse("alloc", NULL, bytes, __builtin_return_address(0));
+		return NULL;
+	}
+#endif
+
 	return z_impl_sof_heap_alloc(heap, flags, bytes, alignment);
 }
 
 void sof_heap_free(struct k_heap *heap, void *addr)
 {
-	return z_impl_sof_heap_free(heap, addr);
+#ifdef CONFIG_SOF_USERSPACE_LL
+	if (k_is_user_context()) {
+		if (heap != zephyr_ll_user_heap())
+			k_oops();
+
+		zephyr_ll_user_heap_free(addr);
+		return;
+	}
+
+	if (heap == zephyr_ll_user_heap()) {
+		if (addr)
+			ll_heap_kernel_refuse("free", addr, 0, __builtin_return_address(0));
+		return;
+	}
+#endif
+
+	z_impl_sof_heap_free(heap, addr);
 }
 
 #endif /* CONFIG_SOF_USERSPACE_INTERFACE_ALLOC */

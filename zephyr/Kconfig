@@ -51,7 +51,6 @@ config SOF_USERSPACE_LL
 	# calls, which need the module vregion
 	depends on !ZEPHYR_DP_SCHEDULER || \
 		   (SOF_USERSPACE_APPLICATION && !SOF_USERSPACE_USE_DRIVER_HEAP)
-	select SOF_USERSPACE_INTERFACE_ALLOC
 	select SOF_USERSPACE_INTERFACE_DMA
 	select SOF_USERSPACE_INTERFACE_VREGION if SOF_VREGIONS
 	select UAOL_USERSPACE if UAOL_INTEL_ADSP
@@ -210,16 +209,6 @@ config SOF_ZEPHYR_LL_KAREA_RO_SIZE
 	 cannot write it either. The area is taken from
 	 SOF_ZEPHYR_SYS_USER_HEAP_SIZE. Must be a multiple of the MMU page
 	 size.
-
-config SOF_ZEPHYR_LL_HEAP_KERNEL_TRACE
-	bool "Log LL user heap allocations made by kernel threads"
-	depends on SOF_USERSPACE_LL
-	help
-	 Log every allocation from and free to the LL user heap that a
-	 kernel thread makes, with its size and caller address. Kernel
-	 code is being moved off this heap, whose metadata user threads
-	 can write. Use this to find the remaining callers. Calls made by
-	 user threads, including through system calls, are not logged.
 
 config SOF_USERSPACE_PROXY
 	bool "Use userspace proxy to support userspace modules"
