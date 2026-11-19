@@ -1170,7 +1170,9 @@ static int ecns_get_large_config(struct comp_dev *dev,
 static const struct comp_driver ecns_drv = {
 	.type	= SOF_COMP_NONE,
 	.uid	= SOF_RT_UUID(ecns_uuid),
+#if !CONFIG_ZEPHYR_LOG
 	.tctx	= &ecns_tr,
+#endif
 	.ops	= {
 		.create		= ecns_new,
 		.free		= ecns_free,

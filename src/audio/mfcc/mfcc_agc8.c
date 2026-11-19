@@ -36,7 +36,7 @@ void mfcc_agc8_process(struct mfcc_agc8 *agc, const int32_t *mel, int8_t *out, i
 {
 	int32_t peak = mel[0];
 	int32_t gain;
-	int32_t v;
+	int64_t v;
 	int i;
 
 	for (i = 1; i < n; i++) {
@@ -45,14 +45,14 @@ void mfcc_agc8_process(struct mfcc_agc8 *agc, const int32_t *mel, int8_t *out, i
 	}
 
 	/* Attack: instantly keep the hop peak at or below +1.0 */
-	if (agc->gain > MFCC_AGC8_CLIP_MAX_Q23 - peak)
+	if (agc->gain > (int64_t)MFCC_AGC8_CLIP_MAX_Q23 - peak)
 		agc->gain = MFCC_AGC8_CLIP_MAX_Q23 - peak;
 	if (agc->gain < agc->floor)
 		agc->gain = agc->floor;
 
 	gain = agc->gain;
 	for (i = 0; i < n; i++) {
-		v = mel[i] + gain;
+		v = (int64_t)mel[i] + gain;
 		if (v > MFCC_AGC8_CLIP_MAX_Q23)
 			v = MFCC_AGC8_CLIP_MAX_Q23;
 		else if (v < MFCC_AGC8_CLIP_MIN_Q23)

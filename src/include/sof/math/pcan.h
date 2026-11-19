@@ -91,6 +91,10 @@ static inline uint32_t pcan_shrink(uint32_t x)
  *
  * \param strength Exponent alpha in Q1.15.
  * \param offset Additive offset delta in Q8.7.
+ * \param gain_bits Number of fractional bits in the returned gain.
+ * \param input_bits Number of fractional bits in the input energy x.
+ * \param x Smoothed noise energy estimate.
+ * \return Gain value with gain_bits fractional bits.
  */
 int16_t pcan_gain_lookup_function(int32_t strength, int32_t offset, int32_t gain_bits,
 				  int32_t input_bits, uint32_t x);
@@ -100,6 +104,10 @@ int16_t pcan_gain_lookup_function(int32_t strength, int32_t offset, int32_t gain
  *
  * \param strength Exponent alpha in Q1.15.
  * \param offset Additive offset delta in Q8.7.
+ * \param gain_bits Number of fractional bits in the gain values.
+ * \param input_bits Number of fractional bits in the input energy.
+ * \param gain_lut Output table of PCAN_LUT_SIZE entries.
+ * \return 0 on success, -EINVAL if gain_lut is NULL.
  */
 int pcan_compute_lut(int32_t strength, int32_t offset, int32_t gain_bits,
 		     int32_t input_bits, int16_t *gain_lut);

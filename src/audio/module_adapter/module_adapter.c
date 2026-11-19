@@ -522,14 +522,24 @@ int module_adapter_prepare(struct comp_dev *dev)
 	 * Hence check for NULL.
 	 */
 	sink = comp_dev_get_first_data_consumer(dev);
-	if (!sink && !list_is_empty(&dev->bsink_list) && mod->max_sinks) {
+	if (!sink && !IS_PROCESSING_MODE_SINK_SOURCE(mod) && !list_is_empty(&dev->bsink_list) && mod->max_sinks) {
 		comp_err(dev, "no sink present on period size calculation");
+		return -EINVAL;
+	}
+
+	/* A sinkless module still needs at least one source. */
+	if (!sink && !comp_dev_get_first_data_producer(dev)) {
+		comp_err(dev, "no source or sink buffer connected");
 		return -EINVAL;
 	}
 
 	if (sink) {
 		mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
 		comp_dbg(dev, "got period_bytes = %u", mod->period_bytes);
+	} else if (IS_PROCESSING_MODE_RAW_DATA(mod)) {
+		/* raw data buffering is sized from the sink period */
+		comp_err(dev, "raw data module has no sink");
+		return -EINVAL;
 	}
 
 	/* no more to do for sink/source mode */
