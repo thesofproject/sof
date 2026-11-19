@@ -11,7 +11,6 @@
 
 #include <ipc/trace.h>
 #include <stdint.h>
-#include <arch/debug/panic.h>
 
 #ifdef __ZEPHYR__
 #error "This file should only be included in XTOS builds."
@@ -30,9 +29,6 @@
 	"Add it to CMake's target with sof_append_relative_path_definitions."
 #endif
 
-void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info);
-void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
-		uintptr_t *data) SOF_NORETURN;
 void __panic(uint32_t p, const char *filename, uint32_t linenum) SOF_NORETURN;
 
 /** panic dump filename and linenumber of the call
