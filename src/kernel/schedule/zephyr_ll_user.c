@@ -24,7 +24,9 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
  * domain, the kernel RO area read-only. Kernel code allocates objects that
  * LL user threads must access from the kernel areas, see
  * zephyr_ll_karea_alloc(). The allocator state of those areas is kept in
- * ll_mem_resources, which is kernel-only.
+ * ll_mem_resources, which is kernel-only. The heap allocator runs in user
+ * mode, see src/schedule/zephyr_ll_user_heap.c: the kernel initialises the
+ * heap at boot and does not parse its metadata after that.
  */
 #define LL_REGION_SIZE		CONFIG_SOF_ZEPHYR_SYS_USER_HEAP_SIZE
 #define LL_KAREA_RO_SIZE	CONFIG_SOF_ZEPHYR_LL_KAREA_RO_SIZE
@@ -53,7 +55,12 @@ struct zephyr_ll_karea_state {
  */
 struct zephyr_ll_mem_resources {
 	struct k_mem_domain mem_domain; /**< Memory domain for LL thread isolation */
-	struct k_heap heap; /**< Heap allocator for LL scheduler memory */
+	/**
+	 * Handle of the LL user heap, only used for its address, see
+	 * zephyr_ll_user_heap(). The heap itself is in LL memory.
+	 */
+	struct k_heap heap;
+	uint8_t *heap_base; /**< LL user heap memory, uncached alias */
 	struct zephyr_ll_karea_state karea[ZEPHYR_LL_KAREA_COUNT]; /**< Kernel-managed areas */
 };
 
@@ -103,14 +110,9 @@ static void ll_region_init(void)
 	rw->size = LL_KAREA_RW_SIZE;
 
 	mem += LL_KAREA_RO_SIZE + LL_KAREA_RW_SIZE;
-	k_heap_init(&ll_mem_resources.heap, mem, LL_HEAP_SIZE);
-
-	/*
-	 * k_heap_init() does not set these, so set the values
-	 * manually here
-	 */
-	ll_mem_resources.heap.heap.init_mem = mem;
-	ll_mem_resources.heap.heap.init_bytes = LL_HEAP_SIZE;
+	ll_mem_resources.heap_base = mem;
+	/* the only time the kernel writes the heap metadata */
+	zephyr_ll_user_heap_init(mem, LL_HEAP_SIZE);
 
 	if (ro->size)
 		ll_region_map(ro->base, ro->size, K_MEM_PARTITION_P_RO_U_RO);
@@ -206,6 +208,20 @@ void zephyr_ll_user_resources_init(void)
 		k_panic();
 }
 
+size_t zephyr_ll_user_heap_size(void)
+{
+	return LL_HEAP_SIZE;
+}
+
+bool zephyr_ll_user_heap_contains(const void *ptr, size_t bytes)
+{
+	void __sparse_cache *cptr = (__sparse_force void __sparse_cache *)ptr;
+	uintptr_t start = (uintptr_t)sys_cache_uncached_ptr_get(cptr);
+	uintptr_t base = (uintptr_t)ll_mem_resources.heap_base;
+
+	return start >= base && bytes <= LL_HEAP_SIZE && start - base <= LL_HEAP_SIZE - bytes;
+}
+
 /**
  * Check if 'heap' is a valid heap pointer.
  *
@@ -221,11 +237,11 @@ bool zephyr_ll_user_heap_verify(struct k_heap *heap)
 /**
  * Returns heap object to use in user-space LL code.
  *
- * Can be called from both kernel and user-space. The heap object itself is
- * kernel-only, but its address is a link-time constant, so returning it
- * does not read any memory. User threads only pass it to the
- * sof_heap_alloc()/sof_heap_free() system calls, whose validators check it
- * with zephyr_ll_user_heap_verify().
+ * Can be called from both kernel and user-space. The returned object is a
+ * kernel-only handle that is never initialised as a heap: its address,
+ * a link-time constant, selects the LL user heap in sof_heap_alloc() and
+ * sof_heap_free(), which then call zephyr_ll_user_heap_alloc() and
+ * zephyr_ll_user_heap_free().
  *
  * Do not cache the pointer in user-writable memory for kernel use: kernel
  * code must call this function, so it never trusts a stored copy.
