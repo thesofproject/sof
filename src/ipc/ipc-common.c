@@ -294,7 +294,7 @@ void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 						  IPC_USER_EVENT_XCORE,
 						  false, K_FOREVER);
 
-		LOG_DBG("IPC user wake, mask %u", mask);
+		LOG_INF("IPC user wake, mask %u", mask);
 
 		/* idc_cmd_user() is only built with SMP, there are no requests without */
 		if (IS_ENABLED(CONFIG_SMP) && (mask & IPC_USER_EVENT_XCORE)) {

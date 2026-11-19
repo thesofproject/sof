@@ -30,6 +30,10 @@
 
 /* Zephyr includes */
 #include <zephyr/arch/cpu.h>
+#if defined(CONFIG_XTENSA) && defined(CONFIG_USERSPACE)
+/* Zephyr arch-internal header, from zephyr/arch/xtensa/include */
+#include <xtensa_internal.h>
+#endif
 #include <zephyr/device.h>
 #include <zephyr/fatal.h>
 #include <zephyr/kernel_structs.h>
@@ -364,6 +368,29 @@ void k_sys_fatal_error_handler(unsigned int reason,
 	}
 #endif
 
+#if defined(CONFIG_XTENSA) && defined(CONFIG_USERSPACE)
+		/*
+		 * A kernel oops raised from a syscall verifier (K_OOPS) or
+		 * k_oops() arrives with a syscall stack frame, not an exception
+		 * frame, so xtensa_exception_is_user() cannot validate it and
+		 * would wrongly halt the system. If the faulting thread is a
+		 * user thread, the oops is the user thread's fault: just abort
+		 * that thread (z_fatal_error() does so once we return).
+		 */
+		if (reason == K_ERR_KERNEL_OOPS && _current &&
+		    k_thread_is_user_thread(_current)) {
+			LOG_ERR("ERROR: kernel oops from user thread %p; aborting thread.",
+				_current);
+			return;
+		}
+
+		if (reason != K_ERR_KERNEL_PANIC && xtensa_exception_is_user(esf)) {
+			LOG_ERR("ERROR: Unexpected fatal error %u in Xtensa user mode; "
+			       "aborting thread.\n", reason);
+			return;
+		}
+#endif
+
 	/* flush and switch to immediate mode */
 	LOG_PANIC();
 
@@ -371,6 +398,8 @@ void k_sys_fatal_error_handler(unsigned int reason,
 #ifndef CONFIG_SOF_BOOT_TEST_STANDALONE
 	ipc_send_panic_notification();
 #endif
+
+
 
 #if defined(CONFIG_ARCH_POSIX) || defined(CONFIG_ZEPHYR_POSIX)
 	LOG_ERR("Halting emulation");

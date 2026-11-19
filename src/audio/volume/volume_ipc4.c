@@ -31,6 +31,9 @@ LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
 
 #include "volume.h"
 
+/* Debug only: remove to disable the deliberate fault in volume_init() */
+#define VOLUME_INJECT_FAULT 1
+
 void set_volume_process(struct vol_data *cd, struct comp_dev *dev, bool source_or_sink)
 {
 	cd->scale_vol = vol_get_processing_function(dev, cd);
@@ -115,7 +118,16 @@ int volume_init(struct processing_module *mod)
 	uint8_t channel_cfg;
 	uint8_t channel;
 	bool all_channels;
+
+
+#ifdef VOLUME_INJECT_FAULT
+	/* Debug only: deliberately write to NULL to raise a DSP exception */
+	comp_err(dev, "volume_init: injecting NULL pointer write fault");
+	*(volatile uint32_t *)NULL = 0xdeadbeef;
+#endif
+
 	uint32_t instance_id = IPC4_INST_ID(dev_comp_id(dev));
+
 
 	if (instance_id >= IPC4_MAX_PEAK_VOL_REG_SLOTS) {
 		comp_err(dev, "instance_id %u out of array bounds.", instance_id);
@@ -147,24 +159,34 @@ int volume_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
+	comp_info(dev, "volume_init: config validated, channels %u all_channels %u",
+		  channels_count, (unsigned int)all_channels);
+
+	comp_info(dev, "volume_init: allocating vol_data, size %zu", sizeof(struct vol_data));
 	cd = mod_zalloc(mod, sizeof(struct vol_data));
-	if (!cd)
+	if (!cd) {
+		comp_err(dev, "volume_init: vol_data allocation failed");
 		return -ENOMEM;
+	}
+	comp_info(dev, "volume_init: vol_data allocated %p", cd);
 
 	/*
 	 * malloc memory to store current volume 4 times to ensure the address
 	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
 	 */
+	comp_info(dev, "volume_init: allocating volume buffer, size %zu", vol_size);
 	cd->vol = mod_alloc_align(mod, vol_size, SOF_FRAME_BYTE_ALIGN);
 	if (!cd->vol) {
 		mod_free(mod, cd);
 		comp_err(dev, "Failed to allocate %d", vol_size);
 		return -ENOMEM;
 	}
+	comp_info(dev, "volume_init: volume buffer allocated %p", cd->vol);
 
 	/* malloc memory to store temp peak volume 4 times to ensure the address
 	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
 	 */
+	comp_info(dev, "volume_init: allocating peak buffer, size %zu", vol_size);
 	cd->peak_vol = mod_zalloc(mod, vol_size);
 	if (!cd->peak_vol) {
 		mod_free(mod, cd->vol);
@@ -172,9 +194,11 @@ int volume_init(struct processing_module *mod)
 		comp_err(dev, "Failed to allocate %d for peak_vol", vol_size);
 		return -ENOMEM;
 	}
+	comp_info(dev, "volume_init: peak buffer allocated %p", cd->peak_vol);
 
 	md->private = cd;
 
+	comp_info(dev, "volume_init: initializing channels");
 	for (channel = 0; channel < channels_count; channel++) {
 		channel_cfg = all_channels ? 0 : channel;
 
@@ -188,11 +212,15 @@ int volume_init(struct processing_module *mod)
 
 		/* set muted as false*/
 		cd->muted[channel] = false;
+		comp_info(dev, "volume_init: channel %u initialized, target volume %#x",
+			  (unsigned int)channel, target_volume[channel]);
 	}
 
+	comp_info(dev, "volume_init: initializing ramp");
 	init_ramp(cd, vol->config[0].curve_duration, target_volume[0]);
 
 	volume_set_ramp_channel_counter(cd, channels_count);
+	comp_info(dev, "volume_init: ramp initialized");
 
 	cd->mailbox_offset = offsetof(struct ipc4_fw_registers, peak_vol_regs);
 	cd->mailbox_offset += instance_id * sizeof(struct ipc4_peak_volume_regs);
@@ -200,8 +228,10 @@ int volume_init(struct processing_module *mod)
 	cd->attenuation = 0;
 	cd->is_passthrough = false;
 
+	comp_info(dev, "volume_init: mailbox offset %#x, resetting state", cd->mailbox_offset);
 	volume_reset_state(cd);
 
+	comp_info(dev, "volume_init: completed");
 	return 0;
 }
 
@@ -477,4 +507,3 @@ int volume_peak_prepare(struct vol_data *cd, struct processing_module *mod)
 
 	return 0;
 }
-
