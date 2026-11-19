@@ -897,10 +897,58 @@ static const struct module_interface volume_interface = {
 };
 
 #if CONFIG_COMP_GAIN
+#if CONFIG_COMP_GAIN_FAULT_INJECT
+/**
+ * \brief DEBUG: gain process() with CPU exception fault injection.
+ *
+ * Wraps volume_process(). On gain instances created on core
+ * CONFIG_COMP_GAIN_FAULT_INJECT_CORE, after
+ * CONFIG_COMP_GAIN_FAULT_INJECT_PERIODS calls it executes an illegal
+ * instruction ("ill" on Xtensa), raising an IllegalInstruction CPU
+ * exception from the LL thread of that core.
+ * The core is taken from the IPC4 module init request (dev->ipc_config.core)
+ * rather than read from the CPU, so it is safe in user-space LL threads.
+ *
+ * \param[in,out] mod Gain processing module handle
+ * \param[in] sources Source buffers
+ * \param[in] num_of_sources Number of sources
+ * \param[in,out] sinks Sink buffers
+ * \param[in] num_of_sinks Number of sinks
+ * \return Error code from volume_process(); does not return when faulting.
+ */
+static int gain_process(struct processing_module *mod,
+			struct sof_source **sources, int num_of_sources,
+			struct sof_sink **sinks, int num_of_sinks)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+
+	if (mod->dev->ipc_config.core == CONFIG_COMP_GAIN_FAULT_INJECT_CORE &&
+	    ++cd->fault_inject_cnt >= CONFIG_COMP_GAIN_FAULT_INJECT_PERIODS) {
+		comp_err(mod->dev, "FAULT INJECT: gain 0x%x pipe %u core %u, raising exception",
+			 mod->dev->ipc_config.id, mod->dev->ipc_config.pipeline_id,
+			 mod->dev->ipc_config.core);
+#if defined(__XTENSA__)
+		/* IllegalInstruction exception (EXCCAUSE 0). __builtin_trap() is not
+		 * used: on Xtensa GCC emits "break 1, 15" (a debug exception) first.
+		 */
+		__asm__ volatile("ill");
+#else
+		__builtin_trap();
+#endif
+	}
+
+	return volume_process(mod, sources, num_of_sources, sinks, num_of_sinks);
+}
+#endif /* CONFIG_COMP_GAIN_FAULT_INJECT */
+
 static const struct module_interface gain_interface = {
 	.init = volume_init,
 	.prepare = volume_prepare,
+#if CONFIG_COMP_GAIN_FAULT_INJECT
+	.process = gain_process,
+#else
 	.process = volume_process,
+#endif
 	.set_configuration = volume_set_config,
 	.get_configuration = volume_get_config,
 	.reset = volume_reset,

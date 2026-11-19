@@ -79,4 +79,33 @@ config COMP_GAIN
 	  This option enables gain to change volume. It works
 	  as peak volume without updating peak vol to host
 
+config COMP_GAIN_FAULT_INJECT
+	bool "DEBUG: inject a CPU exception in gain process() on one core"
+	default y
+	depends on COMP_GAIN
+	help
+	  Debug-only fault injection. After COMP_GAIN_FAULT_INJECT_PERIODS
+	  calls to the gain module's process() on a gain instance created
+	  on core COMP_GAIN_FAULT_INJECT_CORE, execute an illegal
+	  instruction ("ill" on Xtensa) from the LL thread context to
+	  raise an IllegalInstruction CPU exception. Never enable in
+	  production builds.
+
+config COMP_GAIN_FAULT_INJECT_CORE
+	int "Core on which gain instances fault"
+	default 1
+	depends on COMP_GAIN_FAULT_INJECT
+	help
+	  Only gain instances whose IPC4 core_id equals this value
+	  inject the fault; gain instances on other cores run normally.
+
+config COMP_GAIN_FAULT_INJECT_PERIODS
+	int "Number of process() calls before the fault"
+	default 1000
+	depends on COMP_GAIN_FAULT_INJECT
+	help
+	  Number of process() invocations per gain instance before the
+	  exception is raised. With a 1 ms LL period, 1000 is about 1 s
+	  of streaming, so the stream is fully running when it faults.
+
 endif # volume
