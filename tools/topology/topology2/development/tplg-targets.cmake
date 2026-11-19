@@ -458,6 +458,10 @@ EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_DEEP_BUFFER=true,DEEPBUFFER_FW_DMA_MS=10,\
 DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
+"sof-hda-generic\;sof-hda-generic-ace3-hdmi-in-port12\;PLATFORM=ptl,HDA_CONFIG=mix,HDMI_IN_CAPTURE=true,\
+HDMI_IN_1_INDEX=1,HDMI_IN_2_INDEX=2,HDMI_IN_1_NAME=SSP1-HDMI,HDMI_IN_1_ID=13,HDMI_IN_2_ID=14,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-hdmi12.bin"
+
 # Deep buffer DMIC0 with tplg NHLT for PTL, 2ch and 4ch
 "sof-hda-generic\;sof-hda-generic-ace3-2ch-dmicdeepbuf\;PLATFORM=ptl,HDA_CONFIG=mix,NUM_DMICS=2,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-2ch-dmicdeepbuf.bin,\
