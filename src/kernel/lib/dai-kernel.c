@@ -73,6 +73,9 @@ const struct device *zephyr_dev[] = {
 #if DT_HAS_COMPAT_STATUS_OKAY(mediatek_afe)
 	DT_FOREACH_STATUS_OKAY(mediatek_afe, GET_DEVICE_LIST)
 #endif
+#if CONFIG_DAI_POSIX
+	DT_FOREACH_STATUS_OKAY(zephyr_posix_dai, GET_DEVICE_LIST)
+#endif
 };
 
 const struct device **dai_get_device_list(size_t *count)
