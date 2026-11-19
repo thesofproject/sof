@@ -177,21 +177,14 @@ void l3_heap_save(void);
  * @param[in] alignment Required memory alignment in bytes.
  * @return Pointer to allocated buffer, or NULL on allocation failure.
  */
-#ifdef CONFIG_SOF_USERSPACE_INTERFACE_ALLOC
-__syscall void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
-			       size_t alignment);
+void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+		     size_t alignment);
 /**
  * @brief Free memory allocated via sof_heap_alloc().
  * @param[in,out] heap Target Zephyr k_heap.
  * @param[in,out] addr Address of allocated buffer to free.
  */
-__syscall void sof_heap_free(struct k_heap *heap, void *addr);
-#include <zephyr/syscalls/alloc.h>
-#else
-void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
-		     size_t alignment);
 void sof_heap_free(struct k_heap *heap, void *addr);
-#endif
 
 /**
  * @brief Get the system kernel heap descriptor.

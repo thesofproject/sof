@@ -29,13 +29,6 @@ config SOF_USERSPACE_INTERFACE_DMA
 	help
 	  Allow user-space threads to use the SOF DMA interface.
 
-config SOF_USERSPACE_INTERFACE_ALLOC
-	bool "Enable SOF heap alloc interface to userspace threads"
-	depends on USERSPACE
-	help
-	  Allow user-space threads to use sof_heap_alloc/sof_heap_free
-	  as Zephyr system calls.
-
 config SOF_USERSPACE_INTERFACE_VREGION
 	bool "Enable SOF vregion interface to userspace threads"
 	depends on USERSPACE

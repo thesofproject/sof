@@ -646,7 +646,6 @@ void z_impl_sof_heap_free(struct k_heap *heap, void *addr)
 	rfree(addr);
 }
 
-#ifndef CONFIG_SOF_USERSPACE_INTERFACE_ALLOC
 void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 		     size_t alignment)
 {
@@ -657,7 +656,6 @@ void sof_heap_free(struct k_heap *heap, void *addr)
 {
 	z_impl_sof_heap_free(heap, addr);
 }
-#endif /* CONFIG_SOF_USERSPACE_INTERFACE_ALLOC */
 
 #else
 
@@ -927,8 +925,6 @@ void z_impl_sof_heap_free(struct k_heap *heap, void *addr)
 		rfree(addr);
 }
 
-#ifndef CONFIG_SOF_USERSPACE_INTERFACE_ALLOC
-
 /*
  * Putting these as inlines in alloc.h breaks Zephyr native
  * ztests like sof/test/ztest/unit/fast-get that include rtos/alloc.h
@@ -977,8 +973,6 @@ void sof_heap_free(struct k_heap *heap, void *addr)
 
 	z_impl_sof_heap_free(heap, addr);
 }
-
-#endif /* CONFIG_SOF_USERSPACE_INTERFACE_ALLOC */
 #endif /* CONFIG_SOF_NATIVE_SIM_HOST_HEAP */
 
 #if CONFIG_L3_HEAP

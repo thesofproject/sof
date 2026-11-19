@@ -60,7 +60,6 @@ struct zephyr_ll_mem_resources {
 	 * zephyr_ll_user_heap(). The heap itself is in LL memory.
 	 */
 	struct k_heap heap;
-	uint8_t *heap_base; /**< LL user heap memory, uncached alias */
 	struct zephyr_ll_karea_state karea[ZEPHYR_LL_KAREA_COUNT]; /**< Kernel-managed areas */
 };
 
@@ -110,7 +109,6 @@ static void ll_region_init(void)
 	rw->size = LL_KAREA_RW_SIZE;
 
 	mem += LL_KAREA_RO_SIZE + LL_KAREA_RW_SIZE;
-	ll_mem_resources.heap_base = mem;
 	/* the only time the kernel writes the heap metadata */
 	zephyr_ll_user_heap_init(mem, LL_HEAP_SIZE);
 
@@ -211,27 +209,6 @@ void zephyr_ll_user_resources_init(void)
 size_t zephyr_ll_user_heap_size(void)
 {
 	return LL_HEAP_SIZE;
-}
-
-bool zephyr_ll_user_heap_contains(const void *ptr, size_t bytes)
-{
-	void __sparse_cache *cptr = (__sparse_force void __sparse_cache *)ptr;
-	uintptr_t start = (uintptr_t)sys_cache_uncached_ptr_get(cptr);
-	uintptr_t base = (uintptr_t)ll_mem_resources.heap_base;
-
-	return start >= base && bytes <= LL_HEAP_SIZE && start - base <= LL_HEAP_SIZE - bytes;
-}
-
-/**
- * Check if 'heap' is a valid heap pointer.
- *
- * Available only in kernel mode.
- *
- * @return true if valid
- */
-bool zephyr_ll_user_heap_verify(struct k_heap *heap)
-{
-	return heap == &ll_mem_resources.heap;
 }
 
 /**
