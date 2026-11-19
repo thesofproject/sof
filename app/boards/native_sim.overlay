@@ -1,0 +1,129 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2026 Intel Corporation. All rights reserved.
+ *
+ * Virtual DAI instances for the native_sim build.
+ *
+ * native_sim has no audio hardware. Without any registered DAI device
+ * dai_get_device() never matches and every DAI gateway request is rejected
+ * before the generic SOF DAI code runs, which hides those paths from the IPC
+ * fuzzer. These nodes describe the virtual links handled by
+ * src/kernel/platform/posix/dai_virtual.c (enabled with CONFIG_DAI_POSIX).
+ *
+ * The indices below mirror a plausible Intel platform so that a host request
+ * carrying a realistic gateway node id finds a device.
+ */
+
+/ {
+	posix_dai_ssp0: posix-dai-ssp0 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "ssp";
+		dai-index = <0>;
+		status = "okay";
+	};
+
+	posix_dai_ssp1: posix-dai-ssp1 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "ssp";
+		dai-index = <1>;
+		status = "okay";
+	};
+
+	posix_dai_ssp2: posix-dai-ssp2 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "ssp";
+		dai-index = <2>;
+		status = "okay";
+	};
+
+	posix_dai_ssp3: posix-dai-ssp3 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "ssp";
+		dai-index = <3>;
+		status = "okay";
+	};
+
+	posix_dai_dmic0: posix-dai-dmic0 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "dmic";
+		dai-index = <0>;
+		status = "okay";
+	};
+
+	posix_dai_dmic1: posix-dai-dmic1 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "dmic";
+		dai-index = <1>;
+		status = "okay";
+	};
+
+	posix_dai_hda0: posix-dai-hda0 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "hda";
+		dai-index = <0>;
+		status = "okay";
+	};
+
+	posix_dai_hda1: posix-dai-hda1 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "hda";
+		dai-index = <1>;
+		status = "okay";
+	};
+
+	posix_dai_hda2: posix-dai-hda2 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "hda";
+		dai-index = <2>;
+		status = "okay";
+	};
+
+	posix_dai_hda3: posix-dai-hda3 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "hda";
+		dai-index = <3>;
+		status = "okay";
+	};
+
+	posix_dai_alh0: posix-dai-alh0 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "alh";
+		dai-index = <0>;
+		status = "okay";
+	};
+
+	posix_dai_alh1: posix-dai-alh1 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "alh";
+		dai-index = <1>;
+		status = "okay";
+	};
+
+	posix_dai_alh2: posix-dai-alh2 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "alh";
+		dai-index = <2>;
+		status = "okay";
+	};
+
+	posix_dai_alh3: posix-dai-alh3 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "alh";
+		dai-index = <3>;
+		status = "okay";
+	};
+
+	posix_dai_uaol0: posix-dai-uaol0 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "uaol";
+		dai-index = <0>;
+		status = "okay";
+	};
+
+	posix_dai_uaol1: posix-dai-uaol1 {
+		compatible = "zephyr,posix-dai";
+		dai-type = "uaol";
+		dai-index = <1>;
+		status = "okay";
+	};
+};

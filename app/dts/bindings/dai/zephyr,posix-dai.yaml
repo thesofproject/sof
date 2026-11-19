@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2026 Intel Corporation. All rights reserved.
+
+description: |
+  Virtual DAI instance used by the SOF native_sim (POSIX) build.
+
+  native_sim has no audio hardware, so this node describes a DAI that only
+  exists to make the generic SOF DAI construction, configuration and property
+  paths reachable (most importantly for the IPC fuzzer). It is handled by
+  src/kernel/platform/posix/dai_virtual.c and moves no audio data.
+
+compatible: "zephyr,posix-dai"
+
+include: base.yaml
+
+properties:
+  dai-type:
+    type: string
+    required: true
+    enum:
+      - "ssp"
+      - "dmic"
+      - "hda"
+      - "alh"
+      - "uaol"
+    description: |
+      DAI type this instance reports through dai_config_get(). It selects the
+      Zephyr type (DAI_INTEL_SSP, DAI_INTEL_DMIC, DAI_INTEL_HDA,
+      DAI_INTEL_ALH or DAI_INTEL_UAOL) that SOF matches a gateway request
+      against.
+
+  dai-index:
+    type: int
+    required: true
+    description: |
+      DAI index this instance answers to. SOF derives it from the IPC gateway
+      node id, so only configured indices can be instantiated.
+
+  fifo-depth:
+    type: int
+    default: 32
+    description: |
+      FIFO depth reported through dai_get_properties(). Some DAI types use it
+      as the DMA burst size.

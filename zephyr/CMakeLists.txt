@@ -559,6 +559,10 @@ zephyr_library_sources_ifdef(CONFIG_ARCH_POSIX_LIBFUZZER
 	${SOF_PLATFORM_PATH}/posix/fuzz.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_DAI_POSIX
+	${SOF_PLATFORM_PATH}/posix/dai_virtual.c
+)
+
 if (CONFIG_BOARD_QEMU_XTENSA)
 	set(PLATFORM "qemu_xtensa")
 	zephyr_library_sources(${SOF_PLATFORM_PATH}/qemu_xtensa/platform.c)

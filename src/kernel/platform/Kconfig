@@ -88,6 +88,18 @@ config ZEPHYR_POSIX_FUZZ_TICKS
          following a unit-test style case, so the default is short to
          prevent interaction with regular timer workloads.
 
+config DAI_POSIX
+	bool "Virtual DAI devices for the native_sim build"
+	depends on DAI && ZEPHYR_NATIVE_DRIVERS
+	help
+	  Register the devicetree-described virtual DAI instances handled by
+	  src/kernel/platform/posix/dai_virtual.c. native_sim has no audio hardware,
+	  so without them dai_get_device() never matches and every DAI gateway
+	  request is rejected before the generic SOF DAI construction,
+	  configuration and property code runs. The virtual DAIs make those
+	  paths reachable for the fuzzer. They are configuration-only: no
+	  blob is parsed and no audio data is moved.
+
 endif # ZEPHYR_POSIX && ARCH_POSIX_LIBFUZZER
 
 config IMX8
