@@ -51,9 +51,6 @@
 #include <sof/lib/ams_msg.h>
 #include <ipc4/ams_helpers.h>
 #endif
-#if CONFIG_KPB_NOTIFIER
-#include <sof/lib/notifier.h>
-#endif
 
 #ifdef KPB_HIFI4
 #include <xtensa/tie/xt_hifi4.h>
@@ -117,11 +114,6 @@ struct comp_data {
 };
 
 /*! KPB private functions */
-#if CONFIG_KPB_NOTIFIER
-static void kpb_event_handler(void *arg, enum notify_id type, void *event_data);
-static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
-#endif
-
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli);
 static enum task_state kpb_draining_task(void *arg);
 static int kpb_buffer_data(struct comp_dev *dev,
@@ -721,11 +713,6 @@ __cold static void kpb_free(struct comp_dev *dev)
 		comp_err(dev, "AMS unregister error %d", ret);
 #endif /* CONFIG_AMS */
 
-#if CONFIG_KPB_NOTIFIER
-	/* Unregister KPB from notifications */
-	notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
-#endif/* CONFIG_KPB_NOTIFIER */
-
 	/* Reclaim memory occupied by history buffer */
 	kpb_free_history_buffer(kpb->hd.c_hb);
 	kpb->hd.c_hb = NULL;
@@ -892,26 +879,12 @@ static int kpb_prepare(struct comp_dev *dev)
 	/* only take the draining requests posted from now on */
 	kpb->drain_seq = KPB_DRAIN_REQ_SEQ(atomic_get(&kpb_drain_request));
 
-#if CONFIG_KPB_NOTIFIER
-	/* Register KPB for notification *on the current core* */
-	ret = notifier_register(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT, kpb_event_handler);
-
-	if (ret < 0) {
-		kpb_free_history_buffer(kpb->hd.c_hb);
-		kpb->hd.c_hb = NULL;
-		return -ENOMEM;
-	}
-#endif
-
 #if CONFIG_AMS
 	/* AMS Register KPB for notification */
 	ret = ams_helper_register_consumer(dev, &kpb->kpd_uuid_id,
 					   ams_kpd_msg_uuid,
 					   kpb_ams_kpd_notification);
 	if (ret < 0) {
-#if CONFIG_KPB_NOTIFIER
-		notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
-#endif
 		kpb_free_history_buffer(kpb->hd.c_hb);
 		kpb->hd.c_hb = NULL;
 		return -ENOMEM;
@@ -1042,10 +1015,6 @@ static int kpb_reset(struct comp_dev *dev)
 			kpb_reset_history_buffer(kpb->hd.c_hb);
 		}
 
-#if CONFIG_KPB_NOTIFIER
-		/* Unregister KPB from notifications */
-		notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
-#endif
 		/* Finally KPB is ready after reset */
 		kpb_change_state(kpb, KPB_STATE_PREPARING);
 
@@ -1633,95 +1602,6 @@ static int kpb_buffer_data(struct comp_dev *dev,
 	kpb_change_state(kpb, state_preserved);
 	return ret;
 }
-
-/**
- * \brief Main event dispatcher.
- * \param[in] arg - KPB component internal data.
- * \param[in] type - notification type
- * \param[in] event_data - event specific data.
- * \return none.
- */
-#if CONFIG_KPB_NOTIFIER
-static void kpb_event_handler(void *arg, enum notify_id type, void *event_data)
-{
-	struct comp_dev *dev = arg;
-	struct comp_data *kpb = comp_get_drvdata(dev);
-	struct kpb_event_data *evd = event_data;
-	struct kpb_client *cli = evd->client_data;
-
-	comp_info(dev, "received event with ID: %d ",
-		  evd->event_id);
-
-	switch (evd->event_id) {
-	case KPB_EVENT_REGISTER_CLIENT:
-		kpb_register_client(kpb, cli);
-		break;
-	case KPB_EVENT_UNREGISTER_CLIENT:
-		if (!cli || cli->id >= KPB_MAX_NO_OF_CLIENTS ||
-		    kpb->clients[cli->id].state == KPB_CLIENT_UNREGISTERED)
-			break;
-
-		kpb->clients[cli->id].state = KPB_CLIENT_UNREGISTERED;
-		kpb->clients[cli->id].r_ptr = NULL;
-		kpb->clients[cli->id].sink = NULL;
-		kpb->kpb_no_of_clients--;
-		break;
-	case KPB_EVENT_BEGIN_DRAINING:
-		kpb_init_draining(dev, cli);
-		break;
-	case KPB_EVENT_STOP_DRAINING:
-		/*TODO*/
-		break;
-	default:
-		comp_err(dev, "unsupported command");
-		break;
-	}
-}
-
-/**
- * \brief Register clients in the system.
- *
- * \param[in] kpb - kpb device component pointer.
- * \param[in] cli - pointer to KPB client's data.
- *
- * \return integer representing either:
- *	0 - success
- *	-EINVAL - failure.
- */
-static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
-{
-	int ret = 0;
-
-	comp_cl_info(&comp_kpb, "entry");
-
-	if (!cli) {
-		comp_cl_err(&comp_kpb, "no client data");
-		return -EINVAL;
-	}
-	/* Do we have a room for a new client? */
-	if (kpb->kpb_no_of_clients >= KPB_MAX_NO_OF_CLIENTS ||
-	    cli->id >= KPB_MAX_NO_OF_CLIENTS) {
-		comp_cl_err(&comp_kpb, "no free room for client = %u",
-			    cli->id);
-		ret = -EINVAL;
-	} else if (kpb->clients[cli->id].state != KPB_CLIENT_UNREGISTERED) {
-		comp_cl_err(&comp_kpb, "client = %u already registered",
-			    cli->id);
-		ret = -EINVAL;
-	} else {
-		/* Client accepted, let's store his data */
-		kpb->clients[cli->id].id  = cli->id;
-		kpb->clients[cli->id].drain_req = cli->drain_req;
-		kpb->clients[cli->id].sink = cli->sink;
-		kpb->clients[cli->id].r_ptr = NULL;
-		kpb->clients[cli->id].state = KPB_CLIENT_BUFFERING;
-		kpb->kpb_no_of_clients++;
-		ret = 0;
-	}
-
-	return ret;
-}
-#endif /* CONFIG_KPB_NOTIFIER */
 
 /**
  * \brief Prepare history buffer for draining.

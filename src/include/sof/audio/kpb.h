@@ -97,19 +97,6 @@ enum kpb_state {
 	KPB_STATE_RESETTING,
 };
 
-enum kpb_event {
-	KPB_EVENT_REGISTER_CLIENT = 0,
-	KPB_EVENT_UPDATE_PARAMS,
-	KPB_EVENT_BEGIN_DRAINING,
-	KPB_EVENT_STOP_DRAINING,
-	KPB_EVENT_UNREGISTER_CLIENT,
-};
-
-struct kpb_event_data {
-	enum kpb_event event_id;
-	struct kpb_client *client_data;
-};
-
 enum kpb_client_state {
 	KPB_CLIENT_UNREGISTERED = 0,
 	KPB_CLIENT_BUFFERING,
