@@ -891,6 +891,11 @@ static void *sof_heap_alloc_impl(struct k_heap *heap, uint32_t flags, size_t byt
 		heap = &sof_heap;
 	}
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	if (heap == zephyr_ll_user_heap())
+		return zephyr_ll_user_heap_alloc(flags, bytes, alignment);
+#endif
+
 	void *ptr;
 
 	if (flags & SOF_MEM_FLAG_COHERENT)
@@ -921,6 +926,11 @@ void z_impl_sof_heap_free(struct k_heap *heap, void *addr)
 	if (addr && (zephyr_ll_karea_contains(ZEPHYR_LL_KAREA_RW, addr, 1) ||
 		     zephyr_ll_karea_contains(ZEPHYR_LL_KAREA_RO, addr, 1))) {
 		tr_err(&zephyr_tr, "%p is in a kernel LL area, not freed", addr);
+		return;
+	}
+
+	if (heap == zephyr_ll_user_heap()) {
+		zephyr_ll_user_heap_free(addr);
 		return;
 	}
 #endif
@@ -1040,6 +1050,27 @@ static void fill_one_heap_telemetry(struct sof_tel_heap_info *dst, struct k_heap
 #endif
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+/*
+ * The LL user heap metadata is user-writable, so do not parse it: report the
+ * counters that the user-mode allocator keeps.
+ */
+static void fill_ll_user_heap_telemetry(struct sof_tel_heap_info *dst, uint16_t fail_cnt)
+{
+	struct zephyr_ll_user_heap_stats stats;
+	size_t total = zephyr_ll_user_heap_size();
+
+	zephyr_ll_user_heap_stats_get(&stats);
+
+	dst->heap_type = SOF_TEL_HEAP_LL_USER;
+	dst->alloc_fail_count = fail_cnt + stats.fail_count;
+	dst->total_bytes = (uint32_t)total;
+	dst->allocated_bytes = (uint32_t)MIN(stats.allocated_bytes, total);
+	dst->free_bytes = (uint32_t)(total - dst->allocated_bytes);
+	dst->max_allocated_bytes = (uint32_t)MIN(stats.max_allocated_bytes, total);
+}
+#endif
+
 void telemetry_collect_mem_stats(struct sof_tel_mem_section *mem)
 {
 	uint32_t free_heap_pages;
@@ -1054,8 +1085,8 @@ void telemetry_collect_mem_stats(struct sof_tel_mem_section *mem)
 				SOF_TEL_HEAP_SHARED, heap_fail_counts[TEL_HEAP_SHARED_IDX]);
 #endif
 #ifdef CONFIG_SOF_USERSPACE_LL
-	fill_one_heap_telemetry(&mem->heaps[TEL_HEAP_LL_USER_IDX], zephyr_ll_user_heap(),
-				SOF_TEL_HEAP_LL_USER, heap_fail_counts[TEL_HEAP_LL_USER_IDX]);
+	fill_ll_user_heap_telemetry(&mem->heaps[TEL_HEAP_LL_USER_IDX],
+				    heap_fail_counts[TEL_HEAP_LL_USER_IDX]);
 #endif
 #if CONFIG_L3_HEAP
 	fill_one_heap_telemetry(&mem->heaps[TEL_HEAP_L3_IMR_IDX], &l3_heap,

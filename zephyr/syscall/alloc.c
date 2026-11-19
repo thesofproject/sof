@@ -35,9 +35,7 @@ static inline void z_vrfy_sof_heap_free(struct k_heap *heap, void *addr)
 	K_OOPS(!zephyr_ll_user_heap_verify(heap));
 
 	if (addr) {
-		uintptr_t start = (uintptr_t)heap->heap.init_mem;
-		uintptr_t addr_uc = (uintptr_t)sys_cache_uncached_ptr_get(addr);
-		K_OOPS(addr_uc < start || addr_uc >= start + heap->heap.init_bytes);
+		K_OOPS(!zephyr_ll_user_heap_contains(addr, 1));
 		K_OOPS(K_SYSCALL_MEMORY_WRITE(addr, 1));
 	}
 	z_impl_sof_heap_free(heap, addr);

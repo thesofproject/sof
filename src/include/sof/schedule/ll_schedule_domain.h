@@ -219,6 +219,22 @@ struct task *zephyr_ll_task_alloc(void);
 bool zephyr_ll_user_heap_verify(struct k_heap *heap);
 
 /**
+ * @brief Get the size of the LL user heap memory.
+ * @return Size in bytes.
+ */
+size_t zephyr_ll_user_heap_size(void);
+
+/**
+ * @brief Check that memory lies in the LL user heap.
+ *
+ * Uses the kernel copy of the heap bounds. Kernel context only.
+ * @param[in] ptr Start of the memory, cached or uncached alias.
+ * @param[in] bytes Size in bytes.
+ * @return true if [ptr, ptr + bytes) lies in the heap.
+ */
+bool zephyr_ll_user_heap_contains(const void *ptr, size_t bytes);
+
+/**
  * @brief Initialize user-space memory partitions and access permissions for LL scheduling.
  */
 void zephyr_ll_user_resources_init(void);

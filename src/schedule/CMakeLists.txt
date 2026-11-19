@@ -20,6 +20,10 @@ zephyr_library_sources(
 	zephyr_domain.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_LL
+	zephyr_ll_user_heap.c
+)
+
 if (CONFIG_SOC_ACP_6_0)
 	# Zephyr DMA domain should only be used with zephyr_ll
 	if (CONFIG_DMA_DOMAIN)
