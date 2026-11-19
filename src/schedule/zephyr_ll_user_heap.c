@@ -14,6 +14,7 @@
 
 #include <zephyr/cache.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/sys/math_extras.h>
 #include <zephyr/sys/mutex.h>
 #include <zephyr/sys/sys_heap.h>
@@ -23,6 +24,8 @@
 
 #include <sof/common.h>
 #include <sof/schedule/ll_schedule.h>
+
+LOG_MODULE_DECLARE(mem_allocator, CONFIG_SOF_LOG_LEVEL);
 
 static APP_SYSUSER_BSS struct sys_heap ll_user_sys_heap;
 static APP_SYSUSER_BSS SYS_MUTEX_DEFINE(ll_user_heap_lock);
@@ -66,6 +69,15 @@ void *zephyr_ll_user_heap_alloc(uint32_t flags, size_t bytes, size_t alignment)
 	} else {
 		ll_user_heap_stats.fail_count++;
 	}
+
+#if CONFIG_SYS_HEAP_RUNTIME_STATS && CONFIG_IPC_MAJOR_4
+	/* like the kernel heaps, see heap_alloc_aligned() in zephyr/lib/alloc.c */
+	struct sys_memory_stats stats;
+
+	sys_heap_runtime_stats_get(&ll_user_sys_heap, &stats);
+	LOG_INF("LL user heap allocated: %zu free: %zu max allocated: %zu",
+		stats.allocated_bytes, stats.free_bytes, stats.max_allocated_bytes);
+#endif
 
 	sys_mutex_unlock(&ll_user_heap_lock);
 
