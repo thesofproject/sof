@@ -196,7 +196,15 @@ int module_init(struct processing_module *mod);
  * @return Pointer to allocated buffer, or NULL on failure.
  */
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
-__syscall void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
+void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
+/*
+ * The mod_dp_*() system calls implement the module resource functions for
+ * DP modules in user threads, see mod_res_user() in generic.c. Modules call
+ * the functions without the dp prefix.
+ */
+__syscall void *mod_dp_balloc_align(struct processing_module *mod, size_t size,
+				    size_t alignment);
+void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
 #else
 void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
 #define mod_balloc_align z_impl_mod_balloc_align
@@ -229,21 +237,30 @@ void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start
  * @return Pointer to allocated memory, or NULL on failure.
  */
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
-__syscall void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
-			      size_t alignment);
+void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+		    size_t alignment);
 /**
  * @brief Free a memory block previously allocated for a module.
  * @param mod Pointer to processing module.
  * @param ptr Pointer to memory to free.
  * @return 0 on success, negative error code on failure.
  */
-__syscall int mod_free(struct processing_module *mod, const void *ptr);
+int mod_free(struct processing_module *mod, const void *ptr);
 
 /**
  * @brief Free all heap resources currently tracked for a module.
  * @param mod Pointer to processing module.
  */
-__syscall void mod_free_all(struct processing_module *mod);
+void mod_free_all(struct processing_module *mod);
+
+__syscall void *mod_dp_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+				 size_t alignment);
+__syscall int mod_dp_free(struct processing_module *mod, const void *ptr);
+__syscall void mod_dp_free_all(struct processing_module *mod);
+void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+			   size_t alignment);
+int z_impl_mod_free(struct processing_module *mod, const void *ptr);
+void z_impl_mod_free_all(struct processing_module *mod);
 #else
 void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
 			   size_t alignment);
@@ -375,15 +392,26 @@ static inline void mod_ipc_msg_free(struct processing_module *mod,
 /**
  * \brief Module-managed wrapper for comp_data_blob_handler_new_ext().
  */
-__syscall struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
+struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
 /**
  * \brief Module-managed wrapper for comp_data_blob_set().
  *
  * Note, that only one data blob per module is allowed.
  */
-__syscall int mod_data_blob_set(struct processing_module *mod,
-				enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-				const uint8_t *fragment, size_t fragment_size);
+int mod_data_blob_set(struct processing_module *mod,
+		      enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+		      const uint8_t *fragment, size_t fragment_size);
+
+__syscall struct comp_data_blob_handler *
+mod_dp_data_blob_handler_new(struct processing_module *mod);
+__syscall int mod_dp_data_blob_set(struct processing_module *mod,
+				   enum module_cfg_fragment_position pos,
+				   uint32_t data_offset_size, const uint8_t *fragment,
+				   size_t fragment_size);
+struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processing_module *mod);
+int z_impl_mod_data_blob_set(struct processing_module *mod,
+			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			     const uint8_t *fragment, size_t fragment_size);
 #else
 struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processing_module *mod);
 int z_impl_mod_data_blob_set(struct processing_module *mod,
@@ -396,8 +424,12 @@ void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_
 #endif
 #if CONFIG_FAST_GET
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
-__syscall const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
-				   size_t size);
+const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
+			 size_t size);
+__syscall const void *mod_dp_fast_get(struct processing_module *mod,
+				      const void * const dram_ptr, size_t size);
+const void *z_impl_mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
+				size_t size);
 #else
 const void *z_impl_mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
 				size_t size);

@@ -13,6 +13,7 @@
 
 #include <rtos/symbol.h>
 #include <rtos/mutex.h>
+#include <rtos/userspace_data.h>
 #include <sof/compiler_attributes.h>
 #include <sof/objpool.h>
 #include <sof/audio/module_adapter/module/generic.h>
@@ -32,13 +33,43 @@
 LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
 /*
- * A single lock shared by all module resource pools. The resource API is only
- * ever entered from supervisor context (the z_impl_* syscall bodies), so the
- * lock does not need to live in the per-module, user-writable struct - a static
- * kernel object serialises all pools. Contention is negligible because resource
+ * A single lock shared by the module resource pools that are used in
+ * supervisor mode, by kernel code and the mod_dp_*() system calls, so it does
+ * not need to live in the per-module, user-writable struct - a static kernel
+ * object serialises all pools. Contention is negligible because resource
  * bookkeeping only happens at module setup/teardown, not on the processing path.
  */
-static K_MUTEX_DEFINE(mod_res_lock);
+static K_MUTEX_DEFINE(mod_res_klock);
+
+#if CONFIG_SOF_USERSPACE_LL
+/*
+ * The pools of LL modules are only used in user mode, by the LL and IPC user
+ * threads, see mod_res_user(), and have their own lock in LL memory.
+ */
+static APP_SYSUSER_BSS SYS_MUTEX_DEFINE(mod_res_ulock);
+#endif
+
+static void mod_res_lock(void)
+{
+#if CONFIG_SOF_USERSPACE_LL
+	if (k_is_user_context()) {
+		sys_mutex_lock(&mod_res_ulock, K_FOREVER);
+		return;
+	}
+#endif
+	k_mutex_lock(&mod_res_klock, K_FOREVER);
+}
+
+static void mod_res_unlock(void)
+{
+#if CONFIG_SOF_USERSPACE_LL
+	if (k_is_user_context()) {
+		sys_mutex_unlock(&mod_res_ulock);
+		return;
+	}
+#endif
+	k_mutex_unlock(&mod_res_klock);
+}
 
 /*
  * Configuration buffers of DP modules are in the module heap: DP modules
@@ -261,18 +292,18 @@ void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
 
-	k_mutex_lock(&mod_res_lock, K_FOREVER);
+	mod_res_lock();
 
 	container = container_get(mod);
 	if (!container) {
-		k_mutex_unlock(&mod_res_lock);
+		mod_res_unlock();
 		return NULL;
 	}
 
 	if (!size) {
 		comp_err(mod->dev, "requested allocation of 0 bytes.");
 		container_put(mod, container);
-		k_mutex_unlock(&mod_res_lock);
+		mod_res_unlock();
 		return NULL;
 	}
 
@@ -284,7 +315,7 @@ void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t
 		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
 			 size, alignment, dev_comp_id(mod->dev));
 		container_put(mod, container);
-		k_mutex_unlock(&mod_res_lock);
+		mod_res_unlock();
 		return NULL;
 	}
 	/* Store reference to allocated memory */
@@ -296,7 +327,7 @@ void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t
 	if (res->heap_usage > res->heap_high_water_mark)
 		res->heap_high_water_mark = res->heap_usage;
 
-	k_mutex_unlock(&mod_res_lock);
+	mod_res_unlock();
 	perf_data_update_module_resources(mod->dev);
 	return ptr;
 }
@@ -323,11 +354,11 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 		return NULL;
 	}
 
-	k_mutex_lock(&mod_res_lock, K_FOREVER);
+	mod_res_lock();
 
 	container = container_get(mod);
 	if (!container) {
-		k_mutex_unlock(&mod_res_lock);
+		mod_res_unlock();
 		return NULL;
 	}
 
@@ -338,7 +369,7 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
 			 size, alignment, dev_comp_id(mod->dev));
 		container_put(mod, container);
-		k_mutex_unlock(&mod_res_lock);
+		mod_res_unlock();
 		return NULL;
 	}
 	/* Store reference to allocated memory */
@@ -350,7 +381,7 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 	if (res->heap_usage > res->heap_high_water_mark)
 		res->heap_high_water_mark = res->heap_usage;
 
-	k_mutex_unlock(&mod_res_lock);
+	mod_res_unlock();
 	perf_data_update_module_resources(mod->dev);
 	return ptr;
 }
@@ -382,11 +413,11 @@ struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processin
 	struct comp_data_blob_handler *bhp;
 	struct module_resource *container;
 
-	k_mutex_lock(&mod_res_lock, K_FOREVER);
+	mod_res_lock();
 	int ret = objpool_iterate(&res->objpool, mod_data_blob_find, &bhp);
 
 	if (!ret) {
-		k_mutex_unlock(&mod_res_lock);
+		mod_res_unlock();
 		/* data blob already exists */
 		comp_warn(mod->dev, "Returning existing data blob");
 		return bhp;
@@ -394,14 +425,14 @@ struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processin
 
 	container = container_get(mod);
 	if (!container) {
-		k_mutex_unlock(&mod_res_lock);
+		mod_res_unlock();
 		return NULL;
 	}
 
 	bhp = comp_data_blob_handler_new_ext(mod->dev, false, NULL, NULL);
 	if (!bhp) {
 		container_put(mod, container);
-		k_mutex_unlock(&mod_res_lock);
+		mod_res_unlock();
 		return NULL;
 	}
 
@@ -409,7 +440,7 @@ struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processin
 	container->size = 0;
 	container->type = MOD_RES_BLOB_HANDLER;
 
-	k_mutex_unlock(&mod_res_lock);
+	mod_res_unlock();
 	return bhp;
 }
 EXPORT_SYMBOL(z_impl_mod_data_blob_handler_new);
@@ -421,9 +452,9 @@ int z_impl_mod_data_blob_set(struct processing_module *mod,
 	struct module_resources *res = &mod->priv.resources;
 	struct comp_data_blob_handler *bhp = NULL;
 
-	k_mutex_lock(&mod_res_lock, K_FOREVER);
+	mod_res_lock();
 	int ret = objpool_iterate(&res->objpool, mod_data_blob_find, &bhp);
-	k_mutex_unlock(&mod_res_lock);
+	mod_res_unlock();
 
 	if (ret < 0)
 		return ret;
@@ -450,18 +481,18 @@ const void *z_impl_mod_fast_get(struct processing_module *mod, const void * cons
 	struct module_resource *container;
 	const void *ptr;
 
-	k_mutex_lock(&mod_res_lock, K_FOREVER);
+	mod_res_lock();
 
 	container = container_get(mod);
 	if (!container) {
-		k_mutex_unlock(&mod_res_lock);
+		mod_res_unlock();
 		return NULL;
 	}
 
 	ptr = fast_get(res->alloc, dram_ptr, size);
 	if (!ptr) {
 		container_put(mod, container);
-		k_mutex_unlock(&mod_res_lock);
+		mod_res_unlock();
 		return NULL;
 	}
 
@@ -469,7 +500,7 @@ const void *z_impl_mod_fast_get(struct processing_module *mod, const void * cons
 	container->size = 0;
 	container->type = MOD_RES_FAST_GET;
 
-	k_mutex_unlock(&mod_res_lock);
+	mod_res_unlock();
 	return ptr;
 }
 EXPORT_SYMBOL(z_impl_mod_fast_get);
@@ -547,10 +578,10 @@ int z_impl_mod_free(struct processing_module *mod, const void *ptr)
 	/* Find which container holds this memory */
 	struct mod_res_cb_arg cb_arg = {mod, ptr};
 
-	k_mutex_lock(&mod_res_lock, K_FOREVER);
+	mod_res_lock();
 	int ret = objpool_iterate(&res->objpool, mod_res_free, &cb_arg);
 
-	k_mutex_unlock(&mod_res_lock);
+	mod_res_unlock();
 
 	if (ret < 0)
 		comp_err(mod->dev, "error: could not find memory pointed by %p", ptr);
@@ -561,116 +592,303 @@ int z_impl_mod_free(struct processing_module *mod, const void *ptr)
 }
 EXPORT_SYMBOL(z_impl_mod_free);
 
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+/*
+ * With CONFIG_SOF_USERSPACE_LL, the LL and IPC user threads use the resources
+ * of LL modules in user mode: the module memory, its resource pool and the
+ * LL user heap are all in LL memory, and the kernel must not run the heap
+ * allocator on metadata that user threads can write. DP module resources are
+ * used through the mod_dp_*() system calls, as DP threads cannot access the
+ * kernel structures behind their vregions. In kernel mode the system call
+ * wrappers call the implementation directly.
+ *
+ * The processing domain is user-writable, so a user thread can only pick the
+ * wrong path for itself: the system calls reject LL modules.
+ */
+static bool mod_res_user(struct processing_module *mod)
+{
+#if CONFIG_SOF_USERSPACE_LL
+	return k_is_user_context() &&
+	       mod->dev->ipc_config.proc_domain != COMP_PROCESSING_DOMAIN_DP;
+#else
+	return false;
+#endif
+}
+
+void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment)
+{
+	if (mod_res_user(mod))
+		return z_impl_mod_balloc_align(mod, size, alignment);
+
+	return mod_dp_balloc_align(mod, size, alignment);
+}
+EXPORT_SYMBOL(mod_balloc_align);
+
+void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+		    size_t alignment)
+{
+	if (mod_res_user(mod))
+		return z_impl_mod_alloc_ext(mod, flags, size, alignment);
+
+	return mod_dp_alloc_ext(mod, flags, size, alignment);
+}
+EXPORT_SYMBOL(mod_alloc_ext);
+
+int mod_free(struct processing_module *mod, const void *ptr)
+{
+	if (mod_res_user(mod))
+		return z_impl_mod_free(mod, ptr);
+
+	return mod_dp_free(mod, ptr);
+}
+EXPORT_SYMBOL(mod_free);
+
+void mod_free_all(struct processing_module *mod)
+{
+	if (mod_res_user(mod))
+		z_impl_mod_free_all(mod);
+	else
+		mod_dp_free_all(mod);
+}
+EXPORT_SYMBOL(mod_free_all);
+
+#if CONFIG_COMP_BLOB
+struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod)
+{
+	if (mod_res_user(mod))
+		return z_impl_mod_data_blob_handler_new(mod);
+
+	return mod_dp_data_blob_handler_new(mod);
+}
+EXPORT_SYMBOL(mod_data_blob_handler_new);
+
+int mod_data_blob_set(struct processing_module *mod,
+		      enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+		      const uint8_t *fragment, size_t fragment_size)
+{
+	if (mod_res_user(mod))
+		return z_impl_mod_data_blob_set(mod, pos, data_offset_size, fragment,
+						fragment_size);
+
+	return mod_dp_data_blob_set(mod, pos, data_offset_size, fragment, fragment_size);
+}
+EXPORT_SYMBOL(mod_data_blob_set);
+#endif
+
+#if CONFIG_FAST_GET
+#if CONFIG_SOF_USERSPACE_LL
+/*
+ * fast_get() keeps its state in kernel memory, so LL modules in user mode
+ * get a private copy in the module memory instead of a shared one. The
+ * copy is a heap resource, so mod_fast_put() frees it with mod_free().
+ */
+static const void *mod_fast_get_copy(struct processing_module *mod,
+				     const void * const dram_ptr, size_t size)
+{
+	void *ptr = z_impl_mod_alloc_ext(mod, SOF_MEM_FLAG_USER, size, 0);
+
+	if (!ptr)
+		return NULL;
+
+	memcpy_s(ptr, size, dram_ptr, size);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)ptr, size);
+
+	return ptr;
+}
+#endif
+
+const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
+			 size_t size)
+{
+#if CONFIG_SOF_USERSPACE_LL
+	if (mod_res_user(mod))
+		return mod_fast_get_copy(mod, dram_ptr, size);
+#endif
+
+	return mod_dp_fast_get(mod, dram_ptr, size);
+}
+EXPORT_SYMBOL(mod_fast_get);
+#endif
+
+void *z_impl_mod_dp_balloc_align(struct processing_module *mod, size_t size, size_t alignment)
+{
+	return z_impl_mod_balloc_align(mod, size, alignment);
+}
+
+void *z_impl_mod_dp_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+			      size_t alignment)
+{
+	return z_impl_mod_alloc_ext(mod, flags, size, alignment);
+}
+
+int z_impl_mod_dp_free(struct processing_module *mod, const void *ptr)
+{
+	return z_impl_mod_free(mod, ptr);
+}
+
+void z_impl_mod_dp_free_all(struct processing_module *mod)
+{
+	z_impl_mod_free_all(mod);
+}
+
+#if CONFIG_COMP_BLOB
+struct comp_data_blob_handler *z_impl_mod_dp_data_blob_handler_new(struct processing_module *mod)
+{
+	return z_impl_mod_data_blob_handler_new(mod);
+}
+
+int z_impl_mod_dp_data_blob_set(struct processing_module *mod,
+				enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				const uint8_t *fragment, size_t fragment_size)
+{
+	return z_impl_mod_data_blob_set(mod, pos, data_offset_size, fragment, fragment_size);
+}
+#endif
+
+#if CONFIG_FAST_GET
+const void *z_impl_mod_dp_fast_get(struct processing_module *mod, const void * const dram_ptr,
+				   size_t size)
+{
+	return z_impl_mod_fast_get(mod, dram_ptr, size);
+}
+#endif
+#endif /* __ZEPHYR__ && CONFIG_SOF_FULL_ZEPHYR_APPLICATION */
+
 #ifdef CONFIG_USERSPACE
 #include <zephyr/internal/syscall_handler.h>
 
-#if CONFIG_FAST_GET
-const void *z_vrfy_mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
-				size_t size)
+/*
+ * Checks shared by the mod_dp_*() validators. Returns a pinned vregion of the
+ * module, or NULL, to release with mod_dp_vrfy_done() after the call.
+ */
+static struct vregion *mod_dp_vrfy(struct processing_module *mod)
 {
+	struct vregion *vreg = NULL;
 	size_t h_size = 0;
 	uintptr_t h_start;
 
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
-	mod_heap_info(mod, &h_size, &h_start);
-	if (h_size)
-		K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
-	K_OOPS(K_SYSCALL_MEMORY_READ(dram_ptr, size));
+#if CONFIG_SOF_USERSPACE_LL
+	struct mod_alloc_ctx *alloc;
 
-	return z_impl_mod_fast_get(mod, dram_ptr, size);
+	/*
+	 * LL modules use their resources in user mode. Only DP modules,
+	 * whose allocation context uses a vregion, may get here, so the
+	 * kernel never allocates from the LL user heap or from a heap that a
+	 * user thread made up.
+	 */
+	K_OOPS(K_SYSCALL_MEMORY_READ(mod->dev, sizeof(*mod->dev)));
+	K_OOPS(mod->dev->ipc_config.proc_domain != COMP_PROCESSING_DOMAIN_DP);
+	alloc = mod->priv.resources.alloc;
+	K_OOPS(K_SYSCALL_MEMORY_READ(alloc, sizeof(*alloc)));
+	vreg = alloc->vreg;
+	K_OOPS(!vregion_verify_pin(vreg));
+#endif
+	mod_heap_info(mod, &h_size, &h_start);
+	if (h_size && K_SYSCALL_MEMORY_WRITE(h_start, h_size)) {
+		if (vreg)
+			vregion_unpin(vreg);
+		K_OOPS(true);
+	}
+
+	return vreg;
 }
-#include <zephyr/syscalls/mod_fast_get_mrsh.c>
+
+static void mod_dp_vrfy_done(struct vregion *vreg)
+{
+	if (vreg)
+		vregion_unpin(vreg);
+}
+
+#if CONFIG_FAST_GET
+const void *z_vrfy_mod_dp_fast_get(struct processing_module *mod, const void * const dram_ptr,
+				   size_t size)
+{
+	struct vregion *vreg;
+	const void *ptr;
+
+	K_OOPS(K_SYSCALL_MEMORY_READ(dram_ptr, size));
+	vreg = mod_dp_vrfy(mod);
+	ptr = z_impl_mod_dp_fast_get(mod, dram_ptr, size);
+	mod_dp_vrfy_done(vreg);
+
+	return ptr;
+}
+#include <zephyr/syscalls/mod_dp_fast_get_mrsh.c>
 #endif
 
-void *z_vrfy_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
-			   size_t alignment)
+void *z_vrfy_mod_dp_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+			      size_t alignment)
 {
-	size_t h_size = 0;
-	uintptr_t h_start;
+	struct vregion *vreg = mod_dp_vrfy(mod);
+	void *ptr = z_impl_mod_dp_alloc_ext(mod, flags, size, alignment);
 
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
-	mod_heap_info(mod, &h_size, &h_start);
-	if (h_size)
-		K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
+	mod_dp_vrfy_done(vreg);
 
-	return z_impl_mod_alloc_ext(mod, flags, size, alignment);
+	return ptr;
 }
-#include <zephyr/syscalls/mod_alloc_ext_mrsh.c>
+#include <zephyr/syscalls/mod_dp_alloc_ext_mrsh.c>
 
-void *z_vrfy_mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment)
+void *z_vrfy_mod_dp_balloc_align(struct processing_module *mod, size_t size, size_t alignment)
 {
-	size_t h_size = 0;
-	uintptr_t h_start;
+	struct vregion *vreg = mod_dp_vrfy(mod);
+	void *ptr = z_impl_mod_dp_balloc_align(mod, size, alignment);
 
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
-	mod_heap_info(mod, &h_size, &h_start);
-	if (h_size)
-		K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
+	mod_dp_vrfy_done(vreg);
 
-	return z_impl_mod_balloc_align(mod, size, alignment);
+	return ptr;
 }
-#include <zephyr/syscalls/mod_balloc_align_mrsh.c>
+#include <zephyr/syscalls/mod_dp_balloc_align_mrsh.c>
 
-int z_vrfy_mod_free(struct processing_module *mod, const void *ptr)
+int z_vrfy_mod_dp_free(struct processing_module *mod, const void *ptr)
 {
-	size_t h_size = 0;
-	uintptr_t h_start;
+	struct vregion *vreg = mod_dp_vrfy(mod);
+	int ret = z_impl_mod_dp_free(mod, ptr);
 
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
-	mod_heap_info(mod, &h_size, &h_start);
-	if (h_size)
-		K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
+	mod_dp_vrfy_done(vreg);
 
-	return z_impl_mod_free(mod, ptr);
+	return ret;
 }
-#include <zephyr/syscalls/mod_free_mrsh.c>
+#include <zephyr/syscalls/mod_dp_free_mrsh.c>
 
-void z_vrfy_mod_free_all(struct processing_module *mod)
+void z_vrfy_mod_dp_free_all(struct processing_module *mod)
 {
-	size_t h_size = 0;
-	uintptr_t h_start;
+	struct vregion *vreg = mod_dp_vrfy(mod);
 
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
-	mod_heap_info(mod, &h_size, &h_start);
-	if (h_size)
-		K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
-
-	z_impl_mod_free_all(mod);
+	z_impl_mod_dp_free_all(mod);
+	mod_dp_vrfy_done(vreg);
 }
-#include <zephyr/syscalls/mod_free_all_mrsh.c>
+#include <zephyr/syscalls/mod_dp_free_all_mrsh.c>
 
 #if CONFIG_COMP_BLOB
-struct comp_data_blob_handler *z_vrfy_mod_data_blob_handler_new(struct processing_module *mod)
+struct comp_data_blob_handler *z_vrfy_mod_dp_data_blob_handler_new(struct processing_module *mod)
 {
-	size_t h_size = 0;
-	uintptr_t h_start;
+	struct vregion *vreg = mod_dp_vrfy(mod);
+	struct comp_data_blob_handler *bhp = z_impl_mod_dp_data_blob_handler_new(mod);
 
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
-	mod_heap_info(mod, &h_size, &h_start);
-	if (h_size)
-		K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
+	mod_dp_vrfy_done(vreg);
 
-	return z_impl_mod_data_blob_handler_new(mod);
+	return bhp;
 }
-#include <zephyr/syscalls/mod_data_blob_handler_new_mrsh.c>
+#include <zephyr/syscalls/mod_dp_data_blob_handler_new_mrsh.c>
 
-int z_vrfy_mod_data_blob_set(struct processing_module *mod,
-			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-			     const uint8_t *fragment_in, size_t fragment_size)
+int z_vrfy_mod_dp_data_blob_set(struct processing_module *mod,
+				enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				const uint8_t *fragment_in, size_t fragment_size)
 {
-	size_t h_size = 0;
-	uintptr_t h_start;
+	struct vregion *vreg;
+	int ret;
 
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
-	mod_heap_info(mod, &h_size, &h_start);
-	if (h_size)
-		K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
 	if (fragment_size)
 		K_OOPS(K_SYSCALL_MEMORY_READ(fragment_in, fragment_size));
+	vreg = mod_dp_vrfy(mod);
+	ret = z_impl_mod_dp_data_blob_set(mod, pos, data_offset_size, fragment_in,
+					  fragment_size);
+	mod_dp_vrfy_done(vreg);
 
-	return z_impl_mod_data_blob_set(mod, pos, data_offset_size, fragment_in, fragment_size);
+	return ret;
 }
-#include <zephyr/syscalls/mod_data_blob_set_mrsh.c>
+#include <zephyr/syscalls/mod_dp_data_blob_set_mrsh.c>
 #endif
 #endif
 
@@ -852,10 +1070,10 @@ __cold void z_impl_mod_free_all(struct processing_module *mod)
 
 	assert_can_be_cold();
 
-	k_mutex_lock(&mod_res_lock, K_FOREVER);
+	mod_res_lock();
 	objpool_iterate(&res->objpool, mod_res_free, &cb_arg);
 	objpool_prune(&res->objpool);
-	k_mutex_unlock(&mod_res_lock);
+	mod_res_unlock();
 
 	/* Make sure resource lists and accounting are reset */
 	mod_resource_init(mod);
