@@ -92,6 +92,7 @@ struct comp_data {
 	struct comp_buffer *sel_sink; /**< real time sink (channel selector)*/
 	struct comp_buffer *host_sink; /**< draining sink (client) */
 	uint32_t kpb_no_of_clients; /**< number of registered clients */
+	uint8_t drain_seq; /**< sequence number of the last draining request taken */
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
 	size_t host_buffer_size; /**< size of host buffer */
@@ -110,27 +111,12 @@ struct comp_data {
 	struct kpb_fmt_dev_list fmt_device_list;
 	struct fast_mode_task fmt;
 
-#if CONFIG_AMS && !CONFIG_KPB_CLI_Q
+#if CONFIG_AMS
 	uint32_t kpd_uuid_id;
 #endif
 };
 
 /*! KPB private functions */
-#if CONFIG_KPB_CLI_Q
-#include <zephyr/kernel.h>
-
-/*
- * Only a single KPB instance is currently supported: the queue, thread and
- * dev below are global. Requests are copied by value, so user space never
- * passes pointers to the kernel.
- */
-K_MSGQ_DEFINE(kpb_cli_msgq, sizeof(struct kpb_client), KPB_MAX_NO_OF_CLIENTS,
-	      __alignof__(struct kpb_client));
-static struct comp_dev *kpb_cli_q_dev;
-static struct k_thread kpb_thread;
-K_KERNEL_STACK_DEFINE(kpb_stack, 4096);
-#endif
-
 #if CONFIG_KPB_NOTIFIER
 static void kpb_event_handler(void *arg, enum notify_id type, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
@@ -195,7 +181,7 @@ static uint64_t kpb_task_deadline(void *data)
 #endif
 }
 
-#if CONFIG_AMS && !CONFIG_KPB_CLI_Q
+#if CONFIG_AMS
 
 /* Key-phrase detected message*/
 static const ams_uuid_t ams_kpd_msg_uuid = AMS_KPD_MSG_UUID;
@@ -483,39 +469,6 @@ static void kpb_set_params(struct comp_dev *dev,
 
 static int kpb_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
 
-#if CONFIG_KPB_CLI_Q
-static void kpb_thread_fn(void *p1, void *p2, void *p3)
-{
-	struct comp_dev *dev = p1;
-	struct kpb_client cli;
-
-	for (;;) {
-		k_msgq_get(&kpb_cli_msgq, &cli, K_FOREVER);
-		/* keep the LL thread (kpb_copy()) from preempting draining setup */
-		k_sched_lock();
-		kpb_init_draining(dev, &cli);
-		k_sched_unlock();
-	}
-}
-
-int z_impl_kpb_notifier_schedule(uint32_t id, uint32_t drain_req)
-{
-	struct kpb_client cli = {
-		.id = id,
-		.drain_req = drain_req,
-	};
-
-	if (id >= KPB_MAX_NO_OF_CLIENTS || drain_req > KPB_MAX_DRAINING_REQ)
-		return -EINVAL;
-
-	if (!kpb_cli_q_dev)
-		return -ENODEV;
-
-	return k_msgq_put(&kpb_cli_msgq, &cli, K_NO_WAIT);
-}
-EXPORT_SYMBOL(z_impl_kpb_notifier_schedule);
-#endif
-
 /*
  * \brief Create a key phrase buffer component.
  * \param[in] config - generic ipc component pointer.
@@ -554,13 +507,6 @@ __cold static struct comp_dev *kpb_new(const struct comp_driver *drv,
 			    ipc_config_size);
 		return NULL;
 	}
-
-#if CONFIG_KPB_CLI_Q
-	if (kpb_cli_q_dev) {
-		comp_cl_err(&comp_kpb, "only one KPB instance is supported with KPB_CLI_Q");
-		return NULL;
-	}
-#endif
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -616,16 +562,6 @@ __cold static struct comp_dev *kpb_new(const struct comp_driver *drv,
 		comp_free_device(dev);
 		return NULL;
 	}
-#endif
-
-#if CONFIG_KPB_CLI_Q
-	k_msgq_purge(&kpb_cli_msgq);
-	k_thread_create(&kpb_thread, kpb_stack, 4096, kpb_thread_fn, dev, NULL, NULL,
-			1, 0, K_FOREVER);
-
-	k_thread_cpu_pin(&kpb_thread, cpu_get_id());
-	k_thread_start(&kpb_thread);
-	kpb_cli_q_dev = dev;
 #endif
 
 	return dev;
@@ -775,11 +711,7 @@ __cold static void kpb_free(struct comp_dev *dev)
 
 	comp_info(dev, "entry");
 
-#if CONFIG_KPB_CLI_Q
-	kpb_cli_q_dev = NULL;
-	k_thread_abort(&kpb_thread);
-	k_msgq_purge(&kpb_cli_msgq);
-#elif CONFIG_AMS
+#if CONFIG_AMS
 	/* Unregister KPB as AMS consumer */
 	int ret;
 
@@ -787,7 +719,7 @@ __cold static void kpb_free(struct comp_dev *dev)
 					     kpb_ams_kpd_notification);
 	if (ret)
 		comp_err(dev, "AMS unregister error %d", ret);
-#endif/* CONFIG_KPB_CLI_Q */
+#endif /* CONFIG_AMS */
 
 #if CONFIG_KPB_NOTIFIER
 	/* Unregister KPB from notifications */
@@ -868,7 +800,7 @@ static int kpb_params(struct comp_dev *dev,
 	kpb->host_period_size = params->host_period_bytes;
 	kpb->config.sampling_width = params->sample_container_bytes * 8;
 
-#if !CONFIG_KPB_CLI_Q && CONFIG_AMS
+#if CONFIG_AMS
 	kpb->kpd_uuid_id = AMS_INVALID_MSG_TYPE;
 #endif
 
@@ -957,6 +889,9 @@ static int kpb_prepare(struct comp_dev *dev)
 		kpb->clients[i].r_ptr = NULL;
 	}
 
+	/* only take the draining requests posted from now on */
+	kpb->drain_seq = KPB_DRAIN_REQ_SEQ(atomic_get(&kpb_drain_request));
+
 #if CONFIG_KPB_NOTIFIER
 	/* Register KPB for notification *on the current core* */
 	ret = notifier_register(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT, kpb_event_handler);
@@ -968,7 +903,6 @@ static int kpb_prepare(struct comp_dev *dev)
 	}
 #endif
 
-#if !CONFIG_KPB_CLI_Q
 #if CONFIG_AMS
 	/* AMS Register KPB for notification */
 	ret = ams_helper_register_consumer(dev, &kpb->kpd_uuid_id,
@@ -983,7 +917,6 @@ static int kpb_prepare(struct comp_dev *dev)
 		return -ENOMEM;
 	}
 #endif /* CONFIG_AMS */
-#endif
 
 #ifndef CONFIG_IPC_MAJOR_4
 	/* Search for KPB related sinks.
@@ -1362,6 +1295,27 @@ static void kpb_micselect_copy(struct comp_dev *dev, struct comp_buffer *sink_c,
  *	0 - success
  *	-EINVAL - failure.
  */
+/*
+ * Start draining if a key phrase detector requested it with
+ * kpb_request_draining() since the last copy, see kpb_init_draining().
+ */
+static void kpb_take_draining_request(struct comp_dev *dev)
+{
+	struct comp_data *kpb = comp_get_drvdata(dev);
+	uint32_t req = atomic_get(&kpb_drain_request);
+	struct kpb_client cli = {
+		.id = KPB_DRAIN_REQ_ID(req),
+		.drain_req = KPB_DRAIN_REQ_LEN(req),
+	};
+
+	if (KPB_DRAIN_REQ_SEQ(req) == kpb->drain_seq)
+		return;
+
+	kpb->drain_seq = KPB_DRAIN_REQ_SEQ(req);
+	comp_info(dev, "draining request client %u, %u ms", cli.id, cli.drain_req);
+	kpb_init_draining(dev, &cli);
+}
+
 static int kpb_copy(struct comp_dev *dev)
 {
 	int ret = 0;
@@ -1389,6 +1343,8 @@ static int kpb_copy(struct comp_dev *dev)
 		ret = -EINVAL;
 		return ret;
 	}
+
+	kpb_take_draining_request(dev);
 
 	switch (kpb->state) {
 	case KPB_STATE_RUN:

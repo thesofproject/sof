@@ -161,11 +161,6 @@ config COMP_KPB
 
 if COMP_KPB
 
-config KPB_CLI_Q
-	bool "Use a client queue for KPB"
-	help
-	  Use a Zephyr queue instead of SOF notifiers
-
 config KPB_NOTIFIER
 	bool "Enable Notifier for KPB events"
 	default y

@@ -258,26 +258,55 @@ struct kpb_fmt_dev_list {
 	struct comp_dev *kpb_mi_ptr;
 };
 
-#if CONFIG_KPB_CLI_Q
+#if CONFIG_COMP_KPB && !CONFIG_LIBRARY
+#include <zephyr/sys/atomic.h>
+#include <zephyr/toolchain.h>
+
+/*
+ * A draining request is a single word, so that any thread can post it and
+ * the KPB instances can read it in their LL threads without a lock: an
+ * 8-bit sequence number, the client ID and the draining length.
+ */
+#define KPB_DRAIN_REQ(seq, id, len)	((((uint32_t)(seq) & 0xff) << 24) | \
+					 (((uint32_t)(id) & 0xf) << 20) | \
+					 ((uint32_t)(len) & 0xfffff))
+#define KPB_DRAIN_REQ_SEQ(req)		(((uint32_t)(req) >> 24) & 0xff)
+#define KPB_DRAIN_REQ_ID(req)		(((uint32_t)(req) >> 20) & 0xf)
+#define KPB_DRAIN_REQ_LEN(req)		((uint32_t)(req) & 0xfffff)
+
+BUILD_ASSERT(KPB_MAX_NO_OF_CLIENTS <= 16, "KPB client ID does not fit a draining request");
+BUILD_ASSERT(KPB_MAX_DRAINING_REQ < (1 << 20),
+	     "KPB draining length does not fit a draining request");
+
+/* the last draining request, posted by kpb_request_draining() */
+extern atomic_t kpb_drain_request;
+
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 #include <sof/compiler_attributes.h>
 /**
- * \brief Request draining of the KPB history buffer via the client queue.
+ * \brief Request draining of the KPB history buffers.
  *
- * Callable from user space. The request is handled asynchronously by the
- * KPB client queue thread.
+ * Callable from user space. Every KPB instance that has been prepared takes
+ * the request in its next copy, so the draining starts within one LL period.
  *
  * \param[in] id Client ID, i.e. the KPB output pin.
  * \param[in] drain_req Requested draining length in milliseconds.
- * \return 0 on success, -EINVAL on invalid arguments, -ENODEV if no KPB
- *	   instance exists, -ENOMSG if the queue is full.
+ * \return 0 on success, -EINVAL on invalid arguments.
  */
-__syscall int kpb_notifier_schedule(uint32_t id, uint32_t drain_req);
+__syscall int kpb_request_draining(uint32_t id, uint32_t drain_req);
 #include <zephyr/syscalls/kpb.h>
 #else
-int z_impl_kpb_notifier_schedule(uint32_t id, uint32_t drain_req);
-#define kpb_notifier_schedule z_impl_kpb_notifier_schedule
+int z_impl_kpb_request_draining(uint32_t id, uint32_t drain_req);
+#define kpb_request_draining z_impl_kpb_request_draining
 #endif
+#else
+#include <errno.h>
+
+/* no KPB in this build, so nothing to drain */
+static inline int kpb_request_draining(uint32_t id, uint32_t drain_req)
+{
+	return -ENODEV;
+}
 #endif
 
 #ifdef UNIT_TEST
