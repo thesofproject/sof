@@ -132,6 +132,14 @@ void zephyr_ll_user_heap_free(void *ptr)
 	sys_mutex_unlock(&ll_user_heap_lock);
 }
 
+#if CONFIG_SOF_BOOT_TEST_STANDALONE
+void zephyr_ll_user_heap_test_get(struct sys_heap **heap, struct sys_mutex **lock)
+{
+	*heap = &ll_user_sys_heap;
+	*lock = &ll_user_heap_lock;
+}
+#endif
+
 void zephyr_ll_user_heap_stats_get(struct zephyr_ll_user_heap_stats *stats)
 {
 	/* user-writable values, only copied as numbers */

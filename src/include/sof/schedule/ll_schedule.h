@@ -140,6 +140,18 @@ void zephyr_ll_user_heap_free(void *ptr);
  * @param[out] stats The counters.
  */
 void zephyr_ll_user_heap_stats_get(struct zephyr_ll_user_heap_stats *stats);
+
+#if CONFIG_SOF_BOOT_TEST_STANDALONE
+struct sys_heap;
+struct sys_mutex;
+
+/**
+ * @brief Get the allocator state of the LL user heap, for tests.
+ * @param[out] heap The heap, in LL memory.
+ * @param[out] lock The heap lock, in LL memory.
+ */
+void zephyr_ll_user_heap_test_get(struct sys_heap **heap, struct sys_mutex **lock);
+#endif
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 /* ll tracing */
