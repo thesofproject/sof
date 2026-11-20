@@ -73,6 +73,4 @@ target_sources(app PRIVATE
 	${SOF_ROOT}/src/audio/pipeline/pipeline-xrun.c
 )
 
-target_link_libraries(app PRIVATE m)
-
 sof_append_relative_path_definitions(app)

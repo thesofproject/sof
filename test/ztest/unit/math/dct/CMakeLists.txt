@@ -43,6 +43,4 @@ target_sources(app PRIVATE
 	${SOF_ROOT}/src/math/sqrt_int16.c
 )
 
-target_link_libraries(app PRIVATE m)
-
 sof_append_relative_path_definitions(app)
