@@ -24,6 +24,7 @@ Building for Intel Panther Lake:
 ./scripts/xtensa-build-zephyr.py --cmake-args=-DCONFIG_SOF_BOOT_TEST_STANDALONE=y \
         --cmake-args=-DCONFIG_SOF_USERSPACE_INTERFACE_DMA=y \
         --cmake-args=-DCONFIG_SOF_USERSPACE_LL=y \
+        -o app/internal_ci_overlay.conf \
         -o app/overlays/ptl/userspace_overlay.conf -o app/winconsole_overlay.conf ptl
 
 Running test:
