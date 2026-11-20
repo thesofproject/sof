@@ -2,7 +2,7 @@
 //
 // Copyright(c) 2026 Intel Corporation.
 //
-// Bluetooth aptX per-codec encoder implementation for ffmpeg_dec.
+/* Bluetooth aptX / aptX HD per-codec encoder implementation for ffmpeg_dec. */
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <ipc/compress_params.h>
@@ -46,14 +46,17 @@ static int ffmpeg_enc_aptx_init(struct processing_module *mod, struct ffmpeg_enc
 {
 	struct comp_dev *dev = mod->dev;
 	struct ffmpeg_enc_aptx_data *aptx;
+	enum AVCodecID codec_id;
 
 	aptx = mod_zalloc(mod, sizeof(*aptx));
 	if (!aptx)
 		return -ENOMEM;
 
-	aptx->codec = avcodec_find_encoder(AV_CODEC_ID_APTX);
+	codec_id = (e->codec_ops->id == FFMPEG_DEC_CODEC_APTX_HD) ?
+		   AV_CODEC_ID_APTX_HD : AV_CODEC_ID_APTX;
+	aptx->codec = avcodec_find_encoder(codec_id);
 	if (!aptx->codec) {
-		comp_err(dev, "libavcodec aptX encoder not found");
+		comp_err(dev, "libavcodec %s encoder not found", e->codec_ops->name);
 		mod_free(mod, aptx);
 		return -ENODEV;
 	}
@@ -188,6 +191,7 @@ static void ffmpeg_enc_aptx_free(struct processing_module *mod, struct ffmpeg_en
 	e->codec_priv = NULL;
 }
 
+#if defined(CONFIG_FFMPEG_ENC_APTX)
 const struct ffmpeg_enc_codec_ops ffmpeg_enc_aptx_ops = {
 	.id = FFMPEG_DEC_CODEC_APTX,
 	.snd_codec_id = SND_AUDIOCODEC_APTX,
@@ -199,3 +203,18 @@ const struct ffmpeg_enc_codec_ops ffmpeg_enc_aptx_ops = {
 	.reset = ffmpeg_enc_aptx_reset,
 	.free = ffmpeg_enc_aptx_free,
 };
+#endif
+
+#if defined(CONFIG_FFMPEG_ENC_APTX_HD)
+const struct ffmpeg_enc_codec_ops ffmpeg_enc_aptx_hd_ops = {
+	.id = FFMPEG_DEC_CODEC_APTX_HD,
+	.snd_codec_id = SND_AUDIOCODEC_APTX_HD,
+	.name = "aptx_hd",
+	.validate_params = ffmpeg_enc_aptx_validate_params,
+	.init = ffmpeg_enc_aptx_init,
+	.configure = ffmpeg_enc_aptx_configure,
+	.encode_frame = ffmpeg_enc_aptx_encode_frame,
+	.reset = ffmpeg_enc_aptx_reset,
+	.free = ffmpeg_enc_aptx_free,
+};
+#endif

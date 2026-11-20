@@ -83,6 +83,36 @@ config FFMPEG_DEC_APTX
 	  --enable-decoder=aptx in the libavcodec build for compress playback
 	  streams requesting SND_AUDIOCODEC_APTX.
 
+config FFMPEG_DEC_APTX_HD
+	bool "Bluetooth aptX HD decoder"
+	help
+	  Bluetooth aptX HD 24-bit audio decoder. Pure integer 4-band QMF +
+	  ADPCM decoder with no floating-point math dependency. Enables
+	  --enable-decoder=aptx_hd in the libavcodec build for compress
+	  playback streams requesting SND_AUDIOCODEC_APTX_HD.
+
+config FFMPEG_DEC_G726
+	bool "ITU-T G.726 ADPCM decoder"
+	help
+	  ITU-T G.726 ADPCM decoder (16/24/32/40 kbps, big- and little-endian
+	  packing via profile=1). Pure integer ADPCM decoder with no
+	  floating-point math dependency. Enables
+	  --enable-decoder=adpcm_g726,adpcm_g726le in the libavcodec build.
+
+config FFMPEG_DEC_ALAW
+	bool "ITU-T G.711 A-law decoder"
+	help
+	  ITU-T G.711 A-law companded PCM decoder. Pure integer table lookup
+	  with no floating-point math dependency. Enables
+	  --enable-decoder=pcm_alaw in the libavcodec build.
+
+config FFMPEG_DEC_MULAW
+	bool "ITU-T G.711 mu-law decoder"
+	help
+	  ITU-T G.711 mu-law companded PCM decoder. Pure integer table lookup
+	  with no floating-point math dependency. Enables
+	  --enable-decoder=pcm_mulaw in the libavcodec build.
+
 comment "FFmpeg encoders to build (footprint scales with selection)"
 
 config FFMPEG_ENC_MP3
@@ -144,11 +174,41 @@ config FFMPEG_ENC_APTX
 	  dependency. Selected at runtime for compress capture streams
 	  requesting SND_AUDIOCODEC_APTX.
 
+config FFMPEG_ENC_APTX_HD
+	bool "Bluetooth aptX HD encoder (native libavcodec)"
+	help
+	  Bluetooth aptX HD 24-bit audio encoder via native libavcodec aptx_hd
+	  encoder. Pure integer 4-band QMF + ADPCM encoder with no
+	  floating-point math dependency. Selected at runtime for compress
+	  capture streams requesting SND_AUDIOCODEC_APTX_HD.
+
+config FFMPEG_ENC_G726
+	bool "ITU-T G.726 ADPCM encoder (native libavcodec)"
+	help
+	  ITU-T G.726 ADPCM encoder (16/24/32/40 kbps, big- and little-endian
+	  packing via profile=1) via native libavcodec adpcm_g726 /
+	  adpcm_g726le encoders. Pure integer ADPCM with no floating-point math
+	  dependency.
+
+config FFMPEG_ENC_ALAW
+	bool "ITU-T G.711 A-law encoder (native libavcodec)"
+	help
+	  ITU-T G.711 A-law companded PCM encoder via native libavcodec
+	  pcm_alaw encoder. Pure integer lookup with no floating-point math
+	  dependency.
+
+config FFMPEG_ENC_MULAW
+	bool "ITU-T G.711 mu-law encoder (native libavcodec)"
+	help
+	  ITU-T G.711 mu-law companded PCM encoder via native libavcodec
+	  pcm_mulaw encoder. Pure integer lookup with no floating-point math
+	  dependency.
+
 # Selected automatically when any encoder is enabled. Gates compilation of the
 # runtime encode path (ffmpeg-encode.c).
 config FFMPEG_ENC
 	bool
-	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC || FFMPEG_ENC_FLAC || FFMPEG_ENC_ALAC || FFMPEG_ENC_SBC || FFMPEG_ENC_G722 || FFMPEG_ENC_APTX
+	default y if FFMPEG_ENC_MP3 || FFMPEG_ENC_AAC || FFMPEG_ENC_FLAC || FFMPEG_ENC_ALAC || FFMPEG_ENC_SBC || FFMPEG_ENC_G722 || FFMPEG_ENC_APTX || FFMPEG_ENC_APTX_HD || FFMPEG_ENC_G726 || FFMPEG_ENC_ALAW || FFMPEG_ENC_MULAW
 
 comment "FFmpeg audio filters to build (libavfilter)"
 	depends on IPC_MAJOR_4

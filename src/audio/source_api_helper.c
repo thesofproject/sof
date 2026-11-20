@@ -105,3 +105,4 @@ void source_set_min_available(struct sof_source *source, size_t min_available)
 {
 	source->min_available = min_available;
 }
+EXPORT_SYMBOL(source_set_min_available);

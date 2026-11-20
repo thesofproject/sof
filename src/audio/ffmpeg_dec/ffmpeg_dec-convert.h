@@ -28,7 +28,15 @@
 int ffmpeg_dec_convert_frame(const AVFrame *frame, uint8_t *out, size_t out_size,
 			     int sink_fmt, int channels);
 
+#ifndef FFMPEG_DECIM_3TO1_HIST_LEN
 #define FFMPEG_DECIM_3TO1_HIST_LEN	12
+#endif
+#ifndef FFMPEG_DECIM_2TO1_HIST_LEN
+#define FFMPEG_DECIM_2TO1_HIST_LEN	27
+#endif
+#ifndef FFMPEG_DECIM_6TO1_HIST_LEN
+#define FFMPEG_DECIM_6TO1_HIST_LEN	(FFMPEG_DECIM_3TO1_HIST_LEN + FFMPEG_DECIM_2TO1_HIST_LEN)
+#endif
 
 /**
  * ffmpeg_dec_pcm_to_frame - Convert interleaved SOF PCM into an AVFrame.
@@ -56,6 +64,20 @@ void ffmpeg_dec_pcm_decimate_3to1_s16_mono(const uint8_t *in, int16_t *dst,
 					   int src_fmt, int src_ch,
 					   int nb_out_samples,
 					   int16_t hist[FFMPEG_DECIM_3TO1_HIST_LEN]);
+
+/**
+ * ffmpeg_dec_pcm_decimate_6to1_s16_mono - Anti-aliased 6:1 (48->8 kHz) mono S16 decimator.
+ * @in: Source interleaved 48 kHz PCM buffer (6 * @nb_out_samples frames).
+ * @dst: Destination 8 kHz mono S16 buffer (@nb_out_samples samples).
+ * @src_fmt: SOF valid sample format (SOF_IPC_FRAME_S16_LE / S24_4LE / S32_LE).
+ * @src_ch: Input channel count.
+ * @nb_out_samples: Number of 8 kHz output samples to produce.
+ * @hist: Stateful 39-sample two-stage FIR delay line preserved across frames.
+ */
+void ffmpeg_dec_pcm_decimate_6to1_s16_mono(const uint8_t *in, int16_t *dst,
+					   int src_fmt, int src_ch,
+					   int nb_out_samples,
+					   int16_t hist[FFMPEG_DECIM_6TO1_HIST_LEN]);
 
 /* HiFi SIMD helpers implemented in ffmpeg-convert-hifi.c */
 int ffmpeg_hifi_fltp_to_s32(const float *const *src, int32_t *dst,

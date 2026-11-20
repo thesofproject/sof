@@ -90,9 +90,9 @@ struct ffmpeg_dec_ffmpeg_data {
 };
 
 /* Map the SOF codec enum to a libavcodec decoder id. */
-static enum AVCodecID ffmpeg_dec_av_codec_id(enum ffmpeg_dec_codec codec)
+static enum AVCodecID ffmpeg_dec_av_codec_id(const struct ffmpeg_dec_comp_data *cd)
 {
-	switch (codec) {
+	switch (cd->codec) {
 #if defined(CONFIG_FFMPEG_DEC_FLAC)
 	case FFMPEG_DEC_CODEC_FLAC:
 		return AV_CODEC_ID_FLAC;
@@ -125,6 +125,23 @@ static enum AVCodecID ffmpeg_dec_av_codec_id(enum ffmpeg_dec_codec codec)
 	case FFMPEG_DEC_CODEC_APTX:
 		return AV_CODEC_ID_APTX;
 #endif
+#if defined(CONFIG_FFMPEG_DEC_APTX_HD)
+	case FFMPEG_DEC_CODEC_APTX_HD:
+		return AV_CODEC_ID_APTX_HD;
+#endif
+#if defined(CONFIG_FFMPEG_DEC_G726)
+	case FFMPEG_DEC_CODEC_G726:
+		return (cd->req_profile == 1) ? AV_CODEC_ID_ADPCM_G726LE :
+						AV_CODEC_ID_ADPCM_G726;
+#endif
+#if defined(CONFIG_FFMPEG_DEC_ALAW)
+	case FFMPEG_DEC_CODEC_ALAW:
+		return AV_CODEC_ID_PCM_ALAW;
+#endif
+#if defined(CONFIG_FFMPEG_DEC_MULAW)
+	case FFMPEG_DEC_CODEC_MULAW:
+		return AV_CODEC_ID_PCM_MULAW;
+#endif
 	default:
 		return AV_CODEC_ID_NONE;
 	}
@@ -148,9 +165,11 @@ static int ffmpeg_dec_ff_init(struct processing_module *mod)
 	if (!ff)
 		return -ENOMEM;
 
-	id = ffmpeg_dec_av_codec_id(cd->codec);
-	if (cd->codec_ops && cd->codec_ops->decoder_name)
+	id = ffmpeg_dec_av_codec_id(cd);
+	if (cd->codec_ops && cd->codec_ops->decoder_name &&
+	    cd->codec != FFMPEG_DEC_CODEC_G726) {
 		ff->codec = avcodec_find_decoder_by_name(cd->codec_ops->decoder_name);
+	}
 	if (!ff->codec)
 		ff->codec = avcodec_find_decoder(id);
 	if (!ff->codec) {
@@ -372,7 +391,8 @@ static int ffmpeg_dec_ff_decode(struct processing_module *mod,
 			}
 			if (raw_len >= cap ||
 			    (cd->codec_ops && cd->codec_ops->limit_packet_size)) {
-				comp_err(dev, "unparsed packet reassembly buffer full or invalid block");
+				comp_err(dev, "unparsed decode failed %d (raw=%zu pkt=%zu prev=%zu)",
+					 ret, raw_len, pkt_len, prev_len);
 				ff->pktbuf_len = 0;
 				return -EIO;
 			}

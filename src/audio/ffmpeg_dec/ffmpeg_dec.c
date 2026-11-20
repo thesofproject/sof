@@ -240,6 +240,18 @@ static const struct ffmpeg_dec_codec_ops * const ffmpeg_dec_codecs[] = {
 #if defined(CONFIG_FFMPEG_DEC_APTX) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
 	&ffmpeg_dec_aptx_ops,
 #endif
+#if defined(CONFIG_FFMPEG_DEC_APTX_HD) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_aptx_hd_ops,
+#endif
+#if defined(CONFIG_FFMPEG_DEC_G726) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_g726_ops,
+#endif
+#if defined(CONFIG_FFMPEG_DEC_ALAW) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_alaw_ops,
+#endif
+#if defined(CONFIG_FFMPEG_DEC_MULAW) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	&ffmpeg_dec_mulaw_ops,
+#endif
 };
 
 static const struct ffmpeg_dec_codec_ops *ffmpeg_dec_find_codec_ops(enum ffmpeg_dec_codec id)
@@ -367,11 +379,23 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 			comp_err(dev, "unsupported or disabled snd_codec id 0x%x",
 				 codec_params->id);
 			mod_free(mod, cd);
+			md->private = NULL;
 			return -ENOTSUP;
+		}
+		if (ops->validate_params) {
+			ret = ops->validate_params(mod, codec_params);
+			if (ret) {
+				mod_free(mod, cd);
+				md->private = NULL;
+				return ret;
+			}
 		}
 		cd->codec_ops = ops;
 		cd->codec = ops->id;
+		cd->req_rate = codec_params->sample_rate;
+		cd->req_channels = codec_params->ch_in ? codec_params->ch_in : codec_params->ch_out;
 		cd->req_bit_rate = codec_params->bit_rate;
+		cd->req_profile = codec_params->profile;
 		comp_info(dev, "codec selected from IPC: %s (%d, snd_codec id 0x%x)",
 			  cd->codec_ops->name, cd->codec, codec_params->id);
 	}
@@ -477,6 +501,15 @@ static int ffmpeg_dec_prepare(struct processing_module *mod,
 	}
 	sink = sinks[0];
 
+	/*
+	 * Compressed inputs have no fixed frame-size alignment for EOS zero-fill:
+	 * clear min_available so comp_check_eos() does not inject 0x00 silence
+	 * blocks into unframed bitstreams (G.711/G.726/aptX) after host EOS.
+	 */
+	if (num_of_sources > 0 && sources[0]) {
+		source_set_min_available(sources[0], 0);
+	}
+
 	/* Cache the PCM format the decoder must produce for the pipeline. */
 	cd->out_rate = sink_get_rate(sink);
 	cd->out_channels = sink_get_channels(sink);
@@ -536,6 +569,9 @@ static int ffmpeg_dec_prepare(struct processing_module *mod,
 	cd->unparsed_skip_to_eof = false;
 	cd->draining = false;
 	cd->drained = false;
+#if CONFIG_IPC_MAJOR_4
+	cd->eos_sent = false;
+#endif
 
 	return 0;
 }
@@ -591,13 +627,35 @@ static bool ffmpeg_dec_is_ready_to_process(struct processing_module *mod,
 	if (num_of_sources < 1 || num_of_sinks < 1)
 		return false;
 
+#if CONFIG_IPC_MAJOR_4
+	/* Do not pull trailing EOS-flush silence blocks once compress drain completed. */
+	if (cd->eos_sent) {
+		return false;
+	}
+#endif
+
 	if (sink_get_free_size(sinks[0]) == 0)
 		return false;
 
 	if (cd->pcm_avail)
 		return true;
 
-	return source_get_data_available(sources[0]) > 0;
+	if (source_get_data_available(sources[0]) > 0) {
+		return true;
+	}
+
+#if CONFIG_IPC_MAJOR_4
+	{
+		enum sof_audio_buffer_state src_state = source_get_state(sources[0]);
+
+		if (src_state == AUDIOBUF_STATE_END_OF_STREAM ||
+		    src_state == AUDIOBUF_STATE_END_OF_STREAM_FLUSH) {
+			return true;
+		}
+	}
+#endif
+
+	return false;
 }
 
 /**
@@ -653,6 +711,13 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 		ffmpeg_dec_drain_pcm(cd, sink);
 		return 0;
 	}
+
+#if CONFIG_IPC_MAJOR_4
+	if (cd->eos_sent) {
+		source_drop_data(src, source_get_data_available(src));
+		return 0;
+	}
+#endif
 
 	/* One-time: strip the container header so the parser sees frames. */
 	if (!cd->hdr_done) {
@@ -764,6 +829,22 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 	if (ret) {
 		if (direct_sink)
 			sink_commit_buffer(sink, 0);
+		if (host_eos) {
+			bool all_zero = true;
+
+			for (size_t i = 0; i < req; i++) {
+				if (cd->in_buf[i] != 0) {
+					all_zero = false;
+					break;
+				}
+			}
+			if (all_zero) {
+				source_drop_data(src, source_get_data_available(src));
+				cd->drained = true;
+				ffmpeg_dec_signal_eos(mod, sink);
+				return 0;
+			}
+		}
 		comp_err(dev, "decode failed %d", ret);
 		return ret;
 	}
@@ -797,7 +878,8 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 	 * produced no PCM and no staged PCM remains, enter draining mode to
 	 * flush the parser and codec before signaling EOS.
 	 */
-	if (host_eos && !produced && !cd->pcm_avail) {
+	if (host_eos && !cd->pcm_avail &&
+	    (!produced || source_get_data_available(src) == 0)) {
 		if (!cd->drained) {
 			size_t c_consumed = 0;
 			size_t c_flushed = 0;

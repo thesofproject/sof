@@ -57,6 +57,18 @@ static const struct ffmpeg_enc_codec_ops * const ffmpeg_enc_codecs[] = {
 #if defined(CONFIG_FFMPEG_ENC_APTX)
 	&ffmpeg_enc_aptx_ops,
 #endif
+#if defined(CONFIG_FFMPEG_ENC_APTX_HD)
+	&ffmpeg_enc_aptx_hd_ops,
+#endif
+#if defined(CONFIG_FFMPEG_ENC_G726)
+	&ffmpeg_enc_g726_ops,
+#endif
+#if defined(CONFIG_FFMPEG_ENC_ALAW)
+	&ffmpeg_enc_alaw_ops,
+#endif
+#if defined(CONFIG_FFMPEG_ENC_MULAW)
+	&ffmpeg_enc_mulaw_ops,
+#endif
 };
 
 static const struct ffmpeg_enc_codec_ops *
@@ -352,14 +364,14 @@ static int ffmpeg_enc_configure(struct processing_module *mod, struct sof_source
 		return -EINVAL;
 	}
 
-	if ((e->req_rate && e->req_rate != cd->out_rate &&
-	     !(e->req_rate == 16000 && cd->out_rate == 48000 &&
-	       (cd->codec == FFMPEG_DEC_CODEC_G722 ||
-		(cd->codec == FFMPEG_DEC_CODEC_SBC && e->req_profile == 1)))) ||
-	    (e->req_channels && e->req_channels != cd->out_channels &&
-	     !(e->req_channels == 1 &&
-	       (cd->codec == FFMPEG_DEC_CODEC_G722 ||
-		cd->codec == FFMPEG_DEC_CODEC_SBC)))) {
+	bool rate_ok = (!e->req_rate || e->req_rate == cd->out_rate ||
+			(cd->out_rate == 48000 &&
+			 ((e->req_rate == 16000 && e->codec_ops->supports_decim_3to1) ||
+			  (e->req_rate == 8000 && e->codec_ops->supports_decim_6to1))));
+	bool ch_ok = (!e->req_channels || e->req_channels == cd->out_channels ||
+		      (e->req_channels == 1 && e->codec_ops->supports_mono_downmix));
+
+	if (!rate_ok || !ch_ok) {
 		comp_err(dev, "ffmpeg_enc: requested %u Hz/%u ch does not match source %u Hz/%u ch",
 			 e->req_rate, e->req_channels, cd->out_rate, cd->out_channels);
 		return -EINVAL;

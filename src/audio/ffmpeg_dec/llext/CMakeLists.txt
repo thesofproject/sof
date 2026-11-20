@@ -13,6 +13,8 @@ if(CONFIG_COMP_FFMPEG_DEC_STUB)
 			../ffmpeg_dec-sbc.c
 			../ffmpeg_dec-g722.c
 			../ffmpeg_dec-aptx.c
+			../ffmpeg_dec-g726.c
+			../ffmpeg_dec-g711.c
 			../ffmpeg_dec-stub.c
 		LIB openmodules
 	)
@@ -52,8 +54,14 @@ else()
 	if(CONFIG_FFMPEG_DEC_G722)
 		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-g722.c)
 	endif()
-	if(CONFIG_FFMPEG_DEC_APTX)
+	if(CONFIG_FFMPEG_DEC_APTX OR CONFIG_FFMPEG_DEC_APTX_HD)
 		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-aptx.c)
+	endif()
+	if(CONFIG_FFMPEG_DEC_G726)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-g726.c)
+	endif()
+	if(CONFIG_FFMPEG_DEC_ALAW OR CONFIG_FFMPEG_DEC_MULAW)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-g711.c)
 	endif()
 	# fastmathf provides the single-precision libm the codecs need AND sofm_log2f
 	# used by the shims' log10(); always built for the real (non-stub) backend.
@@ -97,8 +105,14 @@ else()
 	if(CONFIG_FFMPEG_ENC_G722)
 		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-g722.c)
 	endif()
-	if(CONFIG_FFMPEG_ENC_APTX)
+	if(CONFIG_FFMPEG_ENC_APTX OR CONFIG_FFMPEG_ENC_APTX_HD)
 		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-aptx.c)
+	endif()
+	if(CONFIG_FFMPEG_ENC_G726)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-g726.c)
+	endif()
+	if(CONFIG_FFMPEG_ENC_ALAW OR CONFIG_FFMPEG_ENC_MULAW)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg-enc-g711.c)
 	endif()
 
 	# Real libm (newlib double math) LAST so libav*/filter references resolve against it

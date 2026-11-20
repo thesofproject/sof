@@ -52,6 +52,10 @@ enum ffmpeg_dec_codec {
 	FFMPEG_DEC_CODEC_SBC,
 	FFMPEG_DEC_CODEC_G722,
 	FFMPEG_DEC_CODEC_APTX,
+	FFMPEG_DEC_CODEC_APTX_HD,
+	FFMPEG_DEC_CODEC_G726,
+	FFMPEG_DEC_CODEC_ALAW,
+	FFMPEG_DEC_CODEC_MULAW,
 };
 
 /* Default codec for a new instance, picked from the Kconfig selection until the
@@ -73,6 +77,14 @@ enum ffmpeg_dec_codec {
 #define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_G722
 #elif defined(CONFIG_FFMPEG_DEC_APTX)
 #define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_APTX
+#elif defined(CONFIG_FFMPEG_DEC_APTX_HD)
+#define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_APTX_HD
+#elif defined(CONFIG_FFMPEG_DEC_G726)
+#define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_G726
+#elif defined(CONFIG_FFMPEG_DEC_ALAW)
+#define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_ALAW
+#elif defined(CONFIG_FFMPEG_DEC_MULAW)
+#define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_MULAW
 #else
 #define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_NONE
 #endif
@@ -137,6 +149,9 @@ struct ffmpeg_enc_codec_ops {
 	enum ffmpeg_dec_codec id;
 	uint32_t snd_codec_id;
 	const char *name;
+	bool supports_mono_downmix;
+	bool supports_decim_3to1;
+	bool supports_decim_6to1;
 	int (*validate_params)(struct processing_module *mod,
 			       const struct snd_codec *codec_params);
 	int (*init)(struct processing_module *mod, struct ffmpeg_enc_data *e);
@@ -145,6 +160,10 @@ struct ffmpeg_enc_codec_ops {
 	void (*reset)(struct processing_module *mod, struct ffmpeg_enc_data *e);
 	void (*free)(struct processing_module *mod, struct ffmpeg_enc_data *e);
 };
+
+#define FFMPEG_DECIM_3TO1_HIST_LEN	12
+#define FFMPEG_DECIM_2TO1_HIST_LEN	27
+#define FFMPEG_DECIM_6TO1_HIST_LEN	(FFMPEG_DECIM_3TO1_HIST_LEN + FFMPEG_DECIM_2TO1_HIST_LEN)
 
 /**
  * struct ffmpeg_enc_data - Common encoder state across all encode codecs.
@@ -174,7 +193,7 @@ struct ffmpeg_enc_data {
 	uint32_t req_channels;
 	uint32_t req_ch_mode;
 	uint32_t req_profile;
-	int16_t decim_hist[12];
+	int16_t decim_hist[FFMPEG_DECIM_6TO1_HIST_LEN];
 	int src_fmt;
 	int frame_bytes;
 	int nb;
@@ -194,6 +213,10 @@ extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_alac_ops;
 extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_sbc_ops;
 extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_g722_ops;
 extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_aptx_ops;
+extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_aptx_hd_ops;
+extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_g726_ops;
+extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_alaw_ops;
+extern const struct ffmpeg_enc_codec_ops ffmpeg_enc_mulaw_ops;
 
 void ffmpeg_enc_pcm_to_s16_interleaved(const uint8_t *pcm_in, int16_t *dst,
 				       size_t total_samples, int src_fmt);
@@ -227,6 +250,8 @@ struct ffmpeg_dec_codec_ops {
 	uint32_t snd_codec_id;
 	const char *name;
 	const char *decoder_name;
+	int (*validate_params)(struct processing_module *mod,
+			       const struct snd_codec *codec_params);
 	uint32_t (*max_frame_samples)(const struct ffmpeg_dec_comp_data *cd);
 	int (*skip_container)(struct processing_module *mod, struct sof_source *src);
 	void (*prepare_extradata)(struct processing_module *mod);
@@ -244,6 +269,10 @@ extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_alac_ops;
 extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_sbc_ops;
 extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_g722_ops;
 extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_aptx_ops;
+extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_aptx_hd_ops;
+extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_g726_ops;
+extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_alaw_ops;
+extern const struct ffmpeg_dec_codec_ops ffmpeg_dec_mulaw_ops;
 
 /**
  * struct ffmpeg_dec_backend - decode backend operations.
@@ -308,7 +337,10 @@ struct ffmpeg_dec_comp_data {
 	size_t extradata_size;
 	uint32_t out_rate;
 	uint32_t out_channels;
+	uint32_t req_rate;
+	uint32_t req_channels;
 	uint32_t req_bit_rate;
+	uint32_t req_profile;
 	int out_frame_fmt;
 	uint32_t out_frame_bytes;
 	bool is_encoder;
