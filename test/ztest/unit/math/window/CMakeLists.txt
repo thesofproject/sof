@@ -29,4 +29,3 @@ target_sources(app PRIVATE
 	${SOF_ROOT}/src/math/decibels.c
 )
 
-target_link_libraries(app PRIVATE m)
