@@ -15,7 +15,6 @@
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
-#include <sof/lib/notifier.h>
 #include <rtos/wait.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -47,7 +46,6 @@ SOF_DEFINE_REG_UUID(google_hotword);
 
 struct comp_data {
 	struct comp_data_blob_handler *model_handler;
-	struct kpb_event_data event_data;
 	struct kpb_client client_data;
 
 	struct ipc_msg *msg;
@@ -69,18 +67,13 @@ static void notify_host(const struct comp_dev *dev)
 static void notify_kpb(const struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	int ret;
 
 	comp_dbg(dev, "entry");
 
-	cd->client_data.r_ptr = NULL;
-	cd->client_data.sink = NULL;
-	cd->client_data.id = 0;
-	cd->event_data.event_id = KPB_EVENT_BEGIN_DRAINING;
-	cd->event_data.client_data = &cd->client_data;
-
-	notifier_event(dev, NOTIFIER_ID_KPB_CLIENT_EVT,
-		       NOTIFIER_TARGET_CORE_ALL_MASK, &cd->event_data,
-		       sizeof(cd->event_data));
+	ret = kpb_request_draining(0, cd->client_data.drain_req);
+	if (ret < 0)
+		comp_err(dev, "KPB draining request failed: %d", ret);
 }
 
 static struct comp_dev *ghd_create(const struct comp_driver *drv,
