@@ -73,9 +73,6 @@ struct aria_data {
 	/* cyclic buffer start address of data */
 	int32_t *data_addr;
 
-	/* internal buffer offset helps to keep algorithmic delay constant */
-	size_t offset;
-
 	aria_get_data_func aria_get_data;
 };
 

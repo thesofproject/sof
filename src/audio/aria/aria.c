@@ -66,12 +66,20 @@ static int aria_algo_init(struct aria_data *cd, void *buffer_desc,
 {
 	cd->chan_cnt = chan_cnt;
 	cd->smpl_group_cnt = smpl_group_cnt;
-	/* ensures buffer size is aligned to 8 bytes */
-	cd->buff_size = ALIGN_UP(cd->chan_cnt * cd->smpl_group_cnt, 2);
-	cd->offset = (cd->chan_cnt * cd->smpl_group_cnt) & 1;
+	/* The ring holds exactly one chunk, a whole number of frames, so a
+	 * frame never straddles its end and the delay stays smpl_group_cnt
+	 * frames. The sample count is odd only for an odd channel count,
+	 * and the odd channel HiFi paths access the ring with 32-bit scalar
+	 * loads and stores. The even channel paths load two samples at a
+	 * time; there the ring is a multiple of 8 bytes, the allocation is
+	 * cache line aligned and the pointers advance by whole frames, so
+	 * they stay 8-byte aligned. The allocation may be one sample larger,
+	 * see get_required_memory().
+	 */
+	cd->buff_size = cd->chan_cnt * cd->smpl_group_cnt;
 	cd->att = att;
 	cd->data_addr = buffer_desc;
-	cd->data_ptr = cd->data_addr + cd->offset;
+	cd->data_ptr = cd->data_addr;
 	cd->data_end = cd->data_addr + cd->buff_size;
 	cd->buff_pos = 0;
 
