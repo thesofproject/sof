@@ -127,5 +127,5 @@ EFX_DMIC0_DRC_PARAMS=dmic_default,DOLBY_DAX_CORE_ID=1"
 # HDA generic with multi-slot WoV feature for ACE3 (PTL and WCL)
 "sof-hda-generic\;sof-hda-generic-ace3-4ch-wov-multi\;PLATFORM=ptl,HDA_CONFIG=mix,NUM_DMICS=4,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC_WOV_DAI_CHANNELS=4,INCLUDE_WOV=multi,\
-PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-4ch.bin"
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-4ch.bin,HDA_SPEAKER_ECHO_REF_ECNS=true"
 )
