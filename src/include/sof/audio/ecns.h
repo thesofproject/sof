@@ -3,31 +3,36 @@
  * Copyright(c) 2026 Intel Corporation. All rights reserved.
  */
 
+/**
+ * \file
+ * \brief ECNS (Echo Cancellation & Noise Suppression) component definitions
+ */
+
 #ifndef __SOF_AUDIO_ECNS_H__
 #define __SOF_AUDIO_ECNS_H__
 
 #include <stdint.h>
 #include <stdbool.h>
 
-#define ECNS_IN_CHANNELS	2
-#define ECNS_PIN_KPB		0	/* Output Pin 0: Channel 0 mono to KPB */
-#define ECNS_PIN_HOST		1	/* Output Pin 1: Channels 0,1 stereo to Host Copier */
+/** \brief Input pin 0: 16 kHz microphone stream from the DMIC DAI copier */
+#define ECNS_PIN_MIC_IN		0
+/** \brief Input pin 1: 16 kHz echo reference stream from the speaker */
+#define ECNS_PIN_REF_IN		1
+/** \brief Output pin 0: 16 kHz mono processed stream, e.g. to KPB */
+#define ECNS_PIN_OUT		0
 
-#define ECNS_PIN_16K_IN		0	/* Input Pin 0: 16 kHz stream from dmic16k */
-#define ECNS_PIN_48K_IN		1	/* Input Pin 1: 48 kHz stream from dmic01 */
-#define ECNS_PIN_16K_OUT	0	/* Output Pin 0: 16 kHz mono clean to KPB */
-#define ECNS_PIN_48K_OUT	1	/* Output Pin 1: 48 kHz stereo clean to Host Copier */
+/** \brief Output sample rate in Hz */
+#define ECNS_RATE		16000
 
-#define ECNS_PERIOD_MS		20
-#define ECNS_FRAME_SAMPLES_16K	320	/* 20ms @ 16 kHz */
-#define ECNS_FRAME_SAMPLES_48K	960	/* 20ms @ 48 kHz */
-#define ECNS_FRAME_SAMPLES	ECNS_FRAME_SAMPLES_16K
+/** \brief Microphone channel enum value to average all channels */
+#define ECNS_MIC_SEL_AVERAGE	0
+/** \brief Largest microphone channel enum value, Mic4 */
+#define ECNS_MIC_SEL_MAX	4
 
-/* IPC4 channel maps, one nibble per channel index, 0xF marks unused */
+/** \brief IPC4 channel map for mono, one nibble per channel, 0xF marks unused */
 #define ECNS_CH_MAP_MONO	0xFFFFFFF0
-#define ECNS_CH_MAP_STEREO	0xFFFFFF10
-#define ECNS_CH_MAP_4CH		0xFFFF3210
 
+/** \brief Register the ECNS component driver */
 void sys_comp_ecns_init(void);
 
 #endif /* __SOF_AUDIO_ECNS_H__ */
