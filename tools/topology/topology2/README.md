@@ -419,7 +419,7 @@ When targeting hardware configurations not defined in the motherboard's BIOS ACP
 
 ### 1. Enabling NHLT Generation in Manifest
 
-In your top-level topology manifest (e.g. `dmic-wov-multi-4ch-manifest.conf`):
+In your top-level topology manifest (e.g. `my-platform-manifest.conf`):
 
 ```conf
 Define {
@@ -468,8 +468,8 @@ Set `ALSA_TOPOLOGY_PLUGIN_DIR` to the directory containing `libalsatplg_module_n
 ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
 ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/x86_64-linux-gnu/alsa-topology \
 alsatplg -I $PWD/tools/topology/topology2 -p \
-    -c tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf \
-    -o build/sof-tgl-dmic-wov-multi-4ch.tplg
+    -c tools/topology/topology2/my-platform-manifest.conf \
+    -o build/sof-my-platform.tplg
 ```
 
 ### 3. Kernel Driver NHLT Override (`sof_use_tplg_nhlt=1`)
@@ -478,142 +478,25 @@ To instruct the Linux SOF driver to use the topology-embedded NHLT table instead
 
 ```ini
 # /etc/modprobe.d/sof.conf
-options snd_sof tplg_path=intel/sof-ipc4-tplg tplg_filename=sof-tgl-dmic-wov-multi-4ch.tplg
+options snd_sof tplg_path=intel/sof-ipc4-tplg tplg_filename=sof-my-platform.tplg
 options snd_sof_intel_hda_common sof_use_tplg_nhlt=1
 ```
 
 ---
 
-## Multi-Slot microWakeWord (MWW) 4-Channel Architecture
+## Multi-Slot microWakeWord (MWW) Production Topologies
 
 > [!NOTE]
-> This section describes the standalone test manifests (`dmic-wov-multi-*-4ch-manifest.conf`). For the full production SoundWire + DMIC architecture featuring dual PDM interfaces (`dmic01` @ 48 kHz stereo on PDM0 and `dmic16k` @ 16 kHz stereo on PDM1) with 20ms DP ECNS, see [Full Production Platform Topology](#full-production-platform-topology-wildcat-lake-soundwire-rt721--multi-slot-wov-sof-wcl-rt721-4ch-wov-multi-tplg).
-
-The 4-channel native 16 kHz DMIC architecture integrates Echo Cancellation & Noise Suppression (ECNS), Key Phrase Buffer (KPB), 3 concurrent microWakeWord (MWW) detector instances, and the WOV Arbiter. The identical pipeline topology structure is shared across **Panther Lake (PTL)**, **Tiger Lake (TGL)**, and **Wildcat Lake (WCL)**.
-
-### Pipeline Topology Diagram
-
-```mermaid
-graph TD
-    subgraph P100["Pipeline 100 — 4ch DMIC Capture  (Core 0, LL 1ms)"]
-        DAI["DAI Copier (dmic01 / dmic16k)\n4ch · 16 kHz · S16_LE\nCh 0,1: Mics | Ch 2,3: Echo Ref"]
-        MIX100["mixin 100.1\n(4ch pass-through)"]
-        DAI --> MIX100
-    end
-
-    subgraph P105["Pipeline 105 — ECNS DP Processing  (Core 0, DP 20ms)"]
-        MO105["mixout 105.1\n(4ch input)"]
-        ECNS["ecns.105.1\n(ECNS DP Module, 20ms = 320 frames)\nCh 0,1: Mic | Ch 2,3: Echo Ref"]
-        MO105 --> ECNS
-    end
-
-    subgraph P106["Pipeline 106 — KPB History Buffer  (Core 0, DP 20ms)"]
-        KPB["kpb.106.1\n(2.0s mono history = 64 KB)\n16 kHz · 1ch · S16_LE\nPin 0: sel_sink | Pin 1: host_sink"]
-        MIX106["mixin 106.1\n(3-way fanout mixin)"]
-        KPB -- "Pin 0 (sel_sink)" --> MIX106
-    end
-
-    subgraph P101["Pipeline 101 — Slot 0: 'strawberry'  (Core 0, DP 10ms)"]
-        MO101["mixout 101.1"]
-        MFCC0["mfcc.101.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
-        MWW0["mww.101.1\n(microWakeWord)\nModel: 'strawberry'"]
-        MO101 --> MFCC0 --> MWW0
-    end
-
-    subgraph P102["Pipeline 102 — Slot 1: 'hi intel'  (Core 0, DP 10ms)"]
-        MO102["mixout 102.1"]
-        MFCC1["mfcc.102.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
-        MWW1["mww.102.1\n(microWakeWord)\nModel: 'hi intel'"]
-        MO102 --> MFCC1 --> MWW1
-    end
-
-    subgraph P103["Pipeline 103 — Slot 2: 'orange'  (Core 0, DP 10ms)"]
-        MO103["mixout 103.1"]
-        MFCC2["mfcc.103.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
-        MWW2["mww.103.1\n(microWakeWord)\nModel: 'orange'"]
-        MO103 --> MFCC2 --> MWW2
-    end
-
-    subgraph P104["Pipeline 104 — WOV Host PCM Capture  (Core 0, LL 1ms)"]
-        ARB["wov-arbiter.104.1\n(4 input pins, 1 output pin\nPin 0: Audio | Pins 1-3: Features\n1ch mono 16 kHz S16_LE)"]
-        HC11["host-copier.11\n(hw:0,11 · PCM 11 · d0i3=1)\n1ch · 16 kHz · S16_LE"]
-        ARB --> HC11
-    end
-
-    subgraph P107["Pipeline 107 — ECNS Host PCM Capture  (Core 0, LL 1ms)"]
-        HC10["host-copier.10\n(hw:0,10 · PCM 10)\n2ch · 16 kHz · S16_LE / S32_LE"]
-    end
-
-    MIX100 --> MO105
-    ECNS -- "Pin 0 (Mono Clean direct)" --> KPB
-    ECNS -- "Pin 1 (Stereo Clean direct)" --> HC10
-    MIX106 --> MO101
-    MIX106 --> MO102
-    MIX106 --> MO103
-
-    KPB -- "Pin 1 (host_sink / drain audio)" --> ARB
-    MWW0 -- "Pin 1 (Features)" --> ARB
-    MWW1 -- "Pin 2 (Features)" --> ARB
-    MWW2 -- "Pin 3 (Features)" --> ARB
-
-    MWW0 -. "Notifier WOV_DETECT (slot=0)" .-> ARB
-    MWW1 -. "Notifier WOV_DETECT (slot=1)" .-> ARB
-    MWW2 -. "Notifier WOV_DETECT (slot=2)" .-> ARB
-    MWW0 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
-    MWW1 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
-    MWW2 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
-    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MWW0
-    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MWW1
-    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MWW2
-
-    style ECNS fill:#1b4f72,stroke:#555,color:#fff
-    style KPB  fill:#1c4966,stroke:#555,color:#fff
-    style MFCC0 fill:#7d6608,stroke:#555,color:#fff
-    style MFCC1 fill:#7d6608,stroke:#555,color:#fff
-    style MFCC2 fill:#7d6608,stroke:#555,color:#fff
-    style MWW0 fill:#922b21,stroke:#555,color:#fff
-    style MWW1 fill:#b7950b,stroke:#555,color:#fff
-    style MWW2 fill:#d35400,stroke:#555,color:#fff
-    style ARB  fill:#4a235a,stroke:#555,color:#fff
-    style HC11 fill:#2d5a27,stroke:#555,color:#fff
-    style HC10 fill:#1e8449,stroke:#555,color:#fff
-```
-
-### Supported Manifests & Compilation Commands
-
-| Platform | Manifest File | Target Binary | DMIC Driver Version |
-|---|---|---|---|
-| **Panther Lake (PTL)** | [`dmic-wov-multi-ptl-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf) | `sof-ptl-dmic-wov-multi-4ch.tplg` | 5 |
-| **Tiger Lake (TGL)** | [`dmic-wov-multi-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf) | `sof-tgl-dmic-wov-multi-4ch.tplg` | 1 |
-| **Wildcat Lake (WCL)** | symlink to the PTL topology | `sof-wcl-dmic-wov-multi-4ch.tplg` | 5 |
-
-Compile the PTL and TGL targets; WCL is ACE3 like PTL and the compiled
-topology is byte-for-byte identical, so it is only a symlink to the PTL
-binary (the CMake build does the same via the `SYMLINKS` list in
-`production/tplg-targets-ace3.cmake`):
-
-```bash
-# 1. Panther Lake (PTL)
-ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
-ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/x86_64-linux-gnu/alsa-topology \
-alsatplg -I $PWD/tools/topology/topology2 -p \
-    -c tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf \
-    -o build/sof-ptl-dmic-wov-multi-4ch.tplg
-
-# 2. Wildcat Lake (WCL): symlink to the PTL topology
-ln -sf sof-ptl-dmic-wov-multi-4ch.tplg build/sof-wcl-dmic-wov-multi-4ch.tplg
-
-# 3. Tiger Lake (TGL)
-ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
-ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/x86_64-linux-gnu/alsa-topology \
-alsatplg -I $PWD/tools/topology/topology2 -p \
-    -c tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf \
-    -o build/sof-tgl-dmic-wov-multi-4ch.tplg
-```
+> The standalone DMIC-only 4-channel multi-slot WoV manifests
+> (`dmic-wov-multi-ptl-4ch-manifest.conf`, `dmic-wov-multi-4ch-manifest.conf`)
+> and their targets (`sof-ptl-dmic-wov-multi-4ch`, `sof-tgl-dmic-wov-multi-4ch`,
+> `sof-wcl-dmic-wov-multi-4ch`, `sof-dmic-4ch-wov-multi`, `sof-ptl-dmic-4ch-wov-multi`,
+> `sof-wcl-dmic-4ch-wov-multi`) have been removed. ECNS requires a speaker echo
+> reference input, which a DMIC-only topology cannot provide.
 
 ### Full Production Platform Topology: Wildcat Lake SoundWire RT721 + Multi-Slot WoV (`sof-wcl-rt721-4ch-wov-multi.tplg`)
 
-While standalone manifests isolate the DMIC and WoV pipelines for component-level verification, production hardware integrates the full multi-slot WoV subsystem alongside the platform's SoundWire codecs and Intel Display Audio interfaces.
+Production hardware integrates the full multi-slot WoV subsystem alongside the platform's SoundWire codecs and Intel Display Audio interfaces.
 
 The **`sof-wcl-rt721-4ch-wov-multi.tplg`** (and corresponding PTL variant `sof-ptl-rt721-4ch-wov-multi.tplg`) includes:
 - **SoundWire RT721 Headphone Subsystem**: Standard playback (`PCM 0`, `Jack Out`) and low-power deep buffer (`PCM 31`, `Deepbuffer Jack Out`) mixed into ALH endpoint `Playback-SimpleJack`.
@@ -979,13 +862,6 @@ make -C build-tools \
 # Build HDA Generic Multi-WoV (ACE3: PTL and WCL)
 make -C build-tools \
     topology2_prod_sof-hda-generic-ace3-4ch-wov-multi
-
-# Build Standalone 4-Channel DMIC Multi-WoV (PTL, WCL, and generic)
-make -C build-tools \
-    topology2_prod_sof-ptl-dmic-4ch-wov-multi \
-    topology2_prod_sof-wcl-dmic-4ch-wov-multi \
-    topology2_prod_sof-dmic-4ch-wov-multi \
-    topology2_prod_sof-ptl-dmic-wov-multi-4ch
 ```
 
 ##### Configurable Detector Count With Dummy ECNS
@@ -1144,17 +1020,7 @@ build-rimage/rimage -k sof/keys/otc_private_key_3k.pem \
 
 #### Step 2: Compile the Multi-Slot Topology
 
-##### Option A: Standalone 4-Channel DMIC WoV Topology (`sof-ptl-dmic-wov-multi-4ch.tplg`)
-
-```bash
-ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
-ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
-alsatplg -I $PWD/tools/topology/topology2 -p \
-    -c tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf \
-    -o build/sof-ptl-dmic-wov-multi-4ch.tplg
-```
-
-##### Option B: Production SoundWire RT721 Multi-WoV Topology (`sof-ptl-rt721-4ch-wov-multi.tplg`)
+##### Production SoundWire RT721 Multi-WoV Topology (`sof-ptl-rt721-4ch-wov-multi.tplg`)
 
 ```bash
 # 1. Assemble config template with ABI header
@@ -1186,7 +1052,7 @@ Deploy the built binary and topology to the Panther Lake target (e.g. `root@aphi
 scp build-ptl/zephyr/zephyr.ri root@aphid:/lib/firmware/intel/sof-ipc4/ptl/community/sof-ptl.ri
 
 # 2. Copy topology binary
-scp build/sof-ptl-dmic-wov-multi-4ch.tplg root@aphid:/lib/firmware/intel/sof-ipc4-tplg/sof-ptl-dmic-wov-multi-4ch.tplg
+scp build/sof-ptl-rt721-4ch-wov-multi.tplg root@aphid:/lib/firmware/intel/sof-ipc4-tplg/sof-ptl-rt721-4ch-wov-multi.tplg
 
 # 3. Reload audio driver on target DUT
 ssh root@aphid '
@@ -1200,7 +1066,7 @@ ssh root@aphid '
 Verify in target `dmesg`:
 ```text
 sof-audio-pci-intel-ptl ...: Booted firmware version: 2.14.99.1
-sof-audio-pci-intel-ptl ...: loading topology: intel/sof-ipc4-tplg/sof-ptl-dmic-wov-multi-4ch.tplg
+sof-audio-pci-intel-ptl ...: loading topology: intel/sof-ipc4-tplg/sof-ptl-rt721-4ch-wov-multi.tplg
 sof-audio-pci-intel-ptl ...: WOVDEBUG pcm11 dir 1 d0i3=1
 ```
 

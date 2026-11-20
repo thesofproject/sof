@@ -337,11 +337,6 @@ BT_CP_HOST_PIPELINE_ID=201,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-ssp2-bt
 
 # Multi-slot WOV topologies for PTL and WCL
 "dmic-wov-multi-ptl-manifest\;sof-ptl-dmic-wov-multi\;"
-"dmic-wov-multi-ptl-4ch-manifest\;sof-ptl-dmic-wov-multi-4ch\;"
-
-# DMIC multi-slot WoV feature topologies (always uses PDM DMICs for input)
-"dmic-wov-feature\;sof-dmic-4ch-wov-multi\;PLATFORM=none,NUM_DMICS=4,DMIC0_ID=5,DMIC1_ID=6,DMIC1_ENABLE=false,DMIC1_RATE=16000,DMIC_WOV_DAI_CHANNELS=4,WOV_SLOT_COUNT=3"
-"dmic-wov-feature\;sof-ptl-dmic-4ch-wov-multi\;PLATFORM=ptl,NUM_DMICS=4,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-dmic-4ch-wov-multi.bin,DMIC_WOV_DAI_CHANNELS=4,WOV_SLOT_COUNT=3"
 
 # Functional SoundWire topologies with integrated multi-slot WoV feature
 "cavs-sdw\;sof-ptl-rt721-4ch-wov-multi\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
@@ -388,8 +383,6 @@ list(APPEND SYMLINKS
 "sof-wcl-dmic-4ch-id4\;sof-ptl-dmic-4ch-id4"
 "sof-wcl-dmic-4ch-id5\;sof-ptl-dmic-4ch-id5"
 "sof-wcl-dmic-wov-multi\;sof-ptl-dmic-wov-multi"
-"sof-wcl-dmic-wov-multi-4ch\;sof-ptl-dmic-wov-multi-4ch"
-"sof-wcl-dmic-4ch-wov-multi\;sof-ptl-dmic-4ch-wov-multi"
 "sof-wcl-rt721-4ch-wov-multi\;sof-ptl-rt721-4ch-wov-multi"
 "sof-wcl-rt721-2ch-wov-multi\;sof-ptl-rt721-2ch-wov-multi"
 "sof-wcl-rt722-4ch-wov-multi\;sof-ptl-rt722-4ch-wov-multi"
