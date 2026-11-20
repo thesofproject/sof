@@ -25,6 +25,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/ipc/ipc_service.h>
 #include <zephyr/ipc/backends/intel_adsp_host_ipc.h>
+#include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>
 
 #include <cavstool.h>
