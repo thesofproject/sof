@@ -57,30 +57,33 @@ LOG_MODULE_REGISTER(copier, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(copier);
 
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
-static void mic_privacy_event(void *arg, enum notify_id type, void *data)
+/* Take the mic privacy state posted since the last copy, see mic_privacy_propagate_settings() */
+static void mic_privacy_take_state(struct mic_privacy_data *mic_priv_data)
 {
-	struct mic_privacy_data *mic_priv_data = arg;
-	struct mic_privacy_settings *mic_privacy_settings = data;
+	uint32_t word = atomic_get(&mic_privacy_state_word);
 
-	if (type == NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE) {
-		LOG_INF("state1 = %d, state2 = %d ",
-			mic_privacy_settings->mic_privacy_state, mic_priv_data->mic_privacy_state);
+	if (MIC_PRIV_STATE_SEQ(word) == mic_priv_data->state_seq)
+		return;
 
-		if (mic_privacy_settings->mic_privacy_state == MIC_PRIV_UNMUTED) {
-			if (mic_priv_data->mic_privacy_state == MIC_PRIV_MUTED) {
-				mic_priv_data->mic_privacy_state = MIC_PRIV_FADE_IN;
-				LOG_INF("switch to FADE_IN");
-			}
-		} else {
-			/* In case when mute would be triggered before copier instantiation. */
-			if (mic_priv_data->mic_privacy_state != MIC_PRIV_MUTED) {
-				mic_priv_data->mic_privacy_state = MIC_PRIV_FADE_OUT;
-				LOG_INF("switch to FADE_OUT");
-			}
+	mic_priv_data->state_seq = MIC_PRIV_STATE_SEQ(word);
+
+	LOG_INF("state1 = %u, state2 = %d ",
+		MIC_PRIV_STATE_MUTE(word), mic_priv_data->mic_privacy_state);
+
+	if (!MIC_PRIV_STATE_MUTE(word)) {
+		if (mic_priv_data->mic_privacy_state == MIC_PRIV_MUTED) {
+			mic_priv_data->mic_privacy_state = MIC_PRIV_FADE_IN;
+			LOG_INF("switch to FADE_IN");
 		}
-		mic_priv_data->max_ramp_time_in_ms = (mic_privacy_settings->max_ramp_time * 1000) /
-						     ADSP_RTC_FREQUENCY;
+	} else {
+		/* In case when mute would be triggered before copier instantiation. */
+		if (mic_priv_data->mic_privacy_state != MIC_PRIV_MUTED) {
+			mic_priv_data->mic_privacy_state = MIC_PRIV_FADE_OUT;
+			LOG_INF("switch to FADE_OUT");
+		}
 	}
+	mic_priv_data->max_ramp_time_in_ms = (MIC_PRIV_STATE_RAMP(word) * 1000) /
+					     ADSP_RTC_FREQUENCY;
 }
 
 __cold static int mic_privacy_configure(struct processing_module *mod, struct copier_data *cd)
@@ -111,13 +114,10 @@ __cold static int mic_privacy_configure(struct processing_module *mod, struct co
 
 	cd->mic_priv = mic_priv_data;
 
-	ret = notifier_register(cd->mic_priv, NULL, NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE,
-				mic_privacy_event);
+	/* only take the mic privacy states posted from now on */
+	mic_priv_data->state_seq = MIC_PRIV_STATE_SEQ(atomic_get(&mic_privacy_state_word));
 
-	if (ret != 0)
-		mod_free(mod, mic_priv_data);
-
-	return ret;
+	return 0;
 }
 
 __cold static void mic_privacy_free(struct processing_module *mod)
@@ -128,8 +128,6 @@ __cold static void mic_privacy_free(struct processing_module *mod)
 
 	if (cd->gtw_type == ipc4_gtw_dmic)
 		mic_privacy_enable_dmic_irq(false);
-
-	notifier_unregister(cd->mic_priv, NULL, NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE);
 
 	mod_free(mod, cd->mic_priv);
 }
@@ -817,6 +815,11 @@ static int copier_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "entry");
+
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	if (cd->mic_priv)
+		mic_privacy_take_state(cd->mic_priv);
+#endif
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
