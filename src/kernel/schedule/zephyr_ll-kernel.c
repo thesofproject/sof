@@ -219,6 +219,55 @@ void user_ll_grant_access(struct k_thread *thread, int core)
 
 	k_thread_access_grant(thread, zephyr_ll_klocks[core]);
 }
+
+/**
+ * @brief Release all LL scheduler locks held by the faulting thread.
+ *
+ * Zephyr does not release mutexes when a thread is aborted. If a user-space
+ * LL thread faults while running a module, it still holds its core's LL
+ * scheduler lock (zephyr_ll_run() keeps it locked while running tasks), and
+ * every later user_ll_lock_sched() on that core, e.g. from the IPC user
+ * thread triggering a pipeline, pends forever.
+ *
+ * Must only be called from k_sys_fatal_error_handler(), before
+ * z_fatal_error() aborts _current. The current thread is the mutex owner
+ * there, so the regular unlock path is used to hand the lock over to the
+ * first waiter. Rescheduling is deferred until the exception returns.
+ *
+ * Uses the kernel-only zephyr_ll_klocks[] copy: zephyr_ll_locks[] is
+ * user-writable and must not be trusted here.
+ *
+ * @note The scheduler state protected by the lock is not repaired: tasks
+ *	 run in the interrupted tick stay on the dead thread's temporary list
+ *	 and no further LL ticks happen on that core.
+ *
+ * @return Number of LL scheduler locks released.
+ */
+int zephyr_ll_release_locks_of_current(void)
+{
+	struct k_thread *thread = k_current_get();
+	int released = 0;
+	int core;
+
+	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
+		struct k_mutex *m = zephyr_ll_klocks[core];
+
+		if (!m || m->owner != thread)
+			continue;
+
+		/* before unlocking: the new owner counts depth from 0 */
+		zephyr_ll_lock_shadow_reset(core);
+
+		/* the mutex is recursive, drop every level */
+		while (m->owner == thread)
+			if (z_impl_k_mutex_unlock(m))
+				break;
+
+		released++;
+	}
+
+	return released;
+}
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 #if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY

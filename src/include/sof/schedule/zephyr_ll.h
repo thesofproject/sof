@@ -94,6 +94,10 @@ int zephyr_ll_task_cancel(void *data, struct task *task);
 extern struct k_mutex *zephyr_ll_locks[CONFIG_CORE_COUNT];
 
 struct k_thread *zephyr_ll_init_context(void *data, struct task *task);
+
+/* fatal error handling, see zephyr_ll.c and zephyr_ll-kernel.c */
+void zephyr_ll_lock_shadow_reset(int core);
+int zephyr_ll_release_locks_of_current(void);
 #endif
 
 struct zephyr_domain_thread {
