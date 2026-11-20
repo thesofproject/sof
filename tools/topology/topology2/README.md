@@ -694,12 +694,9 @@ graph TD
     subgraph P21["Pipeline 21 — SmartAmp Mixer, DSP & DAI  (Core 0, LL 1ms)"]
         MO21["mixout.21.1"]
         G21["gain.21.1\n(Post-Mixer Speaker Volume)"]
-        EQIIR21["eqiir.21.1\n(Speaker IIR Eq)"]
-        EQFIR21["eqfir.21.1\n(Speaker FIR Eq)"]
-        DRC21["drc.21.1\n(Speaker DRC)"]
         MC21["module-copier.21.22"]
         ALH2["alh-copier.Playback-SmartAmp.0\n(ALH Link 2 · DAI Playback-SmartAmp)"]
-        MO21 --> G21 --> EQIIR21 --> EQFIR21 --> DRC21 --> MC21 --> ALH2
+        MO21 --> G21 --> MC21 --> ALH2
     end
     MIX20 --> MO21
     MIX16 --> MO21
@@ -712,11 +709,9 @@ graph TD
         ALH4 --> EQIIR41 --> MC41
     end
 
-    subgraph P40["Pipeline 40 — SmartMic DSP Host Capture  (Core 0, LL 1ms)"]
-        TDFB40["tdfb.40.1\n(Microphone TDFB Beamformer)"]
-        DRC40["drc.40.1\n(Microphone DRC)"]
+    subgraph P40["Pipeline 40 — SmartMic Host Capture  (Core 0, LL 1ms)"]
         HC4["host-copier.4.capture\n(PCM 4: 'Microphone')\n2ch · 48 kHz · S16/S24/S32_LE"]
-        MC41 --> TDFB40 --> DRC40 --> HC4
+        MC41 --> HC4
     end
 
 %% --- HDMI DISPLAY AUDIO PLAYBACK ---
@@ -846,8 +841,8 @@ graph TD
 |---|---|---|---|---|---|---|---|---|
 | **PCM 0** | `Jack Out` | Playback | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P0, P1 | SoundWire headphone playback (`host-copier.0.playback` -> `gain.0.1` -> `mixin.0.1` -> `mixout.1.1` -> `gain.1.1` -> `alh-copier.Playback-SimpleJack.0`) | No |
 | **PCM 1** | `Jack In` | Capture | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P11, P10 | SoundWire headset mic capture (`alh-copier.Capture-SimpleJack.0` -> `eqiir.11.0` -> `module-copier.11.0` -> `host-copier.1.capture`) | No |
-| **PCM 2** | `Speaker` | Playback | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P20, P21 | SoundWire SmartAmp speaker playback with post-mixer DSP chain (`host-copier.2.playback` -> `gain.20.1` -> `mixin.20.1` -> `mixout.21.1` -> `gain.21.1` -> `eqiir.21.1` -> `eqfir.21.1` -> `drc.21.1` -> `alh-copier.Playback-SmartAmp.0`) | No |
-| **PCM 4** | `Microphone` | Capture | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P41, P40 | SoundWire SmartMic capture with beamformer & compression (`alh-copier.Capture-SmartMic.0` -> `eqiir.41.0` -> `tdfb.40.1` -> `drc.40.1` -> `host-copier.4.capture`) | No |
+| **PCM 2** | `Speaker` | Playback | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P20, P21 | SoundWire SmartAmp speaker playback, basic pipeline with `SDW_SPK_ENHANCED_PLAYBACK=false` (`host-copier.2.playback` -> `gain.20.1` -> `mixin.20.1` -> `mixout.21.1` -> `gain.21.1` -> `module-copier.21.22` -> `alh-copier.Playback-SmartAmp.0`) | No |
+| **PCM 4** | `Microphone` | Capture | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P41, P40 | SoundWire SmartMic capture, basic pipeline with `SDW_DMIC_ENHANCED_CAPTURE=false` (`alh-copier.Capture-SmartMic.0` -> `eqiir.41.0` -> `module-copier.41.0` -> `host-copier.4.capture`) | No |
 | **PCM 5** | `HDMI1` | Playback | 2–8 | 48 kHz | S16_LE, S32_LE | P50, P51 | Intel Display Audio HDMI/DP 1 (`host-copier.5.playback` -> `dai-copier.HDA.iDisp1.playback`) | No |
 | **PCM 6** | `HDMI2` | Playback | 2–8 | 48 kHz | S16_LE, S32_LE | P60, P61 | Intel Display Audio HDMI/DP 2 (`host-copier.6.playback` -> `dai-copier.HDA.iDisp2.playback`) | No |
 | **PCM 7** | `HDMI3` | Playback | 2–8 | 48 kHz | S16_LE, S32_LE | P70, P71 | Intel Display Audio HDMI/DP 3 (`host-copier.7.playback` -> `dai-copier.HDA.iDisp3.playback`) | No |
@@ -945,6 +940,8 @@ DEEP_BUF_SPK=true,\
 SDW_SPK_ECHO_REF=true,\
 SDW_ECHO_REF_DAI=true,\
 SDW_SPK_ECHO_REF_ECNS=true,\
+SDW_SPK_ENHANCED_PLAYBACK=false,\
+SDW_DMIC_ENHANCED_CAPTURE=false,\
 INCLUDE_WOV=multi' \
   -c /tmp/sof-wcl-rt721-4ch-wov-multi.conf \
   -o build/sof-wcl-rt721-4ch-wov-multi.tplg
@@ -1049,7 +1046,7 @@ cat tools/topology/topology2/abi.conf tools/topology/topology2/cavs-sdw.conf > /
 ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
 ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
 alsatplg -I $PWD/tools/topology/topology2 -p \
-    -D 'PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,SDW_SPK_ECHO_REF=true,SDW_ECHO_REF_DAI=true,SDW_SPK_ECHO_REF_ECNS=true,INCLUDE_WOV=multi' \
+    -D 'PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,SDW_SPK_ECHO_REF=true,SDW_ECHO_REF_DAI=true,SDW_SPK_ECHO_REF_ECNS=true,SDW_SPK_ENHANCED_PLAYBACK=false,SDW_DMIC_ENHANCED_CAPTURE=false,INCLUDE_WOV=multi' \
     -c /tmp/sof-ptl-rt721-4ch-wov-multi.conf \
     -o build/sof-ptl-rt721-4ch-wov-multi.tplg
 ```
