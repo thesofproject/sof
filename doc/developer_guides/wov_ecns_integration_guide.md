@@ -22,7 +22,7 @@ The reference topology establishes a unified 4-channel native 16 kHz architectur
 ## 1. System Architecture Overview
 
 The pipeline separates real-time audio ingest into two primary scheduling domains:
-- **Low-Latency (LL) Domain (1 ms period)**: Ingests 4-channel 16 kHz microphone and echo reference data directly from the DMIC DAI without frame jitter.
+- **Low-Latency (LL) Domain (1 ms period)**: Ingests 2/4-channel 16 kHz and 48 kHz microphone data from the DMIC DAIs and the speaker echo reference (48 kHz, converted to 16 kHz stereo by `src.120.1`) without frame jitter.
 - **Data Processing (DP) Domain (20 ms period)**: Runs block-based processing for acoustic echo cancellation, noise suppression, circular buffering, feature extraction, and neural network keyword classification.
 
 ```mermaid
@@ -30,74 +30,80 @@ flowchart TD
     %% Hardware PDM Interfaces
     subgraph PDM_INTERFACES ["Digital Microphone Interfaces (2 Separate PDM DAIs)"]
         direction LR
-        PDM_48K["<b>PDM Interface: dmic01</b><br/>DAI Index: 0 (PDM0)<br/>Rate: <b>48 kHz</b> · 2ch Stereo · 16-bit"]
-        PDM_16K["<b>PDM Interface: dmic16k</b><br/>DAI Index: 1 (PDM1)<br/>Rate: <b>16 kHz</b> · 2ch Stereo · 16-bit"]
+        PDM_48K["<b>PDM Interface: dmic01</b><br/>DAI Index: 0 (PDM0)<br/>Rate: <b>48 kHz</b> · 2/4ch · 32-bit"]
+        PDM_16K["<b>PDM Interface: dmic16k</b><br/>DAI Index: 1 (PDM1)<br/>Rate: <b>16 kHz</b> · 2/4ch · 32-bit"]
     end
 
-    %% Pipeline 110: 48 kHz DAI Capture
-    subgraph P110 ["Pipeline 110: 48 kHz DAI Ingest (Core 0, LL 1ms)"]
-        DAI_48K["dai-copier.DMIC.dmic01.capture<br/>(48 kHz · 2ch · S16_LE)"]
-        MIXIN_110["mixin.110.1<br/>(48 kHz · 2ch)"]
-        DAI_48K --> MIXIN_110
+    %% Pipeline 101: 48 kHz regular DMIC0 DAI capture (SoundWire IDs)
+    subgraph P101 ["Pipeline 101: 48 kHz DMIC0 DAI Ingest (Core 0, LL 1ms)"]
+        DAI_48K["dai-copier.DMIC.dmic01.capture<br/>(48 kHz · 2/4ch · S32_LE)"]
+        GAIN_101["gain.101.1<br/>(Dmic0 Capture Volume / Switch)"]
+        IIR_101["eqiir.101.1<br/>(DMIC0_DAI_EQIIR, 40 Hz high-pass)"]
+        MCP_101["module-copier.101.2"]
+        DAI_48K --> GAIN_101 --> IIR_101 --> MCP_101
     end
 
     %% Pipeline 119: 16 kHz DAI Capture
     subgraph P119 ["Pipeline 119: 16 kHz DAI Ingest (Core 0, LL 1ms)"]
-        DAI_16K["dai-copier.DMIC.dmic16k.capture<br/>(16 kHz · 2ch · S16_LE)"]
-        MIXIN_119["mixin.119.1<br/>(16 kHz · 2ch)"]
-        DAI_16K --> MIXIN_119
+        DAI_16K["dai-copier.DMIC.dmic16k.capture<br/>(16 kHz · 2/4ch · S32_LE)"]
     end
 
     PDM_48K --> DAI_48K
     PDM_16K --> DAI_16K
 
-    %% Pipeline 115: Dual-Rate ECNS DP Pipeline
+    %% Pipeline 120: Speaker echo reference
+    SPK["Speaker playback<br/>(module-copier + loopback DAI,<br/>per platform)"]
+    subgraph P120 ["Pipeline 120: Speaker Echo Reference (Core 0, LL 1ms)"]
+        SIGGEN["siggen.120.1<br/>(48 kHz · 2ch · passthrough,<br/>silence when speaker is idle)"]
+        SRC_120["src.120.1<br/>(48 kHz → 16 kHz · 2ch · S32_LE)"]
+        SIGGEN --> SRC_120
+    end
+    SPK --> SIGGEN
+
+    %% Pipeline 115: ECNS DP Pipeline
     subgraph P115 ["Pipeline 115: ECNS Processing (Core 0, DP 20ms, lp_mode 1)"]
-        direction TB
-
-        MIXOUT_115_2["mixout.115.2<br/>(Pin 0 In: 16 kHz · 2ch stereo)"]
-        MIXOUT_115_1["mixout.115.1<br/>(Pin 1 In: 48 kHz · 2ch stereo)"]
-
-        ECNS["ecns.115.1 (Custom ECNS DP Module · 20ms Period)<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><b>Pin 0 In:</b> 16 kHz, 2ch (IBS 1280 bytes)<br/><b>Pin 1 In:</b> 48 kHz, 2ch (IBS 3840 bytes)<br/>─────────────────────────────────<br/><b>Processing:</b><br/>• Pin 0: Extract Left Ch → 16k Mono Clean<br/>• Pin 1: 1-to-1 Stereo Copy → 48k Stereo Clean<br/>─────────────────────────────────<br/><b>Pin 0 Out:</b> 16 kHz, 1ch mono (OBS 640 bytes)<br/><b>Pin 1 Out:</b> 48 kHz, 2ch stereo (OBS 3840 bytes)"]
-
-        MIXOUT_115_2 -->|"Pin 0 In (16k)"| ECNS
-        MIXOUT_115_1 -->|"Pin 1 In (48k)"| ECNS
+        ECNS["ecns.115.1 (Custom ECNS DP Module · 20ms Period)<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><b>Pin 0 In:</b> 16 kHz mic, 2/4ch s32 (IBS 2560 bytes)<br/><b>Pin 1 In:</b> 16 kHz echo ref, 2ch s32 (IBS 2560 bytes)<br/>─────────────────────────────────<br/><b>Processing (reference ecns.c):</b><br/>• Mic channel enum: average or MicN<br/>• 100 Hz HPF (boost +30 dB / 0 dB)<br/>• AEC switch: subtract (L+R)/2 of ref<br/>• NS switch: no function yet<br/>─────────────────────────────────<br/><b>Pin 0 Out:</b> 16 kHz, 1ch mono (OBS 640 bytes)"]
     end
 
-    MIXIN_119 --> MIXOUT_115_2
-    MIXIN_110 --> MIXOUT_115_1
+    DAI_16K -->|"Pin 0 In (16k mic)"| ECNS
+    SRC_120 -->|"Pin 1 In (16k echo ref)"| ECNS
 
-    %% Pipeline 117: Host Capture PCM 11
-    subgraph P117 ["Pipeline 117: ECNS Clean Host Capture (Core 0, LL 1ms)"]
-        HOST_11["host-copier.11.capture<br/>(PCM 11: hw:0,11)<br/>2ch Stereo Clean Speech<br/>capture_compatible_d0i3: true"]
+    %% Pipeline 100: Host Capture PCM 10 (regular DMIC0, SoundWire IDs)
+    subgraph P100 ["Pipeline 100: DMIC0 Host Capture (Core 0, LL 1ms)"]
+        HOST_10["host-copier.10.capture<br/>(PCM 10 'DMIC Raw': hw:0,10)<br/>2/4ch 48 kHz DMIC, no ECNS"]
     end
+
+    MCP_101 --> HOST_10
 
     %% Pipeline 116: KPB History Buffer
-    subgraph P116 ["Pipeline 116: KPB History Buffer (Core 0, DP 20ms)"]
+    subgraph P116 ["Pipeline 116: KPB History Buffer (Core 0, LL 1ms)"]
         KPB["kpb.116.1<br/>(2.0s mono circular history = 64 KB)"]
-        MIXIN_116["mixin.116.1<br/>(Fan-out Bus)"]
-        KPB -->|"Pin 0 (Live Feed)"| MIXIN_116
     end
 
-    ECNS -->|"Pin 1 (Stereo 48k clean direct)"| HOST_11
-    ECNS -->|"Pin 0 (Mono 16k clean direct)"| KPB
+    %% Pipeline 118: Detector fanout
+    subgraph P118 ["Pipeline 118: Detector Fanout (Core 0, LL 1ms)"]
+        FANOUT["module-copier.118.1<br/>(Fan-out)"]
+    end
+    KPB -->|"Pin 0 (Live Feed)"| FANOUT
+
+    ECNS -->|"Pin 0 Out (Mono 16k)"| KPB
 
     %% WOV Keyword Spotter Slots
     subgraph WOV_Slots ["Pipelines 111–113: Concurrent WOV Keyword Spotters (Core 0, DP 10ms)"]
         subgraph Slot0 ["Slot 0 (Pipeline 111)"]
-            M1["mixout.111.1"] --> FE0["Feature Extract<br>(MFCC)"] --> WOV0["WOV Engine 0<br>(e.g. Strawberry)"]
+            M1["module-copier.111.1"] --> FE0["Feature Extract<br>(MFCC)"] --> WOV0["WOV Engine 0<br>(e.g. Strawberry)"]
         end
         subgraph Slot1 ["Slot 1 (Pipeline 112)"]
-            M2["mixout.112.1"] --> FE1["Feature Extract<br>(MFCC)"] --> WOV1["WOV Engine 1<br>(e.g. Hi Intel)"]
+            M2["module-copier.112.1"] --> FE1["Feature Extract<br>(MFCC)"] --> WOV1["WOV Engine 1<br>(e.g. Hi Intel)"]
         end
         subgraph Slot2 ["Slot 2 (Pipeline 113)"]
-            M3["mixout.113.1"] --> FE2["Feature Extract<br>(MFCC)"] --> WOV2["WOV Engine 2<br>(e.g. Orange)"]
+            M3["module-copier.113.1"] --> FE2["Feature Extract<br>(MFCC)"] --> WOV2["WOV Engine 2<br>(e.g. Orange)"]
         end
     end
 
-    MIXIN_116 --> M1
-    MIXIN_116 --> M2
-    MIXIN_116 --> M3
+    FANOUT --> M1
+    FANOUT --> M2
+    FANOUT --> M3
 
     %% Pipeline 114: WOV Arbiter & Host Capture PCM 12
     subgraph P114 ["Pipeline 114: WOV Arbiter & Capture (Core 0, LL 1ms)"]
@@ -114,7 +120,7 @@ flowchart TD
     style ECNS fill:#1b4f72,stroke:#5dade2,color:#fff
     style KPB fill:#1c4966,stroke:#5dade2,color:#fff
     style ARB fill:#4a235a,stroke:#bb8fce,color:#fff
-    style HOST_11 fill:#1e8449,stroke:#58d68d,color:#fff
+    style HOST_10 fill:#1e8449,stroke:#58d68d,color:#fff
     style HOST_12 fill:#2d5a27,stroke:#58d68d,color:#fff
 ```
 
@@ -122,20 +128,26 @@ flowchart TD
 
 ## 2. Developing a Custom ECNS Module
 
-An ECNS component acts as a multi-sink Data Processing (DP) block. It consumes interleaved multi-channel input (speech + echo reference) and emits cleaned audio on two independent output pins.
+An ECNS component acts as a two-source Data Processing (DP) block. It consumes the interleaved multi-channel microphone stream and the speaker echo reference on two input pins and emits cleaned mono audio on a single output pin. The reference implementation `src/audio/ecns/ecns.c` averages the microphone channels to mono (or takes the single channel selected with the `mic channel` enum), applies a 100 Hz high-pass IIR (`boost` switch selects +30 dB or 0 dB), and when the `AEC switch` is on subtracts the `(L+R)/2` average of the echo reference after the IIR. The `NS switch` has no function yet. The echo reference is always consumed, also when the AEC switch is off.
 
 ### Audio Data Interface Contract
-- **Input Pin 0 (Source)**:
-  - Channels: 4 (Ch 0,1: Near-end mic inputs; Ch 2,3: Far-end playback echo references).
+- **Input Pin 0 (Source 0 — Microphones)**:
+  - Channels: 2 or 4 near-end microphones (`DMIC_WOV_DAI_CHANNELS`), from `dai-copier.DMIC.dmic16k.capture`.
   - Rate: 16,000 Hz.
-  - Sample Format: `S16_LE` (or `S32_LE` if configured).
-  - Frame Period: 20 ms (320 samples per channel = 2,560 bytes per period).
+  - Sample Format: `S32_LE` in the topology (the firmware also accepts `S16_LE`).
+  - Frame Period: 20 ms (`ibs` 2,560 bytes).
+- **Input Pin 1 (Source 1 — Speaker Echo Reference)**:
+  - Channels: 2 (far-end playback, from `src.120.1`).
+  - Rate: 16,000 Hz.
+  - Sample Format: `S32_LE`.
+  - Frame Period: 20 ms (320 frames = 2,560 bytes).
 - **Output Pin 0 (Sink 0 — Clean Voice to KPB / WOV)**:
-  - Channels: 1 (Mono beamformed / echo-canceled speech).
-  - Frame Period: 20 ms (320 samples = 640 bytes).
-- **Output Pin 1 (Sink 1 — Clean Voice to Host)**:
-  - Channels: 2 (Stereo speech capture for host applications).
-  - Frame Period: 20 ms (640 samples = 1,280 bytes).
+  - Channels: 1 (Mono echo-canceled speech).
+  - Rate: 16,000 Hz.
+  - Sample Format: `S16_LE` in the topology; the reference firmware follows the KPB input bit depth (16 or 32).
+  - Frame Period: 20 ms (320 samples = 640 bytes at 16-bit).
+
+There is no second output pin; the 48 kHz host capture is the regular DMIC0 capture of `dmic-generic.conf` from `dmic01` (SoundWire: `gain.101.1` -> `eqiir.101.1` -> PCM 10, HDA generic: PCM 6, ADL rt5682: PCM 99).
 
 ### C Implementation Skeleton (`src/audio/ecns/custom_ecns.c`)
 
@@ -144,10 +156,14 @@ An ECNS component acts as a multi-sink Data Processing (DP) block. It consumes i
 #include <sof/audio/component.h>
 #include <sof/audio/buffer.h>
 
+#define ECNS_MIC_BYTES  2560 // 20 ms @ 16 kHz 4ch s16 or 2ch s32
+#define ECNS_REF_BYTES  2560 // 20 ms @ 16 kHz 2ch s32
+#define ECNS_OUT_BYTES  640  // 20 ms @ 16 kHz 1ch s16
+
 struct custom_ecns_data {
-    uint32_t period_bytes_in;
-    uint32_t period_bytes_out0; // Mono clean
-    uint32_t period_bytes_out1; // Stereo clean
+    uint32_t period_bytes_mic;  // Pin 0 in: microphones
+    uint32_t period_bytes_ref;  // Pin 1 in: speaker echo reference
+    uint32_t period_bytes_out;  // Pin 0 out: mono clean
     void *algo_state;           // Vendor algorithm state handle
 };
 
@@ -167,44 +183,39 @@ static int custom_ecns_process(struct processing_module *mod,
                                struct sof_sink **sinks, int num_of_sinks)
 {
     struct custom_ecns_data *cd = module_get_private_data(mod);
-    const int16_t *src_buf;
-    int16_t *sink0_buf = NULL;
-    int16_t *sink1_buf = NULL;
-    size_t in_avail, out0_free, out1_free;
+    const void *mic_buf;
+    const void *ref_buf = NULL;
+    void *out_buf;
     int ret;
 
-    // 1. Check input buffer availability (20 ms @ 16kHz 4ch = 2560 bytes)
-    in_avail = source_get_data_available(sources[0]);
-    if (in_avail < 2560)
+    // 1. Check microphone input availability (Pin 0). A real module should
+    //    map sources to pins by the IPC4 queue ID instead of the array index.
+    if (source_get_data_available(sources[0]) < ECNS_MIC_BYTES)
         return 0;
 
-    // 2. Check independent output buffer space
-    out0_free = (num_of_sinks > 0 && sinks[0]) ? sink_get_free_size(sinks[0]) : 0;
-    out1_free = (num_of_sinks > 1 && sinks[1]) ? sink_get_free_size(sinks[1]) : 0;
-
-    // Must have space on Pin 0 (KPB path) if connected
-    if (sinks[0] && out0_free < 640)
+    // 2. Check output space on Pin 0 (KPB path)
+    if (sink_get_free_size(sinks[0]) < ECNS_OUT_BYTES)
         return 0;
 
-    // 3. Acquire buffer pointers
-    source_get_data(sources[0], 2560, (const void **)&src_buf, NULL, NULL);
-    if (sinks[0])
-        sink_get_buffer(sinks[0], 640, (void **)&sink0_buf, NULL, NULL);
-    if (sinks[1] && out1_free >= 1280)
-        sink_get_buffer(sinks[1], 1280, (void **)&sink1_buf, NULL, NULL);
+    // 3. Acquire buffer pointers. The echo reference (Pin 1) is consumed
+    //    when available; process without it if it has not arrived.
+    source_get_data(sources[0], ECNS_MIC_BYTES, &mic_buf, NULL, NULL);
+    if (num_of_sources > 1 &&
+        source_get_data_available(sources[1]) >= ECNS_REF_BYTES)
+        source_get_data(sources[1], ECNS_REF_BYTES, &ref_buf, NULL, NULL);
+    sink_get_buffer(sinks[0], ECNS_OUT_BYTES, &out_buf, NULL, NULL);
 
     // 4. Run Vendor DSP AEC + NR Algorithm
-    // - Consumes src_buf (4ch: 0,1 mic, 2,3 ref)
-    // - Writes 1ch mono clean speech to sink0_buf
-    // - Writes 2ch stereo clean speech to sink1_buf (if active)
-    vendor_aec_nr_process(cd->algo_state, src_buf, sink0_buf, sink1_buf, 320);
+    // - Consumes mic_buf (2 or 4ch microphones)
+    // - Consumes ref_buf (2ch speaker echo reference, may be NULL)
+    // - Writes 1ch mono clean speech to out_buf
+    vendor_aec_nr_process(cd->algo_state, mic_buf, ref_buf, out_buf, 320);
 
     // 5. Commit & release buffers
-    source_release_data(sources[0], 2560);
-    if (sink0_buf)
-        sink_commit_buffer(sinks[0], 640);
-    if (sink1_buf)
-        sink_commit_buffer(sinks[1], 1280);
+    source_release_data(sources[0], ECNS_MIC_BYTES);
+    if (ref_buf)
+        source_release_data(sources[1], ECNS_REF_BYTES);
+    sink_commit_buffer(sinks[0], ECNS_OUT_BYTES);
 
     return 0;
 }
@@ -299,16 +310,16 @@ static void on_wov_ctrl(void *arg, enum notify_id id, void *data)
 
 ## 4. WoV Arbiter & Multi-Slot Coordination
 
-The `wov_arbiter` component synchronizes multi-slot pipelines and multiplexes detected streams onto `host-copier.11`:
+The `wov_arbiter` component synchronizes multi-slot pipelines and multiplexes detected streams onto `host-copier.12`:
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant WOV0 as WOV Slot 0 (Strawberry)
     participant WOV1 as WOV Slot 1 (Hi Intel)
-    participant KPB as KPB (Pipeline 106)
-    participant ARB as WOV Arbiter (Pipeline 104)
-    participant HOST as Linux ALSA Driver (PCM 11)
+    participant KPB as KPB (Pipeline 116)
+    participant ARB as WOV Arbiter (Pipeline 114)
+    participant HOST as Linux ALSA Driver (PCM 12)
 
     Note over WOV0,WOV1: Both slots actively running 20ms inference
     WOV0->>WOV0: Keyword Match (Prob >= 0.70)
@@ -323,7 +334,7 @@ sequenceDiagram
     
     Note over WOV1: Slot 1 pauses inference (saves DSP MIPS)
     KPB->>ARB: Drains 2.0s Pre-roll audio history
-    ARB->>HOST: Streams audio to /dev/snd/pcmC0D11c
+    ARB->>HOST: Streams audio to /dev/snd/pcmC0D12c
     Note over ARB,HOST: Keyword phrase + post-trigger command audio streaming
 ```
 
@@ -470,7 +481,11 @@ Class.Control.enum."score_enum" {
 > The snippets below were taken from the standalone DMIC-only
 > `dmic-wov-multi-ptl-4ch-manifest.conf`, which has been removed because ECNS
 > requires a speaker echo reference input that a DMIC-only topology cannot
-> provide. They are kept as an illustration of the pipeline structure.
+> provide. They are kept as an illustration of the pipeline structure. The
+> current ECNS in `platform/intel/dmic-wov-multi.conf` (`ecns.115.1`) has two
+> input pins (16 kHz microphones from `dmic16k` and the 16 kHz stereo speaker
+> echo reference from `src.120.1`) and a single 16 kHz mono output pin to
+> `kpb.116.1`, without mixin/mixout widgets.
 
 #### 1. ECNS Pipeline (Pipeline 105)
 ```conf
@@ -536,7 +551,7 @@ Object.Pipeline.custom-capture."101" {
 ```mermaid
 stateDiagram-v2
     [*] --> Off: Driver Boot / Card Instantiated
-    Off --> Ready: PCM Open (/dev/snd/pcmC0D11c)
+    Off --> Ready: PCM Open (/dev/snd/pcmC0D12c)
     Ready --> Active: arecord Started / DSP Stream Running
 
     state Active {
@@ -580,7 +595,7 @@ Follow this step-by-step checklist to integrate your own algorithms:
 ### Step 1: Implement DSP Module C/C++ Code
 1. Place source code under `src/audio/<your_algo>/`.
 2. Implement standard `module_interface` (`init`, `prepare`, `process`, `set_configuration`, `get_configuration`, `reset`, `free`).
-3. For ECNS, handle 4ch in, 1ch out (Pin 0), 2ch out (Pin 1).
+3. For ECNS, handle 2 or 4ch microphones in (Pin 0), 2ch speaker echo reference in (Pin 1), and 1ch out (Pin 0).
 4. For WOV, implement multi-instance state isolation, 2 Hz scoring notification, and register for `NOTIFIER_ID_WOV_CTRL`.
 
 ### Step 2: Register Module UUID
@@ -595,6 +610,15 @@ Follow this step-by-step checklist to integrate your own algorithms:
    `tools/topology/topology2/platform/intel/dmic-wov-multi.conf`, used e.g. by the
    `cavs-sdw` `*-wov-multi` targets in `production/tplg-targets-ace3.cmake`.
    Wildcat Lake topologies are symlinks to the Panther Lake ones.
+4. Route the speaker echo reference into `siggen.120.1` of the echo reference
+   pipeline 120 (`siggen-src-capture`), which feeds ECNS input pin 1 through
+   `src.120.1`. This is enabled with `SDW_SPK_ECHO_REF_ECNS=true` (SoundWire,
+   together with `SDW_SPK_ECHO_REF=true` and `SDW_ECHO_REF_DAI=true`),
+   `SPEAKER_ECHO_REF_ECNS=true` (ADL rt5682 SSP, needs `INCLUDE_ECHO_REF=true`)
+   or `HDA_SPEAKER_ECHO_REF_ECNS=true` (HDA generic). A dai_out widget upstream
+   of `siggen.120.1` (e.g. `alh-copier.Loopback_Virtual.25` or the SSP loopback
+   capture DAI) starts the setup of pipeline 120 with the WoV capture; HDA has
+   no such DAI and it is untested whether the kernel sets the pipeline up there.
 
 ### Step 4: Compile Topology & Firmware
 1. Build the topology via its CMake target (see `tools/topology/topology2/README.md`
