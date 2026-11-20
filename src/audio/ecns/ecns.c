@@ -3,6 +3,19 @@
  * Copyright(c) 2026 Intel Corporation. All rights reserved.
  */
 
+/**
+ * \file
+ * \brief ECNS (Echo Cancellation & Noise Suppression) DP component
+ *
+ * Input pin 0 receives the 16 kHz microphone stream and input pin 1 the
+ * 16 kHz echo reference. The microphone channels are averaged to mono, or a
+ * single channel is selected with the microphone channel enum control, and
+ * high-pass filtered. When the AEC switch is enabled the average of the echo
+ * reference channels is subtracted from the filtered microphone signal. The
+ * result is written as 16 kHz mono s16 or s32 to the single output pin. The
+ * echo reference is always consumed, also when the AEC switch is disabled.
+ */
+
 #include <sof/audio/component_ext.h>
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/format.h>
@@ -30,54 +43,63 @@ LOG_MODULE_REGISTER(ecns, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(ecns);
 DECLARE_TR_CTX(ecns_tr, SOF_UUID(ecns_uuid), LOG_LEVEL_INFO);
 
-/* Determine the source-channel averaging window [start, start+cnt) used to
- * downmix the pin0 input to the mono KPB detection output. Selection is a
- * Kconfig choice; out-of-range channels fall back to all available channels.
+/**
+ * \brief Get the microphone channels used for the mono output.
+ *
+ * The selection comes from the microphone channel enum control. Value 0
+ * averages all channels, values 1..N select a single channel. A channel
+ * beyond the input channel count falls back to the average of all channels.
+ *
+ * \param[in]  mic_sel Microphone channel enum control value
+ * \param[in]  ch      Number of microphone input channels
+ * \param[out] start   First channel index to average
+ * \param[out] cnt     Number of channels to average
  */
-static inline void ecns_mono_window(uint32_t ch, uint32_t *start, uint32_t *cnt)
+static inline void ecns_mono_window(uint32_t mic_sel, uint32_t ch, uint32_t *start,
+				    uint32_t *cnt)
 {
-#if CONFIG_ECNS_KPB_MONO_AVG_CH_1_2
-	*start = 0;
-	*cnt = MIN(2, ch);
-#elif CONFIG_ECNS_KPB_MONO_AVG_CH_3_4
-	if (ch > 2) {
-		*start = 2;
-		*cnt = MIN(2, ch - 2);
+	if (mic_sel != ECNS_MIC_SEL_AVERAGE && mic_sel <= ch) {
+		*start = mic_sel - 1;
+		*cnt = 1;
 	} else {
 		*start = 0;
-		*cnt = ch;
+		*cnt = ch ? ch : 1;
 	}
-#else /* CONFIG_ECNS_KPB_MONO_AVG_ALL */
-	*start = 0;
-	*cnt = ch;
-#endif
-	if (*cnt == 0)
-		*cnt = 1;
 }
 
-static inline int32_t ecns_mono_s32(const int32_t *frame, uint32_t start, uint32_t cnt)
+/**
+ * \brief Average channels of one interleaved frame into a Q1.31 sample.
+ *
+ * \param[in] frame Pointer to the first sample of the frame
+ * \param[in] s32   True for 32-bit samples, false for 16-bit samples
+ * \param[in] start First channel index to average
+ * \param[in] cnt   Number of channels to average, must be non-zero
+ * \return Average of the channels as Q1.31
+ */
+static inline int32_t ecns_frame_avg(const void *frame, bool s32, uint32_t start, uint32_t cnt)
 {
 	int64_t acc = 0;
+	uint32_t c;
 
-	for (uint32_t c = 0; c < cnt; c++)
-		acc += frame[start + c];
+	if (s32) {
+		const int32_t *x = (const int32_t *)frame + start;
+
+		for (c = 0; c < cnt; c++)
+			acc += x[c];
+	} else {
+		const int16_t *x = (const int16_t *)frame + start;
+
+		for (c = 0; c < cnt; c++)
+			acc += (int32_t)x[c] << 16;
+	}
+
 	return (int32_t)(acc / (int32_t)cnt);
-}
-
-static inline int16_t ecns_mono_s16(const int16_t *frame, uint32_t start, uint32_t cnt)
-{
-	int32_t acc = 0;
-
-	for (uint32_t c = 0; c < cnt; c++)
-		acc += frame[start + c];
-	return (int16_t)(acc / (int32_t)cnt);
 }
 
 #if CONFIG_ECNS_KPB_HPF
 /**
  * \brief 100 Hz second-order high-pass filter with +30 dB gain at 16 kHz.
  *
- * Built-in coefficient set for the KPB detection path (Pin 0 mono mix).
  * Converted from tools/topology/topology2/include/components/eqiir/highpass_100hz_30db_16khz.conf
  * consisting of struct sof_eq_iir_header (6 words) followed by one
  * struct sof_eq_iir_biquad (7 words):
@@ -100,102 +122,39 @@ static const uint32_t hp_100hz_0db_16k[13] = {
 };
 #endif
 
-#if CONFIG_ECNS_HOST_HPF
-/**
- * \brief 40 Hz second-order high-pass filters with +20 dB gain for Pin 1.
- *
- * Converted from highpass_40hz_20db_48khz.conf and highpass_40hz_20db_16khz.conf
- * in tools/topology/topology2/include/components/eqiir/ with the same layout
- * as hp_100hz_30db_16k.
- */
-static const uint32_t hp_40hz_20db_48k[13] = {
-	0x00000001, 0x00000001, 0x00000000, 0x00000000,
-	0x00000000, 0x00000000, 0xc078df4c, 0x7f86ae23,
-	0x1ff51b12, 0xc015c9db, 0x1ff51b12, 0xfffffffc,
-	0x00004fd0
-};
-
-static const uint32_t hp_40hz_20db_16k[13] = {
-	0x00000001, 0x00000001, 0x00000000, 0x00000000,
-	0x00000000, 0x00000000, 0xc167f2ba, 0x7e940dc3,
-	0x1fb8bfff, 0xc08e8003, 0x1fb8bfff, 0xfffffffc,
-	0x00004fd0
-};
-
-/**
- * \brief 40 Hz high-pass filters with 0 dB gain for Pin 1.
- *
- * From highpass_40hz_0db_48khz.conf and highpass_40hz_0db_16khz.conf.
- */
-static const uint32_t hp_40hz_0db_48k[13] = {
-	0x00000001, 0x00000001, 0x00000000, 0x00000000,
-	0x00000000, 0x00000000, 0xc078df4c, 0x7f86ae23,
-	0x1ff51b12, 0xc015c9db, 0x1ff51b12, 0x00000000,
-	0x00007fb2
-};
-
-static const uint32_t hp_40hz_0db_16k[13] = {
-	0x00000001, 0x00000001, 0x00000000, 0x00000000,
-	0x00000000, 0x00000000, 0xc167f2ba, 0x7e940dc3,
-	0x1fb8bfff, 0xc08e8003, 0x1fb8bfff, 0x00000000,
-	0x00007fb2
-};
-
-#define ECNS_HOST_MAX_CHANNELS	4
-#endif
-
-/* Switch control indexes, mixer."1" and mixer."2" in ecns.conf */
+/** \brief Switch control indexes, mixer."1" to mixer."3" in ecns.conf */
 #define ECNS_CTRL_INDEX_CAPTURE_BOOST	0
-#define ECNS_CTRL_INDEX_TEST_SIGNAL	1
+#define ECNS_CTRL_INDEX_AEC		1
+#define ECNS_CTRL_INDEX_NS		2
 
+/** \brief Enum control indexes, enum."1" in the ECNS widget instance */
+#define ECNS_CTRL_INDEX_MIC_SEL		0
+
+/** \brief ECNS component private data */
 struct ecns_comp_data {
-	struct ipc4_base_module_cfg base_cfg;
-	uint32_t sample_rate;
-	uint32_t channels;
-	uint32_t sample_width;
-	uint32_t test_signal_enabled;
-	bool capture_boost;
-	bool capture_boost_req;
-	uint16_t test_signal_val;
-	struct iir_state_df1 hp_iir;
-	int32_t *hp_delay;
-#if CONFIG_ECNS_HOST_HPF
-	struct iir_state_df1 host_iir[ECNS_HOST_MAX_CHANNELS];
-	int32_t *host_delay;
-	int host_delay_size;
-	uint32_t host_rate;
-#endif
+	struct ipc4_base_module_cfg base_cfg;	/**< IPC4 base config, pin 0 input format */
+	bool capture_boost;		/**< Boosted high-pass filter response in use */
+	bool capture_boost_req;		/**< Boost requested by the control */
+	bool aec_enable;		/**< AEC switch, subtract the echo reference */
+	bool ns_enable;			/**< NS switch, no function yet */
+	uint32_t mic_sel;		/**< Microphone channel, 0 average, 1..N single channel */
+	struct iir_state_df1 hp_iir;	/**< Output high-pass filter state */
+	int32_t *hp_delay;		/**< Output high-pass filter delay line */
 };
 
 #if CONFIG_ECNS_KPB_HPF
-static struct sof_eq_iir_header *ecns_kpb_iir_coef(struct ecns_comp_data *cd)
+static struct sof_eq_iir_header *ecns_iir_coef(struct ecns_comp_data *cd)
 {
 	return (struct sof_eq_iir_header *)
 		(cd->capture_boost ? hp_100hz_30db_16k : hp_100hz_0db_16k);
 }
 #endif
 
-#if CONFIG_ECNS_HOST_HPF
-static struct sof_eq_iir_header *ecns_host_iir_coef(struct ecns_comp_data *cd)
-{
-	if (cd->host_rate == 16000)
-		return (struct sof_eq_iir_header *)
-			(cd->capture_boost ? hp_40hz_20db_16k : hp_40hz_0db_16k);
-
-	return (struct sof_eq_iir_header *)
-		(cd->capture_boost ? hp_40hz_20db_48k : hp_40hz_0db_48k);
-}
-#endif
-
-/* Only the coefficient pointers move, the filter delay lines are kept. */
+/* Only the coefficient pointers move, the filter delay line is kept. */
 static void ecns_update_iir_coef(struct ecns_comp_data *cd)
 {
 #if CONFIG_ECNS_KPB_HPF
-	iir_init_coef_df1(&cd->hp_iir, ecns_kpb_iir_coef(cd));
-#endif
-#if CONFIG_ECNS_HOST_HPF
-	for (int c = 0; c < ECNS_HOST_MAX_CHANNELS; c++)
-		iir_init_coef_df1(&cd->host_iir[c], ecns_host_iir_coef(cd));
+	iir_init_coef_df1(&cd->hp_iir, ecns_iir_coef(cd));
 #endif
 }
 
@@ -203,10 +162,16 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 				 const struct comp_ipc_config *config,
 				 const void *spec)
 {
-	struct comp_dev *dev;
+	const struct ipc4_base_module_cfg *base_cfg = spec;
 	struct ecns_comp_data *cd;
+	struct comp_dev *dev;
 
 	comp_cl_info(drv, "ecns_new");
+
+	if (!base_cfg) {
+		comp_cl_err(drv, "ecns_new: no base config");
+		return NULL;
+	}
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -220,17 +185,7 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	const struct ipc4_base_module_cfg *base_cfg = spec;
-	if (base_cfg) {
-		memcpy_s(&cd->base_cfg, sizeof(cd->base_cfg), base_cfg, sizeof(*base_cfg));
-		cd->sample_rate  = base_cfg->audio_fmt.sampling_frequency;
-		cd->channels     = base_cfg->audio_fmt.channels_count;
-		cd->sample_width = base_cfg->audio_fmt.valid_bit_depth;
-	} else {
-		cd->sample_rate  = 48000;
-		cd->channels     = ECNS_IN_CHANNELS;
-		cd->sample_width = 16;
-	}
+	memcpy_s(&cd->base_cfg, sizeof(cd->base_cfg), base_cfg, sizeof(*base_cfg));
 
 	comp_set_drvdata(dev, cd);
 	dev->direction     = SOF_IPC_STREAM_CAPTURE;
@@ -242,7 +197,7 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 	cd->capture_boost_req = true;
 
 #if CONFIG_ECNS_KPB_HPF
-	struct sof_eq_iir_header *hp_hdr = ecns_kpb_iir_coef(cd);
+	struct sof_eq_iir_header *hp_hdr = ecns_iir_coef(cd);
 	int hp_size = iir_delay_size_df1(hp_hdr);
 	int32_t *delay;
 
@@ -264,29 +219,10 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 	iir_init_delay_df1(&cd->hp_iir, &delay);
 #endif
 
-#if CONFIG_ECNS_HOST_HPF
-	/* The 48 kHz and 16 kHz Pin 1 filters have the same section count */
-	int host_size = iir_delay_size_df1((struct sof_eq_iir_header *)hp_40hz_20db_48k);
-
-	if (host_size < 0) {
-		rfree(cd->hp_delay);
-		rfree(cd);
-		comp_free_device(dev);
-		return NULL;
-	}
-
-	cd->host_delay_size = host_size * ECNS_HOST_MAX_CHANNELS;
-	cd->host_delay = rzalloc(SOF_MEM_FLAG_USER, cd->host_delay_size);
-	if (!cd->host_delay) {
-		rfree(cd->hp_delay);
-		rfree(cd);
-		comp_free_device(dev);
-		return NULL;
-	}
-#endif
-
-	comp_info(dev, "ecns_new: rate=%u in_ch=%u sample_width=%u",
-		  cd->sample_rate, cd->channels, cd->sample_width);
+	comp_info(dev, "ecns_new: rate=%u in_ch=%u valid_bits=%u",
+		  base_cfg->audio_fmt.sampling_frequency,
+		  base_cfg->audio_fmt.channels_count,
+		  base_cfg->audio_fmt.valid_bit_depth);
 
 	return dev;
 }
@@ -296,9 +232,6 @@ static void ecns_free(struct comp_dev *dev)
 	struct ecns_comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "ecns_free");
-#if CONFIG_ECNS_HOST_HPF
-	rfree(cd->host_delay);
-#endif
 	rfree(cd->hp_delay);
 	rfree(cd);
 	comp_free_device(dev);
@@ -316,99 +249,59 @@ static int ecns_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	return 0;
 }
 
-#if CONFIG_ECNS_HOST_HPF
-static void ecns_host_iir_init(struct ecns_comp_data *cd, uint32_t rate)
+/**
+ * \brief Get the output sample container depth.
+ *
+ * The output format is defined in topology, but the IPC4 base config of ECNS
+ * only describes the input pin 0 format. The topology output format matches
+ * the consumer input format, so the depth is taken from the consumer base
+ * config.
+ *
+ * \param[in] dev  ECNS component device
+ * \param[in] sink Output buffer
+ * \return 16 or 32
+ */
+static uint32_t ecns_out_depth(struct comp_dev *dev, struct comp_buffer *sink)
 {
-	struct sof_eq_iir_header *hdr;
-	int32_t *delay = cd->host_delay;
+	struct comp_dev *consumer = comp_buffer_get_sink_component(sink);
+	struct ipc4_base_module_cfg cfg;
 
-	cd->host_rate = rate;
-	hdr = ecns_host_iir_coef(cd);
-	memset_s(cd->host_delay, cd->host_delay_size, 0, cd->host_delay_size);
-	for (int c = 0; c < ECNS_HOST_MAX_CHANNELS; c++) {
-		iir_init_coef_df1(&cd->host_iir[c], hdr);
-		iir_init_delay_df1(&cd->host_iir[c], &delay);
-	}
-}
+	if (consumer && !comp_get_attribute(consumer, COMP_ATTR_BASE_CONFIG, &cfg) &&
+	    cfg.audio_fmt.depth == 16)
+		return 16;
 
-static inline int32_t ecns_host_filter(struct ecns_comp_data *cd, uint32_t c, int32_t x)
-{
-	return c < ECNS_HOST_MAX_CHANNELS ? iir_df1(&cd->host_iir[c], x) : x;
+	return 32;
 }
-#else
-static void ecns_host_iir_init(struct ecns_comp_data *cd, uint32_t rate)
-{
-}
-
-static inline int32_t ecns_host_filter(struct ecns_comp_data *cd, uint32_t c, int32_t x)
-{
-	return x;
-}
-#endif
 
 static int ecns_prepare(struct comp_dev *dev)
 {
 	struct ecns_comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *src0 = NULL;
-	struct comp_buffer *src1 = NULL;
-	struct comp_buffer *source;
 	struct comp_buffer *sink;
 
 	comp_info(dev, "ecns_prepare");
 
-	/* Output buffer formats must match the topology-declared pins:
-	 * pin0 -> KPB mono 16 kHz, pin1 -> host.
-	 * When src1 (48 kHz producer) is present, use dual-rate 16-bit formats.
-	 * When src1 is absent (single 16 kHz DMIC input), use 32-bit formats matching the manifest.
-	 */
-	comp_dev_for_each_producer(dev, source) {
-		uint32_t pin = IPC4_SINK_QUEUE_ID(buf_get_id(source));
-
-		if (pin == ECNS_PIN_16K_IN && !src0)
-			src0 = source;
-		else if (pin == ECNS_PIN_48K_IN && !src1)
-			src1 = source;
-	}
-
-	/* Pin 1 output follows the dmic01 input channel count (2 or 4) */
-	uint32_t pin1_ch = 2;
-
-	if (src1)
-		pin1_ch = audio_stream_get_channels(&src1->stream) == 2 ? 2 : 4;
-
-	struct ipc4_audio_format pin0_fmt = {
-		.sampling_frequency = 16000,
-		.channels_count = 1,
-		.depth = src1 ? 16 : 32,
-		.valid_bit_depth = src1 ? 16 : 32,
-		.s_type = src1 ? IPC4_TYPE_SIGNED_INTEGER : IPC4_TYPE_MSB_INTEGER,
-		.interleaving_style = IPC4_CHANNELS_INTERLEAVED,
-		.ch_map = ECNS_CH_MAP_MONO,
-		.ch_cfg = IPC4_CHANNEL_CONFIG_MONO,
-	};
-	struct ipc4_audio_format pin1_fmt = {
-		.sampling_frequency = src1 ? 48000 : 16000,
-		.channels_count = pin1_ch,
-		.depth = src1 ? 16 : 32,
-		.valid_bit_depth = src1 ? 16 : 32,
-		.s_type = src1 ? IPC4_TYPE_SIGNED_INTEGER : IPC4_TYPE_MSB_INTEGER,
-		.interleaving_style = IPC4_CHANNELS_INTERLEAVED,
-		.ch_map = pin1_ch == 4 ? ECNS_CH_MAP_4CH : ECNS_CH_MAP_STEREO,
-		.ch_cfg = pin1_ch == 4 ? IPC4_CHANNEL_CONFIG_3_POINT_1 : IPC4_CHANNEL_CONFIG_STEREO,
-	};
-
 	comp_dev_for_each_consumer(dev, sink) {
-		uint32_t pin = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
+		if (IPC4_SRC_QUEUE_ID(buf_get_id(sink)) != ECNS_PIN_OUT)
+			continue;
 
-		if (pin == ECNS_PIN_16K_OUT)
-			ipc4_update_buffer_format(sink, &pin0_fmt);
-		else if (pin == ECNS_PIN_48K_OUT)
-			ipc4_update_buffer_format(sink, &pin1_fmt);
+		uint32_t depth = ecns_out_depth(dev, sink);
+		struct ipc4_audio_format fmt = {
+			.sampling_frequency = ECNS_RATE,
+			.channels_count = 1,
+			.depth = depth,
+			.valid_bit_depth = depth,
+			.s_type = depth == 16 ? IPC4_TYPE_SIGNED_INTEGER : IPC4_TYPE_MSB_INTEGER,
+			.interleaving_style = IPC4_CHANNELS_INTERLEAVED,
+			.ch_map = ECNS_CH_MAP_MONO,
+			.ch_cfg = IPC4_CHANNEL_CONFIG_MONO,
+		};
+
+		ipc4_update_buffer_format(sink, &fmt);
+		comp_info(dev, "ecns_prepare: output s%u", depth);
 	}
 
 	cd->capture_boost = cd->capture_boost_req;
 	ecns_update_iir_coef(cd);
-	ecns_host_iir_init(cd, pin1_fmt.sampling_frequency);
 
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }
@@ -418,19 +311,13 @@ static int ecns_reset(struct comp_dev *dev)
 	struct ecns_comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "ecns_reset");
-	cd->test_signal_val = 0;
 #if CONFIG_ECNS_KPB_HPF
 	if (cd->hp_delay) {
-		struct sof_eq_iir_header *hp_hdr = ecns_kpb_iir_coef(cd);
-		int hp_size = iir_delay_size_df1(hp_hdr);
+		int hp_size = iir_delay_size_df1(ecns_iir_coef(cd));
 
 		if (hp_size > 0)
 			memset_s(cd->hp_delay, hp_size, 0, hp_size);
 	}
-#endif
-#if CONFIG_ECNS_HOST_HPF
-	if (cd->host_delay)
-		memset_s(cd->host_delay, cd->host_delay_size, 0, cd->host_delay_size);
 #endif
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
@@ -441,61 +328,7 @@ static int ecns_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
-#if CONFIG_ECNS_TEST_SIGNAL
-/**
- * \brief Generate 32-bit test signal on Pin 0 (KPB)
- */
-static void ecns_kpb_test_signal_s32(struct ecns_comp_data *cd,
-				     struct comp_buffer *snk0,
-				     uint32_t snk0_ch,
-				     uint32_t frames)
-{
-	int32_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
-	uint32_t remaining = frames;
-
-	while (remaining > 0) {
-		uint32_t f_snk = audio_stream_frames_without_wrap(&snk0->stream, snk_ptr);
-		uint32_t n = MIN(remaining, f_snk);
-
-		for (uint32_t i = 0; i < n; i++) {
-			*snk_ptr++ = ((int32_t)cd->test_signal_val++) << 16;
-			for (uint32_t c = 1; c < snk0_ch; c++)
-				*snk_ptr++ = 0;
-		}
-
-		remaining -= n;
-		snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-	}
-}
-
-/**
- * \brief Generate 16-bit test signal on Pin 0 (KPB)
- */
-static void ecns_kpb_test_signal_s16(struct ecns_comp_data *cd,
-				     struct comp_buffer *snk0,
-				     uint32_t snk0_ch,
-				     uint32_t frames)
-{
-	int16_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
-	uint32_t remaining = frames;
-
-	while (remaining > 0) {
-		uint32_t f_snk = audio_stream_frames_without_wrap(&snk0->stream, snk_ptr);
-		uint32_t n = MIN(remaining, f_snk);
-
-		for (uint32_t i = 0; i < n; i++) {
-			*snk_ptr++ = (int16_t)cd->test_signal_val++;
-			for (uint32_t c = 1; c < snk0_ch; c++)
-				*snk_ptr++ = 0;
-		}
-
-		remaining -= n;
-		snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-	}
-}
-#endif
-
-static inline int32_t ecns_kpb_filter(struct ecns_comp_data *cd, int32_t x)
+static inline int32_t ecns_filter(struct ecns_comp_data *cd, int32_t x)
 {
 #if CONFIG_ECNS_KPB_HPF
 	return iir_df1(&cd->hp_iir, x);
@@ -504,529 +337,135 @@ static inline int32_t ecns_kpb_filter(struct ecns_comp_data *cd, int32_t x)
 #endif
 }
 
-/**
- * \brief Process 32-bit DMIC input to 32-bit KPB mono output
- */
-static void ecns_kpb_s32_to_s32(struct ecns_comp_data *cd,
-				struct comp_buffer *src0,
-				uint32_t src0_ch,
-				struct comp_buffer *snk0,
-				uint32_t snk0_ch,
-				uint32_t frames,
-				uint32_t avg_start,
-				uint32_t avg_cnt)
+/** \brief Stream properties used by the processing loop */
+struct ecns_stream {
+	struct comp_buffer *buf;	/**< Buffer, NULL if the pin is not connected */
+	uint32_t ch;			/**< Number of channels */
+	uint32_t frame_bytes;		/**< Bytes per frame */
+	bool s32;			/**< True for 32-bit, false for 16-bit samples */
+};
+
+static void ecns_stream_init(struct ecns_stream *s, struct comp_buffer *buf)
 {
-	int32_t *src_ptr = audio_stream_get_rptr(&src0->stream);
-	int32_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
-	uint32_t remaining = frames;
+	uint32_t sample_bytes;
 
-	while (remaining > 0) {
-		uint32_t f_src = audio_stream_frames_without_wrap(&src0->stream, src_ptr);
-		uint32_t f_snk = audio_stream_frames_without_wrap(&snk0->stream, snk_ptr);
-		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
+	s->buf = buf;
+	if (!buf)
+		return;
 
-		for (uint32_t i = 0; i < n; i++) {
-			int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
+	s->ch = audio_stream_get_channels(&buf->stream);
+	if (!s->ch)
+		s->ch = 1;
 
-			mono = ecns_kpb_filter(cd, mono);
-			*snk_ptr++ = mono;
-			for (uint32_t c = 1; c < snk0_ch; c++)
-				*snk_ptr++ = 0;
-			src_ptr += src0_ch;
-		}
+	sample_bytes = audio_stream_sample_bytes(&buf->stream);
+	s->s32 = sample_bytes != sizeof(int16_t);
+	s->frame_bytes = s->ch * (s->s32 ? sizeof(int32_t) : sizeof(int16_t));
+}
 
-		remaining -= n;
-		src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
-		snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-	}
+static uint32_t ecns_avail_frames(const struct ecns_stream *s)
+{
+	return s->buf ? audio_stream_get_avail_bytes(&s->buf->stream) / s->frame_bytes : 0;
 }
 
 /**
- * \brief Process 16-bit DMIC input to 32-bit KPB mono output
- */
-static void ecns_kpb_s16_to_s32(struct ecns_comp_data *cd,
-				struct comp_buffer *src0,
-				uint32_t src0_ch,
-				struct comp_buffer *snk0,
-				uint32_t snk0_ch,
-				uint32_t frames,
-				uint32_t avg_start,
-				uint32_t avg_cnt)
-{
-	int16_t *src_ptr = audio_stream_get_rptr(&src0->stream);
-	int32_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
-	uint32_t remaining = frames;
-
-	while (remaining > 0) {
-		uint32_t f_src = audio_stream_frames_without_wrap(&src0->stream, src_ptr);
-		uint32_t f_snk = audio_stream_frames_without_wrap(&snk0->stream, snk_ptr);
-		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
-
-		for (uint32_t i = 0; i < n; i++) {
-			int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
-
-			mono = ecns_kpb_filter(cd, mono);
-			*snk_ptr++ = mono;
-			for (uint32_t c = 1; c < snk0_ch; c++)
-				*snk_ptr++ = 0;
-			src_ptr += src0_ch;
-		}
-
-		remaining -= n;
-		src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
-		snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-	}
-}
-
-/**
- * \brief Process 32-bit DMIC input to 16-bit KPB mono output
- */
-static void ecns_kpb_s32_to_s16(struct ecns_comp_data *cd,
-				struct comp_buffer *src0,
-				uint32_t src0_ch,
-				struct comp_buffer *snk0,
-				uint32_t snk0_ch,
-				uint32_t frames,
-				uint32_t avg_start,
-				uint32_t avg_cnt)
-{
-	int32_t *src_ptr = audio_stream_get_rptr(&src0->stream);
-	int16_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
-	uint32_t remaining = frames;
-
-	while (remaining > 0) {
-		uint32_t f_src = audio_stream_frames_without_wrap(&src0->stream, src_ptr);
-		uint32_t f_snk = audio_stream_frames_without_wrap(&snk0->stream, snk_ptr);
-		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
-
-		for (uint32_t i = 0; i < n; i++) {
-			int32_t mono = ecns_mono_s32(src_ptr, avg_start, avg_cnt);
-
-			mono = ecns_kpb_filter(cd, mono);
-			*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
-			for (uint32_t c = 1; c < snk0_ch; c++)
-				*snk_ptr++ = 0;
-			src_ptr += src0_ch;
-		}
-
-		remaining -= n;
-		src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
-		snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-	}
-}
-
-/**
- * \brief Process 16-bit DMIC input to 16-bit KPB mono output
- */
-static void ecns_kpb_s16_to_s16(struct ecns_comp_data *cd,
-				struct comp_buffer *src0,
-				uint32_t src0_ch,
-				struct comp_buffer *snk0,
-				uint32_t snk0_ch,
-				uint32_t frames,
-				uint32_t avg_start,
-				uint32_t avg_cnt)
-{
-	int16_t *src_ptr = audio_stream_get_rptr(&src0->stream);
-	int16_t *snk_ptr = audio_stream_get_wptr(&snk0->stream);
-	uint32_t remaining = frames;
-
-	while (remaining > 0) {
-		uint32_t f_src = audio_stream_frames_without_wrap(&src0->stream, src_ptr);
-		uint32_t f_snk = audio_stream_frames_without_wrap(&snk0->stream, snk_ptr);
-		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
-
-		for (uint32_t i = 0; i < n; i++) {
-			int32_t mono = ((int32_t)ecns_mono_s16(src_ptr, avg_start, avg_cnt)) << 16;
-
-			mono = ecns_kpb_filter(cd, mono);
-			*snk_ptr++ = sat_int16(Q_SHIFT_RND(mono, 31, 15));
-			for (uint32_t c = 1; c < snk0_ch; c++)
-				*snk_ptr++ = 0;
-			src_ptr += src0_ch;
-		}
-
-		remaining -= n;
-		src_ptr = audio_stream_wrap(&src0->stream, src_ptr);
-		snk_ptr = audio_stream_wrap(&snk0->stream, snk_ptr);
-	}
-}
-
-/**
- * \brief Process Pin 0: 16 kHz detection stream -> Mono clean to KPB
+ * \brief Process microphone and echo reference frames to the output.
  *
- * Averages selected source channels into a mono stream, filters with the
- * built-in 100 Hz HPF (+30 dB gain, CONFIG_ECNS_KPB_HPF), and writes to the sink buffer (either
- * 16-bit or 32-bit container). Supports test signal generation when enabled.
- *
- * \param[in,out] cd   ECNS component data
- * \param[in]     src0 Input buffer from 16 kHz DMIC
- * \param[in,out] snk0 Output buffer to KPB
- * \return Number of frames produced to snk0
+ * \param[in,out] cd         ECNS component data
+ * \param[in]     mic        Microphone input stream
+ * \param[in]     ref        Echo reference input stream, buffer may be NULL
+ * \param[in,out] out        Output stream
+ * \param[in]     frames     Number of frames to process
+ * \param[in]     ref_frames Number of available echo reference frames. The
+ *                           frames after these are processed as if the
+ *                           reference was zero.
  */
-static uint32_t ecns_process_kpb(struct ecns_comp_data *cd,
-				 struct comp_buffer *src0,
-				 struct comp_buffer *snk0)
+static void ecns_process(struct ecns_comp_data *cd, const struct ecns_stream *mic,
+			 const struct ecns_stream *ref, const struct ecns_stream *out,
+			 uint32_t frames, uint32_t ref_frames)
 {
-	uint32_t src0_ch = audio_stream_get_channels(&src0->stream);
-	if (!src0_ch)
-		src0_ch = 4;
-	uint32_t src_sample_bytes = audio_stream_sample_bytes(&src0->stream);
-	if (!src_sample_bytes)
-		src_sample_bytes = sizeof(int32_t);
-	uint32_t src0_frame_bytes = src0_ch * src_sample_bytes;
-	uint32_t avail0_bytes = audio_stream_get_avail_bytes(&src0->stream);
-	uint32_t avail0_frames = avail0_bytes / src0_frame_bytes;
-
-	uint32_t snk0_ch = audio_stream_get_channels(&snk0->stream);
-	if (!snk0_ch)
-		snk0_ch = 1;
-	uint32_t snk_sample_bytes0 = audio_stream_sample_bytes(&snk0->stream);
-	if (!snk_sample_bytes0)
-		snk_sample_bytes0 = sizeof(int32_t);
-	uint32_t snk0_frame_bytes = snk0_ch * snk_sample_bytes0;
-	uint32_t free0_bytes = audio_stream_get_free_bytes(&snk0->stream);
-	uint32_t free0_frames = free0_bytes / snk0_frame_bytes;
-
-	/* Drain all available input bounded by sink space; a one-period cap
-	 * would let the source ring overflow under DMIC vs DSP clock drift.
-	 */
-	uint32_t frames0 = MIN(avail0_frames, free0_frames);
-	if (!frames0)
-		return 0;
-
-	uint32_t src_bytes = frames0 * src0_frame_bytes;
-	uint32_t snk_bytes = frames0 * snk0_frame_bytes;
-
-	buffer_stream_invalidate(src0, src_bytes);
-
+	uint8_t *mic_ptr = audio_stream_get_rptr(&mic->buf->stream);
+	uint8_t *out_ptr = audio_stream_get_wptr(&out->buf->stream);
+	uint8_t *ref_ptr = ref_frames ? audio_stream_get_rptr(&ref->buf->stream) : NULL;
+	uint32_t mic_sample_bytes = mic->s32 ? sizeof(int32_t) : sizeof(int16_t);
 	uint32_t avg_start, avg_cnt;
-
-	ecns_mono_window(src0_ch, &avg_start, &avg_cnt);
-
-#if CONFIG_ECNS_TEST_SIGNAL
-	if (cd->test_signal_enabled) {
-		if (snk_sample_bytes0 == sizeof(int32_t))
-			ecns_kpb_test_signal_s32(cd, snk0, snk0_ch, frames0);
-		else
-			ecns_kpb_test_signal_s16(cd, snk0, snk0_ch, frames0);
-	} else
-#endif
-	if (snk_sample_bytes0 == sizeof(int32_t)) {
-		if (src_sample_bytes == sizeof(int32_t))
-			ecns_kpb_s32_to_s32(cd, src0, src0_ch, snk0, snk0_ch, frames0,
-					    avg_start, avg_cnt);
-		else
-			ecns_kpb_s16_to_s32(cd, src0, src0_ch, snk0, snk0_ch, frames0,
-					    avg_start, avg_cnt);
-	} else {
-		if (src_sample_bytes == sizeof(int32_t))
-			ecns_kpb_s32_to_s16(cd, src0, src0_ch, snk0, snk0_ch, frames0,
-					    avg_start, avg_cnt);
-		else
-			ecns_kpb_s16_to_s16(cd, src0, src0_ch, snk0, snk0_ch, frames0,
-					    avg_start, avg_cnt);
-	}
-
-	buffer_stream_writeback(snk0, snk_bytes);
-	comp_update_buffer_produce(snk0, snk_bytes);
-
-	return frames0;
-}
-
-/**
- * \brief Filter 32-bit input to 32-bit host capture sink
- */
-static void ecns_host_s32_to_s32(struct ecns_comp_data *cd,
-				 struct comp_buffer *in1,
-				 uint32_t in1_ch,
-				 struct comp_buffer *snk1,
-				 uint32_t snk1_ch,
-				 uint32_t frames)
-{
-	int32_t *src_ptr = audio_stream_get_rptr(&in1->stream);
-	int32_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
 	uint32_t remaining = frames;
+	uint32_t i, n;
+	int32_t y;
+
+	ecns_mono_window(cd->mic_sel, mic->ch, &avg_start, &avg_cnt);
 
 	while (remaining > 0) {
-		uint32_t f_src = audio_stream_frames_without_wrap(&in1->stream, src_ptr);
-		uint32_t f_snk = audio_stream_frames_without_wrap(&snk1->stream, snk_ptr);
-		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
-
-		for (uint32_t i = 0; i < n; i++) {
-			for (uint32_t c = 0; c < snk1_ch; c++)
-				snk_ptr[c] = (c < in1_ch) ? ecns_host_filter(cd, c, src_ptr[c]) : 0;
-			snk_ptr += snk1_ch;
-			src_ptr += in1_ch;
+		n = MIN(remaining, audio_stream_frames_without_wrap(&mic->buf->stream, mic_ptr));
+		n = MIN(n, audio_stream_frames_without_wrap(&out->buf->stream, out_ptr));
+		if (ref_frames) {
+			n = MIN(n, ref_frames);
+			n = MIN(n, audio_stream_frames_without_wrap(&ref->buf->stream, ref_ptr));
 		}
 
-		remaining -= n;
-		src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
-		snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
-	}
-}
+		for (i = 0; i < n; i++) {
+			y = ecns_filter(cd, ecns_frame_avg(mic_ptr, mic->s32, avg_start, avg_cnt));
+			mic_ptr += mic->ch * mic_sample_bytes;
 
-/**
- * \brief Filter 16-bit input to 32-bit host capture sink
- */
-static void ecns_host_s16_to_s32(struct ecns_comp_data *cd,
-				 struct comp_buffer *in1,
-				 uint32_t in1_ch,
-				 struct comp_buffer *snk1,
-				 uint32_t snk1_ch,
-				 uint32_t frames)
-{
-	int16_t *src_ptr = audio_stream_get_rptr(&in1->stream);
-	int32_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
-	uint32_t remaining = frames;
-
-	while (remaining > 0) {
-		uint32_t f_src = audio_stream_frames_without_wrap(&in1->stream, src_ptr);
-		uint32_t f_snk = audio_stream_frames_without_wrap(&snk1->stream, snk_ptr);
-		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
-
-		for (uint32_t i = 0; i < n; i++) {
-			for (uint32_t c = 0; c < snk1_ch; c++)
-				snk_ptr[c] = (c < in1_ch) ?
-					ecns_host_filter(cd, c, ((int32_t)src_ptr[c]) << 16) : 0;
-			snk_ptr += snk1_ch;
-			src_ptr += in1_ch;
-		}
-
-		remaining -= n;
-		src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
-		snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
-	}
-}
-
-/**
- * \brief Filter 32-bit input to 16-bit host capture sink
- */
-static void ecns_host_s32_to_s16(struct ecns_comp_data *cd,
-				 struct comp_buffer *in1,
-				 uint32_t in1_ch,
-				 struct comp_buffer *snk1,
-				 uint32_t snk1_ch,
-				 uint32_t frames)
-{
-	int32_t *src_ptr = audio_stream_get_rptr(&in1->stream);
-	int16_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
-	uint32_t remaining = frames;
-
-	while (remaining > 0) {
-		uint32_t f_src = audio_stream_frames_without_wrap(&in1->stream, src_ptr);
-		uint32_t f_snk = audio_stream_frames_without_wrap(&snk1->stream, snk_ptr);
-		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
-
-		for (uint32_t i = 0; i < n; i++) {
-			for (uint32_t c = 0; c < snk1_ch; c++)
-				snk_ptr[c] = (c < in1_ch) ?
-					sat_int16(Q_SHIFT_RND(ecns_host_filter(cd, c, src_ptr[c]),
-							      31, 15)) : 0;
-			snk_ptr += snk1_ch;
-			src_ptr += in1_ch;
-		}
-
-		remaining -= n;
-		src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
-		snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
-	}
-}
-
-/**
- * \brief Filter 16-bit input to 16-bit host capture sink
- */
-static void ecns_host_s16_to_s16(struct ecns_comp_data *cd,
-				 struct comp_buffer *in1,
-				 uint32_t in1_ch,
-				 struct comp_buffer *snk1,
-				 uint32_t snk1_ch,
-				 uint32_t frames)
-{
-	int16_t *src_ptr = audio_stream_get_rptr(&in1->stream);
-	int16_t *snk_ptr = audio_stream_get_wptr(&snk1->stream);
-	uint32_t remaining = frames;
-
-	while (remaining > 0) {
-		uint32_t f_src = audio_stream_frames_without_wrap(&in1->stream, src_ptr);
-		uint32_t f_snk = audio_stream_frames_without_wrap(&snk1->stream, snk_ptr);
-		uint32_t n = MIN(remaining, MIN(f_src, f_snk));
-
-		for (uint32_t i = 0; i < n; i++) {
-			for (uint32_t c = 0; c < snk1_ch; c++)
-				snk_ptr[c] = (c < in1_ch) ?
-					sat_int16(Q_SHIFT_RND(ecns_host_filter(cd, c,
-									       ((int32_t)src_ptr[c]) << 16),
-							      31, 15)) : 0;
-			snk_ptr += snk1_ch;
-			src_ptr += in1_ch;
-		}
-
-		remaining -= n;
-		src_ptr = audio_stream_wrap(&in1->stream, src_ptr);
-		snk_ptr = audio_stream_wrap(&snk1->stream, snk_ptr);
-	}
-}
-
-/**
- * \brief Process Pin 1: 48 kHz host capture stream
- *
- * Filters the audio from the input producer (48 kHz dmic01 or fallback
- * src0) with the built-in 40 Hz HPF (+20 dB gain) per channel and writes
- * it to the host sink buffer (supporting s16 or s32).
- *
- * \param[in,out] cd   ECNS component data
- * \param[in]     in1  Input buffer
- * \param[in,out] snk1 Output buffer to host
- * \return Number of frames produced to snk1
- */
-static uint32_t ecns_process_host(struct ecns_comp_data *cd,
-				  struct comp_buffer *in1,
-				  struct comp_buffer *snk1)
-{
-	uint32_t in1_ch = audio_stream_get_channels(&in1->stream);
-	if (!in1_ch)
-		in1_ch = 2;
-	uint32_t in1_sample_bytes = audio_stream_sample_bytes(&in1->stream);
-	if (!in1_sample_bytes)
-		in1_sample_bytes = sizeof(int32_t);
-	uint32_t in1_frame_bytes = in1_ch * in1_sample_bytes;
-	uint32_t avail1_bytes = audio_stream_get_avail_bytes(&in1->stream);
-	uint32_t avail1_frames = avail1_bytes / in1_frame_bytes;
-
-	uint32_t snk1_ch = audio_stream_get_channels(&snk1->stream);
-	if (!snk1_ch)
-		snk1_ch = 2;
-	uint32_t snk_sample_bytes1 = audio_stream_sample_bytes(&snk1->stream);
-	if (!snk_sample_bytes1)
-		snk_sample_bytes1 = sizeof(int32_t);
-	uint32_t snk1_frame_bytes = snk1_ch * snk_sample_bytes1;
-	uint32_t free1_bytes = audio_stream_get_free_bytes(&snk1->stream);
-	uint32_t free1_frames = free1_bytes / snk1_frame_bytes;
-
-	/* Drain all available input bounded by sink space; a one-period cap
-	 * would let the source ring overflow under DMIC vs DSP clock drift.
-	 */
-	uint32_t frames1 = MIN(avail1_frames, free1_frames);
-	if (!frames1)
-		return 0;
-
-	uint32_t in1_bytes = frames1 * in1_frame_bytes;
-	uint32_t snk_bytes = frames1 * snk1_frame_bytes;
-
-	buffer_stream_invalidate(in1, in1_bytes);
-
-	if (snk_sample_bytes1 == sizeof(int32_t)) {
-		if (in1_sample_bytes == sizeof(int32_t))
-			ecns_host_s32_to_s32(cd, in1, in1_ch, snk1, snk1_ch, frames1);
-		else
-			ecns_host_s16_to_s32(cd, in1, in1_ch, snk1, snk1_ch, frames1);
-	} else {
-		if (in1_sample_bytes == sizeof(int32_t))
-			ecns_host_s32_to_s16(cd, in1, in1_ch, snk1, snk1_ch, frames1);
-		else
-			ecns_host_s16_to_s16(cd, in1, in1_ch, snk1, snk1_ch, frames1);
-	}
-
-	buffer_stream_writeback(snk1, snk_bytes);
-	comp_update_buffer_produce(snk1, snk_bytes);
-
-	return frames1;
-}
-
-/**
- * \brief Consume from ECNS source buffers and drain inactive inputs
- *
- * Updates consumption for produced audio frames and drains unconsumed
- * input data when downstream consumer sinks are inactive or full to
- * prevent upstream DAI FIFO overruns.
- *
- * \param[in,out] src0             16 kHz input buffer
- * \param[in,out] src1             48 kHz input buffer
- * \param[in]     snk0             Pin 0 (KPB) output buffer
- * \param[in]     snk1             Pin 1 (Host) output buffer
- * \param[in]     frames0_produced Frames produced to snk0
- * \param[in]     frames1_produced Frames produced to snk1
- */
-static void ecns_consume_sources(struct comp_buffer *src0,
-				 struct comp_buffer *src1,
-				 struct comp_buffer *snk0,
-				 struct comp_buffer *snk1,
-				 uint32_t frames0_produced,
-				 uint32_t frames1_produced)
-{
-	uint32_t snk0_free = snk0 ? audio_stream_get_free_bytes(&snk0->stream) : 0;
-	uint32_t snk1_free = snk1 ? audio_stream_get_free_bytes(&snk1->stream) : 0;
-
-	if (src1) {
-		uint32_t src1_ch = audio_stream_get_channels(&src1->stream);
-		if (!src1_ch)
-			src1_ch = 4;
-		uint32_t src1_sb = audio_stream_sample_bytes(&src1->stream);
-		if (!src1_sb)
-			src1_sb = sizeof(int32_t);
-		uint32_t src1_fb = src1_ch * src1_sb;
-
-		if (frames1_produced > 0) {
-			comp_update_buffer_consume(src1, frames1_produced * src1_fb);
-		} else if (!snk1 || comp_buffer_get_sink_state(snk1) != COMP_STATE_ACTIVE || !snk1_free) {
-			uint32_t avail = audio_stream_get_avail_bytes(&src1->stream);
-
-			if (src1_fb && avail >= src1_fb) {
-				avail = ROUND_DOWN(avail, src1_fb);
-				comp_update_buffer_consume(src1, avail);
+			if (ref_frames) {
+				if (cd->aec_enable)
+					y = sat_int32((int64_t)y -
+						      ecns_frame_avg(ref_ptr, ref->s32, 0, ref->ch));
+				ref_ptr += ref->frame_bytes;
 			}
-		}
-	}
 
-	if (src0) {
-		uint32_t src0_ch = audio_stream_get_channels(&src0->stream);
-		if (!src0_ch)
-			src0_ch = 4;
-		uint32_t src0_sb = audio_stream_sample_bytes(&src0->stream);
-		if (!src0_sb)
-			src0_sb = sizeof(int32_t);
-		uint32_t src0_fb = src0_ch * src0_sb;
+			if (out->s32) {
+				int32_t *o = (int32_t *)out_ptr;
 
-		uint32_t consumed0 = frames0_produced;
-		if (!src1 && frames1_produced > consumed0)
-			consumed0 = frames1_produced;
+				o[0] = y;
+				for (uint32_t c = 1; c < out->ch; c++)
+					o[c] = 0;
+			} else {
+				int16_t *o = (int16_t *)out_ptr;
 
-		if (consumed0 > 0) {
-			comp_update_buffer_consume(src0, consumed0 * src0_fb);
-		} else if ((!snk0 || comp_buffer_get_sink_state(snk0) != COMP_STATE_ACTIVE || !snk0_free) &&
-			   (src1 || !snk1 || comp_buffer_get_sink_state(snk1) != COMP_STATE_ACTIVE || !snk1_free)) {
-			uint32_t avail = audio_stream_get_avail_bytes(&src0->stream);
-
-			if (src0_fb && avail >= src0_fb) {
-				avail = ROUND_DOWN(avail, src0_fb);
-				comp_update_buffer_consume(src0, avail);
+				o[0] = sat_int16(Q_SHIFT_RND(y, 31, 15));
+				for (uint32_t c = 1; c < out->ch; c++)
+					o[c] = 0;
 			}
+			out_ptr += out->frame_bytes;
+		}
+
+		remaining -= n;
+		mic_ptr = audio_stream_wrap(&mic->buf->stream, mic_ptr);
+		out_ptr = audio_stream_wrap(&out->buf->stream, out_ptr);
+		if (ref_frames) {
+			ref_frames -= n;
+			ref_ptr = ref_frames ? audio_stream_wrap(&ref->buf->stream, ref_ptr) : NULL;
 		}
 	}
+}
+
+/** \brief Drop all complete frames from an input stream. */
+static void ecns_drain(const struct ecns_stream *s)
+{
+	uint32_t frames = ecns_avail_frames(s);
+
+	if (frames)
+		comp_update_buffer_consume(s->buf, frames * s->frame_bytes);
 }
 
 /*
- * Main 20ms DP processing function:
+ * Main 20 ms DP processing function:
  * Consumes:
- *   - Pin 0 in: 16 kHz stream from dmic16k (2 or 4 channels, 16/32-bit)
- *   - Pin 1 in: 48 kHz stream from dmic01 (2 or 4 channels, 16/32-bit)
+ *   - Pin 0 in: 16 kHz microphone stream (2 or 4 channels, 16/32-bit)
+ *   - Pin 1 in: 16 kHz echo reference (stereo, 16/32-bit)
  * Produces:
- *   - Pin 0 out: 16 kHz mono clean stream to KPB (averaged mono per Kconfig, 320 frames per 20ms)
- *   - Pin 1 out: 48 kHz stereo/4ch clean stream to Host PCM 11 (40 Hz HPF +20 dB, 960 frames per 20ms)
- * Sampling rates remain identical between input and output on each pin.
+ *   - Pin 0 out: 16 kHz mono processed stream (16/32-bit)
  */
 static int ecns_copy(struct comp_dev *dev)
 {
 	struct ecns_comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *src_mic = NULL;
+	struct comp_buffer *src_ref = NULL;
+	struct comp_buffer *snk = NULL;
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
-	struct comp_buffer *src0 = NULL;
-	struct comp_buffer *src1 = NULL;
-	struct comp_buffer *snk0 = NULL;
-	struct comp_buffer *snk1 = NULL;
-	uint32_t frames0_produced = 0;
-	uint32_t frames1_produced = 0;
+	struct ecns_stream mic, ref, out;
+	uint32_t frames, ref_frames;
 
 	if (list_is_empty(&dev->bsource_list))
 		return 0;
@@ -1039,38 +478,61 @@ static int ecns_copy(struct comp_dev *dev)
 			  cd->capture_boost ? "enabled" : "disabled");
 	}
 
-	/* Identify input pins (producers to ECNS) */
 	comp_dev_for_each_producer(dev, source) {
 		uint32_t pin = IPC4_SINK_QUEUE_ID(buf_get_id(source));
 
-		if (pin == ECNS_PIN_16K_IN && !src0)
-			src0 = source;
-		else if (pin == ECNS_PIN_48K_IN && !src1)
-			src1 = source;
+		if (pin == ECNS_PIN_MIC_IN && !src_mic)
+			src_mic = source;
+		else if (pin == ECNS_PIN_REF_IN && !src_ref)
+			src_ref = source;
 	}
 
-	/* Identify output pins (consumers from ECNS) */
 	comp_dev_for_each_consumer(dev, sink) {
-		uint32_t pin = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
-
-		if (pin == ECNS_PIN_16K_OUT && !snk0)
-			snk0 = sink;
-		else if (pin == ECNS_PIN_48K_OUT && !snk1)
-			snk1 = sink;
+		if (IPC4_SRC_QUEUE_ID(buf_get_id(sink)) == ECNS_PIN_OUT && !snk)
+			snk = sink;
 	}
 
-	/* Process Pin 0: 16 kHz stream -> Mono clean to KPB */
-	if (src0 && snk0)
-		frames0_produced = ecns_process_kpb(cd, src0, snk0);
+	ecns_stream_init(&mic, src_mic);
+	ecns_stream_init(&ref, src_ref);
+	ecns_stream_init(&out, snk);
 
-	/* Process Pin 1: 48 kHz stream -> Host capture */
-	struct comp_buffer *in1 = src1 ? src1 : src0;
+	/* Drain all available input bounded by sink space; a one-period cap
+	 * would let the source ring overflow under DMIC vs DSP clock drift.
+	 */
+	frames = ecns_avail_frames(&mic);
+	if (snk && comp_buffer_get_sink_state(snk) == COMP_STATE_ACTIVE)
+		frames = MIN(frames, audio_stream_get_free_bytes(&snk->stream) / out.frame_bytes);
+	else
+		frames = 0;
 
-	if (in1 && snk1)
-		frames1_produced = ecns_process_host(cd, in1, snk1);
+	if (!frames) {
+		/* Drop the input when the output can't take it to prevent
+		 * upstream DAI FIFO overruns.
+		 */
+		if (!snk || comp_buffer_get_sink_state(snk) != COMP_STATE_ACTIVE ||
+		    !audio_stream_get_free_bytes(&snk->stream)) {
+			if (src_mic)
+				ecns_drain(&mic);
+			if (src_ref)
+				ecns_drain(&ref);
+		}
+		return 0;
+	}
 
-	/* Consume from source buffers */
-	ecns_consume_sources(src0, src1, snk0, snk1, frames0_produced, frames1_produced);
+	/* A missing echo reference is processed as zero */
+	ref_frames = MIN(frames, ecns_avail_frames(&ref));
+
+	buffer_stream_invalidate(src_mic, frames * mic.frame_bytes);
+	if (ref_frames)
+		buffer_stream_invalidate(src_ref, ref_frames * ref.frame_bytes);
+
+	ecns_process(cd, &mic, &ref, &out, frames, ref_frames);
+
+	buffer_stream_writeback(snk, frames * out.frame_bytes);
+	comp_update_buffer_produce(snk, frames * out.frame_bytes);
+	comp_update_buffer_consume(src_mic, frames * mic.frame_bytes);
+	if (ref_frames)
+		comp_update_buffer_consume(src_ref, ref_frames * ref.frame_bytes);
 
 	return 0;
 }
@@ -1099,31 +561,49 @@ static int ecns_set_large_config(struct comp_dev *dev,
 	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID: {
 		const struct sof_ipc4_control_msg_payload *cp =
 			(const struct sof_ipc4_control_msg_payload *)data;
+		bool val;
 
 		if (cp->num_elems < 1)
 			return -EINVAL;
 
+		val = !!cp->chanv[0].value;
 		switch (cp->id) {
-		case ECNS_CTRL_INDEX_TEST_SIGNAL:
-#if CONFIG_ECNS_TEST_SIGNAL
-			cd->test_signal_enabled = cp->chanv[0].value ? 1 : 0;
-			if (cd->test_signal_enabled)
-				cd->test_signal_val = 0;
-
-			comp_info(dev, "test signal %s (kpb mono output)",
-				  cd->test_signal_enabled ? "enabled" : "disabled");
-#else
-			if (cp->chanv[0].value)
-				comp_warn(dev, "test signal not supported (CONFIG_ECNS_TEST_SIGNAL=n)");
-#endif
-			return 0;
 		case ECNS_CTRL_INDEX_CAPTURE_BOOST:
-			cd->capture_boost_req = !!cp->chanv[0].value;
+			cd->capture_boost_req = val;
+			return 0;
+		case ECNS_CTRL_INDEX_AEC:
+			cd->aec_enable = val;
+			comp_info(dev, "AEC %s", val ? "enabled" : "disabled");
+			return 0;
+		case ECNS_CTRL_INDEX_NS:
+			cd->ns_enable = val;
+			comp_info(dev, "NS %s", val ? "enabled" : "disabled");
 			return 0;
 		default:
 			comp_err(dev, "illegal switch control id %u", cp->id);
 			return -EINVAL;
 		}
+	}
+	case SOF_IPC4_ENUM_CONTROL_PARAM_ID: {
+		const struct sof_ipc4_control_msg_payload *cp =
+			(const struct sof_ipc4_control_msg_payload *)data;
+
+		if (cp->num_elems < 1)
+			return -EINVAL;
+
+		if (cp->id != ECNS_CTRL_INDEX_MIC_SEL) {
+			comp_err(dev, "illegal enum control id %u", cp->id);
+			return -EINVAL;
+		}
+
+		if (cp->chanv[0].value > ECNS_MIC_SEL_MAX) {
+			comp_err(dev, "illegal mic channel %u", cp->chanv[0].value);
+			return -EINVAL;
+		}
+
+		cd->mic_sel = cp->chanv[0].value;
+		comp_info(dev, "mic channel %u", cd->mic_sel);
+		return 0;
 	}
 	default:
 		return -EINVAL;
@@ -1139,32 +619,54 @@ static int ecns_get_large_config(struct comp_dev *dev,
 {
 	struct ecns_comp_data *cd = comp_get_drvdata(dev);
 
-	switch (param_id) {
-	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID: {
-		struct sof_ipc4_control_msg_payload *cp =
-			(struct sof_ipc4_control_msg_payload *)data;
-		uint16_t ctl_id = cp->id;
-		uint32_t resp_size = sizeof(struct sof_ipc4_control_msg_payload) +
-				     sizeof(struct sof_ipc4_ctrl_value_chan);
+	struct sof_ipc4_control_msg_payload *cp = (struct sof_ipc4_control_msg_payload *)data;
+	uint32_t resp_size = sizeof(struct sof_ipc4_control_msg_payload) +
+			     sizeof(struct sof_ipc4_ctrl_value_chan);
+	uint16_t ctl_id;
+	uint32_t val;
 
-		if (resp_size > *data_offset) {
-			comp_err(dev, "wrong switch control response size %u vs %u",
-				 resp_size, *data_offset);
+	switch (param_id) {
+	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
+		ctl_id = cp->id;
+		switch (ctl_id) {
+		case ECNS_CTRL_INDEX_CAPTURE_BOOST:
+			val = cd->capture_boost_req;
+			break;
+		case ECNS_CTRL_INDEX_AEC:
+			val = cd->aec_enable;
+			break;
+		case ECNS_CTRL_INDEX_NS:
+			val = cd->ns_enable;
+			break;
+		default:
+			comp_err(dev, "illegal switch control id %u", ctl_id);
 			return -EINVAL;
 		}
-
-		*data_offset = resp_size;
-		memset_s(cp, resp_size, 0, resp_size);
-		cp->id = ctl_id;
-		cp->num_elems = 1;
-		cp->chanv[0].channel = 0;
-		cp->chanv[0].value = ctl_id == ECNS_CTRL_INDEX_CAPTURE_BOOST ?
-				     cd->capture_boost_req : cd->test_signal_enabled;
-		return 0;
-	}
+		break;
+	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
+		ctl_id = cp->id;
+		if (ctl_id != ECNS_CTRL_INDEX_MIC_SEL) {
+			comp_err(dev, "illegal enum control id %u", ctl_id);
+			return -EINVAL;
+		}
+		val = cd->mic_sel;
+		break;
 	default:
 		return -EINVAL;
 	}
+
+	if (resp_size > *data_offset) {
+		comp_err(dev, "wrong control response size %u vs %u", resp_size, *data_offset);
+		return -EINVAL;
+	}
+
+	*data_offset = resp_size;
+	memset_s(cp, resp_size, 0, resp_size);
+	cp->id = ctl_id;
+	cp->num_elems = 1;
+	cp->chanv[0].channel = 0;
+	cp->chanv[0].value = val;
+	return 0;
 }
 
 static const struct comp_driver ecns_drv = {
