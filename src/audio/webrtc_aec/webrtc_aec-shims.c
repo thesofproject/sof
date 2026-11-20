@@ -11,8 +11,7 @@
 #include <string.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/alloc.h>
-#include <rtos/panic.h>
-#if !defined(LLEXT_MODULE)
+#if !defined(LLEXT_MODULE) && !defined(LL_EXTENSION_BUILD)
 #include <rtos/userspace_helper.h>
 static APP_SYSUSER_BSS struct processing_module *active_aec_mod;
 #else
@@ -73,7 +72,6 @@ void *webrtc_realloc(void *ptr, size_t size)
 		return NULL;
 	}
 
-	/* Not called by AEC3 */
-	k_panic();
+	/* Not called by AECm/AEC3 */
 	return NULL;
 }
