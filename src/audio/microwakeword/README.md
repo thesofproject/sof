@@ -110,11 +110,12 @@ graph TD
 
 ## Cross-Platform Manifest Targets
 
-| Target Platform | Manifest File | Output Topology Binary | DMIC Driver Version |
-|---|---|---|---|
-| **Panther Lake (PTL / ACE 3.0)** | [`dmic-wov-multi-ptl-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf) | `sof-ptl-dmic-wov-multi-4ch.tplg` | 5 |
-| **Tiger Lake (TGL / CAVS 2.5)** | [`dmic-wov-multi-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf) | `sof-tgl-dmic-wov-multi-4ch.tplg` | 1 |
-| **Wildcat Lake (WCL / ACE 3.0)** | symlink to the PTL topology | `sof-wcl-dmic-wov-multi-4ch.tplg` | 5 |
+The standalone DMIC-only 4-channel manifests (`dmic-wov-multi-ptl-4ch-manifest.conf`,
+`dmic-wov-multi-4ch-manifest.conf`) and their `sof-*-dmic-wov-multi-4ch.tplg` targets
+have been removed, because ECNS requires a speaker echo reference input that a
+DMIC-only topology cannot provide. See
+[`tools/topology/topology2/README.md`](../../../tools/topology/topology2/README.md)
+for the remaining multi-slot WoV topology targets.
 
 ---
 

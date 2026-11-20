@@ -464,7 +464,13 @@ Class.Control.enum."score_enum" {
 }
 ```
 
-### Pipeline Instantiation in Manifest (`dmic-wov-multi-ptl-4ch-manifest.conf`)
+### Pipeline Instantiation in Manifest
+
+> [!NOTE]
+> The snippets below were taken from the standalone DMIC-only
+> `dmic-wov-multi-ptl-4ch-manifest.conf`, which has been removed because ECNS
+> requires a speaker echo reference input that a DMIC-only topology cannot
+> provide. They are kept as an illustration of the pipeline structure.
 
 #### 1. ECNS Pipeline (Pipeline 105)
 ```conf
@@ -585,18 +591,16 @@ Follow this step-by-step checklist to integrate your own algorithms:
 ### Step 3: Define Topology Components
 1. Create Topology2 component definitions in `tools/topology/topology2/include/components/<your_algo>.conf`.
 2. Reference the scoring enum in `score_enum.conf` (ensuring no `volatile` access flag).
-3. Connect widgets in the platform manifest files:
-   - Panther Lake: `tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf`
-   - Tiger Lake: `tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf`
-   - Wildcat Lake: symlink to the Panther Lake topology, no separate manifest
+3. Connect widgets in the shared multi-slot WoV topology
+   `tools/topology/topology2/platform/intel/dmic-wov-multi.conf`, used e.g. by the
+   `cavs-sdw` `*-wov-multi` targets in `production/tplg-targets-ace3.cmake`.
+   Wildcat Lake topologies are symlinks to the Panther Lake ones.
 
 ### Step 4: Compile Topology & Firmware
-1. Build topologies with `alsatplg -p`:
+1. Build the topology via its CMake target (see `tools/topology/topology2/README.md`
+   for the direct `alsatplg -p` invocation):
    ```bash
-   alsatplg \
-       -I tools/topology/topology2 \
-       -p -c tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf \
-       -o /tmp/sof-ptl-dmic-wov-multi-4ch.tplg
+   make -C build-tools topology2_prod_sof-ptl-rt721-4ch-wov-multi
    ```
 2. Build firmware with Zephyr SDK GCC:
    ```bash
@@ -608,7 +612,7 @@ Follow this step-by-step checklist to integrate your own algorithms:
 1. Copy firmware and topology to DUT:
    ```bash
    scp build-sof-staging/sof/intel/sof-ipc4/ptl/community/sof-ptl.ri root@<dut>:/lib/firmware/intel/sof-ipc4/ptl/community/
-   scp /tmp/sof-ptl-dmic-wov-multi-4ch.tplg root@<dut>:/lib/firmware/intel/sof-ipc4-tplg/
+   scp build-tools/topology/topology2/production/sof-ptl-rt721-4ch-wov-multi.tplg root@<dut>:/lib/firmware/intel/sof-ipc4-tplg/
    ```
 2. Reload driver:
    ```bash

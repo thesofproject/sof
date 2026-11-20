@@ -926,13 +926,11 @@ ALSA_CONFIG_DIR=$ALSA_TMP ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology alsatp
     -I $TPLG2 -p \
     -c tools/topology/topology2/dmic-wov-multi-manifest.conf \
     -o /tmp/sof-tgl-dmic-wov-multi.tplg
-
-# 2. Native 16 kHz 4-Channel Multi-WOV Topology (No SRC, with embedded NHLT)
-ALSA_CONFIG_DIR=$ALSA_TMP ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology alsatplg \
-    -I $TPLG2 -p \
-    -c tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf \
-    -o /tmp/sof-tgl-dmic-wov-multi-4ch.tplg
 ```
+
+The standalone native 16 kHz 4-channel DMIC-only manifest
+(`dmic-wov-multi-4ch-manifest.conf`) has been removed, because ECNS requires a
+speaker echo reference input that a DMIC-only topology cannot provide.
 
 `ALSA_CONFIG_DIR` must point to a directory that contains `alsa.conf` plus
 `include/` and `platform/` symlinks into `topology2/`. `ALSA_TOPOLOGY_PLUGIN_DIR` points to
@@ -942,8 +940,8 @@ generate and embed the hardware ACPI NHLT table into the manifest binary.
 Copy the compiled topology to the DUT:
 
 ```bash
-scp /tmp/sof-tgl-dmic-wov-multi-4ch.tplg \
-    root@<dut>:/lib/firmware/intel/sof-ipc4-tplg/sof-tgl-dmic-wov-multi-4ch.tplg
+scp /tmp/sof-tgl-dmic-wov-multi.tplg \
+    root@<dut>:/lib/firmware/intel/sof-ipc4-tplg/sof-tgl-dmic-wov-multi.tplg
 ```
 
 ### BIOS NHLT Table Override (`sof_use_tplg_nhlt=1`)
@@ -956,7 +954,7 @@ The SOF Linux kernel driver supports **overriding the BIOS NHLT table** using th
 table embedded in the topology manifest binary.
 
 #### 1. How Topology NHLT is Embedded
-In the topology manifest (`dmic-wov-multi-4ch-manifest.conf`):
+In a topology manifest that embeds its own NHLT table:
 - `Define { PREPROCESS_PLUGINS "nhlt" }` enables the NHLT compiler plugin.
 - `Object.Dai.DMIC` defines the DAI parameters (`sample_rate 16000`, `num_pdm_active 2`, 4 active mics).
 - `Object.Base.manifest.1 { nhlt "true" }` packages the NHLT table into a `SOF_MANIFEST_DATA_TYPE_NHLT` (1) TLV data block inside the compiled `.tplg` binary.
@@ -968,7 +966,7 @@ Edit `/etc/modprobe.d/sof.conf` on the DUT:
 
 ```ini
 # /etc/modprobe.d/sof.conf
-options snd_sof tplg_path=intel/sof-ipc4-tplg tplg_filename=sof-tgl-dmic-wov-multi-4ch.tplg
+options snd_sof tplg_path=intel/sof-ipc4-tplg tplg_filename=<your-topology>.tplg
 options snd_sof_intel_hda_common sof_use_tplg_nhlt=1
 ```
 
