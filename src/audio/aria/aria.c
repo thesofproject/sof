@@ -47,10 +47,9 @@ const int32_t sof_aria_index_tab[] = {
 static size_t get_required_memory(size_t chan_cnt, size_t smpl_group_cnt)
 {
 	/* Current implementation is able to apply 1 ms transition */
-	/* internal circular buffer aligned to 8 bytes */
 	const size_t num_of_ms = 1;
 
-	return ALIGN_UP(num_of_ms * chan_cnt * smpl_group_cnt, 2) * sizeof(int32_t);
+	return num_of_ms * chan_cnt * smpl_group_cnt * sizeof(int32_t);
 }
 
 static void aria_set_gains(struct aria_data *cd)
@@ -66,12 +65,19 @@ static int aria_algo_init(struct aria_data *cd, void *buffer_desc,
 {
 	cd->chan_cnt = chan_cnt;
 	cd->smpl_group_cnt = smpl_group_cnt;
-	/* ensures buffer size is aligned to 8 bytes */
-	cd->buff_size = ALIGN_UP(cd->chan_cnt * cd->smpl_group_cnt, 2);
-	cd->offset = (cd->chan_cnt * cd->smpl_group_cnt) & 1;
+	/* The ring holds exactly one chunk, a whole number of frames, so a
+	 * frame never straddles its end and the delay stays smpl_group_cnt
+	 * frames. The sample count is odd only for an odd channel count,
+	 * and the odd channel HiFi paths access the ring with 32-bit scalar
+	 * loads and stores. The even channel paths load two samples at a
+	 * time; there the ring is a multiple of 8 bytes and the pointers
+	 * advance by whole frames, so they keep the alignment of the
+	 * allocation. get_required_memory() allocates exactly this size.
+	 */
+	cd->buff_size = cd->chan_cnt * cd->smpl_group_cnt;
 	cd->att = att;
 	cd->data_addr = buffer_desc;
-	cd->data_ptr = cd->data_addr + cd->offset;
+	cd->data_ptr = cd->data_addr;
 	cd->data_end = cd->data_addr + cd->buff_size;
 	cd->buff_pos = 0;
 
