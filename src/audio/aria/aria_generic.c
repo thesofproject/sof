@@ -69,7 +69,7 @@ static void aria_algo_get_data(struct processing_module *mod,
 	while (samples) {
 		m = cir_buf_samples_without_wrap_s32(out, sink->buf_end);
 		n = MIN(m, samples);
-		m = cir_buf_samples_without_wrap_s32(cd->data_ptr, cd->data_end);
+		m = cir_buf_samples_without_wrap_s32(in, cd->data_end);
 		n = MIN(m, n);
 		for (i = 0; i < n; i += ch_n) {
 			for (ch = 0; ch < ch_n; ch++) {
