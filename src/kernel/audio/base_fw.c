@@ -698,7 +698,7 @@ __cold static int extended_global_perf_data_get(uint32_t *data_off_size, char *d
 	int ret;
 	struct extended_global_perf_data *perf_data = (struct extended_global_perf_data *)data;
 
-	ret = get_extended_performance_data(perf_data);
+	ret = get_extended_performance_data(perf_data, SOF_IPC_MSG_MAX_SIZE);
 	if (ret < 0)
 		return IPC4_ERROR_INVALID_PARAM;
 	*data_off_size = sizeof(*perf_data)
