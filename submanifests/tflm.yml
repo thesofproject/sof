@@ -1,0 +1,12 @@
+---
+# TensorFlow Lite Micro (TFLM) submanifest for Sound Open Firmware
+#
+# Provides Google's upstream microfrontend library (pcan_gain_control,
+# noise_reduction, log_scale) used by the PCAN math library and ZTest suite.
+
+manifest:
+  projects:
+    - name: tflite-micro
+      url: https://github.com/tensorflow/tflite-micro
+      revision: e86d97b6237f88ab5925c0b41e3e3589a1560d86
+      path: tflite-micro

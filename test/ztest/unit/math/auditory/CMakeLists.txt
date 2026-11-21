@@ -45,6 +45,7 @@ target_sources(app PRIVATE
 	${SOF_ROOT}/src/math/base2log.c
 	${SOF_ROOT}/src/math/decibels.c
 	${SOF_ROOT}/src/math/numbers.c
+	${SOF_ROOT}/src/math/sqrt_int32.c
 )
 
 sof_append_relative_path_definitions(app)
