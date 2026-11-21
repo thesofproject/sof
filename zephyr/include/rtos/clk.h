@@ -49,8 +49,6 @@ struct clock_info {
 	uint32_t default_freq_idx;
 	uint32_t current_freq_idx;
 	uint32_t lowest_freq_idx;	/* lowest possible clock */
-	uint32_t notification_id;
-	uint32_t notification_mask;
 
 	/* persistent change clock value in active state, caller must hold clk_lock */
 	int (*set_freq)(int clock, int freq_idx);

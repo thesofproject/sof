@@ -11,7 +11,6 @@
 #include <sof/lib/agent.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/mailbox.h>
-#include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/ll_schedule.h>
@@ -209,8 +208,6 @@ void clocks_init(struct sof *sof)
 	static struct clock_info clks[] = {
 		{ .freqs_num = ARRAY_SIZE(freqs),
 		  .freqs = freqs,
-		  .notification_id = NOTIFIER_ID_CPU_FREQ,
-		  .notification_mask = NOTIFIER_TARGET_CORE_MASK(0),
 		  .set_freq = set_cpuclk, },
 	};
 	sof->clocks = clks;

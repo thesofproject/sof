@@ -8,7 +8,6 @@
 #include <rtos/clk.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
-#include <sof/lib/notifier.h>
 #include <rtos/sof.h>
 #include <platform/chip_registers.h>
 
@@ -134,8 +133,6 @@ void platform_clock_init(struct sof *sof)
 			.freqs = platform_cpu_freq,
 			.default_freq_idx = CPU_DEFAULT_IDX,
 			.current_freq_idx = CPU_DEFAULT_IDX,
-			.notification_id = NOTIFIER_ID_CPU_FREQ,
-			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
 			.set_freq = NULL,
 		};
 	}
