@@ -60,8 +60,6 @@ static void posix_clk_init(struct sof *sof)
 		{
 			.freqs_num = ARRAY_SIZE(cpu_freq),
 			.freqs = cpu_freq,
-			.notification_id = 0,
-			.notification_mask = 1,
 		},
 	};
 
