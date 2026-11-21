@@ -5,7 +5,7 @@
 
 /**
  * @file rtos/clk.h
- * @brief RTOS DSP clock frequency management and notification interfaces.
+ * @brief RTOS DSP clock frequency management interfaces.
  * @ingroup rtos_api
  */
 
@@ -26,17 +26,6 @@
 #include <stdint.h>
 
 struct timer;
-
-#define CLOCK_NOTIFY_PRE	0
-#define CLOCK_NOTIFY_POST	1
-
-struct clock_notify_data {
-	uint32_t old_freq;
-	uint32_t old_ticks_per_msec;
-	uint32_t freq;
-	uint32_t ticks_per_msec;
-	uint32_t message;
-};
 
 struct freq_table {
 	uint32_t freq;
