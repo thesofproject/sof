@@ -193,5 +193,9 @@ index = __COUNTER__
 #include <audio/webrtc_aec/webrtc_aec.toml>
 #endif
 
+#if defined(CONFIG_COMP_BT_CODEC) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/bt_codec/bt_codec.toml>
+#endif
+
 [module]
 count = __COUNTER__

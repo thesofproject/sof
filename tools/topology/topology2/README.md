@@ -272,6 +272,7 @@ default ID ranges for the same endpoint types.
 | Deepbuffer USB Offload 1 | 24 | `UAOL_DB1_PCM_ID` |
 | Deepbuffer Jack Out | 31 | `DEEP_BUFFER_PCM_ID` |
 | Deepbuffer Speaker | 35 | `DEEP_BUFFER_PCM_ID_2` |
+| Deepbuffer Bluetooth | 36 | `BT_DEEP_BUFFER_PCM_ID` |
 | Deepbuffer DMIC | 46 | `DMIC0_DEEP_BUFFER_PCM_ID` |
 | Compress Jack Out | 50 | `COMPR_PCM_ID` |
 | Compress Speaker | 52 | `COMPR_2_PCM_ID` |
@@ -289,11 +290,13 @@ default ID ranges for the same endpoint types.
 | HDMI 2 | 4 | `HDMI2_PCM_ID` |
 | HDMI 3 | 5 | `HDMI3_PCM_ID` |
 | DMIC0 | 6 | `DMIC0_PCM_ID` |
+| Bluetooth | 20 | `BT_PCM_ID` |
 | USB Offload 0 (playback/capture) | 21 | `UAOL_PCM_ID` |
 | USB Offload 1 (playback/capture) | 22 | `UAOL_PCM1_ID` |
 | Deepbuffer USB Offload 0 | 23 | `UAOL_DB_PCM_ID` |
 | Deepbuffer USB Offload 1 | 24 | `UAOL_DB1_PCM_ID` |
 | Deepbuffer HDA Analog | 31 | `DEEP_BUFFER_PCM_ID` |
+| Deepbuffer Bluetooth | 36 | `BT_DEEP_BUFFER_PCM_ID` |
 | Compress HDA Analog | 50 | `COMPR_PCM_ID` |
 
 **Intel HDA Backend DAI Link IDs:**
@@ -356,6 +359,9 @@ is at N1 (50/51, 60/61, 70/71, 80/81).
 | HDMI 4 Host / DAI | 80 / 81 | `HDMI4_HOST_PIPELINE_ID` / `HDMI4_DAI_PIPELINE_ID` |
 | Compress Jack / Speaker | 90 / 92 | `COMPR_PIPELINE_ID` / `COMPR_2_PIPELINE_ID` |
 | PCH DMIC0 Host / DAI | 100 / 101 | `DMIC0_HOST_PIPELINE_ID` / `DMIC0_DAI_PIPELINE_ID` |
+| Bluetooth Playback Host / DAI | 200 / 201 | `BT_PB_HOST_PIPELINE_ID` / `BT_PB_DAI_PIPELINE_ID` |
+| Bluetooth Capture Host / DAI | 202 / 203 | `BT_CP_HOST_PIPELINE_ID` / `BT_CP_DAI_PIPELINE_ID` |
+| Bluetooth Deepbuffer | 204 | `BT_DEEP_BUFFER_PIPELINE_ID` |
 | UAOL0 Playback Host / DAI | 210 / 211 | `UAOL_PB_HOST_PIPELINE_ID` / `UAOL_PB_DAI_PIPELINE_ID` |
 | UAOL0 Capture Host / DAI | 212 / 213 | `UAOL_CP_HOST_PIPELINE_ID` / `UAOL_CP_DAI_PIPELINE_ID` |
 | UAOL0 Deepbuffer | 214 | `UAOL_DB_PIPELINE_ID` |
