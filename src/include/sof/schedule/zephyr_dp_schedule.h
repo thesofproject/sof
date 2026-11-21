@@ -130,7 +130,7 @@ struct scheduler_dp_task_memory {
 
 #endif /* CONFIG_SOF_USERSPACE_APPLICATION */
 /** @brief Per-core DP scheduler locks, see scheduler_dp_lock(). */
-extern struct k_sem dp_lock[CONFIG_MP_MAX_NUM_CPUS];
+extern struct k_mutex dp_lock[CONFIG_MP_MAX_NUM_CPUS];
 
 /**
  * @brief DP scheduler ops, see struct scheduler_ops.
