@@ -44,14 +44,20 @@ SOF_DEFINE_REG_UUID(dai);
 
 static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, int cmd);
 
-static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
+/* Trigger all DAIs of a group, called by the last DAI to receive the command */
+static int dai_group_trigger(struct dai_group *group, int cmd)
 {
-	struct comp_dev *dev = arg;
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dai_group *group = dd->group;
+	struct list_item *item;
+	int ret = 0;
 
-	/* Atomic context set by the last DAI to receive trigger command */
-	group->trigger_ret = dai_comp_trigger_internal(dd, dev, group->trigger_cmd);
+	/* return the error of the last trigger */
+	list_for_item(item, &group->dais) {
+		struct dai_data *dd = container_of(item, struct dai_data, group_item);
+
+		ret = dai_comp_trigger_internal(dd, dd->dai_dev, cmd);
+	}
+
+	return ret;
 }
 
 /* Assign DAI to a group */
@@ -78,8 +84,9 @@ int dai_assign_group(struct dai_data *dd, struct comp_dev *dev, uint32_t group_i
 	comp_dbg(dev, "group %d num %d",
 		 group_id, dd->group->num_dais);
 
-	/* Register for the atomic trigger event */
-	notifier_register(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER, dai_atomic_trigger);
+	/* The group trigger walks the DAIs by their data */
+	dd->dai_dev = dev;
+	list_item_prepend(&dd->group_item, &dd->group->dais);
 
 	return 0;
 }
@@ -215,8 +222,10 @@ error:
 
 void dai_common_free(struct dai_data *dd)
 {
-	if (dd->group)
+	if (dd->group) {
+		list_item_del(&dd->group_item);
 		dai_group_put(dd->group);
+	}
 
 	if (dd->chan) {
 		dd->chan->dev_data = NULL;
@@ -236,9 +245,6 @@ void dai_common_free(struct dai_data *dd)
 static void dai_free(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-
-	if (dd->group)
-		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
 
 	if (dd->chan)
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
@@ -873,12 +879,8 @@ int dai_common_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 			 */
 
 			irq_local_disable(irq_flags);
-			notifier_event(group, NOTIFIER_ID_DAI_TRIGGER,
-				       BIT(cpu_get_id()), NULL, 0);
+			ret = dai_group_trigger(group, cmd);
 			irq_local_enable(irq_flags);
-
-			/* return error of last trigger */
-			ret = group->trigger_ret;
 		}
 	}
 
