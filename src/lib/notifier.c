@@ -44,7 +44,7 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 	k_spinlock_key_t key;
 	int ret = 0;
 
-	assert(type >= NOTIFIER_ID_CPU_FREQ && type < NOTIFIER_ID_COUNT);
+	assert((unsigned int)type < NOTIFIER_ID_COUNT);
 
 	key = k_spin_lock(&notify->lock);
 
@@ -77,7 +77,7 @@ void notifier_unregister(void *receiver, void *caller, enum notify_id type)
 	struct callback_handle *handle;
 	k_spinlock_key_t key;
 
-	assert(type >= NOTIFIER_ID_CPU_FREQ && type < NOTIFIER_ID_COUNT);
+	assert((unsigned int)type < NOTIFIER_ID_COUNT);
 
 	key = k_spin_lock(&notify->lock);
 
@@ -110,7 +110,7 @@ void notifier_unregister_all(void *receiver, void *caller)
 {
 	int i;
 
-	for (i = NOTIFIER_ID_CPU_FREQ; i < NOTIFIER_ID_COUNT; i++)
+	for (i = 0; i < NOTIFIER_ID_COUNT; i++)
 		notifier_unregister(receiver, caller, i);
 }
 
@@ -193,7 +193,7 @@ __cold void init_system_notify(struct sof *sof)
 	}
 
 	k_spinlock_init(&(*notify)->lock);
-	for (i = NOTIFIER_ID_CPU_FREQ; i < NOTIFIER_ID_COUNT; i++)
+	for (i = 0; i < NOTIFIER_ID_COUNT; i++)
 		list_init(&(*notify)->list[i]);
 
 	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID)

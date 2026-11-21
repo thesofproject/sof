@@ -15,7 +15,6 @@
 #include <rtos/clk.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
-#include <sof/lib/notifier.h>
 #include <sof/lib/perf_cnt.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -737,49 +736,9 @@ static void scheduler_free_ll(void *data, uint32_t flags)
 
 	domain_unregister(sch->domain, NULL, 0);
 
-	if (!(flags & SOF_SCHEDULER_FREE_IRQ_ONLY))
-		notifier_unregister(sch, NULL,
-				    NOTIFIER_CLK_CHANGE_ID(sch->domain->clk));
-
 	irq_local_enable(irq_flags);
 }
 #endif /* CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY */
-
-static void ll_scheduler_recalculate_tasks(struct ll_schedule_data *sch,
-					   struct clock_notify_data *clk_data)
-{
-	uint64_t current = sof_cycle_get_64_atomic();
-	struct list_item *tlist;
-	struct task *task;
-	uint64_t delta_ms;
-
-	list_for_item(tlist, &sch->tasks) {
-		task = container_of(tlist, struct task, list);
-		delta_ms = (task->start - current) /
-			clk_data->old_ticks_per_msec;
-
-		task->start = delta_ms ?
-			current + sch->domain->ticks_per_ms * delta_ms :
-			current + (sch->domain->ticks_per_ms >> 3);
-	}
-}
-
-static void ll_scheduler_notify(void *arg, enum notify_id type, void *data)
-{
-	struct ll_schedule_data *sch = arg;
-	struct clock_notify_data *clk_data = data;
-	uint32_t flags;
-
-	irq_local_disable(flags);
-
-	/* we need to recalculate tasks when clock frequency changes */
-	if (clk_data->message == CLOCK_NOTIFY_POST) {
-		sch->domain->ticks_per_ms = k_ms_to_cyc_ceil64(1);
-		ll_scheduler_recalculate_tasks(sch, clk_data);
-	}
-
-	irq_local_enable(flags);
-}
 
 int scheduler_init_ll(struct ll_schedule_domain *domain)
 {
@@ -794,9 +753,6 @@ int scheduler_init_ll(struct ll_schedule_domain *domain)
 	list_init(&sch->tasks);
 	atomic_init(&sch->num_tasks, 0);
 	sch->domain = domain;
-
-	/* notification of clock changes */
-	notifier_register(sch, NULL, NOTIFIER_CLK_CHANGE_ID(domain->clk), ll_scheduler_notify);
 
 	scheduler_init(domain->type, &schedule_ll_ops, sch);
 

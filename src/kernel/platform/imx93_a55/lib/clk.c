@@ -4,7 +4,6 @@
  */
 
 #include <rtos/clk.h>
-#include <sof/lib/notifier.h>
 
 static const struct freq_table platform_cpu_freq[] = {
 	{ CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC,
@@ -38,8 +37,6 @@ void platform_clock_init(struct sof *sof)
 			.freqs = platform_cpu_freq,
 			.default_freq_idx = CPU_DEFAULT_IDX,
 			.current_freq_idx = CPU_DEFAULT_IDX,
-			.notification_id = NOTIFIER_ID_CPU_FREQ,
-			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
 			.set_freq = NULL,
 		};
 	}
