@@ -20,6 +20,6 @@
 
 #else
 
-#error "This file shouldn't be included from outside of XTOS's posix/task.h"
+#error "This file shouldn't be included from outside of the host rtos/task.h"
 
 #endif /* __POSIX_RTOS_TASK_H__ */

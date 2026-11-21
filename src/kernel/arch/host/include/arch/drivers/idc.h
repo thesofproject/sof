@@ -14,6 +14,6 @@
 
 #else
 
-#error "This file shouldn't be included from outside of XTOS's rtos/idc.h"
+#error "This file shouldn't be included from outside of the host rtos/idc.h"
 
 #endif /* __POSIX_RTOS_IDC_H__ */
