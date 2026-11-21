@@ -174,10 +174,6 @@ struct k_work_q *ipc_send_wq_get(void)
 
 static void schedule_ipc_worker(void)
 {
-	/*
-	 * note: in XTOS builds, this is handled in
-	 * task_main_primary_core()
-	 */
 #if defined(__ZEPHYR__) && !CONFIG_SOF_BOOT_TEST_STANDALONE
 	/* with SOF_BOOT_TEST_STANDALONE, ipc_init() does not set up the work queue */
 	k_work_schedule_for_queue(&ipc_send_wq, &ipc_send_work, K_USEC(IPC_PERIOD_USEC));

@@ -162,7 +162,7 @@ case "$platform" in
 	;;
 esac
 
-# Pre-zephyr "XTOS" build, testbench,...
+# Testbench build (rebuild-testbench.sh)
 case "$platform" in
     mtl|lnl|ptl|acp_7_0|mt8196|nvl)
 	SOF_CC_BASE='clang';;

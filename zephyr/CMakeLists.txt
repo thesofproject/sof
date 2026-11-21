@@ -199,9 +199,9 @@ zephyr_include_directories(${SOF_SRC_PATH}/include/sof/audio/module_adapter/libr
 
 
 # New, "de-centralized Zephyr" way. Requires "is_zephyr()" conditionals in
-# the decentralized CMakeLists.txt files shared with XTOS.
+# the decentralized CMakeLists.txt files shared with the host builds.
 
-# XTOS duplicate in sof/scripts/misc.cmake; keep in sync
+# Host build duplicate in sof/scripts/cmake/misc.cmake; keep in sync
 macro(is_zephyr ret)
 	if(CONFIG_ZEPHYR_SOF_MODULE)
 		set(${ret} TRUE)
@@ -210,7 +210,7 @@ macro(is_zephyr ret)
 	endif()
 endmacro()
 
-# Wrappers for compatibility and re-use of existing, XTOS CMake files.
+# Wrappers for the CMake files shared with the host builds.
 # Do NOT use these macros in this file or in any other Zephyr-specific
 # CMake code.
 macro(add_local_sources target)

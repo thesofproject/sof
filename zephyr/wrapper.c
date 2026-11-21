@@ -59,7 +59,7 @@ DECLARE_TR_CTX(zephyr_tr, SOF_UUID(zephyr_uuid), LOG_LEVEL_INFO);
 const char irq_name_level2[] = "level2";
 const char irq_name_level5[] = "level5";
 
-/* imx currently has no IRQ driver in Zephyr so we force to xtos IRQ */
+/* AMD platforms without native drivers use the legacy SOF interrupt API */
 #if defined(CONFIG_AMD) && !defined(CONFIG_ZEPHYR_NATIVE_DRIVERS)
 int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
 {

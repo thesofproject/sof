@@ -266,7 +266,7 @@ config ZEPHYR_NATIVE_DRIVERS
 	  Enable Zephyr native api drivers for host and dai audio components
 	  host-zephyr
 	  dai-zephyr
-	  will be used instead of legacy xtos version.
+	  will be used instead of the legacy SOF drivers.
 
 config DMA_MTK_SOF_HOST_DMA
 	bool "MediaTek SOF host DMA driver"
