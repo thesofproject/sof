@@ -27,7 +27,6 @@ src/audio/dai-legacy.c
 src/audio/host-legacy.c
 src/schedule/dma_multi_chan_domain.c
 src/schedule/dma_single_chan_domain.c
-src/schedule/ll_schedule_xtos.c
 src/schedule/zephyr_dma_domain.c
 
 # Headers that user-space code may include, checked with --sources: they
