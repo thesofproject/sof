@@ -376,7 +376,7 @@ def main():
 	command.extend(['-o', f'{args.file}.tmp'])
 	command.extend(params)
 
-	subprocess.run(command)
+	subprocess.run(command, check=True)
 
 	if '-r' in params:
 		prune_xtensa_relocs(f'{args.file}.tmp')
@@ -395,7 +395,7 @@ def main():
 			copy_command.extend(['--set-section-alignment', f'{s_name}={s_align}'])
 
 	copy_command.extend([f'{args.file}.tmp', f'{args.output}'])
-	subprocess.run(copy_command)
+	subprocess.run(copy_command, check=True)
 
 if __name__ == "__main__":
 	main()

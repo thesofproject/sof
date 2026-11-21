@@ -1,0 +1,33 @@
+---
+# TensorFlow Lite Micro (TFLM) and ML dependencies for Sound Open Firmware
+#
+# These projects provide the TFLM runtime, mathematical kernels, and neural network
+# acceleration libraries used by MicroWakeWord (mww), TensorFlow Classifier (tflmcly),
+# MFCC, and PCAN audio processing components.
+
+manifest:
+  projects:
+    - name: tflite-micro
+      url: https://github.com/tensorflow/tflite-micro
+      revision: e86d97b6237f88ab5925c0b41e3e3589a1560d86
+      path: tflite-micro
+
+    - name: flatbuffers
+      url: https://github.com/thesofproject/flatbuffers
+      revision: f5acabf4e1a3fcba024081bb1871a2ed59aa1c28
+      path: flatbuffers
+
+    - name: nnlib-hifi4
+      url: https://github.com/thesofproject/nnlib-hifi4
+      revision: cdedfb1a1044eb774915de21b63a1b6aa93276f6
+      path: nnlib-hifi4
+
+    - name: gemmlowp
+      url: https://github.com/google/gemmlowp
+      revision: 719139ce755a0f31cbf1c37f7f98adcc7fc9f425
+      path: gemmlowp
+
+    - name: ruy
+      url: https://github.com/google/ruy
+      revision: d37128311b445e758136b8602d1bbd2a755e115d
+      path: ruy
