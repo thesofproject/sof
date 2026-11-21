@@ -7,11 +7,9 @@ if(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 if(CONFIG_ZEPHYR_POSIX)
 	set(ARCH host)
 	set(PLATFORM "posix")
-	set(PLATFORM_HEADERS "posix")
 else()
 	# firmware build supports only xtensa arch for now
 	set(ARCH xtensa)
-	set(PLATFORM_HEADERS "xtos")
 endif()
 
 # Appends literal with path of the source file relative to the project root
