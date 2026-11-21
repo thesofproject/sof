@@ -150,4 +150,9 @@ BT_PCM_ID=20,BT_ID=8,BT_PCM_NAME=Bluetooth,ADD_BT=true,\
 BT_PB_HOST_PIPELINE_ID=200,BT_PB_DAI_PIPELINE_ID=201,BT_CP_HOST_PIPELINE_ID=202,BT_CP_DAI_PIPELINE_ID=203,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-4ch-bt.bin,DMIC0_ENHANCED_CAPTURE=true,\
 EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
+
+# HDA generic with multi-slot WoV feature for ACE3 (PTL and WCL)
+"sof-hda-generic\;sof-hda-generic-ace3-4ch-wov-multi\;PLATFORM=ptl,HDA_CONFIG=mix,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC_WOV_DAI_CHANNELS=4,INCLUDE_WOV=multi,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-4ch.bin"
 )
