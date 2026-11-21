@@ -17,17 +17,6 @@
 
 struct timer;
 
-#define CLOCK_NOTIFY_PRE	0
-#define CLOCK_NOTIFY_POST	1
-
-struct clock_notify_data {
-	uint32_t old_freq;
-	uint32_t old_ticks_per_msec;
-	uint32_t freq;
-	uint32_t ticks_per_msec;
-	uint32_t message;
-};
-
 struct freq_table {
 	uint32_t freq;
 	uint32_t ticks_per_msec;
