@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __XTOS_RTOS_BIT_H__
-#define __XTOS_RTOS_BIT_H__
+#ifndef __POSIX_RTOS_BIT_H__
+#define __POSIX_RTOS_BIT_H__
 
 #if ASSEMBLY
 #define BIT(b)			(1 << (b))
@@ -24,4 +24,4 @@
 #define GET_BITS(b_hi, b_lo, x) \
 	(((x) & MASK(b_hi, b_lo)) >> (b_lo))
 
-#endif /* __XTOS_RTOS_BIT_H__ */
+#endif /* __POSIX_RTOS_BIT_H__ */
