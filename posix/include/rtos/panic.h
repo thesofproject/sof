@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 #ifdef __ZEPHYR__
-#error "This file should only be included in XTOS builds."
+#error "This file should only be included in host builds."
 #endif /* __ZEPHYR__ */
 
 #ifdef __clang_analyzer__
