@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  * Copyright(c) 2022 Intel Corporation. All rights reserved.
- *
- * TODO: IMX support, today IRQ is supported via SOF xtos API.
  */
 
 #ifndef __ZEPHYR_RTOS_INTERRUPT_H__
@@ -12,7 +10,7 @@
  * to native drivers.
  */
 #if defined(CONFIG_AMD) && !defined(CONFIG_ZEPHYR_NATIVE_DRIVERS)
-/* imx currently has no IRQ driver in Zephyr so we force to xtos IRQ */
+/* AMD platforms without native drivers use the legacy SOF interrupt API */
 #include <rtos/interrupt-legacy.h>
 #else
 

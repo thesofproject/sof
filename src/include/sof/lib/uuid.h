@@ -94,9 +94,9 @@ struct sof_uuid_entry {
 		__attribute__((alias("_" #uuid_name))) uuid_name
 
 #else
-/* XTOS SOF emits two definitions, one into the runtime (which may not
- * be linked if unreferenced) and a separate one that goes into a
- * special section via handling in the linker script.
+/* Host builds emit two definitions, one into the runtime (which may not
+ * be linked if unreferenced) and a separate one in the .static_uuids
+ * section.
  */
 #define _UUID(uuid_name)    (&(uuid_name ## _ldc))
 #define _RT_UUID(uuid_name) (&(uuid_name))

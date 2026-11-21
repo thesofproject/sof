@@ -4,7 +4,7 @@ if (CONFIG_IPC_MAJOR_4)
 	add_subdirectory(ipc4)
 endif()
 
-# Common to Zephyr and XTOS
+# Common to the Zephyr and host builds
 add_local_sources(sof
 	ipc-common.c
 	ipc-helper.c

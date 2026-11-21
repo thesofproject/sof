@@ -1,6 +1,6 @@
 ** SOF Header Layout **
 
-Today SOF is somewhat coupled with xtensa xtos/HAL and it's own SOF RTOS logic.
+SOF used to be coupled with the Xtensa XTOS/HAL and its own SOF RTOS logic.
 This  coupling is reflected in the headers where we have a mix of RTOS and
 common headers at the top level ```src/include``` directory.
 

@@ -9,7 +9,7 @@
 #ifndef CONFIG_ZEPHYR_LOG
 
 /*
- * Unlike the XTOS version of this macro, this does not silence all
+ * Unlike the host version of this macro, this does not silence all
  * compiler warnings about unused variables.
  */
 #define SOF_TRACE_UNUSED(arg1, ...) ((void)arg1)

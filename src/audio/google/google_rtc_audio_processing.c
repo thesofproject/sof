@@ -35,7 +35,7 @@
 
 /* Zephyr provides uncached memory for static variables on SMP, but we
  * are single-core component and know we can safely use the cache for
- * AEC work.  XTOS SOF is cached by default, so stub the Zephyr API.
+ * AEC work.  Host builds have no Zephyr cache API, so stub it.
  */
 #ifdef __ZEPHYR__
 #include <zephyr/cache.h>

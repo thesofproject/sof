@@ -50,10 +50,10 @@ struct k_heap;
  * Definitions in this file are used by following SOF code:
  *  - Some use of SOF DMA data types and definitions exists in
  *    generic application code (in IPC, host handling and a few other
- *    places). To support both XTOS and Zephyr builds, these
+ *    places). To support both the host and Zephyr builds, these
  *    definitions must be provided by the RTOS layer.
  *  - SOF builds where Zephyr is used but platform has not yet
- *    moved to native Zephyr drivers, so legacy/XTOS DMA are used.
+ *    moved to native Zephyr drivers, so the legacy SOF DMA drivers are used.
  *  - Linking DMA resources to audio usages. Even SOF builds with
  *    native Zephyr build still use some SOF side DMA definitions
  *    to describe system DMA resources in terms of their capabilities

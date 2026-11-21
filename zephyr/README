@@ -1,14 +1,9 @@
 SOF with Zephyr RTOS
 ====================
 
-SOF currently uses the Cadence Xtos/HAL and it's own kernel functions as
-its RTOS. SOF is moving to use Zephyr as it's RTOS in parallel to current
-releases using xtos.
-
-The initial "alpha" of SOF on Zephyr will use the Zephyr RTOS for boot, IRQs,
-scheduling and memory allocation. Subsequent release will use more Zephyr
-functionality as code is moved from SOF to Zephyr (i.e. EDF scheduler updates
-copied from SOF to Zephyr).
+SOF uses the Zephyr RTOS for boot, IRQs, scheduling and memory allocation.
+Zephyr is the only supported RTOS: the XTOS (Cadence Xtos/HAL) firmware build
+has been removed.
 
 Building SOF on Zephyr
 ======================

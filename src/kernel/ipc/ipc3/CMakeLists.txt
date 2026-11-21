@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-# Files common to Zephyr and XTOS
+# Files common to the Zephyr and host builds
 add_local_sources(sof
 		handler.c
 		helper.c
