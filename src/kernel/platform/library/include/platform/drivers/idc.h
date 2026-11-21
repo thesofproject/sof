@@ -37,6 +37,6 @@ static inline int idc_restore(void)
 
 #else
 
-#error "This file shouldn't be included from outside of Zephyr/XTOS's rtos/idc.h"
+#error "This file shouldn't be included from outside of the host rtos/idc.h"
 
 #endif
