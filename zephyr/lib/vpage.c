@@ -293,6 +293,22 @@ void vpage_free(void *ptr)
 	}
 }
 
+bool vpage_is_ptr(void *ptr)
+{
+	uintptr_t start;
+
+	if (!vpage_ctx.virtual_region)
+		return false;
+
+	if (sys_cache_is_ptr_uncached(ptr))
+		ptr = (__sparse_force void *)sys_cache_cached_ptr_get(ptr);
+
+	start = POINTER_TO_UINT(vpage_ctx.virtual_region->addr);
+
+	return POINTER_TO_UINT(ptr) >= start &&
+	       POINTER_TO_UINT(ptr) < start + vpage_ctx.virtual_region->size;
+}
+
 #ifdef CONFIG_SOF_TELEMETRY_VREGION
 void telemetry_collect_vpage_stats(struct sof_tel_vregion_section *vsec)
 {

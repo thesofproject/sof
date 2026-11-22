@@ -41,6 +41,14 @@ void *vpage_alloc(unsigned int pages);
  */
 void vpage_free(void *ptr);
 
+/**
+ * @brief Check whether memory is in the vpage region.
+ *
+ * @param[in] ptr Cached or uncached pointer to check.
+ * @return True if ptr is in the vpage region, false otherwise.
+ */
+bool vpage_is_ptr(void *ptr);
+
 /** @}*/
 
 #ifdef __cplusplus

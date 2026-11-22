@@ -38,6 +38,11 @@ struct vmh_heap;
 struct vmh_heap *virtual_buffers_heap;
 #endif /* CONFIG_VIRTUAL_HEAP */
 
+#if CONFIG_SOF_VREGIONS
+#include <sof/kernel/lib/vpage.h>
+#include <sof/lib/cold.h>
+#endif
+
 
 /* Zephyr includes */
 #include <zephyr/init.h>
@@ -432,6 +437,41 @@ SYS_INIT(virtual_heap_init, POST_KERNEL, 1);
 
 #endif /* CONFIG_VIRTUAL_HEAP */
 
+#if CONFIG_SOF_VREGIONS
+/*
+ * Back a system heap allocation that did not fit with whole vpages. This
+ * takes the place of the virtual heap fallback for allocations that are
+ * not in a pipeline vregion, e.g. the KPB history buffer.
+ */
+static void *vpage_heap_alloc(uint32_t flags, size_t bytes, uint32_t align)
+{
+	void *mem;
+
+	/* vpages are only page aligned, and are cold code for the LL thread */
+	if (align > CONFIG_MM_DRV_PAGE_SIZE || ll_sch_is_current())
+		return NULL;
+
+	mem = vpage_alloc(DIV_ROUND_UP(bytes, CONFIG_MM_DRV_PAGE_SIZE));
+	if (!mem)
+		return NULL;
+
+	tr_warn(&zephyr_tr, "system heap allocation of %zu bytes backed by vpages", bytes);
+
+	if (flags & SOF_MEM_FLAG_COHERENT)
+		mem = sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)mem);
+
+	return mem;
+}
+
+static void vpage_heap_free(void *ptr)
+{
+	if (sys_cache_is_ptr_uncached(ptr))
+		ptr = (__sparse_force void *)sys_cache_cached_ptr_get(ptr);
+
+	vpage_free(ptr);
+}
+#endif /* CONFIG_SOF_VREGIONS */
+
 #if CONFIG_SOF_FULL_ZEPHYR_APPLICATION
 /* unit-test builds get a static inline NULL stub from rtos/alloc.h */
 struct k_heap *sof_sys_heap_get(void)
@@ -701,6 +741,10 @@ void *rmalloc_align(uint32_t flags, size_t bytes, uint32_t alignment)
 		ptr = virtual_heap_alloc(virtual_buffers_heap, flags, bytes, alignment);
 	}
 #endif
+#if CONFIG_SOF_VREGIONS
+	if (!ptr && heap == &sof_heap)
+		ptr = vpage_heap_alloc(flags, bytes, alignment);
+#endif
 
 	return ptr;
 }
@@ -766,6 +810,7 @@ EXPORT_SYMBOL(rzalloc);
 void *rballoc_align(uint32_t flags, size_t bytes, uint32_t align)
 {
 	struct k_heap *heap;
+	void *ptr;
 
 	/* choose a heap */
 	if (flags & SOF_MEM_FLAG_L3) {
@@ -791,9 +836,16 @@ void *rballoc_align(uint32_t flags, size_t bytes, uint32_t align)
 	}
 
 	if (flags & SOF_MEM_FLAG_COHERENT)
-		return heap_alloc_aligned(heap, align, bytes);
+		ptr = heap_alloc_aligned(heap, align, bytes);
+	else
+		ptr = (__sparse_force void *)heap_alloc_aligned_cached(heap, align, bytes);
 
-	return (__sparse_force void *)heap_alloc_aligned_cached(heap, align, bytes);
+#if CONFIG_SOF_VREGIONS
+	if (!ptr && heap == &sof_heap)
+		ptr = vpage_heap_alloc(flags, bytes, align);
+#endif
+
+	return ptr;
 }
 EXPORT_SYMBOL(rballoc_align);
 
@@ -822,6 +874,13 @@ void rfree(void *ptr)
 #if CONFIG_SOF_USERSPACE_USE_SHARED_HEAP
 	if (is_heap_pointer(&shared_buffer_heap, ptr)) {
 		heap_free(&shared_buffer_heap, ptr);
+		return;
+	}
+#endif
+
+#if CONFIG_SOF_VREGIONS
+	if (vpage_is_ptr(ptr)) {
+		vpage_heap_free(ptr);
 		return;
 	}
 #endif
@@ -903,6 +962,10 @@ static void *sof_heap_alloc_impl(struct k_heap *heap, uint32_t flags, size_t byt
 		tr_warn(&zephyr_tr, "system heap allocation of %zu failed, trying VMH", bytes);
 		ptr = virtual_heap_alloc(virtual_buffers_heap, flags, bytes, alignment);
 	}
+#endif
+#if CONFIG_SOF_VREGIONS
+	if (!ptr && heap == &sof_heap)
+		ptr = vpage_heap_alloc(flags, bytes, alignment);
 #endif
 
 	return ptr;
