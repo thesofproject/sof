@@ -96,6 +96,7 @@ config SOF_NATIVE_SIM_HOST_HEAP
 config SOF_ZEPHYR_HEAP_SIZE
 	hex "Size of the Zephyr heap for SOF"
 	default 0x40000 if VIRTUAL_HEAP
+	default 0x60000 if SOF_VREGIONS && (SOC_ACE15_MTPM || SOC_ACE20_LNL)
 	default 0xF0000 if SOC_ACE15_MTPM || SOC_ACE20_LNL
 	default 0x100000 if SOC_ACE30 || SOC_ACE40
 	default 0x0
@@ -265,6 +266,7 @@ config SOF_VPAGE_LLEXT_SIZE
 	depends on SOF_VREGIONS
 	default 0x0 if !LIBRARY_MANAGER
 	default 0x0 if BOARD_INTEL_ADSP_ACE40_NVLS
+	default 0x40000 if SOC_ACE15_MTPM || SOC_ACE20_LNL
 	default LIBRARY_REGION_SIZE
 	help
 	  Size of the physical L2 memory that the virtual page allocator leaves
@@ -273,7 +275,9 @@ config SOF_VPAGE_LLEXT_SIZE
 	  modules are backed by the same physical L2 pages as the vpages.
 	  Builds without the library manager need no reserve. NVL-S has no
 	  room for one in its 2MB of L2, there the loadable modules and the
-	  vpages share the L2 left after the image.
+	  vpages share the L2 left after the image. MTL and LNL, with 2.75MB
+	  of L2, keep 256kB so that the vpages have room for the pipeline
+	  vregions.
 
 config ZEPHYR_NATIVE_DRIVERS
 	bool "Use Zephyr native drivers"
@@ -386,7 +390,7 @@ config SOF_ZEPHYR_NO_SOF_CLOCK
 
 config SOF_VREGIONS
 	bool "Enable virtual memory regions"
-	default y if ACE && !ACE_VERSION_1_5 && !ACE_VERSION_2_0
+	default y if ACE
 	depends on ACE
 	help
 	  Enable the virtual regions memory allocator for pipeline resource management.
@@ -397,7 +401,7 @@ config SOF_VREGIONS
 
 config VIRTUAL_HEAP
 	bool "Use virtual memory heap to allocate buffers"
-	default y if ACE
+	default y if ACE && !SOC_ACE15_MTPM && !SOC_ACE20_LNL
 	depends on ACE
 	help
 	  Enabling this option will use the virtual memory heap allocator to allocate buffers.
