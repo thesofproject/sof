@@ -422,12 +422,21 @@ static void module_adapter_calculate_dp_period(struct comp_dev *dev)
 	unsigned int period = UINT32_MAX;
 
 	for (int i = 0; i < mod->num_of_sinks; i++) {
+		unsigned int frame_bytes = sink_get_frame_bytes(mod->sinks[i]);
+		unsigned int rate = sink_get_rate(mod->sinks[i]);
+
+		/* Skip virtual/event-only detect sinks with no audio format so WoV
+		 * pipelines prepare without dividing by zero (period comes from
+		 * source or dev->period during INIT -> PREPARE).
+		 */
+		if (!frame_bytes || !rate)
+			continue;
+
 		/* calculate time required the module to provide OBS data portion - a period
 		 * use 64bit integers to avoid overflows
 		 */
 		unsigned int sink_period = 1000000ULL * sink_get_min_free_space(mod->sinks[i]) /
-					   (sink_get_frame_bytes(mod->sinks[i]) *
-					   sink_get_rate(mod->sinks[i]));
+					   (frame_bytes * rate);
 		/* note the minimal period for the module */
 		if (period > sink_period)
 			period = sink_period;
