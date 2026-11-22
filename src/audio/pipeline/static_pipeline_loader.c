@@ -43,6 +43,9 @@
 #include <string.h>
 
 #include "../copier/copier.h"
+#if defined(CONFIG_COMP_BT_AUDIO)
+#include <sof/audio/bt_service.h>
+#endif
 #include "static_pipeline_modules.h"
 
 LOG_MODULE_REGISTER(static_pipeline_loader, CONFIG_SOF_LOG_LEVEL);
@@ -394,12 +397,21 @@ static struct comp_dev *sof_static_init_dai_comp(const struct sof_static_comp *c
 	if (!dai_rate)
 		dai_rate = 48000;
 
+	struct ipc4_copier_module_cfg copier_cfg;
+	memset(&copier_cfg, 0, sizeof(copier_cfg));
+	sof_static_init_base_cfg(&copier_cfg.base, cdesc, pdesc ? pdesc->period : 1000);
+	copier_cfg.out_fmt = copier_cfg.base.audio_fmt;
+
+	uint32_t dai_period_bytes = (cdesc->direction == SOF_IPC_STREAM_CAPTURE) ?
+		copier_cfg.base.ibs : copier_cfg.base.obs;
+	uint32_t dai_buf_bytes = (dai_period_bytes ? dai_period_bytes : 192) * 4;
+
 	struct ipc_config_dai dai_cfg = {
 		.type = cdesc->ep.dai.dai_type,
 		.dai_index = cdesc->ep.dai.dai_index,
 		.direction = cdesc->direction,
 		.sampling_frequency = dai_rate,
-		.dma_buffer_size = 1024,
+		.dma_buffer_size = dai_buf_bytes,
 		.format = cdesc->ep.dai.format,
 		.is_config_blob = true,
 	};
@@ -409,12 +421,6 @@ static struct comp_dev *sof_static_init_dai_comp(const struct sof_static_comp *c
 		LOG_ERR("Failed to create DAI component %u ('%s')", cdesc->id, cdesc->name);
 		return NULL;
 	}
-
-	/* Synthesize IPC4 copier and gateway configuration expected by IPC4 DAI driver */
-	struct ipc4_copier_module_cfg copier_cfg;
-	memset(&copier_cfg, 0, sizeof(copier_cfg));
-	sof_static_init_base_cfg(&copier_cfg.base, cdesc, pdesc ? pdesc->period : 1000);
-	copier_cfg.out_fmt = copier_cfg.base.audio_fmt;
 
 	enum ipc4_connector_node_id_type node_type;
 	switch (cdesc->ep.dai.dai_type) {
@@ -441,7 +447,7 @@ static struct comp_dev *sof_static_init_dai_comp(const struct sof_static_comp *c
 
 	copier_cfg.gtw_cfg.node_id.f.dma_type = node_type;
 	copier_cfg.gtw_cfg.node_id.f.v_index = cdesc->ep.dai.dai_index;
-	copier_cfg.gtw_cfg.dma_buffer_size = 1024;
+	copier_cfg.gtw_cfg.dma_buffer_size = dai_buf_bytes;
 	copier_cfg.gtw_cfg.config_length = 0;
 
 	/* Invoke optional platform/endpoint-specific configuration callback */
@@ -912,6 +918,72 @@ static int sof_static_topology_init_routes(const struct sof_static_topology *top
  * \param[in] topo Topology descriptor pointer.
  * \return 0 on success, negative errno on failure.
  */
+/**
+ * \brief Populate IPC stream parameters for a static pipeline.
+ *
+ * \param[in] pdesc Pipeline descriptor.
+ * \param[in] cdesc Endpoint component descriptor (may be NULL).
+ * \param[in] host_or_sched Trigger/endpoint component device.
+ * \param[out] prms Output IPC PCM params structure.
+ */
+static void sof_static_build_pcm_params(const struct sof_static_pipeline_desc *pdesc,
+					const struct sof_static_comp *cdesc,
+					struct comp_dev *host_or_sched,
+					struct sof_ipc_pcm_params *prms)
+{
+	uint32_t rate = pdesc->default_rate;
+	uint32_t channels = pdesc->default_channels;
+	enum sof_ipc_frame fmt;
+	uint32_t cont_bytes;
+	uint32_t valid_bytes;
+	uint32_t period_us;
+	uint32_t frames;
+
+	if (!rate && cdesc)
+		rate = cdesc->caps.default_rate;
+	if (!rate)
+		rate = 48000;
+
+	if (!channels && cdesc)
+		channels = cdesc->caps.max_channels;
+	if (!channels)
+		channels = 2;
+
+	fmt = (cdesc && cdesc->caps.default_fmt) ?
+	      cdesc->caps.default_fmt : host_or_sched->ipc_config.frame_fmt;
+	if (!fmt)
+		fmt = SOF_IPC_FRAME_S16_LE;
+
+	cont_bytes = get_sample_bytes(fmt);
+	valid_bytes = static_get_sample_valid_bytes(fmt);
+	period_us = pdesc->period ? pdesc->period : 1000;
+	frames = pdesc->frames_per_sched ? pdesc->frames_per_sched :
+		 ((rate * period_us) / 1000000);
+	if (frames == 0)
+		frames = 48;
+
+	memset(prms, 0, sizeof(*prms));
+	prms->params.rate = rate;
+	prms->params.channels = channels;
+	prms->params.frame_fmt = fmt;
+	prms->params.sample_container_bytes = cont_bytes;
+	prms->params.sample_valid_bytes = valid_bytes;
+	prms->params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
+	prms->params.host_period_bytes = frames * channels * cont_bytes;
+	prms->comp_id = dev_comp_id(host_or_sched);
+	prms->params.direction = pdesc->direction;
+	for (uint32_t c = 0; c < SOF_IPC_MAX_CHANNELS; c++) {
+		if (c == 0)
+			prms->params.chmap[c] = (channels == 1) ? SOF_CHMAP_MONO : SOF_CHMAP_FL;
+		else if (c == 1 && channels > 1)
+			prms->params.chmap[c] = SOF_CHMAP_FR;
+		else if (c < channels)
+			prms->params.chmap[c] = c + 1;
+		else
+			prms->params.chmap[c] = SOF_CHMAP_NA;
+	}
+}
+
 static int sof_static_topology_init_pipeline_endpoints(const struct sof_static_topology *topo)
 {
 	for (size_t i = 0; i < topo->num_pipelines; i++) {
@@ -944,57 +1016,9 @@ static int sof_static_topology_init_pipeline_endpoints(const struct sof_static_t
 				}
 			}
 
-			/* Determine stream sampling rate for this pipeline */
-			uint32_t rate = pdesc->default_rate;
-			if (!rate && cdesc)
-				rate = cdesc->caps.default_rate;
-			if (!rate)
-				rate = 48000;
-
-			/* Determine stream channel count */
-			uint32_t channels = pdesc->default_channels;
-			if (!channels && cdesc)
-				channels = cdesc->caps.max_channels;
-			if (!channels)
-				channels = 2;
-
-			/* Determine stream PCM frame format */
-			enum sof_ipc_frame fmt = (cdesc && cdesc->caps.default_fmt) ?
-						 cdesc->caps.default_fmt : host_or_sched->ipc_config.frame_fmt;
-			if (!fmt)
-				fmt = SOF_IPC_FRAME_S16_LE;
-
-			/* Calculate container bytes, valid bytes, and period frame size */
-			uint32_t cont_bytes = get_sample_bytes(fmt);
-			uint32_t valid_bytes = static_get_sample_valid_bytes(fmt);
-			uint32_t period_us = pdesc->period ? pdesc->period : 1000;
-			uint32_t frames = pdesc->frames_per_sched ? pdesc->frames_per_sched :
-					  ((rate * period_us) / 1000000);
-			if (frames == 0)
-				frames = 48;
-
 			/* Populate PCM params structure for the pipeline */
 			struct sof_ipc_pcm_params prms;
-			memset(&prms, 0, sizeof(prms));
-			prms.params.rate = rate;
-			prms.params.channels = channels;
-			prms.params.frame_fmt = fmt;
-			prms.params.sample_container_bytes = cont_bytes;
-			prms.params.sample_valid_bytes = valid_bytes;
-			prms.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-			prms.params.host_period_bytes = frames * channels * cont_bytes;
-			prms.comp_id = dev_comp_id(host_or_sched);
-			prms.params.direction = pdesc->direction;
-			for (uint32_t c = 0; c < SOF_IPC_MAX_CHANNELS; c++) {
-				if (c == 0)
-					prms.params.chmap[c] = (channels == 1) ? SOF_CHMAP_MONO : SOF_CHMAP_FL;
-				else if (c == 1 && channels > 1)
-					prms.params.chmap[c] = SOF_CHMAP_FR;
-				else if (c < channels)
-					prms.params.chmap[c] = c + 1;
-				else
-					prms.params.chmap[c] = SOF_CHMAP_NA;
-			}
+			sof_static_build_pcm_params(pdesc, cdesc, host_or_sched, &prms);
 
 			/* Propagate params and prepare throughout the pipeline walk */
 			int ret_prms = pipeline_params(pipe, host_or_sched, &prms);
@@ -1014,7 +1038,8 @@ static int sof_static_topology_init_pipeline_endpoints(const struct sof_static_t
 				return ret_prep;
 			}
 			LOG_INF("Pipeline %u params (rate %u, ch %u, fmt %u) OK, prepare OK",
-				pdesc->pipeline_id, rate, channels, fmt);
+				pdesc->pipeline_id, prms.params.rate, prms.params.channels,
+				prms.params.frame_fmt);
 		}
 	}
 
@@ -1216,6 +1241,7 @@ static int sof_static_topology_init_controls(const struct sof_static_topology *t
 		s_control_vals[i] = ctl->def;
 		int ret = sof_static_kcontrol_set(ctl->id, ctl->def);
 		if (ret < 0) {
+			g_topo_fail_item = ctl->id;
 			LOG_ERR("Failed to set default value for control [%u] '%s': %d",
 				ctl->id, ctl->name, ret);
 			return ret;
@@ -1547,6 +1573,32 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 		LOG_ERR("sof_static_kcontrol_set: control ID %u not found", ctrl_id);
 		return -ENOENT;
 	}
+
+#if defined(CONFIG_COMP_BT_AUDIO)
+	if (ctl->id == 8 || (ctl->name && !strcmp(ctl->name, "BT Audio Stream Switch"))) {
+		s_control_vals[ctl_idx] = val;
+		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
+		return val ? bt_service_start_broadcast() : bt_service_stop_broadcast();
+	}
+
+	if (ctl->id == 9 || (ctl->name && !strcmp(ctl->name, "BT Stream Volume"))) {
+		s_control_vals[ctl_idx] = val;
+		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
+		return 0;
+	}
+
+	if (ctl->id == 10 || (ctl->name && !strcmp(ctl->name, "Audio Endpoint Route"))) {
+		s_control_vals[ctl_idx] = val;
+		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
+		return bt_service_set_route((enum sof_audio_route)val);
+	}
+
+	if (ctl->id == 14 || (ctl->name && !strcmp(ctl->name, "BT Audio Format"))) {
+		s_control_vals[ctl_idx] = val;
+		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
+		return bt_service_set_format((enum bt_audio_format)val);
+	}
+#endif
 
 	/*
 	 * Custom kcontrol callback handler:
@@ -1929,31 +1981,34 @@ int sof_static_pipeline_start(uint32_t pipeline_id)
 
 	/* If not already active, prepare and trigger components */
 	if (pipe->status != COMP_STATE_ACTIVE) {
+		if (pipe->status == COMP_STATE_READY ||
+		    pipe->status == COMP_STATE_INIT ||
+		    pipe->status == COMP_STATE_PAUSED) {
+			int ret_prep = pipeline_prepare(pipe, dev);
+			if (ret_prep < 0) {
+				LOG_ERR("Pipeline %u prepare failed: %d", pipeline_id, ret_prep);
+				return ret_prep;
+			}
+		}
+
 		/*
-		 * If the pipeline was paused, prepared, or not ready, reset it first so all
-		 * module adapter and endpoint components return to COMP_STATE_READY.
+		 * Restore cached kcontrols for components in this pipeline since
+		 * sof_static_pipeline_stop() reset components back to READY.
 		 */
-		if (pipe->status != COMP_STATE_READY) {
-			if (s_active_topo) {
+		if (s_active_topo) {
+			for (size_t k = 0; k < s_active_topo->num_controls && k < MAX_STATIC_CONTROLS; k++) {
+				const struct sof_static_kcontrol *ctl = &s_active_topo->controls[k];
+
+				if (ctl->target_comp_id == 0)
+					continue;
 				for (size_t j = 0; j < s_active_topo->num_comps; j++) {
-					if (s_active_topo->comps[j].pipeline_id == pipeline_id) {
-						struct comp_dev *c = sof_static_comp_get(s_active_topo->comps[j].id);
-						if (c) {
-							comp_reset(c);
-							c->state = COMP_STATE_READY;
-						}
+					if (s_active_topo->comps[j].id == ctl->target_comp_id &&
+					    s_active_topo->comps[j].pipeline_id == pipeline_id) {
+						sof_static_kcontrol_set(ctl->id, s_control_vals[k]);
+						break;
 					}
 				}
 			}
-			pipeline_reset(pipe, dev);
-			pipe->status = COMP_STATE_READY;
-		}
-
-		/* Prepare the pipeline from COMP_STATE_READY to COMP_STATE_PREPARE */
-		int ret_prep = pipeline_prepare(pipe, dev);
-		if (ret_prep < 0) {
-			LOG_ERR("Pipeline %u prepare failed: %d", pipeline_id, ret_prep);
-			return ret_prep;
 		}
 
 		/* Propagate PRE_START trigger across the pipeline graph (pipeline_trigger_run
@@ -1962,6 +2017,7 @@ int sof_static_pipeline_start(uint32_t pipeline_id)
 		int ret = pipeline_trigger_run(pipe, dev, COMP_TRIGGER_PRE_START);
 		if (ret < 0) {
 			LOG_ERR("Pipeline %u pre-start trigger failed: %d", pipeline_id, ret);
+			return ret;
 		}
 
 		/* Ensure all pipeline components are synchronized to ACTIVE */
@@ -1970,7 +2026,8 @@ int sof_static_pipeline_start(uint32_t pipeline_id)
 				if (s_active_topo->comps[j].pipeline_id == pipeline_id) {
 					struct comp_dev *c = sof_static_comp_get(s_active_topo->comps[j].id);
 					if (c && c->state != COMP_STATE_ACTIVE) {
-						comp_trigger(c, COMP_TRIGGER_PRE_START);
+						if (c->state == COMP_STATE_PREPARE)
+							comp_trigger(c, COMP_TRIGGER_PRE_START);
 						comp_trigger(c, COMP_TRIGGER_START);
 						c->state = COMP_STATE_ACTIVE;
 					}
@@ -1992,8 +2049,8 @@ int sof_static_pipeline_start(uint32_t pipeline_id)
 /**
  * \brief Stop a static audio pipeline by its pipeline ID.
  *
- * Propagates stop triggers, cancels scheduling copy tasks, resets the pipeline
- * and constituent components to COMP_STATE_READY for clean subsequent restarts.
+ * Propagates stop triggers, cancels scheduling copy tasks, and resets
+ * pipeline and component states to COMP_STATE_READY for clean restarts.
  *
  * \param[in] pipeline_id Target pipeline ID.
  * \return 0 on success, negative errno on failure.
@@ -2010,32 +2067,17 @@ int sof_static_pipeline_stop(uint32_t pipeline_id)
 	if (!dev)
 		return -ENODEV;
 
-	/* Propagate STOP trigger across the pipeline */
-	int ret = pipeline_trigger_run(pipe, dev, COMP_TRIGGER_STOP);
-	if (ret < 0)
-		LOG_DBG("Pipeline %u stop trigger returned: %d", pipeline_id, ret);
-
-	/* Unconditionally stop and reset all components in this pipeline to READY */
-	if (s_active_topo) {
-		for (size_t j = 0; j < s_active_topo->num_comps; j++) {
-			if (s_active_topo->comps[j].pipeline_id == pipeline_id) {
-				struct comp_dev *c = sof_static_comp_get(s_active_topo->comps[j].id);
-				if (c) {
-					comp_trigger(c, COMP_TRIGGER_STOP);
-					comp_reset(c);
-					c->state = COMP_STATE_READY;
-				}
-			}
-		}
-	}
-
-	/* Reset the pipeline to COMP_STATE_READY for clean restart */
-	pipeline_reset(pipe, dev);
-	pipe->status = COMP_STATE_READY;
-
-	/* Cancel active periodic copy task */
+	/* Cancel active periodic copy task before stopping components */
 	if (pipe->pipe_task && task_is_active(pipe->pipe_task))
 		schedule_task_cancel(pipe->pipe_task);
+
+	/* Propagate STOP trigger across the pipeline */
+	if (pipe->status == COMP_STATE_ACTIVE || pipe->status == COMP_STATE_PAUSED) {
+		int ret = pipeline_trigger_run(pipe, dev, COMP_TRIGGER_STOP);
+		if (ret < 0)
+			LOG_DBG("Pipeline %u stop trigger returned: %d", pipeline_id, ret);
+		pipe->status = COMP_STATE_PAUSED;
+	}
 
 	LOG_INF("Pipeline %u STOPPED", pipeline_id);
 	return 0;

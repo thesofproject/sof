@@ -52,6 +52,7 @@ static struct i2s_audio_stats s_i2s_stats;
 static bool s_hw_started = false;
 static bool s_tx_started = false;
 static bool s_rx_started = false;
+static uint8_t s_tx_empty_ticks = 0;
 
 void i2s_audio_get_stats(struct i2s_audio_stats *stats)
 {
@@ -319,15 +320,23 @@ static int i2s_audio_copy(struct comp_dev *dev)
 		uint32_t avail_frames = audio_stream_get_avail_frames(&source->stream);
 		uint32_t copy_frames = MIN(avail_frames, dev->frames ? dev->frames : 48);
 
+		if (copy_frames == 0) {
+			if (++s_tx_empty_ticks < 3)
+				return 0;
+		} else {
+			s_tx_empty_ticks = 0;
+		}
+
 		void *tx_block = NULL;
 		if (k_mem_slab_alloc(&i2s_tx_slab, &tx_block, K_NO_WAIT) == 0) {
 			int16_t *s16_dst = (int16_t *)tx_block;
+			uint32_t frames_to_copy = 0;
+
 			if (copy_frames > 0) {
-				uint32_t frames_to_copy = MIN(copy_frames, 48);
+				frames_to_copy = MIN(copy_frames, 48);
 				if (fmt == SOF_IPC_FRAME_FLOAT) {
 					float f_buf[96];
 					audio_stream_copy_to_linear(&source->stream, 0, f_buf, 0, frames_to_copy * 2);
-					comp_update_buffer_consume(source, frames_to_copy * 2 * sizeof(float));
 
 					const float scale = 32768.0f;
 					for (size_t i = 0; i < frames_to_copy * 2; i++) {
@@ -345,21 +354,20 @@ static int i2s_audio_copy(struct comp_dev *dev)
 					}
 				} else {
 					audio_stream_copy_to_linear(&source->stream, 0, s16_dst, 0, frames_to_copy * 2);
-					comp_update_buffer_consume(source, frames_to_copy * 2 * sizeof(int16_t));
 					if (frames_to_copy < 48) {
 						memset(&s16_dst[frames_to_copy * 2], 0, (48 - frames_to_copy) * 2 * sizeof(int16_t));
 					}
 				}
 			} else {
-				/* Send silence so EasyDMA never starves */
+				/* Send silence after repeated empty ticks so EasyDMA never starves */
 				memset(tx_block, 0, I2S_BLOCK_SIZE);
 			}
 
 			int ret = i2s_write(s_i2s_dev, tx_block, I2S_BLOCK_SIZE);
 			if (ret < 0) {
 				k_mem_slab_free(&i2s_tx_slab, tx_block);
-				s_i2s_stats.tx_errors++;
 				if (ret == -EIO) {
+					s_i2s_stats.tx_errors++;
 					/* Recover from driver state error: drop and restart with primed buffers */
 					static uint32_t s_last_recover_ktime = 0;
 					uint32_t now = k_uptime_get_32();
@@ -379,13 +387,11 @@ static int i2s_audio_copy(struct comp_dev *dev)
 					}
 				}
 			} else {
-				s_i2s_stats.tx_frames += (copy_frames > 0) ? MIN(copy_frames, 48) : 48;
-			}
-		} else {
-			s_i2s_stats.tx_errors++;
-			if (copy_frames > 0) {
-				comp_update_buffer_consume(source, copy_frames * 2 *
-					(fmt == SOF_IPC_FRAME_FLOAT ? sizeof(float) : sizeof(int16_t)));
+				if (frames_to_copy > 0) {
+					comp_update_buffer_consume(source, frames_to_copy * 2 *
+						(fmt == SOF_IPC_FRAME_FLOAT ? sizeof(float) : sizeof(int16_t)));
+				}
+				s_i2s_stats.tx_frames += frames_to_copy ? frames_to_copy : 48;
 			}
 		}
 	}
@@ -393,45 +399,47 @@ static int i2s_audio_copy(struct comp_dev *dev)
 	if (sink && iad->direction == SOF_IPC_STREAM_CAPTURE) {
 		enum sof_ipc_frame fmt = audio_stream_get_frm_fmt(&sink->stream);
 		uint32_t free_frames = audio_stream_get_free_frames(&sink->stream);
-		uint32_t copy_frames = MIN(free_frames, dev->frames ? dev->frames : 48);
+		uint32_t frames_per_blk = dev->frames ? MIN(dev->frames, 48U) : 48U;
 
-		if (copy_frames > 0) {
-			uint32_t frames_to_copy = MIN(copy_frames, 48);
+		while (free_frames >= frames_per_blk) {
 			void *rx_block = NULL;
 			size_t rx_size = 0;
 
-			int ret = i2s_read(s_i2s_dev, &rx_block, &rx_size);
-			if (ret == 0 && rx_block && rx_size >= I2S_BLOCK_SIZE) {
+			if (i2s_read(s_i2s_dev, &rx_block, &rx_size) != 0 || !rx_block) {
+				if (rx_block)
+					k_mem_slab_free(&i2s_rx_slab, rx_block);
+				break;
+			}
+			if (rx_size >= I2S_BLOCK_SIZE) {
 				int16_t *s16_src = (int16_t *)rx_block;
+
 				if (fmt == SOF_IPC_FRAME_FLOAT) {
 					float f_buf[96];
 					const float scale = 1.0f / 32768.0f;
-					for (size_t i = 0; i < frames_to_copy * 2; i++) {
+
+					for (size_t i = 0; i < frames_per_blk * 2; i++)
 						f_buf[i] = (float)s16_src[i] * scale;
-					}
-					audio_stream_copy_from_linear(f_buf, 0, &sink->stream, 0, frames_to_copy * 2);
-					comp_update_buffer_produce(sink, frames_to_copy * 2 * sizeof(float));
+					audio_stream_copy_from_linear(f_buf, 0, &sink->stream, 0, frames_per_blk * 2);
+					comp_update_buffer_produce(sink, frames_per_blk * 2 * sizeof(float));
 				} else {
-					audio_stream_copy_from_linear(s16_src, 0, &sink->stream, 0, frames_to_copy * 2);
-					comp_update_buffer_produce(sink, frames_to_copy * 2 * sizeof(int16_t));
+					audio_stream_copy_from_linear(s16_src, 0, &sink->stream, 0, frames_per_blk * 2);
+					comp_update_buffer_produce(sink, frames_per_blk * 2 * sizeof(int16_t));
 				}
-				k_mem_slab_free(&i2s_rx_slab, rx_block);
-				s_i2s_stats.rx_frames += frames_to_copy;
-			} else {
-				if (rx_block) {
-					k_mem_slab_free(&i2s_rx_slab, rx_block);
-				}
-				if (fmt == SOF_IPC_FRAME_FLOAT) {
-					float f_silence[96] = {0};
-					audio_stream_copy_from_linear(f_silence, 0, &sink->stream, 0, frames_to_copy * 2);
-					comp_update_buffer_produce(sink, frames_to_copy * 2 * sizeof(float));
-				} else {
-					int16_t s_silence[96] = {0};
-					audio_stream_copy_from_linear(s_silence, 0, &sink->stream, 0, frames_to_copy * 2);
-					comp_update_buffer_produce(sink, frames_to_copy * 2 * sizeof(int16_t));
-				}
-				s_i2s_stats.rx_errors++;
+				s_i2s_stats.rx_frames += frames_per_blk;
 			}
+			k_mem_slab_free(&i2s_rx_slab, rx_block);
+			free_frames = audio_stream_get_free_frames(&sink->stream);
+		}
+
+		/* Keep RX slab headroom so temporary CPU stalls cannot exhaust RX DMA blocks */
+		while (k_mem_slab_num_free_get(&i2s_rx_slab) < 8) {
+			void *drop_block = NULL;
+			size_t drop_size = 0;
+
+			if (i2s_read(s_i2s_dev, &drop_block, &drop_size) != 0 || !drop_block) {
+				break;
+			}
+			k_mem_slab_free(&i2s_rx_slab, drop_block);
 		}
 	}
 

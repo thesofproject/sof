@@ -213,6 +213,7 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		break;
 	case SOF_DAI_IMX_SAI:
 		cfg.type = DAI_IMX_SAI;
+		cfg.channels = 2;
 		cfg_params = (size >= sizeof(struct sof_ipc_dai_config)) ?
 			(is_blob ? spec_config : &sof_cfg->sai) : NULL;
 		break;
@@ -1302,10 +1303,21 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 		comp_err(dev, "no valid dma buffer period count");
 		return -EINVAL;
 	}
+
+	uint32_t max_block_count = 0;
+
+	if (sof_dma_get_attribute(dd->dma, DMA_ATTR_MAX_BLOCK_COUNT, &max_block_count) == 0 &&
+	    max_block_count > 0 && period_count > max_block_count)
+		period_count = max_block_count;
+
 	buffer_size = ALIGN_UP(period_count * period_bytes, align);
 	period_count = MAX(period_count,
 			   SOF_DIV_ROUND_UP(dd->ipc_config.dma_buffer_size, period_bytes));
+	if (max_block_count > 0 && period_count > max_block_count)
+		period_count = max_block_count;
 	buffer_size_preferred = ALIGN_UP(period_count * period_bytes, align);
+	if (max_block_count > 0 && (buffer_size_preferred % buffer_size) != 0)
+		buffer_size_preferred = buffer_size;
 
 	/* alloc DMA buffer or change its size if exists */
 	if (dd->dma_buffer) {

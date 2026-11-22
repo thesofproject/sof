@@ -132,25 +132,21 @@ static int sof_app_main(void)
 #else
 	ret = 0;
 #endif
-	if (ret < 0) {
-		LOG_ERR("Static topology initialization failed: %d", ret);
-		return ret;
+	int topo_ret = ret;
+
+	if (topo_ret < 0) {
+		LOG_ERR("Static topology initialization failed: %d", topo_ret);
 	}
 
-#if defined(CONFIG_PLATFORM_NRF54L15)
-	sof_static_pipeline_start(1);
-#elif defined(CONFIG_PLATFORM_NRF54LM20)
-	sof_static_pipeline_start(1);
-	sof_static_pipeline_start(2);
-#endif
-
 #if defined(CONFIG_USBD_AUDIO2_CLASS)
-	const struct device *uac2_dev = DEVICE_DT_GET_ONE(zephyr_uac2);
+	if (topo_ret == 0) {
+		const struct device *uac2_dev = DEVICE_DT_GET_ONE(zephyr_uac2);
 
-	if (device_is_ready(uac2_dev)) {
-		usbd_uac2_set_ops(uac2_dev, sof_static_uac2_get_ops(), NULL);
-	} else {
-		LOG_ERR("UAC2 device not ready");
+		if (device_is_ready(uac2_dev)) {
+			usbd_uac2_set_ops(uac2_dev, sof_static_uac2_get_ops(), NULL);
+		} else {
+			LOG_ERR("UAC2 device not ready");
+		}
 	}
 #endif
 
@@ -163,6 +159,17 @@ static int sof_app_main(void)
 	} else {
 		LOG_ERR("Failed to initialize USB device context");
 	}
+#endif
+
+	if (topo_ret < 0) {
+		return topo_ret;
+	}
+
+#if defined(CONFIG_PLATFORM_NRF54L15)
+	sof_static_pipeline_start(1);
+#elif defined(CONFIG_PLATFORM_NRF54LM20)
+	sof_static_pipeline_start(1);
+	sof_static_pipeline_start(2);
 #endif
 
 #if defined(CONFIG_COMP_BT_AUDIO)

@@ -209,7 +209,7 @@ static const struct sof_static_kcontrol rp2350_controls[] = {
 	SOF_STATIC_KCONTROL_VOLUME(
 		.id = 1, .name = "Master Playback Volume",
 		.target_comp_id = 2,
-		.min = 0, .max = 65536, .def = 65536, .channels = 2,
+		.min = 0, .max = INT32_MAX, .def = INT32_MAX, .channels = 2,
 		.uac2_entity_id = PLAYBACK_FU_ID
 	),
 	SOF_STATIC_KCONTROL_SWITCH(
@@ -233,7 +233,7 @@ static const struct sof_static_kcontrol rp2350_controls[] = {
 	SOF_STATIC_KCONTROL_VOLUME(
 		.id = 5, .name = "Master Capture Volume",
 		.target_comp_id = 8,
-		.min = 0, .max = 65536, .def = 65536, .channels = 2,
+		.min = 0, .max = INT32_MAX, .def = INT32_MAX, .channels = 2,
 		.uac2_entity_id = CAPTURE_FU_ID
 	),
 };

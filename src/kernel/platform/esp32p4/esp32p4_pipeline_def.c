@@ -273,6 +273,9 @@ static const struct sof_static_kcontrol esp32p4_controls[] = {
 /*
  * Mode values: 0 = SLAVE, 1 = MASTER, 2 = DMIC INJECTOR
  */
+static bool s_p4_is_pdm;
+static int s_p4_mode;
+
 int esp32p4_set_clock_mode(bool is_pdm, int mode)
 {
 	uint32_t rate = sof_static_get_sample_rate();
@@ -280,6 +283,9 @@ int esp32p4_set_clock_mode(bool is_pdm, int mode)
 	uint32_t sof_format;
 	uint32_t target_dai_type;
 	uint32_t target_dai_index;
+
+	s_p4_is_pdm = is_pdm;
+	s_p4_mode = mode;
 
 	if (!rate)
 		rate = 48000;
@@ -362,6 +368,7 @@ int esp32p4_set_clock_mode(bool is_pdm, int mode)
 			dd->ipc_config.dai_index = target_dai_index;
 			dd->ipc_config.format = sof_format;
 			cdev->state = COMP_STATE_READY;
+			comp_prepare(cdev);
 		}
 	}
 
@@ -374,8 +381,12 @@ static int esp32p4_control_callback(const struct sof_static_kcontrol *ctl,
 	ARG_UNUSED(priv);
 
 	if (ctl->id == 7) {
-		/* DMIC Injector Switch: 1 -> PDM DMIC injector, 0 -> PDM master */
-		return esp32p4_set_clock_mode(true, val ? 2 : 1);
+		/* DMIC Injector Switch: 1 -> PDM DMIC injector; 0 -> restore PDM master only if active */
+		if (val)
+			return esp32p4_set_clock_mode(true, 2);
+		if (s_p4_is_pdm && s_p4_mode == 2)
+			return esp32p4_set_clock_mode(true, 1);
+		return 0;
 	}
 
 	return -ENOTSUP;

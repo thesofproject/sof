@@ -77,7 +77,12 @@ static int cmd_sof_status(const struct shell *sh, size_t argc, char **argv)
 	if (clk_id > 0)
 		sof_static_kcontrol_get((uint32_t)clk_id, &clk_mode);
 
+	extern int g_topo_fail_stage, g_topo_fail_item, g_topo_fail_code;
+
 	shell_print(sh, "=== Sound Open Firmware (SOF) Status ===");
+	if (g_topo_fail_stage || g_topo_fail_code)
+		shell_print(sh, "  Topo Init FAIL:    stage=%d item=%d code=%d",
+			    g_topo_fail_stage, g_topo_fail_item, g_topo_fail_code);
 	shell_print(sh, "  MAC Address:       %02x:%02x:%02x:%02x:%02x:%02x",
 		    mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 	shell_print(sh, "  Playback Pipeline: %s", pb_active ? "RUNNING" : "STOPPED");

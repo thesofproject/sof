@@ -18,6 +18,14 @@ extern const struct sof_uuid level_multiplier_uuid;
 extern const struct sof_uuid usb_audio_uuid;
 extern const struct sof_uuid i2s_audio_uuid;
 
+/* UAC2 Device Tree Entity IDs */
+#define UAC2_STATIC_ENTITY_ID(node) (DT_NODE_CHILD_IDX(node) + 1)
+
+#define PLAYBACK_FU_ID   UAC2_STATIC_ENTITY_ID(DT_NODELABEL(i2s_fu))
+#define CAPTURE_FU_ID    UAC2_STATIC_ENTITY_ID(DT_NODELABEL(i2s_in_fu))
+#define PLAYBACK_TERM_ID UAC2_STATIC_ENTITY_ID(DT_NODELABEL(i2s_out_terminal))
+#define CAPTURE_TERM_ID  UAC2_STATIC_ENTITY_ID(DT_NODELABEL(i2s_in_terminal))
+
 /* Default 2-channel 4-band Parametric IIR EQ Coefficients */
 static const uint32_t nrf54lm20_default_iir_coef_2ch[51] = {
 	0x00464f53, 0x00000000, 0x000000ac, 0x03013000,
@@ -57,7 +65,7 @@ static const struct sof_static_comp nrf54lm20_comps[] = {
 		.id = 1, .pipeline_id = 1, .name = "USB_PB",
 		.uuid = &usb_audio_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
 		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_S16_LE, 48000, 2),
-		.ep.usb.terminal_id = 1
+		.ep.usb.terminal_id = PLAYBACK_TERM_ID
 	),
 	SOF_STATIC_COMP_MODULE(
 		.id = 2, .pipeline_id = 1, .name = "VOL_PB",
@@ -99,7 +107,7 @@ static const struct sof_static_comp nrf54lm20_comps[] = {
 		.id = 8, .pipeline_id = 2, .name = "USB_CAP",
 		.uuid = &usb_audio_uuid, .direction = SOF_IPC_STREAM_CAPTURE,
 		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_S16_LE, 48000, 2),
-		.ep.usb.terminal_id = 2
+		.ep.usb.terminal_id = CAPTURE_TERM_ID
 	),
 };
 
@@ -141,15 +149,17 @@ static const struct sof_static_kcontrol nrf54lm20_controls[] = {
 		.id = 1,
 		.name = "Master Playback Volume",
 		.target_comp_id = 2,
+		.uac2_entity_id = PLAYBACK_FU_ID,
 		.channels = 2,
 		.min = 0,
-		.max = 65536,
-		.def = 65536
+		.max = 0x7fffffff,
+		.def = 0x7fffffff
 	),
 	SOF_STATIC_KCONTROL_SWITCH(
 		.id = 2,
 		.name = "Master Playback Switch",
 		.target_comp_id = 2,
+		.uac2_entity_id = PLAYBACK_FU_ID,
 		.channels = 2,
 		.min = 0,
 		.max = 1,
@@ -159,15 +169,17 @@ static const struct sof_static_kcontrol nrf54lm20_controls[] = {
 		.id = 3,
 		.name = "Loopback Level Multiplier",
 		.target_comp_id = 7,
+		.uac2_entity_id = CAPTURE_FU_ID,
 		.channels = 2,
 		.min = 0,
-		.max = 65536,
-		.def = 32768
+		.max = 0x7fffffff,
+		.def = 0x40000000
 	),
 	SOF_STATIC_KCONTROL_SWITCH(
 		.id = 4,
 		.name = "Loopback Switch",
 		.target_comp_id = 7,
+		.uac2_entity_id = CAPTURE_FU_ID,
 		.channels = 2,
 		.min = 0,
 		.max = 1,

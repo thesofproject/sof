@@ -15,11 +15,7 @@
 /* 16 KB (85 ms at 48 kHz stereo S16_LE) lock-protected ring buffer */
 #define USB_AUDIO_RING_BUFFER_SIZE 16384
 /* Prebuffer to absorb USB/PLL jitter at stream start */
-#if defined(CONFIG_PLATFORM_RP2350)
-#define USB_AUDIO_PREBUFFER_BYTES  384
-#else
 #define USB_AUDIO_PREBUFFER_BYTES  1920
-#endif
 
 struct usb_audio_ring_buffer {
 	uint8_t buf[USB_AUDIO_RING_BUFFER_SIZE];

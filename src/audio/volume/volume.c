@@ -960,8 +960,8 @@ static struct comp_dev *vol_static_create(const struct comp_driver *drv,
 	sof_static_init_base_cfg(&vol_cfg.base_cfg, cdesc, period_us);
 	vol_cfg.config[0].channel_id = 0xffffffff;
 	vol_cfg.config[0].target_volume = 0x7FFFFFFF;
-	vol_cfg.config[0].curve_type = IPC4_AUDIO_CURVE_TYPE_WINDOWS_FADE;
-	vol_cfg.config[0].curve_duration = 100000;
+	vol_cfg.config[0].curve_type = IPC4_AUDIO_CURVE_TYPE_NONE;
+	vol_cfg.config[0].curve_duration = 0;
 
 	struct ipc_config_process spec = {
 		.size = sizeof(vol_cfg),

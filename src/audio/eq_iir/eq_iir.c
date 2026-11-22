@@ -502,10 +502,60 @@ void eq_iir_float_default(struct processing_module *mod, const struct cir_buf_so
 				continue;
 			}
 
-			for (j = 0; j < n; j += nch) {
-				*y0 = iir_df1_float(filter, *x0);
-				x0 += nch;
-				y0 += nch;
+			/* Process per-biquad across contiguous blocks so coefficients and
+			 * delay states stay in FPU registers rather than reloading per sample.
+			 */
+			size_t nframes = n / nch;
+
+			while (nframes > 0) {
+				float blk[64];
+				size_t chunk = MIN(nframes, ARRAY_SIZE(blk));
+
+				for (j = 0; j < chunk; j++) {
+					blk[j] = *x0;
+					x0 += nch;
+				}
+
+				const float *coefp = filter->coef;
+				float *delay = filter->delay;
+
+				for (unsigned int b = 0; b < filter->biquads; b++) {
+					const float b0 = coefp[0];
+					const float b1 = coefp[1];
+					const float b2 = coefp[2];
+					const float a1 = coefp[3];
+					const float a2 = coefp[4];
+					float x1 = delay[0];
+					float x2 = delay[1];
+					float y1 = delay[2];
+					float y2 = delay[3];
+
+					for (j = 0; j < chunk; j++) {
+						float in = blk[j];
+						float out = b0 * in + b1 * x1 + b2 * x2 +
+							    a1 * y1 + a2 * y2;
+
+						x2 = x1;
+						x1 = in;
+						y2 = y1;
+						y1 = out;
+						blk[j] = out;
+					}
+
+					delay[0] = x1;
+					delay[1] = x2;
+					delay[2] = y1;
+					delay[3] = y2;
+					coefp += 5;
+					delay += 4;
+				}
+
+				for (j = 0; j < chunk; j++) {
+					*y0 = blk[j];
+					y0 += nch;
+				}
+
+				nframes -= chunk;
 			}
 		}
 		processed += n;

@@ -17,7 +17,7 @@ config COMPILER_WORKAROUND_CACHE_ATTR
 
 config COMPILER_INLINE_FUNCTION_OPTION
         bool
-	default y if CAVS_VERSION_2_5 || ACE
+	default y if CAVS_VERSION_2_5 || ACE || SOF_FULL_ZEPHYR_APPLICATION
         default n
         help
           When enabled, -fno-inline-function option is not passed to compiler

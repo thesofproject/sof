@@ -469,10 +469,14 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 #if CONFIG_IPC_MAJOR_3
 			dd = comp_get_drvdata(current);
 #elif CONFIG_IPC_MAJOR_4
-			struct processing_module *mod = comp_mod(current);
-			struct copier_data *cd = module_get_private_data(mod);
+			if (current->drv->type != SOF_COMP_MODULE_ADAPTER) {
+				dd = comp_get_drvdata(current);
+			} else {
+				struct processing_module *mod = comp_mod(current);
+				struct copier_data *cd = module_get_private_data(mod);
 
-			dd = cd->dd[0];
+				dd = cd->dd[0];
+			}
 #else
 #error Unknown IPC major version
 #endif

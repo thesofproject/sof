@@ -114,8 +114,8 @@ static const struct sof_static_kcontrol nrf54l15_controls[] = {
 		.target_comp_id = 2,
 		.channels = 2,
 		.min = 0,
-		.max = 65536,
-		.def = 65536
+		.max = 0x7fffffff,
+		.def = 0x7fffffff
 	),
 	SOF_STATIC_KCONTROL_SWITCH(
 		.id = 2,

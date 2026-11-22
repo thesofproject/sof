@@ -89,6 +89,49 @@ bool usb_audio_is_playback_active(void)
 	return g_playback_data && g_playback_data->active;
 }
 
+#if defined(CONFIG_I2S_NRF_TDM)
+/*
+ * Adaptive linear rate-matching state bridging USB 48,000 Hz SOF frames with
+ * nRF54LM20 TDM hardware clocked at 32 MHz / (21 * 32) = 47,619.05 Hz.
+ */
+#define TDM_RATE_TARGET_BYTES  1920
+#define TDM_PB_NOMINAL_Q16     66060U  /* 65536 * 48000 / 47619.0476 */
+#define TDM_CAP_NOMINAL_Q16    65016U  /* 65536 * 47619.0476 / 48000 */
+
+static uint32_t s_tdm_pb_phase_q16;
+static uint32_t s_tdm_pb_tick_acc;
+static int16_t s_tdm_pb_cur[2];
+static int16_t s_tdm_pb_next[2];
+static bool s_tdm_pb_primed;
+
+static uint32_t s_tdm_cap_phase_q16;
+static int16_t s_tdm_cap_cur[2];
+static int16_t s_tdm_cap_next[2];
+static bool s_tdm_cap_primed;
+static uint32_t s_tdm_cap_last_usb_ms;
+
+static void tdm_rate_reset_pb(void)
+{
+	s_tdm_pb_phase_q16 = 0;
+	s_tdm_pb_tick_acc = 0;
+	s_tdm_pb_cur[0] = 0;
+	s_tdm_pb_cur[1] = 0;
+	s_tdm_pb_next[0] = 0;
+	s_tdm_pb_next[1] = 0;
+	s_tdm_pb_primed = false;
+}
+
+static void tdm_rate_reset_cap(void)
+{
+	s_tdm_cap_phase_q16 = 0;
+	s_tdm_cap_cur[0] = 0;
+	s_tdm_cap_cur[1] = 0;
+	s_tdm_cap_next[0] = 0;
+	s_tdm_cap_next[1] = 0;
+	s_tdm_cap_primed = false;
+}
+#endif
+
 static void ring_write_locked(struct usb_audio_ring_buffer *ring,
 			      const uint8_t *src, size_t bytes)
 {
@@ -116,6 +159,221 @@ static void ring_read_locked(struct usb_audio_ring_buffer *ring,
 		ring->count -= bytes;
 	}
 }
+
+#if defined(CONFIG_I2S_NRF_TDM)
+/**
+ * Compute playback step from USB ring fill and fetch needed S16_LE frames
+ * under ring->lock, then linearly interpolate to float unlocked.
+ */
+static void tdm_resample_pb_float(struct usb_audio_ring_buffer *ring,
+				  float *f_buf, uint32_t frames)
+{
+	int16_t in_buf[112]; /* holds up to 56 stereo input frames (> 48 * 1.02) */
+	uint32_t fill;
+	int32_t err, adj;
+	uint32_t step;
+	uint32_t phase_end;
+	uint32_t in_frames;
+	const float scale = 1.0f / 32768.0f;
+
+	k_spinlock_key_t key = k_spin_lock(&ring->lock);
+
+	fill = ring->count;
+	if (!s_tdm_pb_primed && fill >= 8) {
+		ring_read_locked(ring, (uint8_t *)s_tdm_pb_cur, sizeof(s_tdm_pb_cur), true);
+		ring_read_locked(ring, (uint8_t *)s_tdm_pb_next, sizeof(s_tdm_pb_next), true);
+		s_tdm_pb_phase_q16 = 0;
+		s_tdm_pb_primed = true;
+		fill = ring->count;
+	}
+
+	err = (int32_t)fill - TDM_RATE_TARGET_BYTES;
+	adj = CLAMP(err / 16, -256, 256);
+	step = (uint32_t)((int32_t)TDM_PB_NOMINAL_Q16 + adj);
+	phase_end = s_tdm_pb_phase_q16 + frames * step;
+	in_frames = phase_end >> 16;
+	if (in_frames > ARRAY_SIZE(in_buf) / 2)
+		in_frames = ARRAY_SIZE(in_buf) / 2;
+
+	size_t want_bytes = in_frames * 2 * sizeof(int16_t);
+	size_t got_bytes = MIN(want_bytes, (size_t)ring->count);
+
+	if (got_bytes > 0)
+		ring_read_locked(ring, (uint8_t *)in_buf, got_bytes, true);
+	if (got_bytes < want_bytes)
+		memset((uint8_t *)in_buf + got_bytes, 0, want_bytes - got_bytes);
+
+	k_spin_unlock(&ring->lock, key);
+
+	uint32_t idx = 0;
+
+	for (uint32_t i = 0; i < frames; i++) {
+		float frac = (float)(s_tdm_pb_phase_q16 & 0xFFFFU) * (1.0f / 65536.0f);
+
+		f_buf[2 * i] = ((float)s_tdm_pb_cur[0] +
+				((float)s_tdm_pb_next[0] - (float)s_tdm_pb_cur[0]) * frac) * scale;
+		f_buf[2 * i + 1] = ((float)s_tdm_pb_cur[1] +
+				    ((float)s_tdm_pb_next[1] - (float)s_tdm_pb_cur[1]) * frac) * scale;
+
+		s_tdm_pb_phase_q16 += step;
+		while (s_tdm_pb_phase_q16 >= 0x10000U) {
+			s_tdm_pb_phase_q16 -= 0x10000U;
+			s_tdm_pb_cur[0] = s_tdm_pb_next[0];
+			s_tdm_pb_cur[1] = s_tdm_pb_next[1];
+			if (idx < in_frames) {
+				s_tdm_pb_next[0] = in_buf[2 * idx];
+				s_tdm_pb_next[1] = in_buf[2 * idx + 1];
+				idx++;
+			} else {
+				s_tdm_pb_next[0] = 0;
+				s_tdm_pb_next[1] = 0;
+			}
+		}
+	}
+}
+
+/**
+ * Compute playback step from USB ring fill and fetch needed S16_LE frames
+ * under ring->lock, then linearly interpolate to S16_LE unlocked.
+ */
+static void tdm_resample_pb_s16(struct usb_audio_ring_buffer *ring,
+				int16_t *out, uint32_t frames)
+{
+	int16_t in_buf[112]; /* holds up to 56 stereo input frames (> 48 * 1.02) */
+	uint32_t fill;
+	int32_t err, adj;
+	uint32_t step;
+	uint32_t phase_end;
+	uint32_t in_frames;
+
+	k_spinlock_key_t key = k_spin_lock(&ring->lock);
+
+	fill = ring->count;
+	if (!s_tdm_pb_primed && fill >= 8) {
+		ring_read_locked(ring, (uint8_t *)s_tdm_pb_cur, sizeof(s_tdm_pb_cur), true);
+		ring_read_locked(ring, (uint8_t *)s_tdm_pb_next, sizeof(s_tdm_pb_next), true);
+		s_tdm_pb_phase_q16 = 0;
+		s_tdm_pb_primed = true;
+		fill = ring->count;
+	}
+
+	err = (int32_t)fill - TDM_RATE_TARGET_BYTES;
+	adj = CLAMP(err / 16, -256, 256);
+	step = (uint32_t)((int32_t)TDM_PB_NOMINAL_Q16 + adj);
+	phase_end = s_tdm_pb_phase_q16 + frames * step;
+	in_frames = phase_end >> 16;
+	if (in_frames > ARRAY_SIZE(in_buf) / 2)
+		in_frames = ARRAY_SIZE(in_buf) / 2;
+
+	size_t want_bytes = in_frames * 2 * sizeof(int16_t);
+	size_t got_bytes = MIN(want_bytes, (size_t)ring->count);
+
+	if (got_bytes > 0)
+		ring_read_locked(ring, (uint8_t *)in_buf, got_bytes, true);
+	if (got_bytes < want_bytes)
+		memset((uint8_t *)in_buf + got_bytes, 0, want_bytes - got_bytes);
+
+	k_spin_unlock(&ring->lock, key);
+
+	uint32_t idx = 0;
+
+	for (uint32_t i = 0; i < frames; i++) {
+		int32_t frac = (int32_t)(s_tdm_pb_phase_q16 & 0xFFFFU);
+
+		out[2 * i] = (int16_t)(s_tdm_pb_cur[0] +
+			(((int32_t)(s_tdm_pb_next[0] - s_tdm_pb_cur[0]) * frac) >> 16));
+		out[2 * i + 1] = (int16_t)(s_tdm_pb_cur[1] +
+			(((int32_t)(s_tdm_pb_next[1] - s_tdm_pb_cur[1]) * frac) >> 16));
+
+		s_tdm_pb_phase_q16 += step;
+		while (s_tdm_pb_phase_q16 >= 0x10000U) {
+			s_tdm_pb_phase_q16 -= 0x10000U;
+			s_tdm_pb_cur[0] = s_tdm_pb_next[0];
+			s_tdm_pb_cur[1] = s_tdm_pb_next[1];
+			if (idx < in_frames) {
+				s_tdm_pb_next[0] = in_buf[2 * idx];
+				s_tdm_pb_next[1] = in_buf[2 * idx + 1];
+				idx++;
+			} else {
+				s_tdm_pb_next[0] = 0;
+				s_tdm_pb_next[1] = 0;
+			}
+		}
+	}
+}
+
+/**
+ * Resample capture S16_LE frames from TDM rate to USB 48 kHz using adaptive
+ * linear interpolation unlocked, then lock briefly to append to capture ring.
+ */
+static void tdm_resample_cap_s16(struct usb_audio_ring_buffer *ring,
+				 const int16_t *in, uint32_t in_frames)
+{
+	int16_t out_buf[280];
+	uint32_t out_frames = 0;
+	bool host_idle = ((uint32_t)(k_uptime_get_32() - s_tdm_cap_last_usb_ms) > 20U);
+	uint32_t fill = ring->count;
+	int32_t err = host_idle ? 0 : ((int32_t)fill - TDM_RATE_TARGET_BYTES);
+	int32_t adj = CLAMP(err / 16, -256, 256);
+	uint32_t step = (uint32_t)((int32_t)TDM_CAP_NOMINAL_Q16 + adj);
+
+	for (uint32_t i = 0; i < in_frames; i++) {
+		if (!s_tdm_cap_primed) {
+			s_tdm_cap_next[0] = in[2 * i];
+			s_tdm_cap_next[1] = in[2 * i + 1];
+			s_tdm_cap_primed = true;
+		}
+		s_tdm_cap_cur[0] = s_tdm_cap_next[0];
+		s_tdm_cap_cur[1] = s_tdm_cap_next[1];
+		s_tdm_cap_next[0] = in[2 * i];
+		s_tdm_cap_next[1] = in[2 * i + 1];
+
+		while (s_tdm_cap_phase_q16 < 0x10000U) {
+			int32_t frac = (int32_t)(s_tdm_cap_phase_q16 & 0xFFFFU);
+
+			if (out_frames < ARRAY_SIZE(out_buf) / 2) {
+				out_buf[2 * out_frames] = (int16_t)(s_tdm_cap_cur[0] +
+					(((int32_t)(s_tdm_cap_next[0] - s_tdm_cap_cur[0]) * frac) >> 16));
+				out_buf[2 * out_frames + 1] = (int16_t)(s_tdm_cap_cur[1] +
+					(((int32_t)(s_tdm_cap_next[1] - s_tdm_cap_cur[1]) * frac) >> 16));
+				out_frames++;
+			}
+			s_tdm_cap_phase_q16 += step;
+		}
+		s_tdm_cap_phase_q16 -= 0x10000U;
+	}
+
+	size_t bytes = out_frames * 2 * sizeof(int16_t);
+
+	if (bytes == 0)
+		return;
+
+	k_spinlock_key_t key = k_spin_lock(&ring->lock);
+
+	if (host_idle && ring->count > TDM_RATE_TARGET_BYTES) {
+		size_t trim = (ring->count - TDM_RATE_TARGET_BYTES) & ~((size_t)3);
+
+		ring->tail = (ring->tail + trim) % USB_AUDIO_RING_BUFFER_SIZE;
+		ring->count -= trim;
+	}
+
+	if (ring->count + bytes > USB_AUDIO_RING_BUFFER_SIZE) {
+		size_t drop = (ring->count + bytes) - USB_AUDIO_RING_BUFFER_SIZE;
+
+		drop = (drop + 3) & ~((size_t)3);
+		if (drop > ring->count)
+			drop = ring->count;
+		ring->tail = (ring->tail + drop) % USB_AUDIO_RING_BUFFER_SIZE;
+		ring->count -= drop;
+	}
+
+	size_t free_space = USB_AUDIO_RING_BUFFER_SIZE - ring->count;
+	size_t to_copy = MIN(bytes, free_space);
+
+	ring_write_locked(ring, (const uint8_t *)out_buf, to_copy);
+	k_spin_unlock(&ring->lock, key);
+}
+#endif
 
 void usb_audio_set_playback_rate(uint32_t rate)
 {
@@ -172,6 +430,9 @@ size_t usb_audio_fetch_capture_data(void *dst, size_t bytes)
 	if (!dst || bytes == 0)
 		return 0;
 
+#if defined(CONFIG_I2S_NRF_TDM)
+	s_tdm_cap_last_usb_ms = k_uptime_get_32();
+#endif
 	if (!g_capture_data || !g_capture_data->active) {
 		memset(dst, 0, bytes);
 		return bytes;
@@ -205,6 +466,9 @@ bool usb_audio_peek_capture_data(void *dst, size_t bytes)
 	if (!dst || bytes == 0)
 		return false;
 
+#if defined(CONFIG_I2S_NRF_TDM)
+	s_tdm_cap_last_usb_ms = k_uptime_get_32();
+#endif
 	if (!g_capture_data || !g_capture_data->active) {
 		memset(dst, 0, bytes);
 		return false;
@@ -380,6 +644,14 @@ static int usb_audio_copy(struct comp_dev *dev)
 
 	if (sink) {
 		enum sof_ipc_frame fmt = audio_stream_get_frm_fmt(&sink->stream);
+#if defined(CONFIG_I2S_NRF_TDM)
+		if (!s_tone_enabled) {
+			s_tdm_pb_tick_acc += TDM_CAP_NOMINAL_Q16;
+			if (s_tdm_pb_tick_acc < 0x10000U)
+				return 0;
+			s_tdm_pb_tick_acc -= 0x10000U;
+		}
+#endif
 
 		if (fmt == SOF_IPC_FRAME_FLOAT) {
 			uint32_t free_frames = audio_stream_get_free_frames(&sink->stream);
@@ -416,8 +688,17 @@ static int usb_audio_copy(struct comp_dev *dev)
 						return 0;
 					}
 					uad->started = true;
+#if defined(CONFIG_I2S_NRF_TDM)
+					tdm_rate_reset_pb();
+#endif
 				}
 
+#if defined(CONFIG_I2S_NRF_TDM)
+				(void)s16_buf;
+				(void)s16_bytes;
+				k_spin_unlock(&ring->lock, key);
+				tdm_resample_pb_float(ring, f_buf, frames_to_copy);
+#else
 				size_t to_copy = MIN(s16_bytes, (size_t)ring->count);
 				uint8_t *s16_raw = (uint8_t *)s16_buf;
 
@@ -431,6 +712,7 @@ static int usb_audio_copy(struct comp_dev *dev)
 
 				for (size_t i = 0; i < frames_to_copy * 2; i++)
 					f_buf[i] = (float)s16_buf[i] * scale;
+#endif
 
 				audio_stream_copy_from_linear(f_buf, 0, &sink->stream, 0,
 							      frames_to_copy * 2);
@@ -468,8 +750,16 @@ static int usb_audio_copy(struct comp_dev *dev)
 						return 0;
 					}
 					uad->started = true;
+#if defined(CONFIG_I2S_NRF_TDM)
+					tdm_rate_reset_pb();
+#endif
 				}
 
+#if defined(CONFIG_I2S_NRF_TDM)
+				k_spin_unlock(&ring->lock, key);
+				tdm_resample_pb_s16(ring, (int16_t *)temp_buf,
+						    chunk / (2 * sizeof(int16_t)));
+#else
 				if (ring->count < chunk) {
 					memset(temp_buf, 0, chunk);
 					k_spin_unlock(&ring->lock, key);
@@ -477,6 +767,7 @@ static int usb_audio_copy(struct comp_dev *dev)
 					ring_read_locked(ring, temp_buf, chunk, true);
 					k_spin_unlock(&ring->lock, key);
 				}
+#endif
 
 				audio_stream_copy_from_linear(temp_buf, 0, &sink->stream, 0,
 							      chunk / audio_stream_sample_bytes(&sink->stream));
@@ -583,8 +874,14 @@ static int usb_audio_copy(struct comp_dev *dev)
 				comp_update_buffer_consume(source, to_copy);
 				avail_bytes -= to_copy;
 
+#if defined(CONFIG_I2S_NRF_TDM)
+				k_spin_unlock(&ring->lock, key);
+				tdm_resample_cap_s16(ring, (const int16_t *)temp_buf,
+						     to_copy / (2 * sizeof(int16_t)));
+#else
 				ring_write_locked(ring, temp_buf, to_copy);
 				k_spin_unlock(&ring->lock, key);
+#endif
 			}
 		}
 	}
@@ -608,6 +905,12 @@ static int usb_audio_reset(struct comp_dev *dev)
 	uad->ring.head = 0;
 	uad->ring.tail = 0;
 	uad->ring.count = 0;
+#if defined(CONFIG_I2S_NRF_TDM)
+	if (uad == g_playback_data)
+		tdm_rate_reset_pb();
+	else if (uad == g_capture_data)
+		tdm_rate_reset_cap();
+#endif
 	k_spin_unlock(&uad->ring.lock, key);
 	dev->state = COMP_STATE_INIT;
 	return 0;

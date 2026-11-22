@@ -296,6 +296,12 @@ int sof_static_kcontrol_get_by_uac2(uint8_t entity_id, uint8_t channel, int32_t 
  */
 int sof_static_pipeline_trigger_by_uac2_term(uint8_t terminal_id, bool start)
 {
+#if defined(CONFIG_PLATFORM_NRF54LM20)
+	/* Full-duplex TDM TX and RX must keep running continuously once started */
+	if (!start)
+		return 0;
+#endif
+
 	const struct sof_static_topology *topo = sof_static_topology_get();
 
 	if (!topo) {
@@ -350,7 +356,7 @@ static bool s_uac2_microframes;
 static bool s_uac2_capture_mute;
 static bool s_uac2_playback_mute;
 
-static void sof_uac2_send_capture_pending(const struct device *dev)
+static void sof_uac2_send_capture_pending(const struct device *dev, bool allow_silence)
 {
 	uint32_t rate;
 	uint32_t frame_bytes;
@@ -371,7 +377,9 @@ static void sof_uac2_send_capture_pending(const struct device *dev)
 	for (int iter = 0; iter < 2; iter++) {
 		void *buf = NULL;
 		bool have_data;
+#if defined(CONFIG_COMP_BT_AUDIO)
 		bool use_bt = false;
+#endif
 		int ret;
 
 		if (k_mem_slab_alloc(&uac2_tx_slab, &buf, K_NO_WAIT) != 0)
@@ -388,8 +396,13 @@ static void sof_uac2_send_capture_pending(const struct device *dev)
 		}
 
 		if (!have_data) {
-#if defined(CONFIG_PLATFORM_RP2350)
-			/* Keep isochronous IN streaming continuous on RP2350 to avoid ALSA -EIO */
+#if defined(CONFIG_PLATFORM_RP2350) || defined(CONFIG_PLATFORM_NRF54LM20) || \
+	defined(CONFIG_PLATFORM_TEENSY41)
+			if (!allow_silence || iter > 0) {
+				k_mem_slab_free(&uac2_tx_slab, buf);
+				break;
+			}
+			/* Keep isochronous IN streaming continuous to avoid ALSA -EIO */
 			memset(buf, 0, frame_bytes);
 #else
 			k_mem_slab_free(&uac2_tx_slab, buf);
@@ -420,17 +433,8 @@ static void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 {
 	ARG_UNUSED(user_data);
 
-#if defined(CONFIG_PLATFORM_RP2350)
-	if (s_uac2_capture_active && s_uac2_capture_pipe_id) {
-		struct pipeline *pipe = sof_static_pipeline_get(s_uac2_capture_pipe_id);
-
-		if (pipe && pipe->status == COMP_STATE_ACTIVE)
-			pipeline_copy(pipe);
-	}
-#endif
-
 	if (s_uac2_capture_active && dev)
-		sof_uac2_send_capture_pending(dev);
+		sof_uac2_send_capture_pending(dev, true);
 }
 
 static void sof_uac2_terminal_update_cb(const struct device *dev, uint8_t terminal,
@@ -510,15 +514,6 @@ static void sof_uac2_data_recv_cb(const struct device *dev, uint8_t terminal,
 		else
 #endif
 			usb_audio_feed_playback_data(buf, size);
-
-#if defined(CONFIG_PLATFORM_RP2350)
-		if (s_uac2_playback_active && s_uac2_playback_pipe_id) {
-			struct pipeline *pipe = sof_static_pipeline_get(s_uac2_playback_pipe_id);
-
-			if (pipe && pipe->status == COMP_STATE_ACTIVE)
-				pipeline_copy(pipe);
-		}
-#endif
 	}
 
 	if (buf)
@@ -534,7 +529,7 @@ static void sof_uac2_buf_release_cb(const struct device *dev, uint8_t terminal,
 		k_mem_slab_free(&uac2_tx_slab, buf);
 
 	if (s_uac2_capture_active && terminal == s_uac2_capture_term_id && dev)
-		sof_uac2_send_capture_pending(dev);
+		sof_uac2_send_capture_pending(dev, !IS_ENABLED(CONFIG_UDC_ENABLE_SOF));
 }
 
 static uint32_t sof_uac2_feedback_cb(const struct device *dev, uint8_t terminal,
@@ -595,33 +590,78 @@ static int sof_uac2_set_sample_rate(const struct device *dev, uint8_t clock_id,
 	return 0;
 }
 
+static int uac2_resolve_mute_entity(const struct sof_static_topology *topo,
+				    uint8_t entity_id, bool *has_sw,
+				    bool *has_vol, bool *is_bypass_sw,
+				    uint32_t *direction)
+{
+	const struct sof_static_kcontrol *matched = NULL;
+
+	*has_sw = false;
+	*has_vol = false;
+	*is_bypass_sw = false;
+	*direction = SOF_IPC_STREAM_PLAYBACK;
+
+	if (!topo)
+		return -ENODEV;
+
+	for (size_t i = 0; i < topo->num_controls; i++) {
+		const struct sof_static_kcontrol *ctl = &topo->controls[i];
+
+		if (ctl->uac2_entity_id != entity_id)
+			continue;
+
+		matched = ctl;
+		if (ctl->type == SOF_STATIC_CTRL_SWITCH)
+			*has_sw = true;
+		else if (ctl->type == SOF_STATIC_CTRL_VOLUME)
+			*has_vol = true;
+	}
+
+	if (!matched)
+		return -ENOENT;
+
+	/* Pure DSP effect bypass switches (EQ/DRC/TDFB) must not mute the USB stream */
+	if (*has_sw && !*has_vol && matched->name &&
+	    (strstr(matched->name, "EQ") || strstr(matched->name, "DRC") ||
+	     strstr(matched->name, "TDFB")))
+		*is_bypass_sw = true;
+
+	if (matched->target_comp_id != 0) {
+		for (size_t c = 0; c < topo->num_comps; c++) {
+			if (topo->comps[c].id == matched->target_comp_id) {
+				*direction = topo->comps[c].direction;
+				return 0;
+			}
+		}
+	}
+
+	if (matched->name && strstr(matched->name, "Capture"))
+		*direction = SOF_IPC_STREAM_CAPTURE;
+
+	return 0;
+}
+
 static int sof_uac2_set_feature_mute(const struct device *dev, uint8_t entity_id,
 				     uint8_t channel, bool mute, void *user_data)
 {
 	const struct sof_static_topology *topo = sof_static_topology_get();
+	bool has_sw, has_vol, is_bypass_sw;
+	uint32_t dir;
 
 	ARG_UNUSED(dev);
 	ARG_UNUSED(user_data);
 
-	if (topo && channel == 0) {
-		for (size_t i = 0; i < topo->num_controls; i++) {
-			const struct sof_static_kcontrol *ctl = &topo->controls[i];
-
-			if (ctl->uac2_entity_id != entity_id ||
-			    ctl->type != SOF_STATIC_CTRL_SWITCH)
-				continue;
-
-			for (size_t c = 0; c < topo->num_comps; c++) {
-				if (topo->comps[c].id == ctl->target_comp_id) {
-					if (topo->comps[c].direction == SOF_IPC_STREAM_PLAYBACK)
-						s_uac2_playback_mute = mute;
-					else if (topo->comps[c].direction == SOF_IPC_STREAM_CAPTURE)
-						s_uac2_capture_mute = mute;
-					break;
-				}
-			}
-			break;
+	if (uac2_resolve_mute_entity(topo, entity_id, &has_sw, &has_vol,
+				     &is_bypass_sw, &dir) == 0) {
+		if (!is_bypass_sw && channel == 0) {
+			if (dir == SOF_IPC_STREAM_PLAYBACK)
+				s_uac2_playback_mute = mute;
+			else if (dir == SOF_IPC_STREAM_CAPTURE)
+				s_uac2_capture_mute = mute;
 		}
+		if (!has_sw && has_vol)
+			return 0;
 	}
 
 	return sof_static_kcontrol_set_by_uac2(entity_id, channel, mute ? 1 : 0, false);
@@ -630,6 +670,9 @@ static int sof_uac2_set_feature_mute(const struct device *dev, uint8_t entity_id
 static int sof_uac2_get_feature_mute(const struct device *dev, uint8_t entity_id,
 				     uint8_t channel, bool *mute, void *user_data)
 {
+	const struct sof_static_topology *topo = sof_static_topology_get();
+	bool has_sw, has_vol, is_bypass_sw;
+	uint32_t dir;
 	int32_t val = 0;
 	int ret;
 
@@ -638,6 +681,14 @@ static int sof_uac2_get_feature_mute(const struct device *dev, uint8_t entity_id
 
 	if (!mute)
 		return -EINVAL;
+
+	if (uac2_resolve_mute_entity(topo, entity_id, &has_sw, &has_vol,
+				     &is_bypass_sw, &dir) == 0 &&
+	    !has_sw && has_vol) {
+		*mute = (dir == SOF_IPC_STREAM_CAPTURE) ?
+			s_uac2_capture_mute : s_uac2_playback_mute;
+		return 0;
+	}
 
 	ret = sof_static_kcontrol_get_by_uac2(entity_id, channel, &val, false);
 	if (ret == 0)

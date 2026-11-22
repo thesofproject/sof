@@ -21,6 +21,116 @@
 
 #if SOF_USE_ARM_SIMD(DRC)
 
+#if defined(CONFIG_FPU) && defined(CONFIG_SOF_HAS_FLOAT_HW)
+/*
+ * Fast FPU approximations for Cortex-M33/M7/M4 with hardware single-precision FPU
+ * avoiding 64-bit integer polynomial loops on every DRC sample.
+ */
+static inline float drc_arm_fast_log2f(float x)
+{
+	union {
+		float f;
+		uint32_t u;
+	} v = { .f = x };
+	int32_t e = (int32_t)((v.u >> 23) & 0xFFU) - 127;
+	float t;
+
+	v.u = (v.u & 0x007FFFFFU) | 0x3F800000U;
+	t = v.f - 1.0f;
+	return (float)e + t * (1.4385425f + t * (-0.6780517f + t * (0.3235707f - t * 0.0842493f)));
+}
+
+static inline float drc_arm_fast_exp2f(float x)
+{
+	int32_t ip;
+	float f, p;
+	union {
+		float f;
+		uint32_t u;
+	} s;
+
+	if (x < -25.0f)
+		return 0.0f;
+	if (x > 30.0f)
+		x = 30.0f;
+	ip = (int32_t)x;
+	if (x < (float)ip)
+		ip--;
+	f = x - (float)ip;
+	p = 1.0f + f * (0.6930184f + f * (0.2414062f + f * (0.0520710f + f * 0.0134952f)));
+	s.u = (uint32_t)(ip + 127) << 23;
+	return p * s.f;
+}
+
+static inline int32_t drc_arm_sin_fixed_fpu(int32_t x_q30)
+{
+	if (x_q30 <= 0)
+		return 0;
+	if (x_q30 >= 1073741824)
+		return INT32_MAX;
+	float r = (float)x_q30 * (1.5707963267948966f / 1073741824.0f);
+	float r2 = r * r;
+	float s = r * (1.0f + r2 * (-0.1666665f + r2 * (0.0083330f - r2 * 0.0001981f)));
+	float val = s * 2147483647.0f;
+
+	if (val >= 2147483520.0f)
+		return INT32_MAX;
+	return (int32_t)val;
+}
+
+static inline int32_t drc_arm_inv_q31_q20_fpu(int32_t x_q31)
+{
+	if (x_q31 <= 0)
+		return INT32_MAX;
+	float val = (2147483648.0f * 1048576.0f) / (float)x_q31;
+
+	if (val >= 2147483520.0f)
+		return INT32_MAX;
+	return (int32_t)val;
+}
+
+static inline int32_t drc_arm_exp_fixed_fpu(int32_t x_q27)
+{
+	float val = drc_arm_fast_exp2f((float)x_q27 * (1.44269504f / 134217728.0f)) * 1048576.0f;
+
+	if (val >= 2147483520.0f)
+		return INT32_MAX;
+	return val <= 0.0f ? 0 : (int32_t)val;
+}
+
+static inline int32_t drc_arm_db2lin_fixed_fpu(int32_t db_q24)
+{
+	float val = drc_arm_fast_exp2f((float)db_q24 * 9.9001297e-9f) * 1048576.0f;
+
+	if (val >= 2147483520.0f)
+		return INT32_MAX;
+	return val <= 0.0f ? 0 : (int32_t)val;
+}
+
+static inline int32_t drc_arm_log_fixed_fpu(int32_t x_q26)
+{
+	if (x_q26 <= 0)
+		return -2013265919; /* NEG_30_Q26 */
+	return (int32_t)((drc_arm_fast_log2f((float)x_q26) - 26.0f) * (0.69314718f * 67108864.0f));
+}
+
+static inline int32_t drc_arm_lin2db_fixed_fpu(int32_t lin_q26)
+{
+	if (lin_q26 <= 0)
+		return -2097151999; /* NEG_1K_Q21 */
+	return (int32_t)((drc_arm_fast_log2f((float)lin_q26) - 26.0f) * (6.0205999f * 2097152.0f));
+}
+
+#define sofm_exp_fixed     drc_arm_exp_fixed_fpu
+#define sofm_db2lin_fixed  drc_arm_db2lin_fixed_fpu
+#define drc_log_fixed      drc_arm_log_fixed_fpu
+#define drc_lin2db_fixed   drc_arm_lin2db_fixed_fpu
+#define drc_sin_fixed      drc_arm_sin_fixed_fpu
+#define drc_inv_q31_q20(x) drc_arm_inv_q31_q20_fpu(x)
+#else
+#define drc_inv_q31_q20(x) drc_inv_fixed((x), 31, 20)
+#endif /* CONFIG_FPU && CONFIG_SOF_HAS_FLOAT_HW */
+
 #define ONE_Q20        1048576    /* Q_CONVERT_FLOAT(1.0f, 20) */
 #define ONE_Q21        2097152    /* Q_CONVERT_FLOAT(1.0f, 21) */
 #define ONE_Q30        1073741824 /* Q_CONVERT_FLOAT(1.0f, 30) */
@@ -55,7 +165,7 @@ static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 	if (x < knee_threshold) {
 		if (x < linear_threshold)
 			return ONE_Q30;
-		y = drc_mult_lshift(knee_curveK(p, x), drc_inv_fixed(x, 31, 20),
+		y = drc_mult_lshift(knee_curveK(p, x), drc_inv_q31_q20(x),
 				    drc_get_lshift(24, 20, 30));
 	} else {
 		tmp = (x + 16) >> 5;
@@ -86,6 +196,7 @@ void drc_update_detector_average(struct drc_state *state,
 	int32_t sat_release_rate;
 	int32_t tmp;
 	bool is_release;
+	int32_t max_abs = 0;
 
 	if (state->pre_delay_write_index == 0)
 		div_start = CONFIG_DRC_MAX_PRE_DELAY_FRAMES - DRC_DIVISION_FRAMES;
@@ -100,8 +211,11 @@ void drc_update_detector_average(struct drc_state *state,
 			for (i = 0; i < DRC_DIVISION_FRAMES; i++) {
 				int32_t sample = ((int32_t)sample16_p[i]) << 16;
 				int32_t s_abs = (sample == INT32_MIN) ? INT32_MAX : (sample < 0 ? -sample : sample);
-				if (s_abs > abs_input_array[i])
+				if (s_abs > abs_input_array[i]) {
 					abs_input_array[i] = s_abs;
+					if (s_abs > max_abs)
+						max_abs = s_abs;
+				}
 			}
 		}
 #if CONFIG_FORMAT_FLOAT
@@ -113,8 +227,11 @@ void drc_update_detector_average(struct drc_state *state,
 				if (val > 1.0f)
 					val = 1.0f;
 				int32_t s_abs = (int32_t)(val * 2147483647.0f);
-				if (s_abs > abs_input_array[i])
+				if (s_abs > abs_input_array[i]) {
 					abs_input_array[i] = s_abs;
+					if (s_abs > max_abs)
+						max_abs = s_abs;
+				}
 			}
 		}
 #endif
@@ -124,10 +241,29 @@ void drc_update_detector_average(struct drc_state *state,
 			for (i = 0; i < DRC_DIVISION_FRAMES; i++) {
 				int32_t sample = sample32_p[i];
 				int32_t s_abs = (sample == INT32_MIN) ? INT32_MAX : (sample < 0 ? -sample : sample);
-				if (s_abs > abs_input_array[i])
+				if (s_abs > abs_input_array[i]) {
 					abs_input_array[i] = s_abs;
+					if (s_abs > max_abs)
+						max_abs = s_abs;
+				}
 			}
 		}
+	}
+
+	if (max_abs < arm_sat_q31(((int64_t)p->linear_threshold) << 1)) {
+		if (detector_average < ONE_Q30) {
+			const int32_t rel_lshift = drc_get_lshift(30, 30, 30);
+
+			for (i = 0; i < DRC_DIVISION_FRAMES; i++) {
+				detector_average += drc_mult_lshift(ONE_Q30 - detector_average,
+								    p->sat_release_rate_at_neg_two_db,
+								    rel_lshift);
+			}
+			if (detector_average > ONE_Q30)
+				detector_average = ONE_Q30;
+		}
+		state->detector_average = detector_average;
+		return;
 	}
 
 	for (i = 0; i < DRC_DIVISION_FRAMES; i++) {
@@ -352,6 +488,46 @@ void drc_compress_output(struct drc_state *state,
 		/* Release mode */
 		c = state->compressor_gain;
 		r = state->envelope_rate;
+		if (c == ONE_Q30 && state->scaled_desired_gain == ONE_Q30 && r >= ONE_Q30) {
+			/* Unity compression state: apply static master gain without per-sample sin() */
+			lshift = drc_get_lshift(24, 31, 24);
+			total_gain = drc_mult_lshift(p->master_linear_gain, INT32_MAX, lshift);
+			if (nbyte == 2) {
+				lshift = drc_get_lshift(15, 24, 15);
+				for (ch = 0; ch < nch; ch++) {
+					sample16_p = (int16_t *)state->pre_delay_buffers[ch] +
+						     div_start;
+					for (inc = 0; inc < DRC_DIVISION_FRAMES; inc++) {
+						int32_t sample = drc_mult_lshift((int32_t)sample16_p[inc],
+										 total_gain, lshift);
+						sample16_p[inc] = arm_sat_s16(sample);
+					}
+				}
+#if CONFIG_FORMAT_FLOAT
+			} else if (nbyte == 0) {
+				float total_gain_f = (float)total_gain * (1.0f / 16777216.0f);
+
+				if (total_gain_f != 1.0f) {
+					for (ch = 0; ch < nch; ch++) {
+						float *sample_f = (float *)state->pre_delay_buffers[ch] +
+								  div_start;
+						for (inc = 0; inc < DRC_DIVISION_FRAMES; inc++)
+							sample_f[inc] *= total_gain_f;
+					}
+				}
+#endif
+			} else {
+				lshift = drc_get_lshift(31, 24, 31);
+				for (ch = 0; ch < nch; ch++) {
+					sample32_p = (int32_t *)state->pre_delay_buffers[ch] +
+						     div_start;
+					for (inc = 0; inc < DRC_DIVISION_FRAMES; inc++)
+						sample32_p[inc] = drc_mult_lshift(sample32_p[inc],
+										  total_gain, lshift);
+				}
+			}
+			return;
+		}
 		lshift = drc_get_lshift(30, 30, 30);
 		x[0] = drc_mult_lshift(c, r, lshift);
 		for (j = 1; j < 4; j++)

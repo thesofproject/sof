@@ -56,6 +56,107 @@ static void iir_df1_process_block_s16(struct iir_state_df1 *iir,
 		return;
 	}
 
+	const int nseries = iir->biquads_in_series;
+
+	if ((int)iir->biquads == nseries) {
+		int32_t scratch[EQ_IIR_BLOCK_SIZE];
+
+		while (nsamples > 0) {
+			const int chunk = MIN(nsamples, EQ_IIR_BLOCK_SIZE);
+			const int16_t *s_ptr = src;
+
+			for (int n = 0; n < chunk; n++) {
+				scratch[n] = ((int32_t)*s_ptr) << 16;
+				s_ptr += stride;
+			}
+
+			int c = 0;
+			int d = 0;
+			const int32_t *coefp = iir->coef;
+			int32_t *delay = iir->delay;
+
+			for (int b = 0; b < nseries; b++) {
+				const int32_t a2 = coefp[c];
+				const int32_t a1 = coefp[c + 1];
+				const int32_t b2 = coefp[c + 2];
+				const int32_t b1 = coefp[c + 3];
+				const int32_t b0 = coefp[c + 4];
+				const int32_t shift_param = coefp[c + 5];
+				const int32_t gain = coefp[c + 6];
+				const int shift_bits = 14 + shift_param;
+				const int64_t gain_round = 1LL << (shift_bits - 1);
+				const bool unity_gain = (gain == 16384 && shift_bits == 14);
+
+				int32_t y_n2 = delay[d];
+				int32_t y_n1 = delay[d + 1];
+				int32_t x_n2 = delay[d + 2];
+				int32_t x_n1 = delay[d + 3];
+
+				if (unity_gain) {
+					for (int n = 0; n < chunk; n++) {
+						const int32_t in = scratch[n];
+						int64_t acc = arm_smlal(0, a2, y_n2);
+
+						acc = arm_smlal(acc, a1, y_n1);
+						acc = arm_smlal(acc, b2, x_n2);
+						acc = arm_smlal(acc, b1, x_n1);
+						acc = arm_smlal(acc, b0, in);
+						acc = (acc + (1LL << 29)) >> 30;
+						const int32_t tmp = arm_sat_q31(acc);
+
+						y_n2 = y_n1;
+						y_n1 = tmp;
+						x_n2 = x_n1;
+						x_n1 = in;
+						scratch[n] = tmp;
+					}
+				} else {
+					for (int n = 0; n < chunk; n++) {
+						const int32_t in = scratch[n];
+						int64_t acc = arm_smlal(0, a2, y_n2);
+
+						acc = arm_smlal(acc, a1, y_n1);
+						acc = arm_smlal(acc, b2, x_n2);
+						acc = arm_smlal(acc, b1, x_n1);
+						acc = arm_smlal(acc, b0, in);
+						acc = (acc + (1LL << 29)) >> 30;
+						const int32_t tmp = arm_sat_q31(acc);
+
+						y_n2 = y_n1;
+						y_n1 = tmp;
+						x_n2 = x_n1;
+						x_n1 = in;
+
+						int64_t acc_gain = ((int64_t)gain) * tmp;
+
+						acc_gain = (acc_gain + gain_round) >> shift_bits;
+						scratch[n] = arm_sat_q31(acc_gain);
+					}
+				}
+
+				delay[d] = y_n2;
+				delay[d + 1] = y_n1;
+				delay[d + 2] = x_n2;
+				delay[d + 3] = x_n1;
+
+				c += SOF_EQ_IIR_NBIQUAD;
+				d += IIR_DF1_NUM_STATE;
+			}
+
+			int16_t *d_ptr = dst;
+
+			for (int n = 0; n < chunk; n++) {
+				*d_ptr = arm_sat_s16((int32_t)Q_SHIFT_RND(scratch[n], 31, 15));
+				d_ptr += stride;
+			}
+
+			src += chunk * stride;
+			dst += chunk * stride;
+			nsamples -= chunk;
+		}
+		return;
+	}
+
 	int32_t scratch_in[EQ_IIR_BLOCK_SIZE];
 	int32_t scratch[EQ_IIR_BLOCK_SIZE];
 	int64_t accum[EQ_IIR_BLOCK_SIZE];
@@ -69,8 +170,6 @@ static void iir_df1_process_block_s16(struct iir_state_df1 *iir,
 			scratch_in[n] = ((int32_t)*s_ptr) << 16;
 			s_ptr += stride;
 		}
-
-		const int nseries = iir->biquads_in_series;
 
 		int c = 0;
 		int d = 0;
