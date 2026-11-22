@@ -260,6 +260,21 @@ config SOF_VPAGE_MAX_ALLOCS
 	  this number allows for more simultaneous allocations, but also
 	  increases the memory overhead for tracking these allocations.
 
+config SOF_VPAGE_LLEXT_SIZE
+	hex "Physical L2 kept out of the vpage region for LLEXT modules"
+	depends on SOF_VREGIONS
+	default 0x0 if !LIBRARY_MANAGER
+	default 0x0 if BOARD_INTEL_ADSP_ACE40_NVLS
+	default LIBRARY_REGION_SIZE
+	help
+	  Size of the physical L2 memory that the virtual page allocator leaves
+	  free for the pages of loadable (LLEXT) modules. The library region
+	  itself is virtual address space at LIBRARY_BASE_ADDRESS, but its
+	  modules are backed by the same physical L2 pages as the vpages.
+	  Builds without the library manager need no reserve. NVL-S has no
+	  room for one in its 2MB of L2, there the loadable modules and the
+	  vpages share the L2 left after the image.
+
 config ZEPHYR_NATIVE_DRIVERS
 	bool "Use Zephyr native drivers"
 	help

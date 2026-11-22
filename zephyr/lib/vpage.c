@@ -348,9 +348,9 @@ __cold static int vpage_init(void)
 
 	k_mutex_init(&vpage_ctx.lock);
 
-	if (start + CONFIG_LIBRARY_REGION_SIZE + CONFIG_MM_DRV_PAGE_SIZE <= l2_end) {
-		/* virtual heap and library regions fit in L2, vpages get the rest */
-		end = l2_end - CONFIG_LIBRARY_REGION_SIZE;
+	if (start + CONFIG_SOF_VPAGE_LLEXT_SIZE + CONFIG_MM_DRV_PAGE_SIZE <= l2_end) {
+		/* virtual heap and LLEXT reserve fit in L2, vpages get the rest */
+		end = l2_end - CONFIG_SOF_VPAGE_LLEXT_SIZE;
 	} else {
 		/*
 		 * Small L2 (e.g. NVL-S): the virtual heap and library regions are only
