@@ -5,7 +5,6 @@ if(CONFIG_COMP_WEBRTC_NS2_STUB)
   sof_llext_build("webrtc_ns2"
     SOURCES ../webrtc_ns2.c
             ../webrtc_ns2-stub.c
-    LIB openmodules
   )
 else()
   include(${CMAKE_CURRENT_LIST_DIR}/../webrtc_ns2.cmake)
@@ -17,7 +16,6 @@ else()
     INCLUDES "${WEBRTC_NS2_INSTALL_DIR}/include"
     LIBS_PATH "${WEBRTC_NS2_INSTALL_DIR}/lib"
     LIBS rnnoise
-    LIB openmodules
   )
 
   add_dependencies(webrtc_ns2_llext_lib rnnoise_ext)

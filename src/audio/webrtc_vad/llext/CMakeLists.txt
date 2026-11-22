@@ -6,7 +6,6 @@ if(CONFIG_COMP_WEBRTC_VAD_STUB)
   sof_llext_build("webrtc_vad"
     SOURCES ../webrtc_vad.c
             ../webrtc_vad-stub.c
-    LIB openmodules
   )
 else()
   # Real VAD: cross-build libfvad and link it.
@@ -19,7 +18,6 @@ else()
     INCLUDES "${LIBFVAD_INSTALL_DIR}/include"
     LIBS_PATH "${LIBFVAD_INSTALL_DIR}/lib"
     LIBS fvad
-    LIB openmodules
   )
 
   # The archive must be built before the module compiles/links against it.

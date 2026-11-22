@@ -5,7 +5,6 @@ if(CONFIG_COMP_WEBRTC_AEC_STUB)
   sof_llext_build("webrtc_aec"
     SOURCES ../webrtc_aec.c
             ../webrtc_aec-stub.c
-    LIB openmodules
   )
 else()
   include(${CMAKE_CURRENT_LIST_DIR}/../webrtc_aec.cmake)
@@ -25,7 +24,6 @@ else()
              "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/include"
     LIBS_PATH "${WEBRTC_AECM_INSTALL_DIR}/lib"
     LIBS webrtc_aecm
-    LIB openmodules
   )
 
   add_dependencies(webrtc_aec_llext_lib webrtc_aecm_ext)
