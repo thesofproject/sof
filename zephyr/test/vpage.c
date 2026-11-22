@@ -11,7 +11,9 @@
 #include <sof/boot_test.h>
 #include <sof/kernel/lib/vpage.h>
 
+#include <zephyr/drivers/mm/system_mm.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/util.h>
 #include <zephyr/ztest.h>
 
 LOG_MODULE_DECLARE(sof_boot_test, CONFIG_SOF_LOG_LEVEL);
@@ -338,4 +340,74 @@ ZTEST(sof_boot, vpage_max_allocs)
 	p[0] = vpage_alloc(1);
 	zassert_not_null(p[0]);
 	vpage_free(p[0]);
+}
+
+/* Check that a range is inside the virtual page region */
+static void vpage_check_in_region(void *ptr, unsigned int pages)
+{
+	const struct sys_mm_drv_region *region = vpage_get_region();
+	uintptr_t start = POINTER_TO_UINT(region->addr);
+
+	zassert_true(IS_ALIGNED(ptr, VPAGE_TEST_PAGE_SIZE), "%p not page aligned", ptr);
+	zassert_true(POINTER_TO_UINT(ptr) >= start &&
+		     POINTER_TO_UINT(ptr) + pages * VPAGE_TEST_PAGE_SIZE <= start + region->size,
+		     "%p outside of the region", ptr);
+}
+
+/* Allocated pages are mapped, reserved pages aren't */
+ZTEST(sof_boot, vpage_reserve)
+{
+	unsigned int max = vpage_largest();
+	uintptr_t phys;
+	void *p;
+
+	zassert_not_null(vpage_get_region());
+	zassert_is_null(vpage_reserve(0));
+
+	p = vpage_alloc(1);
+	zassert_not_null(p);
+	vpage_check_in_region(p, 1);
+	zassert_ok(sys_mm_drv_page_phys_get(p, &phys), "allocated page %p not mapped", p);
+	vpage_free(p);
+
+	p = vpage_reserve(2);
+	zassert_not_null(p);
+	vpage_check_in_region(p, 2);
+	zassert_not_ok(sys_mm_drv_page_phys_get(p, &phys), "reserved page %p mapped", p);
+	zassert_not_ok(sys_mm_drv_page_phys_get((uint8_t *)p + VPAGE_TEST_PAGE_SIZE, &phys),
+		       "reserved page %p mapped", (uint8_t *)p + VPAGE_TEST_PAGE_SIZE);
+
+	/* neither the whole range nor a part of it can be reserved again */
+	zassert_not_ok(vpage_reserve_at(p, 2));
+	zassert_not_ok(vpage_reserve_at((uint8_t *)p + VPAGE_TEST_PAGE_SIZE, 1));
+
+	vpage_release(p);
+
+	/* the whole range is free again after release */
+	zassert_ok(vpage_reserve_at(p, 2));
+	vpage_release(p);
+
+	zassert_equal(vpage_largest(), max, "pages leaked after reserve/release");
+}
+
+/* vpage_reserve_at() only accepts page aligned ranges within the region */
+ZTEST(sof_boot, vpage_reserve_at_invalid)
+{
+	const struct sys_mm_drv_region *region = vpage_get_region();
+	uint8_t *start, *end;
+
+	zassert_not_null(region);
+
+	start = region->addr;
+	end = start + region->size;
+
+	zassert_ok(vpage_reserve_at(start, 0));
+	zassert_equal(vpage_reserve_at(start - VPAGE_TEST_PAGE_SIZE, 1), -EINVAL);
+	zassert_equal(vpage_reserve_at(end, 1), -EINVAL);
+	zassert_equal(vpage_reserve_at(end + VPAGE_TEST_PAGE_SIZE, 1), -EINVAL);
+	zassert_equal(vpage_reserve_at(end - VPAGE_TEST_PAGE_SIZE, 2), -EINVAL);
+
+	/* CHECKIF() asserts or skips the check in some configurations */
+	if (!IS_ENABLED(CONFIG_ASSERT_ON_ERRORS) && !IS_ENABLED(CONFIG_NO_RUNTIME_CHECKS))
+		zassert_equal(vpage_reserve_at(start + 1, 1), -EINVAL);
 }
