@@ -341,31 +341,23 @@ __cold static int vpage_init(void)
 	uintptr_t l2_end = L2_SRAM_BASE + L2_SRAM_SIZE;
 	uintptr_t start = adsp_mm_get_unused_l2_start_aligned() +
 		CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE;
-	uintptr_t end;
+	uintptr_t end = L2_VIRTUAL_SRAM_BASE + L2_VIRTUAL_SRAM_SIZE;
+	size_t phys_left;
 	size_t remaining_ram;
 
 	assert_can_be_cold();
 
 	k_mutex_init(&vpage_ctx.lock);
 
-	if (start + CONFIG_SOF_VPAGE_LLEXT_SIZE + CONFIG_MM_DRV_PAGE_SIZE <= l2_end) {
-		/* virtual heap and LLEXT reserve fit in L2, vpages get the rest */
-		end = l2_end - CONFIG_SOF_VPAGE_LLEXT_SIZE;
-	} else {
-		/*
-		 * Small L2 (e.g. NVL-S): the virtual heap and library regions are only
-		 * virtual address space backed on demand, so they need not fit in L2
-		 * together with the vpages. Use the virtual space up to the library
-		 * region (or the end of virtual memory) and cap it below by the
-		 * physical L2 left after the image, as vpages can never use more.
-		 * Using pages beyond physical L2 needs the Zephyr TLB driver to map
-		 * the uncached alias too, see
-		 * https://github.com/zephyrproject-rtos/zephyr/pull/122801
-		 */
-		end = L2_VIRTUAL_SRAM_BASE + L2_VIRTUAL_SRAM_SIZE;
-		if (IS_ENABLED(CONFIG_LIBRARY_MANAGER) && CONFIG_LIBRARY_BASE_ADDRESS < end)
-			end = CONFIG_LIBRARY_BASE_ADDRESS;
-	}
+	/*
+	 * The vpages are virtual address space after the image and the virtual
+	 * heap region, up to the library region (or the end of virtual memory).
+	 * Using pages beyond physical L2 needs the Zephyr TLB driver to map
+	 * the uncached alias too, see
+	 * https://github.com/zephyrproject-rtos/zephyr/pull/122801
+	 */
+	if (IS_ENABLED(CONFIG_LIBRARY_MANAGER) && CONFIG_LIBRARY_BASE_ADDRESS < end)
+		end = CONFIG_LIBRARY_BASE_ADDRESS;
 
 	/* the image or virtual heap may leave no room, don't let this underflow */
 	if (end < start + CONFIG_MM_DRV_PAGE_SIZE) {
@@ -374,13 +366,15 @@ __cold static int vpage_init(void)
 		return -ENOMEM;
 	}
 
-	remaining_ram = end - start;
-	if (end > l2_end) {
-		uintptr_t image_end = adsp_mm_get_unused_l2_start_aligned();
-		size_t phys_left = image_end < l2_end ? l2_end - image_end : 0;
-
-		remaining_ram = MIN(remaining_ram, phys_left);
-	}
+	/*
+	 * The vpages, the virtual heap and the loadable modules all map their
+	 * pages from the physical L2 left after the image. The vpages get what
+	 * is left after the virtual heap region and the LLEXT reserve.
+	 */
+	phys_left = start < l2_end ? l2_end - start : 0;
+	phys_left = phys_left > CONFIG_SOF_VPAGE_LLEXT_SIZE ?
+		    phys_left - CONFIG_SOF_VPAGE_LLEXT_SIZE : 0;
+	remaining_ram = MIN(end - start, phys_left);
 
 	/* revalidate, the physical cap can leave less than a page */
 	if (remaining_ram < CONFIG_MM_DRV_PAGE_SIZE) {
