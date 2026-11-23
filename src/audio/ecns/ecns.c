@@ -349,7 +349,7 @@ static void ecns_stream_init(struct ecns_stream *s, struct comp_buffer *buf)
 {
 	uint32_t sample_bytes;
 
-	s->buf = buf;
+	*s = (struct ecns_stream){ .buf = buf };
 	if (!buf)
 		return;
 
