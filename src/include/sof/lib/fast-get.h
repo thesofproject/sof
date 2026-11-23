@@ -53,6 +53,29 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void * const dram_ptr, s
  * @param[in,out] sram_ptr Pointer to staged SRAM memory to release.
  */
 void fast_put(struct mod_alloc_ctx *alloc, struct k_mem_domain *mdom, const void *sram_ptr);
+
+#if CONFIG_SOF_USERSPACE_LL
+/**
+ * @brief Get a read-only copy of DRAM data for an LL user thread.
+ *
+ * The copy is in the fast_get area of the LL memory region and shared by
+ * all users of the same data. Only threads in the LL memory domain may
+ * call this.
+ * @param[in] dram_ptr Pointer to source data resident in DRAM.
+ * @param[in] size Size in bytes to copy.
+ * @return Pointer to the cached alias of the copy, or NULL on failure,
+ *	   for example when the area is full.
+ */
+__syscall const void *fast_get_ll(const void *dram_ptr, size_t size);
+
+/**
+ * @brief Release a copy from fast_get_ll().
+ * @param[in] sram_ptr Pointer returned by fast_get_ll().
+ */
+__syscall void fast_put_ll(const void *sram_ptr);
+
+#include <zephyr/syscalls/fast-get.h>
+#endif
 #else
 static inline const void *fast_get(struct mod_alloc_ctx *alloc, const void * const dram_ptr,
 				   size_t size)
@@ -61,6 +84,11 @@ static inline const void *fast_get(struct mod_alloc_ctx *alloc, const void * con
 }
 static inline void fast_put(struct mod_alloc_ctx *alloc, struct k_mem_domain *mdom,
 			    const void *sram_ptr) {}
+static inline const void *fast_get_ll(const void *dram_ptr, size_t size)
+{
+	return dram_ptr;
+}
+static inline void fast_put_ll(const void *sram_ptr) {}
 #endif
 
 /** @}*/

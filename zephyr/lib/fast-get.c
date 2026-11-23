@@ -15,6 +15,9 @@
 #if CONFIG_SOF_USERSPACE_LL && CONFIG_SOF_VREGIONS
 #include <sof/kernel/lib/vpage.h>
 #endif
+#if CONFIG_SOF_USERSPACE_LL
+#include <sof/schedule/ll_schedule_domain.h>
+#endif
 #include <sof/objpool.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
@@ -30,6 +33,7 @@ struct sof_fast_get_entry {
 	void *sram_ptr;
 	size_t size;
 	unsigned int refcount;
+	bool ll;	/* a copy for LL threads, see fast_get_ll() */
 };
 
 struct sof_fast_get_data {
@@ -87,15 +91,17 @@ LOG_MODULE_REGISTER(fast_get, CONFIG_SOF_LOG_LEVEL);
 
 struct fast_get_find {
 	const void *ptr;
+	bool ll;
 	struct sof_fast_get_entry *entry;
 };
 
+/* finds an unused entry when find->ptr is NULL */
 static bool fast_get_find_entry(void *data, void *arg)
 {
 	struct sof_fast_get_entry *entry = data;
 	struct fast_get_find *find = arg;
 
-	if (find->ptr != entry->dram_ptr)
+	if (find->ptr != entry->dram_ptr || find->ll != entry->ll)
 		return false;
 
 	find->entry = entry;
@@ -389,7 +395,7 @@ static bool fast_put_find_entry(void *data, void *arg)
 	struct sof_fast_get_entry *entry = data;
 	struct fast_get_find *find = arg;
 
-	if (find->ptr != entry->sram_ptr)
+	if (find->ptr != entry->sram_ptr || find->ll != entry->ll)
 		return false;
 
 	find->entry = entry;
@@ -471,3 +477,146 @@ out:
 	fast_get_unlock(key);
 }
 EXPORT_SYMBOL(fast_put);
+
+#if CONFIG_SOF_USERSPACE_LL
+/*
+ * Copies for LL user threads, in the fast_get area of the LL memory region.
+ * The area is mapped read-only into the LL memory domain, so they cannot
+ * change a copy that other modules share. The entries and the allocator
+ * state are in kernel memory. Only the cached alias of the area is mapped,
+ * so the copy is written through the uncached alias, and the cached alias
+ * is invalidated on the calling core: the core may hold lines of an earlier
+ * copy at the same address. LL modules run on the core of their
+ * pipeline, where they also get their copies.
+ */
+const void *z_impl_fast_get_ll(const void *dram_ptr, size_t size)
+{
+	struct fast_get_find find = {
+		.ptr = dram_ptr,
+		.ll = true,
+	};
+	struct sof_fast_get_entry *entry;
+	const void *ret = NULL;
+	fast_get_key_t key;
+	void *copy;
+
+	key = fast_get_lock();
+
+	objpool_iterate(&fast_get_data.pool, fast_get_find_entry, &find);
+	entry = find.entry;
+	if (entry) {
+		if (entry->size != size) {
+			LOG_ERR("size %zu != %zu mismatch for %p", entry->size, size, dram_ptr);
+			goto out;
+		}
+
+		entry->refcount++;
+		ret = entry->sram_ptr;
+		goto out;
+	}
+
+	find = (struct fast_get_find){ .ptr = NULL };
+	objpool_iterate(&fast_get_data.pool, fast_get_find_entry, &find);
+	entry = find.entry;
+	if (!entry) {
+		entry = objpool_alloc(&fast_get_data.pool, sizeof(*entry),
+				      SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT);
+		if (!entry)
+			goto out;
+	}
+
+	copy = zephyr_ll_fg_alloc(size);
+	if (!copy)
+		goto out;
+
+	memcpy_s(copy, size, dram_ptr, size);
+
+	entry->dram_ptr = dram_ptr;
+	entry->size = size;
+	entry->sram_ptr = (__sparse_force void *)sys_cache_cached_ptr_get(copy);
+	entry->refcount = 1;
+	entry->ll = true;
+	ret = entry->sram_ptr;
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+	fast_get_active_entries++;
+	fast_get_live_bytes += (uint32_t)size;
+	if (fast_get_live_bytes > fast_get_peak_bytes)
+		fast_get_peak_bytes = fast_get_live_bytes;
+#endif
+out:
+	if (ret)
+		sys_cache_data_invd_range((void *)ret, size);
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+	fast_get_total_calls++;
+	if (!ret)
+		fast_get_fail_count++;
+#endif
+	fast_get_unlock(key);
+	LOG_DBG("get %p, %p, size %zu, refcnt %u", dram_ptr, ret, size,
+		ret ? entry->refcount : 0);
+
+	return ret;
+}
+
+void z_impl_fast_put_ll(const void *sram_ptr)
+{
+	struct fast_get_find find = {
+		.ptr = sram_ptr,
+		.ll = true,
+	};
+	struct sof_fast_get_entry *entry;
+	fast_get_key_t key;
+
+	key = fast_get_lock();
+
+	objpool_iterate(&fast_get_data.pool, fast_put_find_entry, &find);
+	entry = find.entry;
+	if (!entry) {
+		LOG_ERR("Put called to unknown address %p", sram_ptr);
+		goto out;
+	}
+
+	if (--entry->refcount)
+		goto out;
+
+#ifdef CONFIG_SOF_TELEMETRY_MEMORY
+	if (fast_get_active_entries > 0)
+		fast_get_active_entries--;
+	if (fast_get_live_bytes >= (uint32_t)entry->size)
+		fast_get_live_bytes -= (uint32_t)entry->size;
+	else
+		fast_get_live_bytes = 0;
+#endif
+	zephyr_ll_fg_free(entry->sram_ptr, entry->size);
+	memset(entry, 0, sizeof(*entry));
+out:
+	fast_get_unlock(key);
+}
+
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+#include <sof/userspace/syscall_caller.h>
+
+/*
+ * Only the LL and IPC user threads may use the fast_get area: the copies
+ * are read-only to the LL memory domain only, and the entries count the
+ * users of the LL modules only.
+ */
+const void *z_vrfy_fast_get_ll(const void *dram_ptr, size_t size)
+{
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+	K_OOPS(K_SYSCALL_MEMORY_READ(dram_ptr, size));
+
+	return z_impl_fast_get_ll(dram_ptr, size);
+}
+#include <zephyr/syscalls/fast_get_ll_mrsh.c>
+
+void z_vrfy_fast_put_ll(const void *sram_ptr)
+{
+	SOF_SYSCALL_CALLER_CHECK(SOF_SYSUSER_INFRA);
+
+	z_impl_fast_put_ll(sram_ptr);
+}
+#include <zephyr/syscalls/fast_put_ll_mrsh.c>
+#endif /* CONFIG_USERSPACE */
+#endif /* CONFIG_SOF_USERSPACE_LL */
