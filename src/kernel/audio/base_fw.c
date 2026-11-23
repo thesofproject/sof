@@ -3,6 +3,7 @@
 // Copyright(c) 2024 Intel Corporation.
 //
 
+#include <errno.h>
 #include <stdint.h>
 
 #include <sof/audio/component.h>
@@ -20,6 +21,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
+#include <sof/math/numbers.h>
 #include <sof/kernel/platform.h>
 #include <sof/lib_manager.h>
 #include <rtos/clk.h>
@@ -739,8 +741,15 @@ __cold static int extended_global_perf_data_get(uint32_t *data_off_size, char *d
 #ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 	int ret;
 	struct extended_global_perf_data *perf_data = (struct extended_global_perf_data *)data;
+	/* data_off_size is in/out: the host max reply length comes in, the
+	 * vendor config path sets it to what is left of the reply buffer, and
+	 * neither may exceed the IPC buffer data points into.
+	 */
+	uint32_t size = MIN(*data_off_size, SOF_IPC_MSG_MAX_SIZE);
 
-	ret = get_extended_performance_data(perf_data);
+	ret = get_extended_performance_data(perf_data, size);
+	if (ret == -ENOBUFS)
+		return IPC4_OUT_OF_MEMORY;
 	if (ret < 0)
 		return IPC4_ERROR_INVALID_PARAM;
 	*data_off_size = sizeof(*perf_data)

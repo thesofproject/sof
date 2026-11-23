@@ -121,9 +121,12 @@ int get_performance_data(struct global_perf_data * const global_perf_data);
  * \brief Retrieve extended global performance telemetry data with per-core breakdown.
  * \ingroup telemetry_perf_api
  * @param[out] ext_global_perf_data Destination structure to populate.
- * @return 0 on success, or negative error code on failure.
+ * @param[in] size Size of the destination buffer in bytes.
+ * @return 0 on success, -ENOBUFS when the report does not fit in size bytes, or another
+ *         negative error code on failure.
  */
-int get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data);
+int get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data,
+				  uint32_t size);
 
 /**
  * \brief Reset all performance measurement counters across all components.
@@ -176,7 +179,8 @@ static inline int get_performance_data(struct global_perf_data * const global_pe
 }
 
 static inline
-int get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data)
+int get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data,
+				  uint32_t size)
 {
 	return 0;
 }

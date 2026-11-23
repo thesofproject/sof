@@ -400,7 +400,8 @@ __cold int get_performance_data(struct global_perf_data * const global_perf_data
 }
 
 __cold int
-get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data)
+get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data,
+			      uint32_t size)
 {
 	assert_can_be_cold();
 
@@ -412,6 +413,20 @@ get_extended_performance_data(struct extended_global_perf_data * const ext_globa
 	size_t slots_count;
 	size_t slot_idx = 0;
 	uint64_t total_dsp_cycles[CONFIG_MAX_CORE_COUNT];
+
+	/* One item per enabled core plus one per occupied perf slot. Refuse the
+	 * request when they do not all fit rather than return a report with
+	 * items silently dropped, the host cannot tell a short report apart
+	 * from a complete one.
+	 */
+	slots_count = popcount(cpu_enabled_cores()) +
+		      perf_bitmap_get_occupied(&performance_data_bitmap);
+	if (size < sizeof(*ext_global_perf_data) ||
+	    slots_count > (size - sizeof(*ext_global_perf_data)) /
+			  sizeof(struct ext_perf_data_item)) {
+		tr_err(&ipc_tr, "%zu perf items do not fit in %u bytes", slots_count, size);
+		return -ENOBUFS;
+	}
 
 	/* TODO
 	 * Setting temporary values here.
