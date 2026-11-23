@@ -489,7 +489,13 @@ const void *z_impl_mod_fast_get(struct processing_module *mod, const void * cons
 		return NULL;
 	}
 
-	ptr = fast_get(res->alloc, dram_ptr, size);
+#if CONFIG_SOF_USERSPACE_LL
+	/* only LL modules use their resources in user mode, see mod_res_user() */
+	if (k_is_user_context())
+		ptr = fast_get_ll(dram_ptr, size);
+	else
+#endif
+		ptr = fast_get(res->alloc, dram_ptr, size);
 	if (!ptr) {
 		container_put(mod, container);
 		mod_res_unlock();
@@ -525,6 +531,12 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 #endif
 #if CONFIG_FAST_GET
 	case MOD_RES_FAST_GET:
+#if CONFIG_SOF_USERSPACE_LL
+		if (k_is_user_context()) {
+			fast_put_ll(container->sram_ptr);
+			return 0;
+		}
+#endif
 #if CONFIG_USERSPACE
 		mdom = mod->mdom;
 #else
@@ -678,9 +690,9 @@ EXPORT_SYMBOL(mod_data_blob_set);
 #if CONFIG_FAST_GET
 #if CONFIG_SOF_USERSPACE_LL
 /*
- * fast_get() keeps its state in kernel memory, so LL modules in user mode
- * get a private copy in the module memory instead of a shared one. The
- * copy is a heap resource, so mod_fast_put() frees it with mod_free().
+ * When the fast_get area of the LL memory region is full, LL modules get a
+ * private copy in the module memory instead of a shared one. The copy is a
+ * heap resource, so mod_fast_put() frees it with mod_free().
  */
 static const void *mod_fast_get_copy(struct processing_module *mod,
 				     const void * const dram_ptr, size_t size)
@@ -701,8 +713,11 @@ const void *mod_fast_get(struct processing_module *mod, const void * const dram_
 			 size_t size)
 {
 #if CONFIG_SOF_USERSPACE_LL
-	if (mod_res_user(mod))
-		return mod_fast_get_copy(mod, dram_ptr, size);
+	if (mod_res_user(mod)) {
+		const void *ptr = z_impl_mod_fast_get(mod, dram_ptr, size);
+
+		return ptr ? ptr : mod_fast_get_copy(mod, dram_ptr, size);
+	}
 #endif
 
 	return mod_dp_fast_get(mod, dram_ptr, size);
