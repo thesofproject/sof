@@ -18,25 +18,12 @@ if(zephyr) ###  Zephyr ###
 zephyr_library_sources(
 	${base_files}
 	zephyr_domain.c
+	zephyr_ll.c
 )
 
-if (CONFIG_SOC_ACP_6_0)
-	# Zephyr DMA domain should only be used with zephyr_ll
-	if (CONFIG_DMA_DOMAIN)
-		zephyr_library_sources(
-			zephyr_ll.c
-			zephyr_dma_domain.c
-		)
-	else()
-		zephyr_library_sources(
-			ll_schedule_xtos.c
-		)
-	endif()
-else()
-	zephyr_library_sources(
-		zephyr_ll.c
-	)
-endif()
+zephyr_library_sources_ifdef(CONFIG_DMA_DOMAIN
+	zephyr_dma_domain.c
+)
 
 if (CONFIG_SOF_USERSPACE_APPLICATION)
 	zephyr_library_sources_ifdef(CONFIG_ZEPHYR_DP_SCHEDULER

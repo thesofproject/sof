@@ -20,8 +20,6 @@
 #define NOTIFIER_TARGET_CORE_ALL_MASK	0xFFFFFFFF
 
 enum notify_id {
-	NOTIFIER_ID_CPU_FREQ = 0,		/* struct clock_notify_data * */
-	NOTIFIER_ID_SSP_FREQ,			/* struct clock_notify_data * */
 	NOTIFIER_ID_KPB_CLIENT_EVT,		/* struct kpb_event_data * */
 	NOTIFIER_ID_DMA_DOMAIN_CHANGE,		/* struct dma_chan_data * */
 	NOTIFIER_ID_DMA_COPY,			/* struct dma_cb_data* */
@@ -43,13 +41,6 @@ struct notify_data {
 	uint32_t data_size;
 	void *data;
 };
-
-#ifdef CLK_SSP
-#define NOTIFIER_CLK_CHANGE_ID(clk) \
-	((clk) == CLK_SSP ? NOTIFIER_ID_SSP_FREQ : NOTIFIER_ID_CPU_FREQ)
-#else
-#define NOTIFIER_CLK_CHANGE_ID(clk) NOTIFIER_ID_CPU_FREQ
-#endif
 
 struct notify **arch_notify_get(void);
 

@@ -10,7 +10,6 @@
 #include <rtos/timer.h>
 #include <rtos/clk.h>
 #include <sof/lib/memory.h>
-#include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/kernel/platform.h>
 #include <rtos/spinlock.h>
