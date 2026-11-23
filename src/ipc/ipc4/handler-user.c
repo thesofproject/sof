@@ -783,7 +783,11 @@ __cold int ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 			uint32_t data_off_size_local;
 			struct sof_tlv *output_tlv = (struct sof_tlv *)(data_out + produced_data);
 
-			if (produced_data + input_tl[i].max_length > MAILBOX_DSPBOX_SIZE) {
+			/* the TLV header is written in front of the value, so it
+			 * must fit in the DSPBOX together with max_length
+			 */
+			if (produced_data + sizeof(*output_tlv) + input_tl[i].max_length >
+			    MAILBOX_DSPBOX_SIZE) {
 				tr_err(&ipc_tr, "error: response payload bigger than DSPBOX size");
 				return IPC4_FAILURE;
 			}
@@ -818,7 +822,9 @@ __cold int ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 		struct sof_tlv *tl_header;
 
 		if (init_block) {
-			*data_off_size = input_tl->max_length;
+			/* the first block carries the TL header in front of the value */
+			*data_off_size = MIN(input_tl->max_length,
+					     MAILBOX_DSPBOX_SIZE - sizeof(*tl_header));
 			output_buffer = data_out + sizeof(*tl_header);
 		} else {
 			output_buffer = data_out;
