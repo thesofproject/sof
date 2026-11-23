@@ -21,6 +21,7 @@
 #include <ipc/stream.h>
 #include <ipc4/base-config.h>
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -90,21 +91,20 @@ static struct comp_buffer *create_test_buffer(struct comp_dev *dev, bool source,
 }
 
 /**
- * @brief Create an aria instance from an IPC4 init payload and prepare it.
+ * @brief Create an aria instance from an IPC4 init payload and connect its buffers.
  * @param channels Channels count in the base config.
  * @param ibs Input buffer size in bytes, sets the 1 ms chunk.
- * @param source_frames Source buffer size in frames.
- * @param sink_frames Sink buffer size in frames.
+ * @param source_bytes Source buffer size in bytes.
+ * @param sink_bytes Sink buffer size in bytes.
  * @param attenuation Aria attenuation parameter.
- * @return Prepared fixture.
+ * @return Fixture, not yet prepared.
  */
 static struct aria_fixture *create_fixture(unsigned int channels, uint32_t ibs,
-					   size_t source_frames, size_t sink_frames,
+					   size_t source_bytes, size_t sink_bytes,
 					   uint32_t attenuation)
 {
 	const struct sof_uuid uuid = SOF_REG_UUID(aria);
 	const struct comp_driver *driver = comp_driver_find(&uuid, SOF_COMP_MODULE_ADAPTER);
-	const size_t frame_bytes = channels * sizeof(int32_t);
 	struct ipc4_aria_module_cfg cfg = {
 		.base_cfg =
 			{
@@ -135,27 +135,31 @@ static struct aria_fixture *create_fixture(unsigned int channels, uint32_t ibs,
 		.ipc_config_size = spec.size,
 	};
 	struct aria_fixture *fixture;
-	struct processing_module *mod;
-	const struct module_interface *ops;
 
 	zassert_not_null(driver, "Aria driver not registered");
 	fixture = calloc(1, sizeof(*fixture));
 	zassert_not_null(fixture);
 	fixture->dev = driver->ops.create(driver, &ipc_cfg, &spec);
 	zassert_not_null(fixture->dev, "Failed to create aria");
-	mod = comp_mod(fixture->dev);
 
-	fixture->source =
-		create_test_buffer(fixture->dev, true, source_frames * frame_bytes, channels);
-	fixture->sink =
-		create_test_buffer(fixture->dev, false, sink_frames * frame_bytes, channels);
+	fixture->source = create_test_buffer(fixture->dev, true, source_bytes, channels);
+	fixture->sink = create_test_buffer(fixture->dev, false, sink_bytes, channels);
 	fixture->sources[0] = audio_buffer_get_source(&fixture->source->audio_buffer);
 	fixture->sinks[0] = audio_buffer_get_sink(&fixture->sink->audio_buffer);
 
-	ops = fixture->dev->drv->adapter_ops;
-	zassert_ok(ops->prepare(mod, fixture->sources, 1, fixture->sinks, 1));
-
 	return fixture;
+}
+
+/**
+ * @brief Prepare the aria instance of a fixture with its connected buffers.
+ * @param fixture Fixture to prepare.
+ * @return Status from the aria prepare handler.
+ */
+static int prepare_fixture(struct aria_fixture *fixture)
+{
+	const struct module_interface *ops = fixture->dev->drv->adapter_ops;
+
+	return ops->prepare(comp_mod(fixture->dev), fixture->sources, 1, fixture->sinks, 1);
 }
 
 /**
@@ -186,13 +190,16 @@ static void run_aria(unsigned int channels, size_t chunk_frames, size_t source_f
 {
 	const size_t frame_bytes = channels * sizeof(int32_t);
 	struct aria_fixture *fixture = create_fixture(channels, chunk_frames * frame_bytes,
-						      source_frames, sink_frames, attenuation);
+						      source_frames * frame_bytes,
+						      sink_frames * frame_bytes, attenuation);
 	struct processing_module *mod = comp_mod(fixture->dev);
 	const struct module_interface *ops = fixture->dev->drv->adapter_ops;
 	struct audio_stream *source = &fixture->source->stream;
 	struct audio_stream *sink = &fixture->sink->stream;
 	size_t in_frame = 0;
 	size_t out_frame = 0;
+
+	zassert_ok(prepare_fixture(fixture));
 
 	for (int period = 0; period < TEST_PERIODS; period++) {
 		size_t frames = period ? chunk_frames : first_frames;
@@ -282,6 +289,27 @@ ZTEST(aria_suite, test_odd_samples_sink_wrap_before_ring_wrap)
 ZTEST(aria_suite, test_bypass_sink_wrap_before_ring_wrap)
 {
 	run_aria(3, 47, 94, 70, 20, 0);
+}
+
+/*
+ * The get_data paths write whole frames up to the sink buffer end, so a
+ * source or sink buffer that is not a whole number of frames is rejected at
+ * prepare instead of overrunning the sink on the wrap.
+ */
+ZTEST(aria_suite, test_rejects_partial_frame_buffers)
+{
+	const size_t frame_bytes = 3 * sizeof(int32_t);
+	struct aria_fixture *fixture;
+
+	fixture = create_fixture(3, 47 * frame_bytes, 94 * frame_bytes,
+				 70 * frame_bytes + sizeof(int32_t), 1);
+	zassert_equal(prepare_fixture(fixture), -EINVAL);
+	destroy_fixture(fixture);
+
+	fixture = create_fixture(3, 47 * frame_bytes, 94 * frame_bytes + sizeof(int32_t),
+				 70 * frame_bytes, 1);
+	zassert_equal(prepare_fixture(fixture), -EINVAL);
+	destroy_fixture(fixture);
 }
 
 ZTEST_SUITE(aria_suite, NULL, aria_suite_setup, NULL, NULL, NULL);
