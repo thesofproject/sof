@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2026 Intel Corporation.
+#
+# KPB draining request unit tests for Ztest framework
+
+tests:
+  sof.unit.kpb_request:
+    tags: unit
+    platform_allow: native_sim
+    integration_platforms:
+      - native_sim
+    build_only: false

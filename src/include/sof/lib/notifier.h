@@ -22,7 +22,6 @@
 enum notify_id {
 	NOTIFIER_ID_CPU_FREQ = 0,		/* struct clock_notify_data * */
 	NOTIFIER_ID_SSP_FREQ,			/* struct clock_notify_data * */
-	NOTIFIER_ID_KPB_CLIENT_EVT,		/* struct kpb_event_data * */
 	NOTIFIER_ID_DMA_DOMAIN_CHANGE,		/* struct dma_chan_data * */
 	NOTIFIER_ID_DMA_COPY,			/* struct dma_cb_data* */
 	NOTIFIER_ID_DMA_IRQ,			/* struct dma_chan_data * */

@@ -44,8 +44,6 @@
 #include <sof/lib/ams.h>
 #include <sof/lib/ams_msg.h>
 #include <ipc4/ams_helpers.h>
-#else
-#include <sof/lib/notifier.h>
 #endif
 
 #define ACTIVATION_DEFAULT_SHIFT 3
@@ -105,8 +103,6 @@ struct comp_data {
 
 #if CONFIG_AMS
 	uint32_t kpd_uuid_id;
-#else
-	struct kpb_event_data event_data;
 #endif /* CONFIG_AMS */
 };
 
@@ -178,22 +174,16 @@ static int ams_notify_kpb(const struct comp_dev *dev)
 static void notify_kpb(const struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	/* time in milliseconds */
+	uint32_t drain_req = cd->drain_req ? cd->drain_req : cd->config.drain_req;
+	int ret;
 
 	comp_info(dev, "preamble: %u", cd->detect_preamble);
 
-	cd->client_data.r_ptr = NULL;
-	cd->client_data.sink = NULL;
-	cd->client_data.id = 0; /**< TODO: acquire proper id from kpb */
-	/* time in milliseconds */
-	cd->client_data.drain_req = (cd->drain_req != 0) ?
-					 cd->drain_req :
-					 cd->config.drain_req;
-	cd->event_data.event_id = KPB_EVENT_BEGIN_DRAINING;
-	cd->event_data.client_data = &cd->client_data;
-
-	notifier_event(dev, NOTIFIER_ID_KPB_CLIENT_EVT,
-		       NOTIFIER_TARGET_CORE_ALL_MASK, &cd->event_data,
-		       sizeof(cd->event_data));
+	/* TODO: acquire proper client id from kpb */
+	ret = kpb_request_draining(0, drain_req);
+	if (ret < 0)
+		comp_err(dev, "KPB draining request failed: %d", ret);
 }
 #endif /* CONFIG_AMS */
 
