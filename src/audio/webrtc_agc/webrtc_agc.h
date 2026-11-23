@@ -43,7 +43,7 @@ struct webrtc_agc_backend {
 	int (*prepare)(struct processing_module *mod);
 	int (*process)(struct processing_module *mod,
 		       const void *src, void *dst, int frames,
-		       enum sof_ipc_frame fmt);
+		       enum sof_ipc_frame in_fmt, enum sof_ipc_frame out_fmt);
 	int (*reset)(struct processing_module *mod);
 	int (*free)(struct processing_module *mod);
 };

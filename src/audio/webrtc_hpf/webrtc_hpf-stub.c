@@ -18,12 +18,31 @@ static int webrtc_hpf_stub_prepare(struct processing_module *mod)
 
 static int webrtc_hpf_stub_process(struct processing_module *mod,
 				   const void *src, void *dst, int frames,
-				   enum sof_ipc_frame fmt)
+				   enum sof_ipc_frame in_fmt,
+				   enum sof_ipc_frame out_fmt)
 {
 	struct webrtc_hpf_comp_data *cd = module_get_private_data(mod);
-	size_t sample_bytes = (fmt == SOF_IPC_FRAME_S16_LE) ? sizeof(int16_t) : sizeof(int32_t);
+	size_t samples = (size_t)frames * cd->channels;
+	size_t i;
 
-	memcpy(dst, src, (size_t)frames * cd->channels * sample_bytes);
+	if (in_fmt == out_fmt) {
+		size_t sample_bytes = (in_fmt == SOF_IPC_FRAME_S16_LE) ?
+				      sizeof(int16_t) : sizeof(int32_t);
+
+		memcpy(dst, src, samples * sample_bytes);
+	} else if (in_fmt == SOF_IPC_FRAME_S32_LE) {
+		const int32_t *s = src;
+		int16_t *d = dst;
+
+		for (i = 0; i < samples; i++)
+			d[i] = (int16_t)(s[i] >> 16);
+	} else {
+		const int16_t *s = src;
+		int32_t *d = dst;
+
+		for (i = 0; i < samples; i++)
+			d[i] = ((int32_t)s[i]) << 16;
+	}
 	return 0;
 }
 

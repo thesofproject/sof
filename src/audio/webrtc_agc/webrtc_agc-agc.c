@@ -218,7 +218,8 @@ static void webrtc_agc_process_multiband(struct webrtc_agc_comp_data *cd,
 
 static int webrtc_agc_real_process(struct processing_module *mod,
 				   const void *src, void *dst, int frames,
-				   enum sof_ipc_frame fmt)
+				   enum sof_ipc_frame in_fmt,
+				   enum sof_ipc_frame out_fmt)
 {
 	struct webrtc_agc_comp_data *cd = module_get_private_data(mod);
 	size_t ch_count = cd->channels;
@@ -249,7 +250,7 @@ static int webrtc_agc_real_process(struct processing_module *mod,
 		size_t chunk = (rem < space) ? rem : space;
 
 		/* 1. Drain chunk of processed frames from out_fifo to dst */
-		if (fmt == SOF_IPC_FRAME_S16_LE) {
+		if (out_fmt == SOF_IPC_FRAME_S16_LE) {
 			int16_t *d = (int16_t *)dst + offset * ch_count;
 
 			for (i = 0; i < chunk; i++) {
@@ -270,7 +271,7 @@ static int webrtc_agc_real_process(struct processing_module *mod,
 		cd->out_fifo_rd += chunk;
 
 		/* 2. Enqueue chunk of input frames into planar in_fifo */
-		if (fmt == SOF_IPC_FRAME_S16_LE) {
+		if (in_fmt == SOF_IPC_FRAME_S16_LE) {
 			const int16_t *s = (const int16_t *)src + offset * ch_count;
 
 			for (i = 0; i < chunk; i++) {

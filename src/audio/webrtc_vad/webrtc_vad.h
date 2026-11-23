@@ -79,7 +79,10 @@ struct webrtc_vad_comp_data {
 	int	 sample_rate;
 	int	 channels;
 	int	 frame_samples;
-	int	 sample_bytes;
+	enum sof_ipc_frame in_fmt;
+	enum sof_ipc_frame out_fmt;
+	int	 in_sample_bytes;
+	int	 out_sample_bytes;
 	int16_t	 accumulator[WEBRTC_VAD_MAX_FRAME_SAMPLES];
 	int	 accum_samples;
 	int	 last_decision;

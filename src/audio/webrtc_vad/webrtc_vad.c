@@ -86,13 +86,26 @@ __cold static int webrtc_vad_init(struct processing_module *mod)
  *
  * Return: 0 on success, negative errno on failure.
  */
+static int webrtc_vad_sample_bytes(enum sof_ipc_frame fmt)
+{
+	switch (fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		return sizeof(int16_t);
+	case SOF_IPC_FRAME_S32_LE:
+		return sizeof(int32_t);
+	default:
+		return -EINVAL;
+	}
+}
+
 __cold static int webrtc_vad_prepare(struct processing_module *mod,
 				     struct sof_source **sources, int num_of_sources,
 				     struct sof_sink **sinks, int num_of_sinks)
 {
 	struct webrtc_vad_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	int rate, fmt, ret;
+	enum sof_ipc_frame in_fmt, out_fmt;
+	int rate, in_sb, out_sb, ret;
 	int frame_ms = CONFIG_WEBRTC_VAD_FRAME_MS;
 
 	assert_can_be_cold();
@@ -108,9 +121,16 @@ __cold static int webrtc_vad_prepare(struct processing_module *mod,
 	}
 
 	rate = source_get_rate(sources[0]);
-	fmt  = source_get_frm_fmt(sources[0]);
+	in_fmt = source_get_frm_fmt(sources[0]);
+	out_fmt = sink_get_frm_fmt(sinks[0]);
 	cd->channels = source_get_channels(sources[0]);
 	cd->sample_rate = rate;
+
+	if (cd->channels != sink_get_channels(sinks[0]) ||
+	    rate != sink_get_rate(sinks[0])) {
+		comp_err(dev, "webrtc_vad: source/sink mismatch");
+		return -EINVAL;
+	}
 
 	/* libfvad accepts 8/16/32/48 kHz. */
 	if (rate != 8000 && rate != 16000 && rate != 32000 && rate != 48000) {
@@ -118,17 +138,17 @@ __cold static int webrtc_vad_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
-	switch (fmt) {
-	case SOF_IPC_FRAME_S16_LE:
-		cd->sample_bytes = sizeof(int16_t);
-		break;
-	case SOF_IPC_FRAME_S32_LE:
-		cd->sample_bytes = sizeof(int32_t);
-		break;
-	default:
-		comp_err(dev, "webrtc_vad: unsupported frame format %d", fmt);
+	in_sb = webrtc_vad_sample_bytes(in_fmt);
+	out_sb = webrtc_vad_sample_bytes(out_fmt);
+	if (in_sb < 0 || out_sb < 0) {
+		comp_err(dev, "webrtc_vad: unsupported format in=%d out=%d",
+			 in_fmt, out_fmt);
 		return -EINVAL;
 	}
+	cd->in_fmt = in_fmt;
+	cd->out_fmt = out_fmt;
+	cd->in_sample_bytes = in_sb;
+	cd->out_sample_bytes = out_sb;
 
 	/* Number of samples per VAD frame (mono). */
 	cd->frame_samples = (rate * frame_ms) / 1000;
@@ -137,8 +157,8 @@ __cold static int webrtc_vad_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
-	comp_info(dev, "webrtc_vad: rate=%d ch=%d frame_ms=%d frame_samples=%d",
-		  rate, cd->channels, frame_ms, cd->frame_samples);
+	comp_info(dev, "webrtc_vad: rate=%d ch=%d in_fmt=%d out_fmt=%d frame_ms=%d frame_samples=%d",
+		  rate, cd->channels, in_fmt, out_fmt, frame_ms, cd->frame_samples);
 
 	if (cd->backend->configure) {
 		ret = cd->backend->configure(mod, rate, CONFIG_WEBRTC_VAD_MODE);
@@ -172,7 +192,7 @@ static void webrtc_vad_accumulate(struct webrtc_vad_comp_data *cd,
 	for (i = 0; i < n_frames && cd->accum_samples < WEBRTC_VAD_MAX_FRAME_SAMPLES; i++) {
 		int16_t s;
 
-		if (cd->sample_bytes == sizeof(int16_t)) {
+		if (cd->in_sample_bytes == sizeof(int16_t)) {
 			const int16_t *p = raw;
 
 			s = p[i * ch]; /* channel 0 */
@@ -244,11 +264,12 @@ static int webrtc_vad_process(struct processing_module *mod,
 	struct webrtc_vad_comp_data *cd = module_get_private_data(mod);
 	struct sof_source *src = sources[0];
 	struct sof_sink *snk = sinks[0];
-	size_t frame_bytes = source_get_frame_bytes(src);
+	size_t in_frame_bytes = source_get_frame_bytes(src);
+	size_t out_frame_bytes = sink_get_frame_bytes(snk);
 	int avail = (int)source_get_data_frames_available(src);
 	int free  = (int)sink_get_free_frames(snk);
 	int n = MIN(avail, free);
-	size_t nbytes;
+	size_t in_nbytes, out_nbytes;
 	struct cir_buf_source source_buf;
 	struct cir_buf_sink sink_buf;
 	size_t src_bytes, snk_bytes;
@@ -258,16 +279,17 @@ static int webrtc_vad_process(struct processing_module *mod,
 	if (n <= 0)
 		return 0;
 
-	nbytes = (size_t)n * frame_bytes;
+	in_nbytes = (size_t)n * in_frame_bytes;
+	out_nbytes = (size_t)n * out_frame_bytes;
 
 	/* ---- Obtain source data pointer (read-only, zero-copy) ---- */
-	ret = source_get_data(src, nbytes, &source_buf.ptr, &source_buf.buf_start, &src_bytes);
+	ret = source_get_data(src, in_nbytes, &source_buf.ptr, &source_buf.buf_start, &src_bytes);
 	if (ret)
 		return ret;
 	source_buf.buf_end = (const char *)source_buf.buf_start + src_bytes;
 
 	/* ---- Obtain sink write pointer ---- */
-	ret = sink_get_buffer(snk, nbytes, &sink_buf.ptr, &sink_buf.buf_start, &snk_bytes);
+	ret = sink_get_buffer(snk, out_nbytes, &sink_buf.ptr, &sink_buf.buf_start, &snk_bytes);
 	if (ret) {
 		source_release_data(src, 0); /* release without consuming */
 		return ret;
@@ -277,27 +299,47 @@ static int webrtc_vad_process(struct processing_module *mod,
 	remaining_frames = n;
 	while (remaining_frames) {
 		size_t fmax_src = circ_buf_frames_without_wrap(source_buf.ptr, source_buf.buf_end,
-							      cd->sample_bytes, cd->channels);
+							      cd->in_sample_bytes, cd->channels);
 		size_t fmax_snk = circ_buf_frames_without_wrap(sink_buf.ptr, sink_buf.buf_end,
-							      cd->sample_bytes, cd->channels);
+							      cd->out_sample_bytes, cd->channels);
 		size_t f = MIN(remaining_frames, MIN(fmax_src, fmax_snk));
 
-		/* ---- Pass-through copy ---- */
-		memcpy_s(sink_buf.ptr, f * frame_bytes, source_buf.ptr, f * frame_bytes);
+		/* ---- Pass-through copy / format conversion ---- */
+		if (cd->in_fmt == cd->out_fmt) {
+			memcpy_s(sink_buf.ptr, f * out_frame_bytes,
+				 source_buf.ptr, f * in_frame_bytes);
+		} else {
+			size_t samples = f * cd->channels;
+			size_t i;
+
+			if (cd->in_fmt == SOF_IPC_FRAME_S32_LE) {
+				const int32_t *s = source_buf.ptr;
+				int16_t *d = sink_buf.ptr;
+
+				for (i = 0; i < samples; i++)
+					d[i] = (int16_t)(s[i] >> 16);
+			} else {
+				const int16_t *s = source_buf.ptr;
+				int32_t *d = sink_buf.ptr;
+
+				for (i = 0; i < samples; i++)
+					d[i] = ((int32_t)s[i]) << 16;
+			}
+		}
 
 		/* ---- Accumulate channel-0 samples for VAD ---- */
 		webrtc_vad_accumulate(cd, source_buf.ptr, (int)f);
 
 		remaining_frames -= f;
-		source_buf.ptr = source_cir_buf_wrap((const char *)source_buf.ptr + f * frame_bytes,
+		source_buf.ptr = source_cir_buf_wrap((const char *)source_buf.ptr + f * in_frame_bytes,
 						     source_buf.buf_start, source_buf.buf_end);
-		sink_buf.ptr = cir_buf_wrap((char *)sink_buf.ptr + f * frame_bytes,
+		sink_buf.ptr = cir_buf_wrap((char *)sink_buf.ptr + f * out_frame_bytes,
 					    sink_buf.buf_start, sink_buf.buf_end);
 	}
 
 	/* ---- Commit / release ---- */
-	source_release_data(src, nbytes);
-	sink_commit_buffer(snk, nbytes);
+	source_release_data(src, in_nbytes);
+	sink_commit_buffer(snk, out_nbytes);
 
 	/* ---- Classify any complete frames ---- */
 	webrtc_vad_classify_pending(mod);
