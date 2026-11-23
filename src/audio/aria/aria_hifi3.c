@@ -65,10 +65,8 @@ static void aria_algo_get_data_odd_channel(struct processing_module *mod,
 	/* do linear approximation between points gain_begin and gain_end */
 	int32_t gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3]];
 	size_t samples = frames * cd->chan_cnt;
-	ae_int32x2 *out = sink->ptr;
-	const ae_int32x2 *in = (const ae_int32x2 *)cd->data_ptr;
-	ae_valign inu = AE_ZALIGN64();
-	ae_valign outu = AE_ZALIGN64();
+	ae_int32 *out = sink->ptr;
+	const ae_int32 *in = (const ae_int32 *)cd->data_ptr;
 	ae_int32x2 in_sample, out_sample;
 	const int inc = sizeof(ae_int32);
 	ae_int32x2 gain;
@@ -92,20 +90,18 @@ static void aria_algo_get_data_odd_channel(struct processing_module *mod,
 		n = MIN(m, samples);
 		m = cir_buf_samples_without_wrap_s32(in, cd->data_end);
 		n = MIN(m, n);
-		inu = AE_LA64_PP(in);
 		for (i = 0; i < n; i += ch_n) {
 			/*process data one by one if ch_n is odd*/
 			for (ch = 0; ch < ch_n; ch++) {
-				AE_L32_XP(in_sample, (ae_int32 *)in, inc);
+				AE_L32_XP(in_sample, in, inc);
 				in_sample = AE_SRAI32(AE_SLAI32(in_sample, 8), 8);
 				out1 = AE_MUL32_HH(in_sample, gain);
 				out1 = AE_SRAA64(out1, shift_bits);
 				out_sample = AE_ROUND24X2F48SSYM(out1, out1);
-				AE_S32_L_XP(out_sample, (ae_int32 *)out, inc);
+				AE_S32_L_XP(out_sample, out, inc);
 			}
 			gain = AE_ADD32S(gain, step);
 		}
-		AE_SA64POS_FP(outu, out);
 		samples -= n;
 		in = cir_buf_wrap(in, cd->data_addr, cd->data_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
