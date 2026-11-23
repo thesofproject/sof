@@ -24,6 +24,11 @@ Available tests:
      that kernel code refuses to use it, that a user thread corrupting
      its metadata only faults user threads, and that the DP module
      resource system calls reject LL modules and forged contexts.
+   - Also tests the fast_get area of the LL memory region: LL user
+     threads get shared read-only copies, a freed copy is reused
+     without stale data, only the LL and IPC user threads may get
+     copies of data they can read, and LL modules fall back to a
+     private copy when the area is full.
 
 Building for Intel Panther Lake:
 ./scripts/xtensa-build-zephyr.py --cmake-args=-DCONFIG_SOF_BOOT_TEST_STANDALONE=y \

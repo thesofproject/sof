@@ -9,12 +9,20 @@
  * use it, and a user thread that corrupts its metadata can only fault
  * itself. Also checks that the module resource system calls reject LL
  * modules and forged allocation contexts.
+ *
+ * Tests for the fast_get area of the LL memory region: LL user threads
+ * get shared read-only copies with fast_get_ll(), freed copies are reused
+ * without stale data, only the LL and IPC user threads may make the calls,
+ * and kernel code does not release LL copies with fast_put(). LL modules
+ * fall back to a private copy when the area is full.
  */
 
 #include <sof/boot_test.h>
 #include <sof/audio/component.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/lib/fast-get.h>
 #include <sof/schedule/ll_schedule_domain.h>
+#include <sof/userspace/syscall_caller.h>
 #include <rtos/alloc.h>
 
 #include <zephyr/cache.h>
@@ -144,14 +152,17 @@ static void user_function(void *p1, void *p2, void *p3)
 	zassert_unreachable("user thread did not fault");
 }
 
-static void run_case(enum user_heap_test_case test_case, bool fault_allowed)
+/* @infra: run as the IPC user thread, otherwise as another LL domain thread */
+static void run_user(k_thread_entry_t entry, int test_case, bool infra, bool fault_allowed)
 {
 	int ret;
 
 	k_thread_create(&user_thread, user_stack, USER_STACKSIZE,
-			user_function, (void *)(uintptr_t)test_case, NULL, NULL,
+			entry, (void *)(uintptr_t)test_case, NULL, NULL,
 			-1, K_USER, K_FOREVER);
 	k_mem_domain_add_thread(zephyr_ll_mem_domain(), &user_thread);
+	if (infra)
+		sof_sysuser_thread_set(SOF_SYSUSER_IPC, PLATFORM_PRIMARY_CORE_ID, &user_thread);
 
 	if (fault_allowed)
 		sof_boot_test_set_fault_valid(&user_thread);
@@ -160,8 +171,15 @@ static void run_case(enum user_heap_test_case test_case, bool fault_allowed)
 	ret = k_thread_join(&user_thread, K_FOREVER);
 
 	sof_boot_test_set_fault_valid(NULL);
+	if (infra)
+		sof_sysuser_thread_set(SOF_SYSUSER_IPC, PLATFORM_PRIMARY_CORE_ID, NULL);
 
 	zassert_equal(ret, 0, "user thread join failed: %d", ret);
+}
+
+static void run_case(enum user_heap_test_case test_case, bool fault_allowed)
+{
+	run_user(user_function, test_case, false, fault_allowed);
 }
 
 static void *ll_user_heap_setup(void)
@@ -300,6 +318,224 @@ ZTEST(userspace_ll_user_heap, mod_user_rejects_forged_heap)
 ZTEST_SUITE(userspace_ll_user_heap, sof_boot_test_standalone_predicate, ll_user_heap_setup,
 	    NULL, NULL, ll_user_heap_teardown);
 
+/* without DRAM execution fast_get_ll() is a passthrough and there are no copies */
+#define HAVE_LL_FAST_GET_COPIES (CONFIG_FAST_GET && CONFIG_COLD_STORE_EXECUTE_DRAM)
+
+#if HAVE_LL_FAST_GET_COPIES
+#define DATA_SIZE	1000
+/* more than the fast_get area can hold */
+#define FG_MAX_BLOCKS	(CONFIG_SOF_ZEPHYR_LL_FG_AREA_SIZE / 256 + 1)
+
+/* source data and results, the user threads read and write them */
+K_APP_BMEM(ll_user_heap_test_part) static uint8_t data_a[DATA_SIZE];
+K_APP_BMEM(ll_user_heap_test_part) static uint8_t data_b[DATA_SIZE];
+K_APP_BMEM(ll_user_heap_test_part) static const void *fg_ptr[2];
+
+/* kernel-only, a user thread must not get a copy of it */
+static uint8_t kernel_only_data[DATA_SIZE];
+
+static void *fg_blocks[FG_MAX_BLOCKS];
+
+enum fast_get_test_case {
+	/* get data_a twice, check the copies, keep them in fg_ptr */
+	FG_GET_SHARED,
+	/* put the copies in fg_ptr */
+	FG_PUT_KEPT,
+	/* get data_a, check it and put it, then the same for data_b */
+	FG_GET_PUT_A_THEN_B,
+	/* write to a copy */
+	FG_WRITE_COPY,
+	/* get a copy of kernel memory */
+	FG_GET_KERNEL_DATA,
+	/* get data_a with the module interface, keep it in fg_ptr[0] */
+	FG_MOD_GET,
+	/* put fg_ptr[0] with the module interface */
+	FG_MOD_PUT,
+	/* free the module resources */
+	FG_MOD_FREE_ALL,
+};
+
+static void check_copy(const void *copy, const uint8_t *data)
+{
+	zassert_not_null(copy);
+	zassert_not_equal(copy, data);
+	zassert_true(sys_cache_is_ptr_cached((void *)copy));
+	zassert_mem_equal(copy, data, DATA_SIZE);
+}
+
+static void fast_get_user_function(void *p1, void *p2, void *p3)
+{
+	enum fast_get_test_case test_case = (enum fast_get_test_case)(uintptr_t)p1;
+	const void *ptr;
+
+	zassert_true(k_is_user_context(), "isn't user");
+
+	switch (test_case) {
+	case FG_GET_SHARED:
+		fg_ptr[0] = fast_get_ll(data_a, DATA_SIZE);
+		check_copy(fg_ptr[0], data_a);
+		fg_ptr[1] = fast_get_ll(data_a, DATA_SIZE);
+		zassert_equal(fg_ptr[1], fg_ptr[0], "copy not shared");
+		/* a size that does not match the shared copy */
+		zassert_is_null(fast_get_ll(data_a, DATA_SIZE / 2));
+		return;
+	case FG_PUT_KEPT:
+		fast_put_ll(fg_ptr[0]);
+		fast_put_ll(fg_ptr[1]);
+		return;
+	case FG_GET_PUT_A_THEN_B:
+		/* reads data_a into the cache, a later copy may reuse the lines */
+		fg_ptr[0] = fast_get_ll(data_a, DATA_SIZE);
+		check_copy(fg_ptr[0], data_a);
+		fast_put_ll(fg_ptr[0]);
+		fg_ptr[1] = fast_get_ll(data_b, DATA_SIZE);
+		check_copy(fg_ptr[1], data_b);
+		fast_put_ll(fg_ptr[1]);
+		return;
+	case FG_WRITE_COPY:
+		ptr = fast_get_ll(data_a, DATA_SIZE);
+		zassert_not_null(ptr);
+		fg_ptr[0] = ptr;
+		*(volatile uint8_t *)ptr = 0;
+		break;
+	case FG_GET_KERNEL_DATA:
+		(void)fast_get_ll(kernel_only_data, DATA_SIZE);
+		break;
+	case FG_MOD_GET:
+		fg_ptr[0] = mod_fast_get(&fake_mod, data_a, DATA_SIZE);
+		check_copy(fg_ptr[0], data_a);
+		return;
+	case FG_MOD_PUT:
+		mod_fast_put(&fake_mod, fg_ptr[0]);
+		return;
+	case FG_MOD_FREE_ALL:
+		mod_free_all(&fake_mod);
+		return;
+	default:
+		zassert_unreachable("unknown test case");
+	}
+
+	zassert_unreachable("user thread did not fault");
+}
+
+static void run_fg_case(enum fast_get_test_case test_case, bool infra, bool fault_allowed)
+{
+	run_user(fast_get_user_function, test_case, infra, fault_allowed);
+}
+
+static void *ll_fast_get_setup(void)
+{
+	int i;
+
+	for (i = 0; i < DATA_SIZE; i++) {
+		data_a[i] = i;
+		data_b[i] = ~i;
+	}
+
+	return ll_user_heap_setup();
+}
+
+ZTEST(userspace_ll_fast_get, shared_copy)
+{
+	size_t used = zephyr_ll_fg_used();
+
+	run_fg_case(FG_GET_SHARED, true, false);
+	zassert_true(zephyr_ll_fg_contains(fg_ptr[0], DATA_SIZE));
+	zassert_equal(zephyr_ll_fg_used(), used + ROUND_UP(DATA_SIZE, 256));
+
+	/* kernel code does not release LL copies with fast_put() */
+	fast_put(NULL, NULL, fg_ptr[0]);
+	zassert_equal(zephyr_ll_fg_used(), used + ROUND_UP(DATA_SIZE, 256));
+
+	/* the copy is freed with its last user */
+	run_fg_case(FG_PUT_KEPT, true, false);
+	zassert_equal(zephyr_ll_fg_used(), used);
+}
+
+ZTEST(userspace_ll_fast_get, reuse_without_stale_data)
+{
+	size_t used = zephyr_ll_fg_used();
+
+	run_fg_case(FG_GET_PUT_A_THEN_B, true, false);
+	zassert_equal(fg_ptr[1], fg_ptr[0], "freed copy not reused");
+	zassert_equal(zephyr_ll_fg_used(), used);
+}
+
+ZTEST(userspace_ll_fast_get, copy_read_only)
+{
+	size_t used = zephyr_ll_fg_used();
+
+	run_fg_case(FG_WRITE_COPY, true, true);
+	zassert_mem_equal(fg_ptr[0], data_a, DATA_SIZE);
+
+	/* the faulting thread kept its reference */
+	fast_put_ll(fg_ptr[0]);
+	zassert_equal(zephyr_ll_fg_used(), used);
+}
+
+ZTEST(userspace_ll_fast_get, caller_checks)
+{
+	size_t used = zephyr_ll_fg_used();
+
+	/* an LL domain thread that is not the LL or IPC user thread */
+	if (IS_ENABLED(CONFIG_SOF_USERSPACE_SYSCALL_CALLER_CHECK))
+		run_fg_case(FG_GET_SHARED, false, true);
+	/* memory that the caller cannot read */
+	run_fg_case(FG_GET_KERNEL_DATA, true, true);
+
+	zassert_equal(zephyr_ll_fg_used(), used);
+}
+
+ZTEST(userspace_ll_fast_get, mod_fast_get_falls_back)
+{
+	size_t used = zephyr_ll_fg_used();
+	int n;
+
+	memset(&fake_mod, 0, sizeof(fake_mod));
+	memset(&fake_dev, 0, sizeof(fake_dev));
+	fake_mod.dev = &fake_dev;
+	fake_dev.mod = &fake_mod;
+	fake_mod.priv.resources.alloc = &fake_alloc;
+	fake_dev.ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
+	fake_alloc.heap = zephyr_ll_user_heap();
+	fake_alloc.vreg = NULL;
+	mod_resource_init(&fake_mod);
+
+	run_fg_case(FG_MOD_GET, true, false);
+	zassert_true(zephyr_ll_fg_contains(fg_ptr[0], DATA_SIZE));
+	run_fg_case(FG_MOD_PUT, true, false);
+	zassert_equal(zephyr_ll_fg_used(), used);
+
+	/* fill the area */
+	for (n = 0; n < FG_MAX_BLOCKS; n++) {
+		fg_blocks[n] = zephyr_ll_fg_alloc(256);
+		if (!fg_blocks[n])
+			break;
+	}
+	zassert_true(n < FG_MAX_BLOCKS, "fast_get area not full");
+
+	run_fg_case(FG_MOD_GET, true, false);
+	zassert_false(zephyr_ll_fg_contains(fg_ptr[0], 1), "copy in the full area");
+	run_fg_case(FG_MOD_PUT, true, false);
+
+	while (n--)
+		zephyr_ll_fg_free(fg_blocks[n], 256);
+	zassert_equal(zephyr_ll_fg_used(), used);
+
+	run_fg_case(FG_MOD_FREE_ALL, true, false);
+}
+
+static bool ll_fast_get_predicate(const void *state)
+{
+	return CONFIG_SOF_ZEPHYR_LL_FG_AREA_SIZE && sof_boot_test_standalone_predicate(state);
+}
+
+ZTEST_SUITE(userspace_ll_fast_get, ll_fast_get_predicate, ll_fast_get_setup,
+	    NULL, NULL, ll_user_heap_teardown);
+
+#endif /* HAVE_LL_FAST_GET_COPIES */
+
+
 /**
  * SOF main has booted up and IPC handling is stopped.
  * Run test suites with ztest_run_all.
@@ -307,6 +543,9 @@ ZTEST_SUITE(userspace_ll_user_heap, sof_boot_test_standalone_predicate, ll_user_
 static int run_tests(void)
 {
 	ztest_run_test_suite(userspace_ll_user_heap, false, 1, 1, NULL);
+#if HAVE_LL_FAST_GET_COPIES && CONFIG_SOF_ZEPHYR_LL_FG_AREA_SIZE
+	ztest_run_test_suite(userspace_ll_fast_get, false, 1, 1, NULL);
+#endif
 	return 0;
 }
 
