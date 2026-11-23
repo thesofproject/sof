@@ -158,17 +158,28 @@ static float ns2_log2f(float x)
 	return (float)e + (2.8853900817779268f * r) * poly;
 }
 
-__attribute__((weak)) float log10f(float x)
+/*
+ * Zephyr llext_link_plt() only relocates STB_GLOBAL and STB_LOCAL symbols
+ * (leaving STB_WEAK slots zeroed), while standalone LLEXTs have isolated
+ * private symbol tables and will not collide across modules.
+ */
+#if defined(LLEXT_MODULE) || defined(LL_EXTENSION_BUILD)
+#define NS2_SHIM_WEAK
+#else
+#define NS2_SHIM_WEAK __attribute__((weak))
+#endif
+
+NS2_SHIM_WEAK float log10f(float x)
 {
 	return ns2_log2f(x) * 0.3010299956639812f;
 }
 
-__attribute__((weak)) double log10(double x)
+NS2_SHIM_WEAK double log10(double x)
 {
 	return (double)log10f((float)x);
 }
 
-__attribute__((weak)) float floorf(float x)
+NS2_SHIM_WEAK float floorf(float x)
 {
 	int i = (int)x;
 
@@ -177,12 +188,12 @@ __attribute__((weak)) float floorf(float x)
 	return (float)i;
 }
 
-__attribute__((weak)) double floor(double x)
+NS2_SHIM_WEAK double floor(double x)
 {
 	return (double)floorf((float)x);
 }
 
-__attribute__((weak)) float ceilf(float x)
+NS2_SHIM_WEAK float ceilf(float x)
 {
 	int i = (int)x;
 
@@ -196,24 +207,33 @@ static inline float ns2_roundf(float x)
 	return (x >= 0.0f) ? floorf(x + 0.5f) : ceilf(x - 0.5f);
 }
 
-__attribute__((weak)) float fabsf(float x)
+NS2_SHIM_WEAK float fabsf(float x)
 {
 	return (x < 0.0f) ? -x : x;
 }
 
-__attribute__((weak)) double fabs(double x)
+NS2_SHIM_WEAK double fabs(double x)
 {
 	return (x < 0.0) ? -x : x;
 }
 
-__attribute__((weak)) float sqrtf(float x)
+NS2_SHIM_WEAK float sqrtf(float x)
 {
+	union { float f; uint32_t i; } u = { .f = x };
+	float y;
+
 	if (x <= 0.0f)
 		return 0.0f;
-	return __builtin_sqrtf(x);
+
+	u.i = 0x1fbd1df5U + (u.i >> 1);
+	y = u.f;
+	y = 0.5f * (y + x / y);
+	y = 0.5f * (y + x / y);
+	y = 0.5f * (y + x / y);
+	return y;
 }
 
-__attribute__((weak)) double sqrt(double x)
+NS2_SHIM_WEAK double sqrt(double x)
 {
 	return (double)sqrtf((float)x);
 }
@@ -226,7 +246,7 @@ static inline void ns2_sincosf_poly(float z, float *s_out, float *c_out)
 	*c_out = 1.0f + z2 * (-0.5f + z2 * (0.041666667f + z2 * (-0.0013888889f + z2 * 0.0000248016f)));
 }
 
-__attribute__((weak)) float sinf(float x)
+NS2_SHIM_WEAK float sinf(float x)
 {
 	const float inv_half_pi = 0.636619772367581343f;
 	const float half_pi_hi  = 1.5707963267948966f;
@@ -244,12 +264,12 @@ __attribute__((weak)) float sinf(float x)
 	}
 }
 
-__attribute__((weak)) double sin(double x)
+NS2_SHIM_WEAK double sin(double x)
 {
 	return (double)sinf((float)x);
 }
 
-__attribute__((weak)) float cosf(float x)
+NS2_SHIM_WEAK float cosf(float x)
 {
 	const float inv_half_pi = 0.636619772367581343f;
 	const float half_pi_hi  = 1.5707963267948966f;
@@ -267,12 +287,12 @@ __attribute__((weak)) float cosf(float x)
 	}
 }
 
-__attribute__((weak)) double cos(double x)
+NS2_SHIM_WEAK double cos(double x)
 {
 	return (double)cosf((float)x);
 }
 
-__attribute__((weak)) float exp2f(float x)
+NS2_SHIM_WEAK float exp2f(float x)
 {
 	int n;
 	float f, p;
@@ -294,12 +314,12 @@ __attribute__((weak)) float exp2f(float x)
 	return p * ns2_ldexp2(n);
 }
 
-__attribute__((weak)) float expf(float x)
+NS2_SHIM_WEAK float expf(float x)
 {
 	return exp2f(x * 1.4426950408889634f);
 }
 
-__attribute__((weak)) double exp(double x)
+NS2_SHIM_WEAK double exp(double x)
 {
 	return (double)expf((float)x);
 }
