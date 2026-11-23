@@ -387,9 +387,9 @@ static int kpb_bind(struct comp_dev *dev, const struct bind_info *bind_data)
 		sink_buf_id = buf_get_id(sink);
 
 		if (sink_buf_id == buf_id) {
-			struct comp_dev *sc = comp_buffer_get_sink_component(sink);
-			comp_dbg(dev, "kpb_bind: buf_id=%d sink_comp=0x%x -> %s",
-				 buf_id, sc ? dev_comp_id(sc) : 0, sink_buf_id == 0 ? "sel_sink" : "host_sink");
+			comp_dbg(dev, "kpb_bind: buf_id=%d sink_comp=0x%x -> %s", buf_id,
+				 dev_comp_id(comp_buffer_get_sink_component(sink)),
+				 sink_buf_id == 0 ? "sel_sink" : "host_sink");
 			if (sink_buf_id == 0)
 				kpb->sel_sink = sink;
 			else
@@ -925,6 +925,7 @@ static int kpb_prepare(struct comp_dev *dev)
 		return -ENOMEM;
 	}
 
+#ifdef CONFIG_IPC_MAJOR_4
 	struct comp_buffer *sink;
 	/* Output pin IDs: IPC4_COMP_ID(src_queue, dst_queue) = (dst_queue<<16)|src_queue.
 	 * In a multi-KPB topology each KPB connects to a different arbiter input pin so
@@ -967,6 +968,7 @@ static int kpb_prepare(struct comp_dev *dev)
 			}
 		}
 	}
+#endif /* CONFIG_IPC_MAJOR_4 */
 
 	kpb_change_state(kpb, KPB_STATE_RUN);
 
@@ -1465,7 +1467,7 @@ static int kpb_copy(struct comp_dev *dev)
 
 			struct comp_dev *wov_comp = sink ? comp_buffer_get_sink_component(sink) : NULL;
 			if (wov_comp) {
-				comp_dbg(dev, "kpb_copy: produced=%u bytes, triggering wov=0x%x",
+				comp_dbg(dev, "kpb_copy: produced=%zu bytes, triggering wov=0x%x",
 					 copy_bytes, dev_comp_id(wov_comp));
 				comp_copy(wov_comp);
 			} else {
