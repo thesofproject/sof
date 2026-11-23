@@ -124,6 +124,7 @@ syscall by subsystem:
 | Scheduling | `zephyr_ll_task_sem_alloc`, `zephyr_ll_task_sem_free`, `scheduler_dp_internal_free`, `scheduler_dp_ll_tick`, `scheduler_dp_kick` | `sof/schedule/ll_schedule_domain.h`, `sof/schedule/dp_schedule.h` | scattered: `kernel/schedule/zephyr_ll-kernel.c`, `kernel/schedule/zephyr_dp_schedule*-kernel.c` |
 | Debug | `debug_stream_slot_send_record` | `user/debug_stream_slot.h` | `kernel/debug/debug_stream/debug_stream_slot.c` |
 | KPB | `kpb_notifier_schedule` | `sof/audio/kpb.h` | `zephyr/syscall/kpb.c` / `audio/kpb.c` |
+| fast_get | `fast_get_ll`, `fast_put_ll` | `sof/lib/fast-get.h` | scattered: `zephyr/lib/fast-get.c` |
 
 ### Allowed callers
 
@@ -156,8 +157,9 @@ syscalls or to vregion, DMA, DAI or scheduler syscalls.
 Modules call the module resource functions without the `dp` prefix (`mod_alloc_ext()`,
 `mod_free()`, `mod_fast_get()` and so on), which are plain functions. For an LL module in the
 LL or IPC user thread they run in user mode, on the module's resource pool and the LL user
-heap, under a `sys_mutex` in LL memory. `mod_fast_get()` then makes a private copy, as the
-shared copies are kernel state. For DP modules, and in kernel code, they call the `mod_dp_*`
+heap, under a `sys_mutex` in LL memory. `mod_fast_get()` then gets a shared read-only copy
+with the `fast_get_ll()` syscall, see below, or makes a private copy when the fast_get area is
+full. For DP modules, and in kernel code, they call the `mod_dp_*`
 syscalls. Those validators reject LL modules and DP modules whose allocation context has no
 live vregion, and pin the vregion during the call. They still read the context from DP memory,
 so a DP thread that rewrites it during the call is not stopped.
@@ -186,6 +188,7 @@ With `CONFIG_SOF_USERSPACE_LL`, the memory of the LL and IPC user threads is one
 | Part | Mapping in the LL memory domain | Allocator |
 |------|---------------------------------|-----------|
 | Kernel RO area (`CONFIG_SOF_ZEPHYR_LL_KAREA_RO_SIZE`) | read-only | `zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RO, ...)` |
+| fast_get area (`CONFIG_SOF_ZEPHYR_LL_FG_AREA_SIZE`) | read-only, cached alias only | `zephyr_ll_fg_alloc()`, `zephyr_ll_fg_free()` |
 | Kernel RW area (`CONFIG_SOF_ZEPHYR_LL_KAREA_RW_SIZE`) | read-write | `zephyr_ll_karea_alloc(ZEPHYR_LL_KAREA_RW, ...)` |
 | LL user heap (the rest) | read-write | `sof_heap_alloc(sof_sys_user_heap_get(), ...)`, in user mode only |
 
@@ -237,10 +240,21 @@ heap. A user thread that corrupts the heap can only make LL and IPC user threads
 `zephyr_ll_user_heap()` returns a kernel-only `struct k_heap` that is never initialised: its
 address only selects the LL user heap.
 
-Large `fast_get()` copies for DP modules are taken from `vpage_alloc()` instead of the heap of
-the module allocation context, which is the LL user heap, and mapped read-only into the domain
-of each user. Kernel code still follows some pointers stored in user-writable memory, for
-example `task->sch` and the domain `ops`.
+The fast_get area holds the `fast_get()` copies of the LL modules, such as SRC coefficients.
+LL and IPC user threads get them with the `fast_get_ll()` and `fast_put_ll()` syscalls, and all
+users of the same data share a copy. The allocator is a bitmap of 256-byte blocks in kernel
+memory, and the entries of the copies are in kernel memory too, marked as LL copies, which
+`fast_get()` and `fast_put()` never use. Only the cached alias of the area is mapped into the
+LL memory domain, so kernel code writes a copy through the uncached alias, also in the
+syscall, and invalidates the cached alias on the calling core at every get, as the core may
+still hold lines of an earlier copy at the same address. LL threads cannot change a shared
+copy. A user thread can release copies that other LL modules use, which only affects LL
+modules.
+
+DP modules keep their copies in their own memory: small copies in the module vregion, and
+large copies from `vpage_alloc()` instead of the heap of the module allocation context, which
+is the LL user heap, mapped read-only into the domain of each user. Kernel code still follows
+some pointers stored in user-writable memory, for example `task->sch` and the domain `ops`.
 
 ## Memory-partition markers
 
