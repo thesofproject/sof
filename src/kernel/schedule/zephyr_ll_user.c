@@ -5,6 +5,7 @@
 #include <zephyr/cache.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/bitarray.h>
 
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
@@ -18,7 +19,7 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 /*
  * Layout of the LL user memory region, each part page aligned:
  *
- *   | kernel RO area | kernel RW area | LL user heap |
+ *   | kernel RO area | fast_get area | kernel RW area | LL user heap |
  *
  * The heap and the kernel RW area are mapped read-write into the LL memory
  * domain, the kernel RO area read-only. Kernel code allocates objects that
@@ -27,17 +28,37 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
  * ll_mem_resources, which is kernel-only. The heap allocator runs in user
  * mode, see src/schedule/zephyr_ll_user_heap.c: the kernel initialises the
  * heap at boot and does not parse its metadata after that.
+ *
+ * The fast_get area holds the fast_get() copies of the LL modules, see
+ * zephyr_ll_fg_alloc(). Only its cached alias is mapped into the LL memory
+ * domain, read-only, so kernel code can write copies through the uncached
+ * alias also in system calls from LL threads.
  */
 #define LL_REGION_SIZE		CONFIG_SOF_ZEPHYR_SYS_USER_HEAP_SIZE
 #define LL_KAREA_RO_SIZE	CONFIG_SOF_ZEPHYR_LL_KAREA_RO_SIZE
 #define LL_KAREA_RW_SIZE	CONFIG_SOF_ZEPHYR_LL_KAREA_RW_SIZE
-#define LL_HEAP_SIZE		(LL_REGION_SIZE - LL_KAREA_RO_SIZE - LL_KAREA_RW_SIZE)
+#define LL_FG_SIZE		CONFIG_SOF_ZEPHYR_LL_FG_AREA_SIZE
+#define LL_HEAP_SIZE		(LL_REGION_SIZE - LL_KAREA_RO_SIZE - LL_FG_SIZE - \
+				 LL_KAREA_RW_SIZE)
+
+/* fast_get area allocation unit, a multiple of the cache line size */
+#define LL_FG_BLOCK_SIZE	256
+#define LL_FG_BLOCKS		(LL_FG_SIZE / LL_FG_BLOCK_SIZE)
 
 BUILD_ASSERT(LL_REGION_SIZE % CONFIG_MM_DRV_PAGE_SIZE == 0);
 BUILD_ASSERT(LL_KAREA_RO_SIZE % CONFIG_MM_DRV_PAGE_SIZE == 0);
 BUILD_ASSERT(LL_KAREA_RW_SIZE % CONFIG_MM_DRV_PAGE_SIZE == 0);
-BUILD_ASSERT(LL_KAREA_RO_SIZE + LL_KAREA_RW_SIZE < LL_REGION_SIZE,
+BUILD_ASSERT(LL_FG_SIZE % CONFIG_MM_DRV_PAGE_SIZE == 0);
+BUILD_ASSERT(LL_FG_BLOCK_SIZE % PLATFORM_DCACHE_ALIGN == 0);
+BUILD_ASSERT(LL_KAREA_RO_SIZE + LL_FG_SIZE + LL_KAREA_RW_SIZE < LL_REGION_SIZE,
 	     "kernel areas do not leave room for the LL user heap");
+BUILD_ASSERT(!LL_FG_SIZE || IS_ENABLED(CONFIG_CACHE_HAS_MIRRORED_MEMORY_REGIONS),
+	     "the kernel writes the fast_get area through the uncached alias");
+
+#if LL_FG_SIZE
+/* allocation bitmap of the fast_get area, a bit per block */
+SYS_BITARRAY_DEFINE_STATIC(ll_fg_blocks, LL_FG_BLOCKS);
+#endif
 
 /* A kernel-managed area, addresses are the uncached alias */
 struct zephyr_ll_karea_state {
@@ -61,11 +82,12 @@ struct zephyr_ll_mem_resources {
 	 */
 	struct k_heap heap;
 	struct zephyr_ll_karea_state karea[ZEPHYR_LL_KAREA_COUNT]; /**< Kernel-managed areas */
+	uint8_t *fg_base; /**< fast_get area, uncached alias */
 };
 
 static struct zephyr_ll_mem_resources ll_mem_resources;
 
-static void ll_region_map(uint8_t *start, size_t size, k_mem_partition_attr_t attr)
+static void ll_region_map_cached(uint8_t *start, size_t size, k_mem_partition_attr_t attr)
 {
 	struct k_mem_partition part;
 	int ret;
@@ -78,9 +100,18 @@ static void ll_region_map(uint8_t *start, size_t size, k_mem_partition_attr_t at
 	tr_dbg(&ll_tr, "map %p size %#zx (cached), ret %d", (void *)part.start, size, ret);
 	if (ret)
 		k_panic();
+}
+
+static void ll_region_map(uint8_t *start, size_t size, k_mem_partition_attr_t attr)
+{
+	ll_region_map_cached(start, size, attr);
 
 #ifdef CONFIG_CACHE_HAS_MIRRORED_MEMORY_REGIONS
+	struct k_mem_partition part;
+	int ret;
+
 	part.start = (uintptr_t)sys_cache_uncached_ptr_get(start);
+	part.size = size;
 	part.attr = attr;
 
 	ret = k_mem_domain_add_partition(&ll_mem_resources.mem_domain, &part);
@@ -105,21 +136,32 @@ static void ll_region_init(void)
 
 	ro->base = mem;
 	ro->size = LL_KAREA_RO_SIZE;
-	rw->base = mem + LL_KAREA_RO_SIZE;
+	ll_mem_resources.fg_base = mem + LL_KAREA_RO_SIZE;
+	rw->base = ll_mem_resources.fg_base + LL_FG_SIZE;
 	rw->size = LL_KAREA_RW_SIZE;
 
-	mem += LL_KAREA_RO_SIZE + LL_KAREA_RW_SIZE;
+	mem = rw->base + LL_KAREA_RW_SIZE;
 	/* the only time the kernel writes the heap metadata */
 	zephyr_ll_user_heap_init(mem, LL_HEAP_SIZE);
 
 	if (ro->size)
 		ll_region_map(ro->base, ro->size, K_MEM_PARTITION_P_RO_U_RO);
 
+	if (LL_FG_SIZE) {
+		void __sparse_cache *fg = sys_cache_cached_ptr_get(ll_mem_resources.fg_base);
+
+		/* no dirty lines may be written back over the copies */
+		sys_cache_data_flush_and_invd_range((__sparse_force void *)fg, LL_FG_SIZE);
+		ll_region_map_cached(ll_mem_resources.fg_base, LL_FG_SIZE,
+				     K_MEM_PARTITION_P_RO_U_RO);
+	}
+
 	/* the kernel RW area and the heap are adjacent, map them together */
 	ll_region_map(rw->base, rw->size + LL_HEAP_SIZE, K_MEM_PARTITION_P_RW_U_RW);
 
-	tr_info(&ll_tr, "LL region: RO area %p %#zx, RW area %p %#zx, heap %p %#zx",
-		(void *)ro->base, ro->size, (void *)rw->base, rw->size, (void *)mem,
+	tr_info(&ll_tr, "LL region: RO area %p %#zx, fast_get area %p %#zx, RW area %p %#zx, heap %p %#zx",
+		(void *)ro->base, ro->size, (void *)ll_mem_resources.fg_base,
+		(size_t)LL_FG_SIZE, (void *)rw->base, rw->size, (void *)mem,
 		(size_t)LL_HEAP_SIZE);
 }
 
@@ -189,6 +231,79 @@ bool zephyr_ll_karea_contains(enum zephyr_ll_karea area, const void *ptr, size_t
 	return start >= (uintptr_t)ka->base && bytes <= ka->size &&
 	       start - (uintptr_t)ka->base <= ka->size - bytes;
 }
+
+bool zephyr_ll_fg_contains(const void *ptr, size_t bytes)
+{
+	uintptr_t base = (uintptr_t)ll_mem_resources.fg_base;
+	uintptr_t start;
+
+	start = (uintptr_t)sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)ptr);
+
+	return LL_FG_SIZE && start >= base && bytes <= LL_FG_SIZE &&
+	       start - base <= LL_FG_SIZE - bytes;
+}
+
+#if LL_FG_SIZE
+void *zephyr_ll_fg_alloc(size_t bytes)
+{
+	size_t offset;
+	int ret;
+
+	__ASSERT(!k_is_user_context(), "kernel context only");
+
+	if (!bytes || bytes > LL_FG_SIZE)
+		return NULL;
+
+	ret = sys_bitarray_alloc(&ll_fg_blocks, DIV_ROUND_UP(bytes, LL_FG_BLOCK_SIZE), &offset);
+	if (ret) {
+		tr_warn(&ll_tr, "fast_get area full: %zu bytes requested, %zu of %zu used", bytes,
+			zephyr_ll_fg_used(), (size_t)LL_FG_SIZE);
+		return NULL;
+	}
+
+	return ll_mem_resources.fg_base + offset * LL_FG_BLOCK_SIZE;
+}
+
+void zephyr_ll_fg_free(void *ptr, size_t bytes)
+{
+	uintptr_t start;
+	int ret = -EINVAL;
+
+	__ASSERT(!k_is_user_context(), "kernel context only");
+
+	start = (uintptr_t)sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)ptr);
+	start -= (uintptr_t)ll_mem_resources.fg_base;
+
+	if (bytes && zephyr_ll_fg_contains(ptr, bytes) && !(start % LL_FG_BLOCK_SIZE))
+		ret = sys_bitarray_free(&ll_fg_blocks, DIV_ROUND_UP(bytes, LL_FG_BLOCK_SIZE),
+					start / LL_FG_BLOCK_SIZE);
+	if (ret)
+		tr_err(&ll_tr, "bad fast_get area free of %zu bytes at %p: %d", bytes, ptr, ret);
+}
+
+size_t zephyr_ll_fg_used(void)
+{
+	uint32_t count = 0;
+
+	sys_bitarray_popcount_region(&ll_fg_blocks, LL_FG_BLOCKS, 0, &count);
+
+	return (size_t)count * LL_FG_BLOCK_SIZE;
+}
+#else
+void *zephyr_ll_fg_alloc(size_t bytes)
+{
+	return NULL;
+}
+
+void zephyr_ll_fg_free(void *ptr, size_t bytes)
+{
+}
+
+size_t zephyr_ll_fg_used(void)
+{
+	return 0;
+}
+#endif
 
 void zephyr_ll_user_resources_init(void)
 {

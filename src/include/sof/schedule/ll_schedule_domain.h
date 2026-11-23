@@ -258,6 +258,40 @@ void *zephyr_ll_karea_alloc(enum zephyr_ll_karea area, uint32_t flags, size_t by
 bool zephyr_ll_karea_contains(enum zephyr_ll_karea area, const void *ptr, size_t bytes);
 
 /**
+ * @brief Allocate from the fast_get area of the LL user memory region.
+ *
+ * For the fast_get() copies of the LL modules. The allocator state is
+ * kernel-only. LL user threads may only read the area, through the cached
+ * alias. Kernel code writes it through the returned uncached alias, which
+ * works also in system calls from LL threads. Kernel context only.
+ *
+ * @param[in] bytes Size in bytes.
+ * @return Uncached pointer to the memory, or NULL if the area is full.
+ */
+void *zephyr_ll_fg_alloc(size_t bytes);
+
+/**
+ * @brief Free memory from zephyr_ll_fg_alloc(). Kernel context only.
+ * @param[in] ptr Start of the memory, cached or uncached alias.
+ * @param[in] bytes Size in bytes, as allocated.
+ */
+void zephyr_ll_fg_free(void *ptr, size_t bytes);
+
+/**
+ * @brief Check that memory lies in the fast_get area of the LL region.
+ * @param[in] ptr Start of the memory, cached or uncached alias.
+ * @param[in] bytes Size in bytes.
+ * @return true if [ptr, ptr + bytes) lies in the area.
+ */
+bool zephyr_ll_fg_contains(const void *ptr, size_t bytes);
+
+/**
+ * @brief Get the allocated size of the fast_get area. Kernel context only.
+ * @return Allocated bytes, in whole allocation units.
+ */
+size_t zephyr_ll_fg_used(void);
+
+/**
  * @brief Grant thread access to per-core Low-Latency mutexes.
  *
  * Kernel context only.

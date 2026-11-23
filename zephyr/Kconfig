@@ -171,7 +171,8 @@ config SOF_ZEPHYR_SYS_USER_HEAP_SIZE
 	help
 	 The size of the memory region of the low-latency (LL) scheduler
 	 user-space threads: the shared LL user heap and the kernel-managed
-	 areas SOF_ZEPHYR_LL_KAREA_RW_SIZE and SOF_ZEPHYR_LL_KAREA_RO_SIZE.
+	 areas SOF_ZEPHYR_LL_KAREA_RW_SIZE, SOF_ZEPHYR_LL_KAREA_RO_SIZE and
+	 SOF_ZEPHYR_LL_FG_AREA_SIZE.
 	 The heap is shared across all pipelines running
 	 on the LL thread and must be large enough to hold all host DMA
 	 buffers, chain DMA data, SG elements, and module adapter buffers
@@ -203,6 +204,24 @@ config SOF_ZEPHYR_LL_KAREA_RO_SIZE
 	 cannot write it either. The area is taken from
 	 SOF_ZEPHYR_SYS_USER_HEAP_SIZE. Must be a multiple of the MMU page
 	 size.
+
+config SOF_ZEPHYR_LL_FG_AREA_SIZE
+	hex "Size of the fast_get area for LL user threads"
+	default 0x8000 if FAST_GET && COLD_STORE_EXECUTE_DRAM && CACHE_HAS_MIRRORED_MEMORY_REGIONS
+	default 0
+	depends on SOF_USERSPACE_LL
+	help
+	 Size of the area in the LL user memory region that holds the
+	 fast_get() copies of the LL modules, such as SRC coefficients.
+	 Modules that use the same data share a copy. Kernel code
+	 allocates the copies, with the allocator state in its own memory,
+	 and the area is mapped read-only into the LL memory domain. When
+	 the area is full, LL modules get a private copy in their own
+	 memory instead. Kernel code writes the copies through the uncached
+	 alias of the area, so it needs mirrored cached and uncached memory
+	 regions. Without COLD_STORE_EXECUTE_DRAM there are no copies and
+	 the default is 0. The area is taken from SOF_ZEPHYR_SYS_USER_HEAP_SIZE.
+	 Must be a multiple of the MMU page size.
 
 config SOF_USERSPACE_PROXY
 	bool "Use userspace proxy to support userspace modules"
