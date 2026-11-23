@@ -183,6 +183,8 @@ static int aria_prepare(struct processing_module *mod,
 	int ret;
 	struct comp_dev *dev = mod->dev;
 	struct aria_data *cd = module_get_private_data(mod);
+	struct comp_buffer *src_buf, *snk_buf;
+	size_t frame_bytes;
 
 	comp_info(dev, "entry");
 
@@ -199,6 +201,22 @@ static int aria_prepare(struct processing_module *mod,
 	if (source_get_valid_fmt(sources[0]) != SOF_IPC_FRAME_S24_4LE ||
 	    sink_get_valid_fmt(sinks[0]) != SOF_IPC_FRAME_S24_4LE) {
 		comp_err(dev, "format is not supported");
+		return -EINVAL;
+	}
+
+	/* The get_data paths bound each chunk by the distance to the sink
+	 * buffer end in samples but write whole frames, and the HiFi5 path
+	 * wraps both buffers with hardware circular addressing, so a buffer
+	 * that is not a whole number of frames would be overrun at its end.
+	 */
+	frame_bytes = source_get_frame_bytes(sources[0]);
+	src_buf = comp_dev_get_first_data_producer(dev);
+	snk_buf = comp_dev_get_first_data_consumer(dev);
+	if (!src_buf || !snk_buf || !frame_bytes ||
+	    audio_stream_get_size(&src_buf->stream) % frame_bytes ||
+	    audio_stream_get_size(&snk_buf->stream) % frame_bytes) {
+		comp_err(dev, "source and sink buffers must hold whole %zu byte frames",
+			 frame_bytes);
 		return -EINVAL;
 	}
 
