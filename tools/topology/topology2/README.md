@@ -514,7 +514,8 @@ The **`sof-wcl-rt721-4ch-wov-multi.tplg`** (and corresponding PTL variant `sof-p
   - **20ms DP ECNS Engine (`ecns.115.1`, Pipeline 115, `lp_mode 1`)**:
     - Input Pin 0: 16 kHz 2ch or 4ch s32 microphones from `dai-copier.DMIC.dmic16k.capture`.
     - Input Pin 1: 16 kHz stereo s32 speaker echo reference from `src.120.1`.
-    - Output Pin 0: The microphone channels are averaged to mono, or a single channel is selected with the `DMIC ECNS mic channel` enum (`Average` by default, `Mic1`..`Mic2` or `Mic1`..`Mic4`), and filtered by a 100 Hz high-pass IIR (`DMIC ECNS boost` selects +30 dB or 0 dB). With `DMIC ECNS AEC switch` on, the `(L+R)/2` average of the echo reference is subtracted after the IIR. `DMIC ECNS NS switch` has no function yet. Both default to off. 16 kHz mono (s16 in topology, the firmware follows the KPB input bit depth) to KPB (`kpb.116.1`, Pipeline 116).
+    - Output Pin 0: The microphone channels are averaged to mono, or a single channel is selected with the `DMIC ECNS mic channel` enum (`Average` by default, `Mic1`..`Mic2` or `Mic1`..`Mic4`), and filtered by a 100 Hz high-pass IIR (`DMIC ECNS boost` selects +30 dB or 0 dB). With `DMIC ECNS AEC switch` on, the `(L+R)/2` average of the echo reference is subtracted after the IIR. `DMIC ECNS NS switch` has no function yet. Both default to off. 16 kHz mono (s16 in topology, the firmware follows the sink bit depth) to the fanout copier (`module-copier.117.1`, Pipeline 117).
+  - **ECNS output fanout (`module-copier.117.1`, Pipeline 117)**: Output Pin 0 feeds the KPB (`kpb.116.1`, Pipeline 116). Output Pin 1 feeds the processed microphone to `host-copier.11.capture` (Pipeline 121, `PCM 11`, `DMIC16k ECNS`, 1ch 16 kHz S16_LE). PCM 11 can be captured without the WoV PCM 12, the KPB is then not set up. The host copier has its own pipeline because the kernel does not trigger pipelines that already run for PCM 12, so a host copier inside them would never be started.
   - Key Phrase Buffer (KPB, Pipeline 116, 64 KB history buffer = 2000 ms, 16 kHz 1ch mono) with dual-sink topology fanout:
     - Sink Pin 0 (`sel_sink`): Real-time live audio feed to detector slots.
     - Sink Pin 1 (`host_sink`): Buffered history drain to WOV Arbiter upon keyword trigger.
@@ -575,7 +576,18 @@ flowchart TD
 
     MC101 --> HOST10
 
-    %% Pipeline 116: KPB History Buffer (Direct from ECNS Pin 0)
+    %% Pipeline 117: ECNS output fanout
+    subgraph P117["Pipeline 117 — ECNS Output Fanout (Core 0, LL 1ms)"]
+        MC117["module-copier.117.1\n(2-way fanout)"]
+    end
+
+    %% Pipeline 121: ECNS Host Capture PCM 11
+    subgraph P121["Pipeline 121 — ECNS Host Capture (Core 0, LL 1ms)"]
+        HOST11["host-copier.11.capture\n(PCM 11: 'DMIC16k ECNS')\n1ch · 16 kHz · S16_LE"]
+    end
+    MC117 -->|"Pin 1"| HOST11
+
+    %% Pipeline 116: KPB History Buffer (from the ECNS fanout copier)
     subgraph P116["Pipeline 116 — KPB History Buffer (Core 0, LL 1ms)"]
         KPB["kpb.116.1\n(Key Phrase Buffer · 2000ms = 64 KB)\n16 kHz · 1ch mono · S16_LE\nPin 0: sel_sink | Pin 1: host_sink"]
     end
@@ -586,7 +598,8 @@ flowchart TD
     end
     KPB -->|"Pin 0 (Live Audio Feed)"| MIX116
 
-    ECNS -- "Pin 0 Out (Mono 16k)" --> KPB
+    ECNS -- "Pin 0 Out (Mono 16k)" --> MC117
+    MC117 -->|"Pin 0"| KPB
 
     %% Pipelines 111-113: microWakeWord Detector Slots
     subgraph SLOTS["Pipelines 111–113 — microWakeWord Detector Slots (Core 0, DP 10ms)"]
