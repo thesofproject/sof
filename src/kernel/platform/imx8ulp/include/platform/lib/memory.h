@@ -29,16 +29,6 @@
 #define XSHAL_MU3_SIDEB_BYPASS_PADDR 0x2DA20000
 #define MU_BASE		XSHAL_MU3_SIDEB_BYPASS_PADDR
 
-#define EDMA2_BASE	0x2D810000
-#define EDMA2_SIZE	0x10000
-
-#define SAI_5_BASE	0x29890000
-#define SAI_5_SIZE	0x00010000
-#define SAI_6_BASE	0x2DA90000
-#define SAI_6_SIZE	0x00010000
-#define SAI_7_BASE	0x2DAA0000
-#define SAI_7_SIZE	0x00010000
-
 /*
  * The Heap and Stack on i.MX8 are organised like this :-
  *

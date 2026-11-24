@@ -28,33 +28,6 @@
 #define XSHAL_MU2_SIDEB_BYPASS_PADDR 0x30E70000
 #define MU_BASE		XSHAL_MU2_SIDEB_BYPASS_PADDR
 
-#define SDMA2_BASE	0x30e10000
-#define SDMA2_SIZE	0x10000
-
-#define SDMA3_BASE	0x30e00000
-#define SDMA3_SIZE	0x10000
-
-#define SAI_1_BASE	0x30c10000
-#define SAI_1_SIZE	0x00010000
-
-#define SAI_2_BASE	0x30c20000
-#define SAI_2_SIZE	0x00010000
-
-#define SAI_3_BASE	0x30c30000
-#define SAI_3_SIZE	0x00010000
-
-#define SAI_5_BASE	0x30c50000
-#define SAI_5_SIZE	0x00010000
-
-#define SAI_6_BASE	0x30c60000
-#define SAI_6_SIZE	0x00010000
-
-#define SAI_7_BASE	0x30c80000
-#define SAI_7_SIZE	0x00010000
-
-#define MICFIL_BASE	0x30ca0000
-#define MICFIL_SIZE	0x00010000
-
 /*
  * The Heap and Stack on i.MX8M are organised like this :-
  *
