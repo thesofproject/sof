@@ -34,26 +34,6 @@ struct timer;
 /* default dma trace channel */
 #define DMA_TRACE_CHANNEL	7
 
-/* debug offset */
-#define ACP_SOF_FW_STATUS	0
-
-/* Platform defined panic code */
-static inline void platform_panic(uint32_t p)
-{
-	acp_sw_intr_trig_t  sw_intr_trig;
-	volatile acp_scratch_mem_config_t *pscratch_mem_cfg =
-		(volatile acp_scratch_mem_config_t *)(PU_SCRATCH_REG_BASE + SCRATCH_REG_OFFSET);
-
-	pscratch_mem_cfg->acp_dsp_msg_write = p;
-	mailbox_sw_reg_write(ACP_SOF_FW_STATUS, p);
-	/* Read the Software Interrupt controller register and update */
-	sw_intr_trig = (acp_sw_intr_trig_t) io_reg_read(PU_REGISTER_BASE + ACP_SW_INTR_TRIG);
-	/* Configures the trigger bit in ACP_DSP_SW_INTR_TRIG register */
-	sw_intr_trig.bits.trig_dsp0_to_host_intr = INTERRUPT_ENABLE;
-	/* Write the Software Interrupt trigger register */
-	io_reg_write((PU_REGISTER_BASE + ACP_SW_INTR_TRIG), sw_intr_trig.u32all);
-}
-
 /*
  * brief Platform specific CPU entering idle.
  * May be power-optimized using platform specific capabilities.

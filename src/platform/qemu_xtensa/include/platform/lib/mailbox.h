@@ -27,7 +27,6 @@
 
 static inline void mailbox_sw_regs_write(size_t offset, const void *src, size_t bytes) {}
 static inline void mailbox_sw_reg_write(size_t offset, uint32_t val) {}
-static inline void mailbox_sw_reg_write64(size_t offset, uint64_t val) {}
 static inline uint32_t mailbox_sw_reg_read(size_t offset) { return 0; }
 static inline uint64_t mailbox_sw_reg_read64(size_t offset) { return 0; }
 

@@ -35,22 +35,7 @@ struct sof;
 
 void platform_init_memmap(struct sof *sof);
 
-static inline void *platform_rfree_prepare(void *ptr)
-{
-	return ptr;
-}
-
 #define cache_to_uncache_init(address)	address
-
-static inline void *arch_get_stack_entry(void)
-{
-	return NULL;
-}
-
-static inline uint32_t arch_get_stack_size(void)
-{
-	return 0;
-}
 
 /* NOTE - FAKE Memory configurations are used by UT's to test allocator */
 

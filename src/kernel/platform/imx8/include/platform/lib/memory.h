@@ -118,18 +118,6 @@ void platform_init_memmap(struct sof *sof);
 
 #define cache_to_uncache_init(address)	address
 
-/**
- * \brief Function for keeping shared data synchronized.
- * It's used after usage of data shared by different cores.
- * Such data is dynamically allocated with SOF_MEM_FLAG_SHARED
- * flag. Does nothing, since IMX doesn't support SMP.
- */
-
-static inline void *platform_rfree_prepare(void *ptr)
-{
-	return ptr;
-}
-
 #endif
 
 #define host_to_local(addr) (addr)

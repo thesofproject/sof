@@ -127,11 +127,6 @@ void platform_init_memmap(struct sof *sof);
  */
 static inline void platform_shared_commit(void *ptr, int bytes) { }
 
-static inline void *platform_rfree_prepare(void *ptr)
-{
-	return ptr;
-}
-
 #endif
 
 #define host_to_local(addr) (SDRAM0_BASE + ((addr) - MEM_RESERVED))

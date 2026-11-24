@@ -439,18 +439,6 @@ void acp_intr_disable(void)
 	platform_interrupt_clear(IRQ_NUM_TIMER0, 0);
 }
 
-void acp_dsp_sw_intr_disable(void)
-{
-	acp_dsp_sw_intr_cntl_t  sw_intr_ctrl_reg;
-	/* Read the register */
-	sw_intr_ctrl_reg = (acp_dsp_sw_intr_cntl_t) io_reg_read((PU_REGISTER_BASE +
-							ACP_DSP_SW_INTR_CNTL));
-	sw_intr_ctrl_reg.bits.dsp0_to_host_intr_mask = INTERRUPT_DISABLE;
-	/* Write the Software Interrupt controller register */
-	io_reg_write((PU_REGISTER_BASE + ACP_DSP_SW_INTR_CNTL), sw_intr_ctrl_reg.u32all);
-	platform_interrupt_clear(IRQ_NUM_EXT_LEVEL3, 0);
-}
-
 /* This function triggers a host interrupt from ACP DSP */
 void acp_dsp_to_host_intr_trig(void)
 {

@@ -27,16 +27,6 @@ struct sof;
 #define cache_to_uncache_init(address)	address
 #endif
 
-/**
- * \brief Transforms pointer if necessary before freeing the memory.
- * \param[in,out] ptr Pointer to the allocated memory.
- * \return Appropriate pointer to the memory ready to be freed.
- */
-static inline void *platform_rfree_prepare(void *ptr)
-{
-	return ptr;
-}
-
 void platform_init_memmap(struct sof *sof);
 
 #endif

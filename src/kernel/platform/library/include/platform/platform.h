@@ -33,8 +33,6 @@ struct timer;
 
 #define HW_CFG_VERSION		0
 
-static inline void platform_panic(uint32_t p) {}
-
 /**
  * \brief Platform specific CPU entering idle.
  * May be power-optimized using platform specific capabilities.

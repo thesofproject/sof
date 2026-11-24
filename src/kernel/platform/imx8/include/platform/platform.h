@@ -29,21 +29,6 @@ struct timer;
 #define HOST_PAGE_SIZE		4096
 #define PLATFORM_PAGE_TABLE_SIZE	256
 
-#define SRAM_REG_FW_STATUS     0x4
-
-/* Platform defined panic code */
-static inline void platform_panic(uint32_t p)
-{
-	/* Store the error code in the debug box so the
-	 * application processor can pick it up. Takes up 4 bytes
-	 * from the debug box.
-	 */
-	mailbox_sw_reg_write(SRAM_REG_FW_STATUS, p);
-
-	/* Notify application processor */
-	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GCR, IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1), 0);
-}
-
 /**
  * \brief Platform specific CPU entering idle.
  * May be power-optimized using platform specific capabilities.
