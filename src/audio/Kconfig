@@ -122,10 +122,11 @@ config COMP_ECNS
 	help
 	  Select to build the ECNS (Echo Cancellation and Noise Suppression)
 	  Data Processing (DP) component. Operates with a 20ms period. Input
-	  pin 0 takes the 16 kHz microphone stream and input pin 1 the 16 kHz
-	  echo reference. The single output pin provides 16 kHz mono, e.g.
-	  to KPB. The microphone channel enum control selects the average
-	  of all channels or a single channel. The AEC switch control
+	  pin 0 takes the microphone stream and input pin 1 the echo
+	  reference, both at 16 kHz or 48 kHz. The single output pin provides
+	  mono at the same rate, e.g. 16 kHz to KPB for WoV or 48 kHz to a
+	  host PCM for VoIP. The microphone channel enum control selects the
+	  average of all channels or a single channel. The AEC switch control
 	  subtracts the echo reference from the output. The NS switch
 	  control has no function yet.
 
