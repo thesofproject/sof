@@ -32,24 +32,7 @@
 
 #define IRQ_NUM_EXT_LEVEL5	5	/* level 3 */
 
-/* IRQ Masks */
-#define IRQ_MASK_SOFTWARE0	BIT(IRQ_NUM_SOFTWARE0)
-
-#define IRQ_MASK_TIMER0		BIT(IRQ_NUM_TIMER0)
-
-#define IRQ_MASK_TIMER1		BIT(IRQ_NUM_TIMER1)
-
-#define IRQ_MASK_EXT_LEVEL3	BIT(IRQ_NUM_EXT_LEVEL3)
-
-#define IRQ_MASK_EXT_LEVEL4	BIT(IRQ_NUM_EXT_LEVEL4)
-
-#define IRQ_MASK_EXT_LEVEL5	BIT(IRQ_NUM_EXT_LEVEL5)
-
 #define HOST_TO_DSP_INTR	0x1
-
-#define _XTSTR(x)   # x
-
-#define XTSTR(x)    _XTSTR(x)
 
 /* Enabling flag */
 #define INTERRUPT_ENABLE	1
