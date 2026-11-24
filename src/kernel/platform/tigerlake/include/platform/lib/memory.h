@@ -22,111 +22,9 @@
 
 /* physical DSP addresses */
 
-/* shim */
-#define SHIM_BASE		0x00071F00
-#define SHIM_SIZE		0x00000100
-
-/* Digital Mic Shim Registers */
-#define DMIC_SHIM_BASE	0x00071E80
-#define DMICLCTL_OFFSET 0x04
-#define DMICLCTL	(DMIC_SHIM_BASE + DMICLCTL_OFFSET)
-
-/* cmd IO to audio codecs */
-#define CMD_BASE		0x00001100
-#define CMD_SIZE		0x00000010
-
-/* resource allocation */
-#define RES_BASE		0x00001110
-#define RES_SIZE		0x00000010
-
 /* IPC to the host */
 #define IPC_HOST_BASE		0x00071E00
 #define IPC_HOST_SIZE		0x00000020
-
-/* intra DSP  IPC */
-#define IPC_DSP_SIZE		0x00000080
-#define IPC_DSP_BASE(x)		(0x00001200 + x * IPC_DSP_SIZE)
-
-/* SRAM window for HOST */
-#define HOST_WIN_SIZE		0x00000008
-#define HOST_WIN_BASE(x)	(0x00071A00 + x * HOST_WIN_SIZE)
-
-/* IRQ controller */
-#define IRQ_BASE		0x00078800
-#define IRQ_SIZE		0x00000200
-
-/* time stamping */
-#define TIME_BASE		0x00071800
-#define TIME_SIZE		0x00000200
-
-/* M/N dividers */
-#define MN_BASE			0x00078C00
-#define MN_SIZE			0x00000200
-
-/* low power DMA position */
-#define LP_GP_DMA_LINK_SIZE	0x00000010
-#define LP_GP_DMA_LINK_BASE(x) (0x00001C00 + x * LP_GP_DMA_LINK_SIZE)
-
-/* high performance DMA position */
-#define HP_GP_DMA_LINK_SIZE	0x00000010
-#define HP_GP_DMA_LINK_BASE(x)	(0x00001D00 + x * HP_GP_DMA_LINK_SIZE)
-
-/* link DMAC stream */
-#define GTW_LINK_OUT_STREAM_SIZE	0x00000020
-#define GTW_LINK_OUT_STREAM_BASE(x) \
-				(0x00072400 + x * GTW_LINK_OUT_STREAM_SIZE)
-
-#define GTW_LINK_IN_STREAM_SIZE	0x00000020
-#define GTW_LINK_IN_STREAM_BASE(x) \
-				(0x00072600 + x * GTW_LINK_IN_STREAM_SIZE)
-
-/* host DMAC stream */
-#define GTW_HOST_OUT_STREAM_SIZE	0x00000040
-#define GTW_HOST_OUT_STREAM_BASE(x) \
-				(0x00072800 + x * GTW_HOST_OUT_STREAM_SIZE)
-
-#define GTW_HOST_IN_STREAM_SIZE		0x00000040
-#define GTW_HOST_IN_STREAM_BASE(x) \
-				(0x00072C00 + x * GTW_HOST_IN_STREAM_SIZE)
-
-/* code loader */
-#define GTW_CODE_LDR_SIZE	0x00000040
-#define GTW_CODE_LDR_BASE	0x00002BC0
-
-/* L2 TLBs */
-#define L2_HP_SRAM_TLB_SIZE	0x00001000
-#define L2_HP_SRAM_TLB_BASE	0x00003000
-
-/* DMICs */
-#define DMIC_BASE		0x00010000
-#define DMIC_SIZE		0x00008000
-
-/* SSP */
-#define SSP_BASE(x)		(0x00077000 + x * SSP_SIZE)
-#define SSP_SIZE		0x0000200
-
-/* ALH */
-#define ALH_BASE		0x000071000
-#define ALH_TXDA_OFFSET		0x000000400
-#define ALH_RXDA_OFFSET		0x000000500
-#define ALH_STREAM_OFFSET	0x000000004
-
-/* Timestamping */
-#define TIMESTAMP_BASE		0x00071800
-
-/* low power DMACs */
-#define LP_GP_DMA_SIZE		0x00001000
-#define LP_GP_DMA_BASE(x)	(0x0007C000 + x * LP_GP_DMA_SIZE)
-
-/* high performance DMACs */
-#define HP_GP_DMA_SIZE		0x00001000
-#define HP_GP_DMA_BASE(x)	(0x0000E000 + x * HP_GP_DMA_SIZE)
-
-/* ROM */
-#define ROM_BASE		0xBEFE0000
-#define ROM_SIZE		0x00002000
-
-#define L2_VECTOR_SIZE		0x1000
 
 /*
  * The HP SRAM Region on Tigerlake is organised like this :-
@@ -174,16 +72,6 @@
  */
 
 #include <platform/lib/mailbox_layout.h>
-
-#define HP_SRAM_WIN0_BASE	SRAM_SW_REG_BASE
-#define HP_SRAM_WIN0_SIZE	(SRAM_SW_REG_SIZE + SRAM_OUTBOX_SIZE)
-#define HP_SRAM_WIN1_BASE	SRAM_INBOX_BASE
-#define HP_SRAM_WIN1_SIZE	SRAM_INBOX_SIZE
-#define HP_SRAM_WIN2_BASE	SRAM_DEBUG_BASE
-#define HP_SRAM_WIN2_SIZE	(SRAM_DEBUG_SIZE + SRAM_EXCEPT_SIZE + \
-				SRAM_STREAM_SIZE)
-#define HP_SRAM_WIN3_BASE	SRAM_TRACE_BASE
-#define HP_SRAM_WIN3_SIZE	SRAM_TRACE_SIZE
 
 #define HEAP_HP_BUFFER_BASE		(SRAM_TRACE_BASE + SRAM_TRACE_SIZE)
 #define HEAP_HP_BUFFER_SIZE		0x20000
@@ -361,37 +249,6 @@
 #define IMR_BOOT_LDR_TEXT_ENTRY_BASE	0xB0038000
 #endif
 #endif
-
-/* L1 memory */
-#define L1_MEM_BASE			0x9F000000
-#define L1_DRAM_SIZE			(CONFIG_L1_DRAM_BANKS * CONFIG_L1_DRAM_BANK_SIZE)
-#define L1_MEM_REG_BASE			0x9F080000
-#define L1_MEM_CAP			(L1_MEM_REG_BASE + 0x00)
-#define L1_MEM_DRAM_PGCTL		(L1_MEM_REG_BASE + 0x20)
-#define L1_MEM_DRAM_PGISTS		(L1_MEM_REG_BASE + 0x28)
-
-/* L1 init */
-#define L1CC_ADDR			(0x9F080080)
-#define CxL1CCAP			(L1CC_ADDR + 0x0000)
-#define CxL1CCFG			(L1CC_ADDR + 0x0004)
-#define CxL1PCFG			(L1CC_ADDR + 0x0008)
-
-#define L1_CACHE_ALL_DATA_WAY_ENABLED_MASK	(BIT(XCHAL_DCACHE_WAYS) - 1)
-#define L1_CACHE_ALL_INSTR_WAY_ENABLED_MASK	((BIT(XCHAL_ICACHE_WAYS) - 1) << 8)
-#define L1_CACHE_ALL_WAY_ENABLED_MASK	((L1_CACHE_ALL_DATA_WAY_ENABLED_MASK) \
-	| (L1_CACHE_ALL_INSTR_WAY_ENABLED_MASK))
-#define L1_CACHE_ALL_WAY_ACTIVE_MASK	(L1_CACHE_ALL_WAY_ENABLED_MASK << 16)
-
-#define L1_CACHE_ONE_DATA_WAY_ENABLED_MASK	BIT(0)
-#define L1_CACHE_ONE_INSTR_WAY_ENABLED_MASK	BIT(8)
-#define L1_CACHE_ONE_WAY_ENABLED_MASK	(L1_CACHE_ONE_DATA_WAY_ENABLED_MASK \
-	| L1_CACHE_ONE_INSTR_WAY_ENABLED_MASK)
-#define L1_CACHE_ONE_WAY_ACTIVE_MASK	(L1_CACHE_ONE_WAY_ENABLED_MASK << 16)
-
-#define L1_CACHE_PREFETCHER_ENABLED	1
-#define L1_CACHE_PREFETCHER_ACTIVE	0x10000
-
-#define L1_CACHE_PREFCTL_VALUE		0x1038
 
 #define host_to_local(addr) (addr)
 #define local_to_host(addr) (addr)
