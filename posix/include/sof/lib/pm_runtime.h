@@ -15,11 +15,11 @@
 #ifndef __SOF_LIB_PM_RUNTIME_H__
 #define __SOF_LIB_PM_RUNTIME_H__
 
-#include <platform/lib/pm_runtime.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 /** \addtogroup platform_drivers_api
