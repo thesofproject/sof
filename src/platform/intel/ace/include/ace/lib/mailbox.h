@@ -47,16 +47,6 @@ static inline void mailbox_sw_reg_write(size_t offset, uint32_t src)
 	*ptr = src;
 }
 
-static inline void mailbox_sw_reg_write64(size_t offset, uint64_t src)
-{
-	volatile uint64_t *ptr;
-	uint64_t __sparse_cache *ptr_c;
-
-	ptr_c = (uint64_t __sparse_cache *)(MAILBOX_SW_REG_BASE + offset);
-	ptr = cache_to_uncache(ptr_c);
-	*ptr = src;
-}
-
 static inline uint32_t mailbox_sw_reg_read(size_t offset)
 {
 	volatile uint32_t *ptr;

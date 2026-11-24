@@ -120,11 +120,6 @@
 struct sof;
 
 void platform_init_memmap(struct sof *sof);
-
-static inline void *platform_rfree_prepare(void *ptr)
-{
-	return ptr;
-}
 #endif
 #define host_to_local(addr) addr
 #endif /* __PLATFORM_LIB_MEMORY_H__ */

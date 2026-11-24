@@ -29,11 +29,6 @@ struct timer;
 #define HOST_PAGE_SIZE		4096
 #define PLATFORM_PAGE_TABLE_SIZE	256
 
-/* Platform defined panic code */
-static inline void platform_panic(uint32_t p)
-{
-}
-
 /**
  * \brief Platform specific CPU entering idle.
  * May be power-optimized using platform specific capabilities.

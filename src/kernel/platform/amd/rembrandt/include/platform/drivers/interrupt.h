@@ -68,9 +68,6 @@ typedef enum {
 	acp_timer_cntl_max
 } artos_timer_control_t;
 
-/* Disable Host to DSP interrupt */
-void acp_dsp_sw_intr_disable(void);
-
 void acp_intr_route(void);
 
 void acp_dsp_to_host_intr_trig(void);
