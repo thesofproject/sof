@@ -128,15 +128,6 @@
 
 #define L2_VECTOR_SIZE		0x1000
 
-#define UUID_ENTRY_ELF_BASE	0x1FFFA000
-#define UUID_ENTRY_ELF_SIZE	0x6000
-
-#define LOG_ENTRY_ELF_BASE	0x20000000
-#define LOG_ENTRY_ELF_SIZE	0x2000000
-
-#define EXT_MANIFEST_ELF_BASE	(LOG_ENTRY_ELF_BASE + LOG_ENTRY_ELF_SIZE)
-#define EXT_MANIFEST_ELF_SIZE	0x2000000
-
 /*
  * The HP SRAM Region on Tigerlake is organised like this :-
  * +----------------------------------------------------------------------------+
@@ -196,9 +187,6 @@
 
 #define HEAP_HP_BUFFER_BASE		(SRAM_TRACE_BASE + SRAM_TRACE_SIZE)
 #define HEAP_HP_BUFFER_SIZE		0x20000
-#define HEAP_HP_BUFFER_BLOCK_SIZE	0x180
-#define HEAP_HP_BUFFER_COUNT \
-			(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
 
 /* HP SRAM Base */
 #define HP_SRAM_VECBASE_RESET	(HEAP_HP_BUFFER_BASE + HEAP_HP_BUFFER_SIZE)
@@ -207,13 +195,9 @@
 #define SOF_FW_START		(HP_SRAM_VECBASE_RESET + 0x400)
 #define SOF_FW_BASE		(SOF_FW_START)
 
-/* max size for all var-size sections (text/rodata/bss) */
-#define SOF_FW_MAX_SIZE		(HP_SRAM_BASE + HP_SRAM_SIZE - SOF_FW_BASE)
-
 #define SOF_FW_END             (HP_SRAM_BASE + HP_SRAM_SIZE)
 
 #define SOF_TEXT_START		(SOF_FW_START)
-#define SOF_TEXT_BASE		(SOF_FW_START)
 
 /* Heap section sizes for system runtime heap for primary core */
 #define HEAP_SYS_RT_0_COUNT64		128
@@ -367,35 +351,6 @@
 #define PLATFORM_HEAP_SYSTEM_SHARED	1
 #define PLATFORM_HEAP_BUFFER		2
 
-/* Stack configuration */
-#define SOF_LP_STACK_SIZE		0x1000
-#define SOF_LP_STACK_BASE		(LP_SRAM_BASE + LP_SRAM_SIZE)
-#define SOF_LP_STACK_END		(SOF_LP_STACK_BASE - SOF_LP_STACK_SIZE)
-
-
-/* Vector and literal sizes - do not use core-isa.h */
-#define SOF_MEM_VECBASE			HP_SRAM_VECBASE_RESET
-#define SOF_MEM_VECT_LIT_SIZE		0x8
-#define SOF_MEM_VECT_TEXT_SIZE		0x38
-#define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + \
-					SOF_MEM_VECT_LIT_SIZE)
-
-/* Size of dynamic vectors unpacked from WindowOverflow4 */
-#define SOF_DYNAMIC_VECTORS_SIZE	0x400
-
-#define SOF_MEM_ERROR_TEXT_SIZE	0x180
-#define SOF_MEM_ERROR_LIT_SIZE		0x8
-
-#define SOF_MEM_RESET_TEXT_SIZE	0x268
-#define SOF_MEM_RESET_LIT_SIZE		0x8
-#define SOF_MEM_VECBASE_LIT_SIZE	0x178
-
-#define SOF_MEM_RO_SIZE			0x8
-
-/* VM ROM sizes */
-#define ROM_RESET_TEXT_SIZE	0x400
-#define ROM_RESET_LIT_SIZE	0x200
-
 /* boot loader in IMR */
 
 #ifndef __ZEPHYR__
@@ -405,24 +360,7 @@
 #ifndef IMR_BOOT_LDR_TEXT_ENTRY_BASE
 #define IMR_BOOT_LDR_TEXT_ENTRY_BASE	0xB0038000
 #endif
-
-#define IMR_BOOT_LDR_TEXT_ENTRY_SIZE	0x120
 #endif
-
-#define IMR_BOOT_LDR_LIT_BASE		(IMR_BOOT_LDR_TEXT_ENTRY_BASE + \
-					IMR_BOOT_LDR_TEXT_ENTRY_SIZE)
-#define IMR_BOOT_LDR_LIT_SIZE		0x22
-#define IMR_BOOT_LDR_TEXT_BASE		(IMR_BOOT_LDR_LIT_BASE + \
-					IMR_BOOT_LDR_LIT_SIZE)
-#define IMR_BOOT_LDR_TEXT_SIZE		0x1C00
-#define IMR_BOOT_LDR_DATA_BASE		0xB0039000
-#define IMR_BOOT_LDR_DATA_SIZE		0x1000
-#define IMR_BOOT_LDR_BSS_BASE		0xB0100000
-#define IMR_BOOT_LDR_BSS_SIZE		0x10000
-
-/* Temporary stack place for boot_ldr */
-#define BOOT_LDR_STACK_BASE		HEAP_HP_BUFFER_BASE
-#define BOOT_LDR_STACK_SIZE		SOF_STACK_TOTAL_SIZE
 
 /* L1 memory */
 #define L1_MEM_BASE			0x9F000000

@@ -13,10 +13,6 @@
 #include <rtos/cache.h>
 #include <platform/chip_offset_byte.h>
 
-/* physical DSP addresses */
-#define IRAM_BASE	0x7F000000
-#define IRAM_SIZE	0x60000
-
 #define DRAM0_BASE	0xE0000000
 #define DRAM0_SIZE	0x10000
 #define SRAM0_BASE	0x9FF00000
@@ -38,16 +34,6 @@
 
 #define HS_TX_FIFO_OFFST        (ACP_P1_HS_TX_FIFOADDR - ACP_P1_I2S_RX_RINGBUFADDR)
 #define HS_RX_FIFO_OFFST        (ACP_P1_HS_TX_FIFOADDR - ACP_P1_I2S_RX_RINGBUFADDR)
-
-#define UUID_ENTRY_ELF_BASE     0x1FFFA000
-#define UUID_ENTRY_ELF_SIZE     0x6000
-
-/* Log buffer  base need to be updated properly, these are used in linker scripts */
-#define LOG_ENTRY_ELF_BASE	0x20000000
-#define LOG_ENTRY_ELF_SIZE	0x2000000
-
-#define EXT_MANIFEST_ELF_BASE   (LOG_ENTRY_ELF_BASE + LOG_ENTRY_ELF_SIZE)
-#define EXT_MANIFEST_ELF_SIZE   0x2000000
 
 /* Stack configuration */
 #define SOF_STACK_SIZE		0x1000
@@ -118,29 +104,11 @@
 #define HEAP_BUFFER_BASE	(HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
 #define HEAP_BUFFER_SIZE	(0xF000)
 #define HEAP_BUFFER_BLOCK_SIZE	0x180
-#define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
 #define PLATFORM_HEAP_SYSTEM            1
 #define PLATFORM_HEAP_SYSTEM_RUNTIME    1
 #define PLATFORM_HEAP_RUNTIME           1
 #define PLATFORM_HEAP_BUFFER		1
-
-/* Vector and literal sizes - not in core-isa.h */
-#define SOF_MEM_VECT_LIT_SIZE		0x7
-#define SOF_MEM_VECT_TEXT_SIZE		0x37
-#define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + SOF_MEM_VECT_LIT_SIZE)
-
-#define SOF_MEM_RESET_TEXT_SIZE		0x400
-#define SOF_MEM_RESET_LIT_SIZE		0x8
-#define SOF_MEM_VECBASE_LIT_SIZE	0x178
-#define SOF_MEM_WIN_TEXT_SIZE		0x178
-
-#define SOF_MEM_RO_SIZE			0x8
-
-#define HEAP_BUF_ALIGNMENT		PLATFORM_DCACHE_ALIGN
-
-/* brief EDF task's default stack size in bytes */
-#define PLATFORM_TASK_DEFAULT_STACK_SIZE        3072
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 struct sof;
