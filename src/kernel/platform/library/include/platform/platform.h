@@ -31,27 +31,6 @@ struct timer;
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
 
-/* IPC page data copy timeout */
-#define PLATFORM_IPC_DMA_TIMEOUT 2000
-
-/* DSP default delay in cycles */
-#define PLATFORM_DEFAULT_DELAY	12
-
-/* local buffer size of DMA tracing */
-#define DMA_TRACE_LOCAL_SIZE    HOST_PAGE_SIZE
-
-/* trace bytes flushed during panic */
-#define DMA_FLUSH_TRACE_SIZE    (MAILBOX_TRACE_SIZE >> 2)
-
-/* the interval of DMA trace copying */
-#define DMA_TRACE_PERIOD        500000
-
-/*
- * the interval of reschedule DMA trace copying in special case like half
- * fullness of local DMA trace buffer
- */
-#define DMA_TRACE_RESCHEDULE_TIME       100
-
 #define HW_CFG_VERSION		0
 
 static inline void platform_panic(uint32_t p) {}

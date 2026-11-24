@@ -28,32 +28,9 @@ struct timer;
 
 /* IPC Interrupt */
 #define PLATFORM_IPC_INTERRUPT		5 /* EXT_LEVEL5 */
-#define PLATFORM_IPC_INTERRUPT_NAME	NULL
 
 /* Host page size */
 #define HOST_PAGE_SIZE                  65536
-
-/* pipeline IRQ */
-#define PLATFORM_SCHEDULE_IRQ		IRQ_NUM_SOFTWARE0
-#define PLATFORM_SCHEDULE_IRQ_NAME	NULL
-
-/* local buffer size of DMA tracing */
-#define DMA_TRACE_LOCAL_SIZE	8192
-
-/* trace bytes flushed during panic */
-#define DMA_FLUSH_TRACE_SIZE	(MAILBOX_TRACE_SIZE >> 2)
-
-/* the interval of DMA trace copying */
-#define DMA_TRACE_PERIOD		500 /* 1000 / 50000 */
-
-/*
- * the interval of reschedule DMA trace copying in special case like half
- * fullness of local DMA trace buffer
- */
-#define DMA_TRACE_RESCHEDULE_TIME	100
-
-/* DSP default delay in cycles */
-#define PLATFORM_DEFAULT_DELAY	12
 
 /* default dma trace channel */
 #define DMA_TRACE_CHANNEL	7

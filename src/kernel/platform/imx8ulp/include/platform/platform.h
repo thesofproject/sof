@@ -21,37 +21,13 @@ struct ll_schedule_domain;
 struct timer;
 
 #define PLATFORM_DEFAULT_CLOCK CLK_CPU(0)
-#define LPSRAM_SIZE 16384
 
 /* IPC Interrupt */
 #define PLATFORM_IPC_INTERRUPT		15
-#define PLATFORM_IPC_INTERRUPT_NAME	NULL
 
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
 #define PLATFORM_PAGE_TABLE_SIZE	256
-
-/* pipeline IRQ */
-#define PLATFORM_SCHEDULE_IRQ		IRQ_NUM_SOFTWARE0
-#define PLATFORM_SCHEDULE_IRQ_NAME	NULL
-
-/* local buffer size of DMA tracing */
-#define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
-
-/* trace bytes flushed during panic */
-#define DMA_FLUSH_TRACE_SIZE	(MAILBOX_TRACE_SIZE >> 2)
-
-/* the interval of DMA trace copying */
-#define DMA_TRACE_PERIOD		500000
-
-/*
- * the interval of reschedule DMA trace copying in special case like half
- * fullness of local DMA trace buffer
- */
-#define DMA_TRACE_RESCHEDULE_TIME	100
-
-/* DSP default delay in cycles */
-#define PLATFORM_DEFAULT_DELAY	12
 
 #define SRAM_REG_FW_STATUS     0x4
 
