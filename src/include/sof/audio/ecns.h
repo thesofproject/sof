@@ -14,20 +14,25 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/** \brief Input pin 0: 16 kHz microphone stream from the DMIC DAI copier */
+/** \brief Input pin 0: microphone stream from the DMIC DAI copier */
 #define ECNS_PIN_MIC_IN		0
-/** \brief Input pin 1: 16 kHz echo reference stream from the speaker */
+/** \brief Input pin 1: echo reference stream from the speaker */
 #define ECNS_PIN_REF_IN		1
-/** \brief Output pin 0: 16 kHz mono processed stream, e.g. to KPB */
+/** \brief Output pin 0: processed stream, mono e.g. to KPB or multichannel to host */
 #define ECNS_PIN_OUT		0
 
-/** \brief Output sample rate in Hz */
-#define ECNS_RATE		16000
+/** \brief Supported sample rate in Hz, e.g. for WoV */
+#define ECNS_RATE_16K		16000
+/** \brief Supported sample rate in Hz, e.g. for VoIP capture */
+#define ECNS_RATE_48K		48000
 
 /** \brief Microphone channel enum value to average all channels */
 #define ECNS_MIC_SEL_AVERAGE	0
 /** \brief Largest microphone channel enum value, Mic4 */
 #define ECNS_MIC_SEL_MAX	4
+
+/** \brief Largest output channel count, one high-pass filter state per channel */
+#define ECNS_OUT_CH_MAX		4
 
 /** \brief IPC4 channel map for mono, one nibble per channel, 0xF marks unused */
 #define ECNS_CH_MAP_MONO	0xFFFFFFF0

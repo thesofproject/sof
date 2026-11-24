@@ -7,13 +7,21 @@
  * \file
  * \brief ECNS (Echo Cancellation & Noise Suppression) DP component
  *
- * Input pin 0 receives the 16 kHz microphone stream and input pin 1 the
- * 16 kHz echo reference. The microphone channels are averaged to mono, or a
- * single channel is selected with the microphone channel enum control, and
- * high-pass filtered. When the AEC switch is enabled the average of the echo
- * reference channels is subtracted from the filtered microphone signal. The
- * result is written as 16 kHz mono s16 or s32 to the single output pin. The
- * echo reference is always consumed, also when the AEC switch is disabled.
+ * Input pin 0 receives the microphone stream and input pin 1 the echo
+ * reference, both at the same 16 kHz or 48 kHz rate. The rate is taken from
+ * the pin 0 format in the IPC4 base config. The output channel count and bit
+ * depth follow the consumer input format, e.g. mono for KPB or 2 or 4
+ * channels for a host capture.
+ *
+ * With a mono output the microphone channels are averaged, or a single
+ * channel is selected with the microphone channel enum control. With two or
+ * more output channels the average setting passes the microphone channels
+ * through and a single channel selection is duplicated to all output
+ * channels. Each output channel is high-pass filtered. When the AEC switch is
+ * enabled the average of the echo reference channels is subtracted from all
+ * filtered output channels. The result is written as s16 or s32 at the input
+ * rate to the single output pin. The echo reference is always consumed, also
+ * when the AEC switch is disabled.
  */
 
 #include <sof/audio/component_ext.h>
@@ -44,11 +52,13 @@ SOF_DEFINE_REG_UUID(ecns);
 DECLARE_TR_CTX(ecns_tr, SOF_UUID(ecns_uuid), LOG_LEVEL_INFO);
 
 /**
- * \brief Get the microphone channels used for the mono output.
+ * \brief Get the microphone channels used for the output.
  *
  * The selection comes from the microphone channel enum control. Value 0
  * averages all channels, values 1..N select a single channel. A channel
  * beyond the input channel count falls back to the average of all channels.
+ * With a multichannel output a window of more than one channel means that
+ * the microphone channels are passed through instead of averaged.
  *
  * \param[in]  mic_sel Microphone channel enum control value
  * \param[in]  ch      Number of microphone input channels
@@ -96,6 +106,38 @@ static inline int32_t ecns_frame_avg(const void *frame, bool s32, uint32_t start
 	return (int32_t)(acc / (int32_t)cnt);
 }
 
+/**
+ * \brief Get one channel of an interleaved frame as a Q1.31 sample.
+ *
+ * \param[in] frame Pointer to the first sample of the frame
+ * \param[in] s32   True for 32-bit samples, false for 16-bit samples
+ * \param[in] c     Channel index
+ * \return The sample as Q1.31
+ */
+static inline int32_t ecns_frame_sample(const void *frame, bool s32, uint32_t c)
+{
+	if (s32)
+		return ((const int32_t *)frame)[c];
+
+	return (int32_t)((const int16_t *)frame)[c] << 16;
+}
+
+/**
+ * \brief Write one channel of an interleaved output frame.
+ *
+ * \param[out] frame Pointer to the first sample of the frame
+ * \param[in]  s32   True for 32-bit samples, false for 16-bit samples
+ * \param[in]  c     Channel index
+ * \param[in]  y     Sample as Q1.31
+ */
+static inline void ecns_frame_write(void *frame, bool s32, uint32_t c, int32_t y)
+{
+	if (s32)
+		((int32_t *)frame)[c] = y;
+	else
+		((int16_t *)frame)[c] = sat_int16(Q_SHIFT_RND(y, 31, 15));
+}
+
 #if CONFIG_ECNS_KPB_HPF
 /**
  * \brief 100 Hz second-order high-pass filter with +30 dB gain at 16 kHz.
@@ -120,6 +162,24 @@ static const uint32_t hp_100hz_0db_16k[13] = {
 	0x1f32926e, 0xc19adb24, 0x1f32926e, 0x00000000,
 	0x00007fb4
 };
+
+/**
+ * \brief As hp_100hz_30db_16k for 48 kHz, from highpass_100hz_30db_48khz.conf.
+ */
+static const uint32_t hp_100hz_30db_48k[13] = {
+	0x00000001, 0x00000001, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0xc12c82bd, 0x7ed0b52e,
+	0x1fc7cc0c, 0xc07067e9, 0x1fc7cc0c, 0xfffffffb,
+	0x00007e33
+};
+
+/** \brief As hp_100hz_0db_16k for 48 kHz, from highpass_100hz_0db_48khz.conf. */
+static const uint32_t hp_100hz_0db_48k[13] = {
+	0x00000001, 0x00000001, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0xc12c82bd, 0x7ed0b52e,
+	0x1fc7cc0c, 0xc07067e9, 0x1fc7cc0c, 0x00000000,
+	0x00007fb4
+};
 #endif
 
 /** \brief Switch control indexes, mixer."1" to mixer."3" in ecns.conf */
@@ -133,28 +193,52 @@ static const uint32_t hp_100hz_0db_16k[13] = {
 /** \brief ECNS component private data */
 struct ecns_comp_data {
 	struct ipc4_base_module_cfg base_cfg;	/**< IPC4 base config, pin 0 input format */
+	uint32_t rate;			/**< Sample rate of all pins, 16 or 48 kHz */
 	bool capture_boost;		/**< Boosted high-pass filter response in use */
 	bool capture_boost_req;		/**< Boost requested by the control */
 	bool aec_enable;		/**< AEC switch, subtract the echo reference */
 	bool ns_enable;			/**< NS switch, no function yet */
 	uint32_t mic_sel;		/**< Microphone channel, 0 average, 1..N single channel */
-	struct iir_state_df1 hp_iir;	/**< Output high-pass filter state */
-	int32_t *hp_delay;		/**< Output high-pass filter delay line */
+	struct iir_state_df1 hp_iir[ECNS_OUT_CH_MAX];	/**< Output high-pass filter states */
+	int32_t *hp_delay;		/**< Delay lines of all output high-pass filters */
+	size_t hp_delay_size;		/**< Size in bytes of all delay lines */
+	bool hp_dup;			/**< Last processing used only the channel 0 filter */
 };
 
 #if CONFIG_ECNS_KPB_HPF
+/**
+ * \brief Get the high-pass filter coefficients for the rate and boost.
+ *
+ * \param[in] cd ECNS component data
+ * \return IIR coefficient header followed by the biquad
+ */
 static struct sof_eq_iir_header *ecns_iir_coef(struct ecns_comp_data *cd)
 {
+	if (cd->rate == ECNS_RATE_48K)
+		return (struct sof_eq_iir_header *)
+			(cd->capture_boost ? hp_100hz_30db_48k : hp_100hz_0db_48k);
+
 	return (struct sof_eq_iir_header *)
 		(cd->capture_boost ? hp_100hz_30db_16k : hp_100hz_0db_16k);
 }
 #endif
 
-/* Only the coefficient pointers move, the filter delay line is kept. */
+/**
+ * \brief Update the high-pass filter coefficients of all output channels.
+ *
+ * Selects the coefficients for the rate and the capture boost. Only the
+ * coefficient pointers move, the filter delay lines are kept.
+ *
+ * \param[in,out] cd ECNS component data
+ */
 static void ecns_update_iir_coef(struct ecns_comp_data *cd)
 {
 #if CONFIG_ECNS_KPB_HPF
-	iir_init_coef_df1(&cd->hp_iir, ecns_iir_coef(cd));
+	struct sof_eq_iir_header *hdr = ecns_iir_coef(cd);
+	int c;
+
+	for (c = 0; c < ECNS_OUT_CH_MAX; c++)
+		iir_init_coef_df1(&cd->hp_iir[c], hdr);
 #endif
 }
 
@@ -173,6 +257,13 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
+	if (base_cfg->audio_fmt.sampling_frequency != ECNS_RATE_16K &&
+	    base_cfg->audio_fmt.sampling_frequency != ECNS_RATE_48K) {
+		comp_cl_err(drv, "ecns_new: unsupported rate %u",
+			    base_cfg->audio_fmt.sampling_frequency);
+		return NULL;
+	}
+
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
@@ -186,6 +277,7 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 	}
 
 	memcpy_s(&cd->base_cfg, sizeof(cd->base_cfg), base_cfg, sizeof(*base_cfg));
+	cd->rate = base_cfg->audio_fmt.sampling_frequency;
 
 	comp_set_drvdata(dev, cd);
 	dev->direction     = SOF_IPC_STREAM_CAPTURE;
@@ -200,6 +292,7 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 	struct sof_eq_iir_header *hp_hdr = ecns_iir_coef(cd);
 	int hp_size = iir_delay_size_df1(hp_hdr);
 	int32_t *delay;
+	int c;
 
 	if (hp_size < 0) {
 		rfree(cd);
@@ -207,16 +300,23 @@ static struct comp_dev *ecns_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	cd->hp_delay = rzalloc(SOF_MEM_FLAG_USER, hp_size);
+	/* One delay line per output channel, the output channel count is
+	 * known only when the module is prepared.
+	 */
+	cd->hp_delay_size = (size_t)hp_size * ECNS_OUT_CH_MAX;
+	cd->hp_delay = rzalloc(SOF_MEM_FLAG_USER, cd->hp_delay_size);
 	if (!cd->hp_delay) {
 		rfree(cd);
 		comp_free_device(dev);
 		return NULL;
 	}
 
+	/* iir_init_delay_df1() advances the pointer past each delay line */
 	delay = cd->hp_delay;
-	iir_init_coef_df1(&cd->hp_iir, hp_hdr);
-	iir_init_delay_df1(&cd->hp_iir, &delay);
+	for (c = 0; c < ECNS_OUT_CH_MAX; c++) {
+		iir_init_coef_df1(&cd->hp_iir[c], hp_hdr);
+		iir_init_delay_df1(&cd->hp_iir[c], &delay);
+	}
 #endif
 
 	comp_info(dev, "ecns_new: rate=%u in_ch=%u valid_bits=%u",
@@ -250,54 +350,131 @@ static int ecns_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 }
 
 /**
- * \brief Get the output sample container depth.
+ * \brief Get the output format.
  *
  * The output format is defined in topology, but the IPC4 base config of ECNS
  * only describes the input pin 0 format. The topology output format matches
- * the consumer input format, so the depth is taken from the consumer base
- * config.
+ * the consumer input format, so the channel count, channel map and depth are
+ * taken from the consumer base config. Without a consumer base config the
+ * output is mono s32.
  *
- * \param[in] dev  ECNS component device
- * \param[in] sink Output buffer
- * \return 16 or 32
+ * \param[in]  dev  ECNS component device
+ * \param[in]  sink Output buffer
+ * \param[out] fmt  Output format
+ * \return 0 on success, -EINVAL for an unsupported channel count
  */
-static uint32_t ecns_out_depth(struct comp_dev *dev, struct comp_buffer *sink)
+static int ecns_out_format(struct comp_dev *dev, struct comp_buffer *sink,
+			   struct ipc4_audio_format *fmt)
 {
+	struct ecns_comp_data *cd = comp_get_drvdata(dev);
 	struct comp_dev *consumer = comp_buffer_get_sink_component(sink);
 	struct ipc4_base_module_cfg cfg;
+	uint32_t depth = 32;
+	uint32_t ch = 1;
 
-	if (consumer && !comp_get_attribute(consumer, COMP_ATTR_BASE_CONFIG, &cfg) &&
-	    cfg.audio_fmt.depth == 16)
-		return 16;
+	fmt->ch_map = ECNS_CH_MAP_MONO;
+	fmt->ch_cfg = IPC4_CHANNEL_CONFIG_MONO;
 
-	return 32;
+	if (consumer && !comp_get_attribute(consumer, COMP_ATTR_BASE_CONFIG, &cfg)) {
+		if (cfg.audio_fmt.depth == 16)
+			depth = 16;
+
+		if (cfg.audio_fmt.channels_count > 1) {
+			ch = cfg.audio_fmt.channels_count;
+			fmt->ch_map = cfg.audio_fmt.ch_map;
+			fmt->ch_cfg = cfg.audio_fmt.ch_cfg;
+		}
+	}
+
+	if (ch > ECNS_OUT_CH_MAX) {
+		comp_err(dev, "ecns_out_format: %u output channels, max %u",
+			 ch, ECNS_OUT_CH_MAX);
+		return -EINVAL;
+	}
+
+	fmt->sampling_frequency = cd->rate;
+	fmt->channels_count = ch;
+	fmt->depth = depth;
+	fmt->valid_bit_depth = depth;
+	fmt->s_type = depth == 16 ? IPC4_TYPE_SIGNED_INTEGER : IPC4_TYPE_MSB_INTEGER;
+	fmt->interleaving_style = IPC4_CHANNELS_INTERLEAVED;
+	return 0;
+}
+
+/**
+ * \brief Set the format of an input buffer if the producer did not set it.
+ *
+ * In IPC4 the consumer module sets the format of its input buffers at bind.
+ * ECNS is not a module adapter module and does not do it, so an input buffer
+ * has a format only if the producer sets the format of its output buffer, as
+ * the copier and SRC do. E.g. a siggen in pass-through mode for the echo
+ * reference does not, and the buffer would be processed as mono s16. The
+ * format of such a buffer is taken from the producer base config, the
+ * producer output format equals its input format.
+ *
+ * \param[in]     dev    ECNS component device
+ * \param[in,out] source Input buffer
+ * \return 0 on success, -EINVAL if the format can't be determined
+ */
+static int ecns_in_format(struct comp_dev *dev, struct comp_buffer *source)
+{
+	struct comp_dev *producer;
+	struct ipc4_base_module_cfg cfg;
+
+	if (audio_stream_get_channels(&source->stream) && audio_stream_get_rate(&source->stream))
+		return 0;
+
+	producer = comp_buffer_get_source_component(source);
+	if (!producer || comp_get_attribute(producer, COMP_ATTR_BASE_CONFIG, &cfg)) {
+		comp_err(dev, "ecns_in_format: input pin %u has no format",
+			 IPC4_SINK_QUEUE_ID(buf_get_id(source)));
+		return -EINVAL;
+	}
+
+	ipc4_update_buffer_format(source, &cfg.audio_fmt);
+	comp_info(dev, "ecns_in_format: input pin %u format from producer, %uch s%u",
+		  IPC4_SINK_QUEUE_ID(buf_get_id(source)), cfg.audio_fmt.channels_count,
+		  cfg.audio_fmt.depth);
+	return 0;
 }
 
 static int ecns_prepare(struct comp_dev *dev)
 {
 	struct ecns_comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *source;
 	struct comp_buffer *sink;
+	uint32_t rate;
+	int ret;
 
 	comp_info(dev, "ecns_prepare");
+
+	comp_dev_for_each_producer(dev, source) {
+		ret = ecns_in_format(dev, source);
+		if (ret)
+			return ret;
+
+		/* The processing does not convert rates, all inputs must match pin 0 */
+		rate = audio_stream_get_rate(&source->stream);
+		if (rate && rate != cd->rate) {
+			comp_err(dev, "ecns_prepare: input pin %u rate %u, expected %u",
+				 IPC4_SINK_QUEUE_ID(buf_get_id(source)), rate, cd->rate);
+			return -EINVAL;
+		}
+	}
 
 	comp_dev_for_each_consumer(dev, sink) {
 		if (IPC4_SRC_QUEUE_ID(buf_get_id(sink)) != ECNS_PIN_OUT)
 			continue;
 
-		uint32_t depth = ecns_out_depth(dev, sink);
-		struct ipc4_audio_format fmt = {
-			.sampling_frequency = ECNS_RATE,
-			.channels_count = 1,
-			.depth = depth,
-			.valid_bit_depth = depth,
-			.s_type = depth == 16 ? IPC4_TYPE_SIGNED_INTEGER : IPC4_TYPE_MSB_INTEGER,
-			.interleaving_style = IPC4_CHANNELS_INTERLEAVED,
-			.ch_map = ECNS_CH_MAP_MONO,
-			.ch_cfg = IPC4_CHANNEL_CONFIG_MONO,
-		};
+		struct ipc4_audio_format fmt;
+
+		ret = ecns_out_format(dev, sink, &fmt);
+		if (ret)
+			return ret;
 
 		ipc4_update_buffer_format(sink, &fmt);
-		comp_info(dev, "ecns_prepare: output s%u", depth);
+		comp_info(dev, "ecns_prepare: output %uch s%u",
+			  fmt.channels_count, fmt.depth);
 	}
 
 	cd->capture_boost = cd->capture_boost_req;
@@ -306,19 +483,33 @@ static int ecns_prepare(struct comp_dev *dev)
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }
 
+/**
+ * \brief Clear the high-pass filter delay lines from a channel onwards.
+ *
+ * The delay lines of the output channels follow each other in hp_delay, as
+ * set up with iir_init_delay_df1() in ecns_new().
+ *
+ * \param[in,out] cd       ECNS component data
+ * \param[in]     first_ch First output channel to clear
+ */
+static void ecns_clear_hp_delay(struct ecns_comp_data *cd, uint32_t first_ch)
+{
+	size_t ch_size = cd->hp_delay_size / ECNS_OUT_CH_MAX;
+	size_t offset = first_ch * ch_size;
+
+	if (!cd->hp_delay || first_ch >= ECNS_OUT_CH_MAX)
+		return;
+
+	memset_s((uint8_t *)cd->hp_delay + offset, cd->hp_delay_size - offset, 0,
+		 cd->hp_delay_size - offset);
+}
+
 static int ecns_reset(struct comp_dev *dev)
 {
 	struct ecns_comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "ecns_reset");
-#if CONFIG_ECNS_KPB_HPF
-	if (cd->hp_delay) {
-		int hp_size = iir_delay_size_df1(ecns_iir_coef(cd));
-
-		if (hp_size > 0)
-			memset_s(cd->hp_delay, hp_size, 0, hp_size);
-	}
-#endif
+	ecns_clear_hp_delay(cd, 0);
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
 
@@ -328,10 +519,18 @@ static int ecns_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
-static inline int32_t ecns_filter(struct ecns_comp_data *cd, int32_t x)
+/**
+ * \brief High-pass filter one sample of an output channel.
+ *
+ * \param[in,out] cd ECNS component data
+ * \param[in]     c  Output channel index, filter state to use
+ * \param[in]     x  Input sample as Q1.31
+ * \return Filtered sample as Q1.31, or x without CONFIG_ECNS_KPB_HPF
+ */
+static inline int32_t ecns_filter(struct ecns_comp_data *cd, uint32_t c, int32_t x)
 {
 #if CONFIG_ECNS_KPB_HPF
-	return iir_df1(&cd->hp_iir, x);
+	return iir_df1(&cd->hp_iir[c], x);
 #else
 	return x;
 #endif
@@ -370,6 +569,13 @@ static uint32_t ecns_avail_frames(const struct ecns_stream *s)
 /**
  * \brief Process microphone and echo reference frames to the output.
  *
+ * A mono output, or a single microphone channel selection, is filtered once
+ * and written to all output channels. Otherwise output channel c is the
+ * filtered microphone channel c, wrapped if the output has more channels
+ * than the microphone input. The filters of channels 1 and up are cleared
+ * when the processing changes from the first case to the second. The echo reference average is subtracted from
+ * all output channels when AEC is enabled.
+ *
  * \param[in,out] cd         ECNS component data
  * \param[in]     mic        Microphone input stream
  * \param[in]     ref        Echo reference input stream, buffer may be NULL
@@ -389,10 +595,21 @@ static void ecns_process(struct ecns_comp_data *cd, const struct ecns_stream *mi
 	uint32_t mic_sample_bytes = mic->s32 ? sizeof(int32_t) : sizeof(int16_t);
 	uint32_t avg_start, avg_cnt;
 	uint32_t remaining = frames;
-	uint32_t i, n;
+	uint32_t i, n, c;
+	int32_t ref_avg;
 	int32_t y;
+	bool dup;
 
 	ecns_mono_window(cd->mic_sel, mic->ch, &avg_start, &avg_cnt);
+	dup = out->ch == 1 || avg_cnt == 1;
+
+	/* Only the channel 0 filter runs while duplicating, so the other
+	 * filters have stale state when the mic channel control switches to
+	 * pass-through.
+	 */
+	if (cd->hp_dup && !dup)
+		ecns_clear_hp_delay(cd, 1);
+	cd->hp_dup = dup;
 
 	while (remaining > 0) {
 		n = MIN(remaining, audio_stream_frames_without_wrap(&mic->buf->stream, mic_ptr));
@@ -403,29 +620,29 @@ static void ecns_process(struct ecns_comp_data *cd, const struct ecns_stream *mi
 		}
 
 		for (i = 0; i < n; i++) {
-			y = ecns_filter(cd, ecns_frame_avg(mic_ptr, mic->s32, avg_start, avg_cnt));
-			mic_ptr += mic->ch * mic_sample_bytes;
-
+			ref_avg = 0;
 			if (ref_frames) {
 				if (cd->aec_enable)
-					y = sat_int32((int64_t)y -
-						      ecns_frame_avg(ref_ptr, ref->s32, 0, ref->ch));
+					ref_avg = ecns_frame_avg(ref_ptr, ref->s32, 0, ref->ch);
 				ref_ptr += ref->frame_bytes;
 			}
 
-			if (out->s32) {
-				int32_t *o = (int32_t *)out_ptr;
-
-				o[0] = y;
-				for (uint32_t c = 1; c < out->ch; c++)
-					o[c] = 0;
+			if (dup) {
+				y = ecns_filter(cd, 0, ecns_frame_avg(mic_ptr, mic->s32,
+								      avg_start, avg_cnt));
+				y = sat_int32((int64_t)y - ref_avg);
+				for (c = 0; c < out->ch; c++)
+					ecns_frame_write(out_ptr, out->s32, c, y);
 			} else {
-				int16_t *o = (int16_t *)out_ptr;
-
-				o[0] = sat_int16(Q_SHIFT_RND(y, 31, 15));
-				for (uint32_t c = 1; c < out->ch; c++)
-					o[c] = 0;
+				for (c = 0; c < out->ch; c++) {
+					y = ecns_filter(cd, c, ecns_frame_sample(mic_ptr, mic->s32,
+										 c % mic->ch));
+					y = sat_int32((int64_t)y - ref_avg);
+					ecns_frame_write(out_ptr, out->s32, c, y);
+				}
 			}
+
+			mic_ptr += mic->ch * mic_sample_bytes;
 			out_ptr += out->frame_bytes;
 		}
 
@@ -449,12 +666,12 @@ static void ecns_drain(const struct ecns_stream *s)
 }
 
 /*
- * Main 20 ms DP processing function:
+ * Main 20 ms DP processing function, all pins at the same 16 or 48 kHz rate:
  * Consumes:
- *   - Pin 0 in: 16 kHz microphone stream (2 or 4 channels, 16/32-bit)
- *   - Pin 1 in: 16 kHz echo reference (stereo, 16/32-bit)
+ *   - Pin 0 in: microphone stream (2 or 4 channels, 16/32-bit)
+ *   - Pin 1 in: echo reference (stereo, 16/32-bit)
  * Produces:
- *   - Pin 0 out: 16 kHz mono processed stream (16/32-bit)
+ *   - Pin 0 out: processed stream, 1 to ECNS_OUT_CH_MAX channels (16/32-bit)
  */
 static int ecns_copy(struct comp_dev *dev)
 {
@@ -495,6 +712,13 @@ static int ecns_copy(struct comp_dev *dev)
 	ecns_stream_init(&mic, src_mic);
 	ecns_stream_init(&ref, src_ref);
 	ecns_stream_init(&out, snk);
+
+	/* The filter states are allocated for ECNS_OUT_CH_MAX channels */
+	if (snk && out.ch > ECNS_OUT_CH_MAX) {
+		comp_err(dev, "ecns_copy: %u output channels, max %u",
+			 out.ch, ECNS_OUT_CH_MAX);
+		return -EINVAL;
+	}
 
 	/* Drain all available input bounded by sink space; a one-period cap
 	 * would let the source ring overflow under DMIC vs DSP clock drift.
