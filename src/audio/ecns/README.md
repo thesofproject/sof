@@ -87,22 +87,31 @@ flowchart TD
     SPK["speaker playback module-copier<br/>(e.g. module-copier.21.22)"]
     LOOP["echo reference start DAI<br/>(e.g. alh-copier.Loopback_Virtual.25)"]
     SIGGEN["siggen.120.1<br/>48 kHz stereo, silence without speaker"]
-    SRC["src.120.1<br/>48 kHz → 16 kHz stereo s32"]
+    MC120["module-copier.120.2<br/>48 kHz stereo, also to the 48 kHz ECNS"]
+    SRC["src.124.1, own pipeline 124<br/>48 kHz → 16 kHz stereo s32"]
     ECNS["ecns.115.1<br/>mic average or channel → 100 Hz HPF → − (L+R)/2 ref"]
     KPB["kpb.116.1<br/>16 kHz mono"]
 
     DMIC16K -->|"Pin 0"| ECNS
     SPK --> SIGGEN
     LOOP --> SIGGEN
-    SIGGEN --> SRC
+    SIGGEN --> MC120
+    MC120 --> SRC
     SRC -->|"Pin 1"| ECNS
     ECNS -->|"Out Pin 0"| KPB
 ```
 
-The 48 kHz DMIC stream is not processed by ECNS. It is captured with the
-regular DMIC0 pipelines of
+The 48 kHz DMIC stream is captured with the regular DMIC0 pipelines of
 `tools/topology/topology2/platform/intel/dmic-generic.conf`, without the
-TDFB and DRC enhancements.
+TDFB and DRC enhancements, to the raw PCM. A second ECNS instance,
+`ecns.122.1` in `tools/topology/topology2/platform/intel/dmic-wov-multi.conf`,
+runs at 48 kHz for VoIP. It takes the microphones from the DMIC0 DAI pipeline
+module-copier, before the raw PCM IIR, and the 48 kHz echo reference from
+`module-copier.120.2` between the siggen and the SRC. Its controls are named
+`DMIC0 ECNS boost`, `DMIC0 ECNS AEC switch`, `DMIC0 ECNS NS switch` and
+`DMIC0 ECNS mic channel`. Its output and PCM 15 have the DMIC0 DAI channel
+count, 2 or 4, so the multichannel output processing described above is
+used.
 
 ## Specifications
 

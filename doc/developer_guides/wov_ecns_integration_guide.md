@@ -22,7 +22,7 @@ The reference topology establishes a unified 4-channel native 16 kHz architectur
 ## 1. System Architecture Overview
 
 The pipeline separates real-time audio ingest into two primary scheduling domains:
-- **Low-Latency (LL) Domain (1 ms period)**: Ingests 2/4-channel 16 kHz and 48 kHz microphone data from the DMIC DAIs and the speaker echo reference (48 kHz, converted to 16 kHz stereo by `src.120.1`) without frame jitter.
+- **Low-Latency (LL) Domain (1 ms period)**: Ingests 2/4-channel 16 kHz and 48 kHz microphone data from the DMIC DAIs and the speaker echo reference (48 kHz, converted to 16 kHz stereo by `src.124.1`) without frame jitter.
 - **Data Processing (DP) Domain (20 ms period)**: Runs block-based processing for acoustic echo cancellation, noise suppression, circular buffering, feature extraction, and neural network keyword classification.
 
 ```mermaid
@@ -55,9 +55,11 @@ flowchart TD
     SPK["Speaker playback<br/>(module-copier + loopback DAI,<br/>per platform)"]
     subgraph P120 ["Pipeline 120: Speaker Echo Reference (Core 0, LL 1ms)"]
         SIGGEN["siggen.120.1<br/>(48 kHz · 2ch · passthrough,<br/>silence when speaker is idle)"]
-        SRC_120["src.120.1<br/>(48 kHz → 16 kHz · 2ch · S32_LE)"]
-        SIGGEN --> SRC_120
     end
+    subgraph P124 ["Pipeline 124: 16 kHz Echo Reference SRC (Core 0, LL 1ms)"]
+        SRC_120["src.124.1<br/>(48 kHz → 16 kHz · 2ch · S32_LE)"]
+    end
+    SIGGEN --> SRC_120
     SPK --> SIGGEN
 
     %% Pipeline 115: ECNS DP Pipeline
@@ -128,7 +130,7 @@ flowchart TD
 
 ## 2. Developing a Custom ECNS Module
 
-An ECNS component acts as a two-source Data Processing (DP) block. It consumes the interleaved multi-channel microphone stream and the speaker echo reference on two input pins and emits cleaned mono audio on a single output pin. The reference implementation `src/audio/ecns/ecns.c` averages the microphone channels to mono (or takes the single channel selected with the `mic channel` enum), applies a 100 Hz high-pass IIR (`boost` switch selects +30 dB or 0 dB), and when the `AEC switch` is on subtracts the `(L+R)/2` average of the echo reference after the IIR. The `NS switch` has no function yet. The echo reference is always consumed, also when the AEC switch is off.
+An ECNS component acts as a two-source Data Processing (DP) block. It consumes the interleaved multi-channel microphone stream and the speaker echo reference on two input pins and emits cleaned mono audio on a single output pin. The reference implementation `src/audio/ecns/ecns.c` averages the microphone channels to mono (or takes the single channel selected with the `mic channel` enum), applies a 100 Hz high-pass IIR (`boost` switch selects +30 dB or 0 dB), and when the `AEC switch` is on subtracts the `(L+R)/2` average of the echo reference after the IIR. The `NS switch` has no function yet. The echo reference is always consumed, also when the AEC switch is off. The output channel count follows the consumer input format: the KPB path is mono, while a multichannel host capture (e.g. the 48 kHz `DMIC0 ECNS` PCM) gets the microphone channels passed through with `Average`, or the selected `MicN` duplicated to all channels, with the reference average subtracted from each channel.
 
 ### Audio Data Interface Contract
 - **Input Pin 0 (Source 0 — Microphones)**:
@@ -137,7 +139,7 @@ An ECNS component acts as a two-source Data Processing (DP) block. It consumes t
   - Sample Format: `S32_LE` in the topology (the firmware also accepts `S16_LE`).
   - Frame Period: 20 ms (`ibs` 2,560 bytes).
 - **Input Pin 1 (Source 1 — Speaker Echo Reference)**:
-  - Channels: 2 (far-end playback, from `src.120.1`).
+  - Channels: 2 (far-end playback, from `src.124.1`).
   - Rate: 16,000 Hz.
   - Sample Format: `S32_LE`.
   - Frame Period: 20 ms (320 frames = 2,560 bytes).
@@ -484,7 +486,7 @@ Class.Control.enum."score_enum" {
 > provide. They are kept as an illustration of the pipeline structure. The
 > current ECNS in `platform/intel/dmic-wov-multi.conf` (`ecns.115.1`) has two
 > input pins (16 kHz microphones from `dmic16k` and the 16 kHz stereo speaker
-> echo reference from `src.120.1`) and a single 16 kHz mono output pin to
+> echo reference from `src.124.1`) and a single 16 kHz mono output pin to
 > `kpb.116.1`, without mixin/mixout widgets.
 
 #### 1. ECNS Pipeline (Pipeline 105)
@@ -611,8 +613,11 @@ Follow this step-by-step checklist to integrate your own algorithms:
    `cavs-sdw` `*-wov-multi` targets in `production/tplg-targets-ace3.cmake`.
    Wildcat Lake topologies are symlinks to the Panther Lake ones.
 4. Route the speaker echo reference into `siggen.120.1` of the echo reference
-   pipeline 120 (`siggen-src-capture`), which feeds ECNS input pin 1 through
-   `src.120.1`. This is enabled with `SDW_SPK_ECHO_REF_ECNS=true` (SoundWire,
+   pipeline 120 (`siggen-copier-capture`), which feeds ECNS input pin 1 through
+   `src.124.1` in pipeline 124. Keep a widget that only some of the PCMs use,
+   such as this SRC, out of a pipeline that other PCMs keep running: the
+   kernel frees the widget when its last PCM stops, but the firmware deletes
+   the module only with its pipeline. This is enabled with `SDW_SPK_ECHO_REF_ECNS=true` (SoundWire,
    together with `SDW_SPK_ECHO_REF=true` and `SDW_ECHO_REF_DAI=true`),
    `SPEAKER_ECHO_REF_ECNS=true` (ADL rt5682 SSP, needs `INCLUDE_ECHO_REF=true`)
    or `HDA_SPEAKER_ECHO_REF_ECNS=true` (HDA generic). A dai_out widget upstream

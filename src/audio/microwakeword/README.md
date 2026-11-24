@@ -28,9 +28,12 @@ graph TD
 
     subgraph P120["Pipeline 120 — Speaker Echo Reference  (Core 0, LL 1ms)"]
         SIGGEN["siggen.120.1\n(48 kHz stereo speaker playback,\nsilence when speaker is idle)"]
-        SRC120["src.120.1\n(48 kHz -> 16 kHz · 2ch · S32_LE)"]
-        SIGGEN --> SRC120
     end
+
+    subgraph P124["Pipeline 124 — 16 kHz Echo Reference SRC  (Core 0, LL 1ms)"]
+        SRC120["src.124.1\n(48 kHz -> 16 kHz · 2ch · S32_LE)"]
+    end
+    SIGGEN --> SRC120
 
     subgraph P115["Pipeline 115 — ECNS DP Processing  (Core 0, DP 20ms)"]
         ECNS["ecns.115.1\n(ECNS DP Module, 20ms = 320 frames)\nPin 0 In: Mics | Pin 1 In: Echo Ref\nMono, 100 Hz HPF, optional AEC"]

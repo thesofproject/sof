@@ -40,7 +40,7 @@ The Multi-Slot WOV subsystem supports two primary topology architectures:
 
 In this architecture, two dedicated physical PDM digital microphone interfaces and a speaker echo reference feed the topology:
 - **PDM1 (`dmic16k`)**: Dedicated 16 kHz 2ch or 4ch (`DMIC_WOV_DAI_CHANNELS`) 32-bit stream via Pipeline 119 feeding ECNS Input Pin 0.
-- **Speaker echo reference**: Pipeline 120 (`siggen-src-capture`) collects the 48 kHz stereo speaker playback in `siggen.120.1` (passthrough when bound, silence when the speaker is not running) and converts it to 16 kHz stereo 32-bit in `src.120.1`, feeding ECNS Input Pin 1. The platform topology routes the speaker playback into `siggen.120.1` (SoundWire `SDW_SPK_ECHO_REF_ECNS=true`, ADL rt5682 SSP `SPEAKER_ECHO_REF_ECNS=true`, HDA generic `HDA_SPEAKER_ECHO_REF_ECNS=true`).
+- **Speaker echo reference**: Pipeline 120 (`siggen-copier-capture`) collects the 48 kHz stereo speaker playback in `siggen.120.1` (passthrough when bound, silence when the speaker is not running) and `module-copier.120.2` fans it out. `src.124.1` in its own Pipeline 124 converts it to 16 kHz stereo 32-bit, feeding ECNS Input Pin 1. The SRC is not in Pipeline 120, because that pipeline keeps running for the 48 kHz ECNS and the firmware deletes a module only with its pipeline. The platform topology routes the speaker playback into `siggen.120.1` (SoundWire `SDW_SPK_ECHO_REF_ECNS=true`, ADL rt5682 SSP `SPEAKER_ECHO_REF_ECNS=true`, HDA generic `HDA_SPEAKER_ECHO_REF_ECNS=true`).
 - **PDM0 (`dmic01`)**: 48 kHz 2ch or 4ch (`NUM_DMICS`) 32-bit stream captured with the same regular DMIC0 pipelines of `platform/intel/dmic-generic.conf` as in the non-WoV topologies, without the TDFB/DRC enhancements (`DMIC0_ENHANCED_CAPTURE` false). It does not pass through ECNS: `dai-copier.DMIC.dmic01.capture` -> `gain.101.1` (muting and volume) -> `eqiir.101.1` (`DMIC0_DAI_EQIIR`, 40 Hz high-pass) -> `module-copier.101.2` -> `host-copier.10.capture` (ALSA PCM 10, `hw:0,10`, `DMIC Raw`, S32_LE). The IDs are for SoundWire (DAI pipeline 101, host pipeline 100, PCM 10); HDA generic uses pipelines 12/11 and PCM 6, ADL rt5682 uses pipelines 14/13 and PCM 99. This PCM is not D0i3 compatible.
 
 The ECNS DP module (20 ms period) has a single output:
@@ -76,9 +76,11 @@ flowchart TD
     SPK["Speaker playback<br/>(SDW / SSP / HDA module-copier<br/>+ loopback DAI where available)"]
     subgraph P120 ["Pipeline 120: Speaker Echo Reference (Core 0, LL 1ms)"]
         SIGGEN["siggen.120.1<br/>(48 kHz · 2ch · passthrough,<br/>silence when speaker is idle)"]
-        SRC_120["src.120.1<br/>(48 kHz → 16 kHz · 2ch · S32_LE)"]
-        SIGGEN --> SRC_120
     end
+    subgraph P124 ["Pipeline 124: 16 kHz Echo Reference SRC (Core 0, LL 1ms)"]
+        SRC_120["src.124.1<br/>(48 kHz → 16 kHz · 2ch · S32_LE)"]
+    end
+    SIGGEN --> SRC_120
     SPK --> SIGGEN
 
     %% Pipeline 115: ECNS DP Pipeline

@@ -508,12 +508,13 @@ The **`sof-wcl-rt721-4ch-wov-multi.tplg`** (and corresponding PTL variant `sof-p
   - **Dual PDM Hardware Interfaces**:
     - `dmic01` (PDM0): 48 kHz 2ch or 4ch (`NUM_DMICS`) 32-bit capture via the regular DMIC0 DAI pipeline 101 of `platform/intel/dmic-generic.conf`.
     - `dmic16k` (PDM1): Dedicated 16 kHz 2ch or 4ch 32-bit capture via Pipeline 119.
-  - **48 kHz DMIC capture (Pipelines 101 and 100)**: The same regular DMIC0 capture as in the non-WoV topologies, without the TDFB/DRC enhancements (`DMIC0_ENHANCED_CAPTURE` false): `dai-copier.DMIC.dmic01.capture` -> `gain.101.1` (muting and volume) -> `eqiir.101.1` (`DMIC0_DAI_EQIIR`, `highpass_40hz_20db`) -> `module-copier.101.2` -> `host-copier.10.capture`. This path does not pass through ECNS.
+  - **48 kHz DMIC capture (Pipelines 101 and 100)**: The regular DMIC0 capture without the TDFB/DRC enhancements (`DMIC0_ENHANCED_CAPTURE` false): `dai-copier.DMIC.dmic01.capture` -> `gain.101.1` (muting and volume) -> `module-copier.101.2` -> `eqiir.100.1` (`DMIC0_DAI_EQIIR`, `highpass_40hz_20db`) -> `host-copier.10.capture`. With `INCLUDE_WOV=multi` the IIR is in the host pipeline 100 instead of the DAI pipeline 101, so that it filters only the raw capture PCM and the 48 kHz ECNS branches from `module-copier.101.2` before it. The gain is shared, so the volume and mute apply to both.
+  - **48 kHz ECNS for VoIP (Pipelines 122 and 123)**: `ecns.122.1` (20 ms DP, `lp_mode 1`) takes the 48 kHz 2/4ch microphones from `module-copier.101.2` into Pin 0 and the 48 kHz stereo echo reference from `module-copier.120.2` into Pin 1. The s32 output has the DMIC0 channel count (`NUM_DMICS`, 2 or 4) and goes to `host-copier.15.capture` (Pipeline 123, `PCM 15`, `DMIC48k ECNS`, 2/4ch 48 kHz S16_LE/S32_LE). With `Average` the microphone channels pass through, with `MicN` the selected channel is duplicated to all channels. The controls are `DMIC0 ECNS boost`, `DMIC0 ECNS AEC switch`, `DMIC0 ECNS NS switch` and `DMIC0 ECNS mic channel`. The DMIC0 rate must be 48 kHz.
   - `PCM 10` (`DMIC Raw`): 48 kHz 2ch or 4ch `S32_LE` capture (`hw:0,10`, not D0i3 compatible). The HDA generic WoV topologies use pipelines 12/11 and PCM 6, the ADL rt5682 WoV topologies use pipelines 14/13 and PCM 99.
-  - **Speaker echo reference (Pipeline 120, `siggen-src-capture`)**: The speaker playback is routed into `siggen.120.1` (48 kHz stereo, passthrough when bound, silence when the speaker is not running) and converted to 16 kHz stereo 32-bit by `src.120.1`. In SoundWire topologies (`SDW_SPK_ECHO_REF_ECNS=true`) `alh-copier.Loopback_Virtual.25` and `module-copier.21.22` feed `siggen.120.1`.
+  - **Speaker echo reference (Pipelines 120 and 124)**: The speaker playback is routed into `siggen.120.1` (Pipeline 120, `siggen-copier-capture`, 48 kHz stereo, passthrough when bound, silence when the speaker is not running). The siggen supports one sink only, so `module-copier.120.2` feeds the 48 kHz echo reference to `ecns.122.1` and to `src.124.1`, which converts it to 16 kHz stereo 32-bit in its own Pipeline 124. The SRC is not in Pipeline 120, because that pipeline keeps running for the 48 kHz ECNS when the 16 kHz ECNS stops: the kernel frees the widget, but the firmware deletes a module only with its pipeline, so the SRC would be left running without a sink and creating it again would fail. In SoundWire topologies (`SDW_SPK_ECHO_REF_ECNS=true`) `alh-copier.Loopback_Virtual.25` and `module-copier.21.22` feed `siggen.120.1`.
   - **20ms DP ECNS Engine (`ecns.115.1`, Pipeline 115, `lp_mode 1`)**:
     - Input Pin 0: 16 kHz 2ch or 4ch s32 microphones from `dai-copier.DMIC.dmic16k.capture`.
-    - Input Pin 1: 16 kHz stereo s32 speaker echo reference from `src.120.1`.
+    - Input Pin 1: 16 kHz stereo s32 speaker echo reference from `src.124.1`.
     - Output Pin 0: The microphone channels are averaged to mono, or a single channel is selected with the `DMIC ECNS mic channel` enum (`Average` by default, `Mic1`..`Mic2` or `Mic1`..`Mic4`), and filtered by a 100 Hz high-pass IIR (`DMIC ECNS boost` selects +30 dB or 0 dB). With `DMIC ECNS AEC switch` on, the `(L+R)/2` average of the echo reference is subtracted after the IIR. `DMIC ECNS NS switch` has no function yet. Both default to off. 16 kHz mono (s16 in topology, the firmware follows the sink bit depth) to the fanout copier (`module-copier.117.1`, Pipeline 117).
   - **ECNS output fanout (`module-copier.117.1`, Pipeline 117)**: Output Pin 0 feeds the KPB (`kpb.116.1`, Pipeline 116). Output Pin 1 feeds the processed microphone to `host-copier.11.capture` (Pipeline 121, `PCM 11`, `DMIC16k ECNS`, 1ch 16 kHz S16_LE). PCM 11 can be captured without the WoV PCM 12, the KPB is then not set up. The host copier has its own pipeline because the kernel does not trigger pipelines that already run for PCM 12, so a host copier inside them would never be started.
   - Key Phrase Buffer (KPB, Pipeline 116, 64 KB history buffer = 2000 ms, 16 kHz 1ch mono) with dual-sink topology fanout:
@@ -539,9 +540,8 @@ flowchart TD
     subgraph P101["Pipeline 101 — 48 kHz DMIC0 DAI Capture (Core 0, LL 1ms)"]
         DAI0["dai-copier.DMIC.dmic01.capture\n(48 kHz · 2/4ch · S32_LE)"]
         GAIN101["gain.101.1\n(Dmic0 Capture Volume / Switch)"]
-        IIR101["eqiir.101.1\n(DMIC0_DAI_EQIIR · 40 Hz high-pass, +20 dB)"]
         MC101["module-copier.101.2"]
-        DAI0 --> GAIN101 --> IIR101 --> MC101
+        DAI0 --> GAIN101 --> MC101
     end
 
     %% Pipeline 119: 16 kHz DAI Ingest
@@ -556,9 +556,13 @@ flowchart TD
     SPKREF["Speaker playback\n(alh-copier.Loopback_Virtual.25,\nmodule-copier.21.22)"]
     subgraph P120["Pipeline 120 — Speaker Echo Reference (Core 0, LL 1ms)"]
         SIGGEN["siggen.120.1\n(48 kHz · 2ch · passthrough,\nsilence when speaker is idle)"]
-        SRC120["src.120.1\n(48 kHz -> 16 kHz · 2ch · S32_LE)"]
-        SIGGEN --> SRC120
+        MC120["module-copier.120.2\n(48 kHz · 2ch fanout)"]
+        SIGGEN --> MC120
     end
+    subgraph P124["Pipeline 124 — 16 kHz Echo Reference SRC (Core 0, LL 1ms)"]
+        SRC120["src.124.1\n(48 kHz -> 16 kHz · 2ch · S32_LE)"]
+    end
+    MC120 --> SRC120
     SPKREF --> SIGGEN
 
     %% Pipeline 115: ECNS DP Engine
@@ -571,10 +575,23 @@ flowchart TD
 
     %% Pipeline 100: 48 kHz DMIC0 Host Capture PCM 10 (no ECNS)
     subgraph P100["Pipeline 100 — DMIC0 Host Capture (Core 0, LL 1ms)"]
+        IIR100["eqiir.100.1\n(DMIC0_DAI_EQIIR · 40 Hz high-pass, +20 dB)"]
         HOST10["host-copier.10.capture\n(PCM 10: 'DMIC Raw' · hw:0,10)\n2/4ch · 48 kHz · S32_LE"]
+        IIR100 --> HOST10
     end
 
-    MC101 --> HOST10
+    MC101 --> IIR100
+
+    %% Pipelines 122 and 123: 48 kHz ECNS and Host Capture PCM 15
+    subgraph P122["Pipeline 122 — 48 kHz ECNS (Core 0, DP 20ms, lp_mode 1)"]
+        ECNS48["ecns.122.1\nPin 0 In: 48 kHz mic, 2/4ch s32\nPin 1 In: 48 kHz echo ref, 2ch s32\nDMIC0 ECNS boost / AEC / NS / mic channel\nPin 0 Out: 48 kHz, 2/4ch s32"]
+    end
+    subgraph P123["Pipeline 123 — 48 kHz ECNS Host Capture (Core 0, LL 1ms)"]
+        HOST15["host-copier.15.capture\n(PCM 15: 'DMIC48k ECNS')\n2/4ch · 48 kHz · S16_LE/S32_LE"]
+    end
+    MC101 -->|"Pin 0 In (48k mic)"| ECNS48
+    MC120 -->|"Pin 1 In (48k 2ch echo ref)"| ECNS48
+    ECNS48 --> HOST15
 
     %% Pipeline 117: ECNS output fanout
     subgraph P117["Pipeline 117 — ECNS Output Fanout (Core 0, LL 1ms)"]
@@ -744,9 +761,8 @@ graph TD
     subgraph P101["Pipeline 101 — 48 kHz DMIC0 DAI Capture  (Core 0, LL 1ms)"]
         DAI0["dai-copier.DMIC.dmic01.capture\n(dmic01 · PDM0 · 2/4ch · 48 kHz · S32_LE)"]
         GAIN101["gain.101.1\n(Dmic0 Capture Volume / Switch)"]
-        IIR101["eqiir.101.1\n(40 Hz high-pass, +20 dB)"]
         MC101["module-copier.101.2"]
-        DAI0 --> GAIN101 --> IIR101 --> MC101
+        DAI0 --> GAIN101 --> MC101
     end
 
     subgraph P119["Pipeline 119 — 16 kHz DAI Capture  (Core 0, LL 1ms)"]
@@ -756,9 +772,13 @@ graph TD
     subgraph P120["Pipeline 120 — Speaker Echo Reference  (Core 0, LL 1ms)"]
         LBV["alh-copier.Loopback_Virtual.25"]
         SIGGEN120["siggen.120.1\n(48 kHz · 2ch · passthrough,\nsilence when speaker is idle)"]
-        SRC120["src.120.1\n(48 kHz -> 16 kHz · 2ch · S32_LE)"]
-        LBV --> SIGGEN120 --> SRC120
+        MC120["module-copier.120.2"]
+        LBV --> SIGGEN120 --> MC120
     end
+    subgraph P124["Pipeline 124 — 16 kHz Echo Reference SRC  (Core 0, LL 1ms)"]
+        SRC120["src.124.1\n(48 kHz -> 16 kHz · 2ch · S32_LE)"]
+    end
+    MC120 --> SRC120
     MC21 --> SIGGEN120
 
     subgraph P115["Pipeline 115 — 20ms DP ECNS Audio Processing  (Core 0, DP 20ms, lp_mode 1)"]
@@ -768,9 +788,21 @@ graph TD
     SRC120 -->|"Pin 1 In (16k echo ref)"| ECNS115
 
     subgraph P100["Pipeline 100 — DMIC0 Host Capture  (Core 0, LL 1ms)"]
+        IIR100["eqiir.100.1\n(40 Hz high-pass, +20 dB)"]
         HC10["host-copier.10.capture\n(PCM 10: 'DMIC Raw')\n2/4ch · 48 kHz · S32_LE"]
+        IIR100 --> HC10
     end
-    MC101 --> HC10
+    MC101 --> IIR100
+
+    subgraph P122["Pipeline 122 — 48 kHz ECNS  (Core 0, DP 20ms, lp_mode 1)"]
+        ECNS122["ecns.122.1\n(DP Module · 20ms period)\nPin 0 Out: 48 kHz mono"]
+    end
+    subgraph P123["Pipeline 123 — 48 kHz ECNS Host Capture  (Core 0, LL 1ms)"]
+        HC15["host-copier.15.capture\n(PCM 15: 'DMIC48k ECNS')\n2/4ch · 48 kHz · S16_LE/S32_LE"]
+    end
+    MC101 -->|"Pin 0 In (48k mic)"| ECNS122
+    MC120 -->|"Pin 1 In (48k echo ref)"| ECNS122
+    ECNS122 --> HC15
 
     subgraph P116["Pipeline 116 — KPB History Buffer  (Core 0, LL 1ms)"]
         KPB116["kpb.116.1\n(Key Phrase Buffer · 2000ms = 64 KB)\nPin 0: sel_sink (Real-time live feed)\nPin 1: host_sink (Drain History)"]
@@ -859,8 +891,10 @@ graph TD
 | **PCM 5** | `HDMI1` | Playback | 2–8 | 48 kHz | S16_LE, S32_LE | P50, P51 | Intel Display Audio HDMI/DP 1 (`host-copier.5.playback` -> `dai-copier.HDA.iDisp1.playback`) | No |
 | **PCM 6** | `HDMI2` | Playback | 2–8 | 48 kHz | S16_LE, S32_LE | P60, P61 | Intel Display Audio HDMI/DP 2 (`host-copier.6.playback` -> `dai-copier.HDA.iDisp2.playback`) | No |
 | **PCM 7** | `HDMI3` | Playback | 2–8 | 48 kHz | S16_LE, S32_LE | P70, P71 | Intel Display Audio HDMI/DP 3 (`host-copier.7.playback` -> `dai-copier.HDA.iDisp3.playback`) | No |
-| **PCM 10** | `DMIC Raw` | Capture | 2 or 4 | 48 kHz | S32_LE | P101, P100 | Regular DMIC0 capture without TDFB/DRC, 40 Hz high-pass with +20 dB gain, no ECNS (`dai-copier.DMIC.dmic01.capture` -> `gain.101.1` -> `eqiir.101.1` -> `module-copier.101.2` -> `host-copier.10.capture`). HDA generic: PCM 6, P12/P11. ADL rt5682: PCM 99, P14/P13. | No |
-| **PCM 12** | `DMIC Multi-WOV` | Capture | 1 | 16 kHz | S16_LE, S32_LE | P119, P120, P115, P116, P118, P111-113, P114 | Gated mono Wake-on-Voice capture stream from 4-pin WOV Arbiter (`dai-copier.DMIC.dmic16k.capture` -> `ecns.115.1` Pin 0 in, `siggen.120.1` -> `src.120.1` -> `ecns.115.1` Pin 1 in echo reference, `ecns.115.1` Pin 0 out mono -> `kpb.116.1` -> `wov-arbiter.114.1` -> `host-copier.12.capture`). Supports S0 keyword detection and D0i3 platform suspend/wake via AudioDSP MSI IRQ. | **Yes** (`capture_compatible_d0i3 true`) |
+| **PCM 10** | `DMIC Raw` | Capture | 2 or 4 | 48 kHz | S32_LE | P101, P100 | Regular DMIC0 capture without TDFB/DRC, 40 Hz high-pass with +20 dB gain, no ECNS (`dai-copier.DMIC.dmic01.capture` -> `gain.101.1` -> `module-copier.101.2` -> `eqiir.100.1` -> `host-copier.10.capture`). HDA generic: PCM 6, P12/P11. ADL rt5682: PCM 99, P14/P13. | No |
+| **PCM 11** | `DMIC16k ECNS` | Capture | 1 | 16 kHz | S16_LE | P119, P120, P124, P115, P117, P121 | 16 kHz ECNS processed microphone (`ecns.115.1` -> `module-copier.117.1` -> `host-copier.11.capture`) | No |
+| **PCM 12** | `DMIC Multi-WOV` | Capture | 1 | 16 kHz | S16_LE, S32_LE | P119, P120, P124, P115, P116, P118, P111-113, P114 | Gated mono Wake-on-Voice capture stream from 4-pin WOV Arbiter (`dai-copier.DMIC.dmic16k.capture` -> `ecns.115.1` Pin 0 in, `siggen.120.1` -> `module-copier.120.2` -> `src.124.1` -> `ecns.115.1` Pin 1 in echo reference, `ecns.115.1` Pin 0 out mono -> `module-copier.117.1` -> `kpb.116.1` -> `wov-arbiter.114.1` -> `host-copier.12.capture`). Supports S0 keyword detection and D0i3 platform suspend/wake via AudioDSP MSI IRQ. | **Yes** (`capture_compatible_d0i3 true`) |
+| **PCM 15** | `DMIC48k ECNS` | Capture | 2 or 4 (`NUM_DMICS`) | 48 kHz | S16_LE, S32_LE | P101, P120, P122, P123 | 48 kHz ECNS processed microphone for VoIP (`module-copier.101.2` -> `ecns.122.1` Pin 0 in, `siggen.120.1` -> `module-copier.120.2` -> `ecns.122.1` Pin 1 in echo reference, `ecns.122.1` -> `host-copier.15.capture`). HDA generic: P12, ADL rt5682: P14 as the DAI pipeline. | No |
 | **PCM 31** | `Deepbuffer Jack Out` | Playback | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P15, P1 | Low-power deep-buffer playback to headphone jack (`host-copier.31.playback` -> `gain.15.1` -> `mixin.15.1` -> `mixout.1.1`) | No |
 | **PCM 35** | `Deepbuffer Speaker` | Playback | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P16, P21 | Low-power deep-buffer playback to SmartAmp speakers (`host-copier.35.playback` -> `gain.16.1` -> `mixin.16.1` -> `mixout.21.1`) | No |
 
