@@ -26,10 +26,6 @@
 
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
-
-/* local buffer size of DMA tracing */
-#define DMA_TRACE_LOCAL_SIZE	(HOST_PAGE_SIZE * 2)
-
 #endif /* __PLATFORM_PLATFORM_H__ */
 
 #else
