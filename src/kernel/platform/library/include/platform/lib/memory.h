@@ -42,8 +42,6 @@ static inline void *platform_rfree_prepare(void *ptr)
 
 #define cache_to_uncache_init(address)	address
 
-#define ARCH_OOPS_SIZE	0
-
 static inline void *arch_get_stack_entry(void)
 {
 	return NULL;
@@ -130,30 +128,6 @@ static inline uint32_t arch_get_stack_size(void)
 	(HEAP_SYS_RUNTIME_M_SIZE + ((CONFIG_CORE_COUNT - 1) * \
 	HEAP_SYS_RUNTIME_S_SIZE))
 
-/* Heap section sizes for module pool */
-#define HEAP_RT_LP_COUNT8			0
-#define HEAP_RT_LP_COUNT16			256
-#define HEAP_RT_LP_COUNT32			128
-#define HEAP_RT_LP_COUNT64			64
-#define HEAP_RT_LP_COUNT128			64
-#define HEAP_RT_LP_COUNT256			96
-#define HEAP_RT_LP_COUNT512			8
-#define HEAP_RT_LP_COUNT1024			4
-
-/* Heap configuration */
-#define SOF_LP_DATA_SIZE			0x4000
-
-#define HEAP_LP_SYSTEM_BASE		(LP_SRAM_BASE + SOF_LP_DATA_SIZE)
-#define HEAP_LP_SYSTEM_SIZE		0x1000
-
-#define HEAP_LP_RUNTIME_BASE \
-	(HEAP_LP_SYSTEM_BASE + HEAP_LP_SYSTEM_SIZE)
-#define HEAP_LP_RUNTIME_SIZE \
-	(HEAP_RT_LP_COUNT8 * 8 + HEAP_RT_LP_COUNT16 * 16 + \
-	HEAP_RT_LP_COUNT32 * 32 + HEAP_RT_LP_COUNT64 * 64 + \
-	HEAP_RT_LP_COUNT128 * 128 + HEAP_RT_LP_COUNT256 * 256 + \
-	HEAP_RT_LP_COUNT512 * 512 + HEAP_RT_LP_COUNT1024 * 1024)
-
 #define HEAP_LP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_LP_BUFFER_COUNT \
 	(HEAP_LP_BUFFER_SIZE / HEAP_LP_BUFFER_BLOCK_SIZE)
@@ -165,7 +139,6 @@ static inline uint32_t arch_get_stack_size(void)
 #define SOF_CORE_S_SIZE \
 	ALIGN((HEAP_SYSTEM_S_SIZE + HEAP_SYS_RUNTIME_S_SIZE + SOF_STACK_SIZE),\
 	SRAM_BANK_SIZE)
-#define SOF_CORE_S_T_SIZE ((CONFIG_CORE_COUNT - 1) * SOF_CORE_S_SIZE)
 
 #define host_to_local(addr) (addr)
 #define local_to_host(addr) (addr)
