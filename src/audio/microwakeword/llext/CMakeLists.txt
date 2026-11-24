@@ -16,6 +16,10 @@ set(GEMMLOWP_PATH ${sof_top_dir}/../gemmlowp)
 set(RUY_PATH ${sof_top_dir}/../ruy)
 set(NN_HIFI_PATH ${sof_top_dir}/../nnlib-hifi4/xa_nnlib)
 
+# Keep absolute host paths out of TFLM's __FILE__ strings, see
+# ../CMakeLists.txt.
+get_filename_component(MWW_TOPDIR ${sof_top_dir}/.. ABSOLUTE)
+
 set(MWW_TOOLCHAIN_ROOT "")
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
 	execute_process(
@@ -191,6 +195,7 @@ target_compile_options(mww_tflm_lib PRIVATE
 	# ET_DYN/PIC LLEXT.
 	-DTF_LITE_STRIP_ERROR_STRINGS
 	-DNDEBUG
+	-fmacro-prefix-map=${MWW_TOPDIR}=WEST_TOPDIR
 	-imacros ${AUTOCONF_H}
 )
 
