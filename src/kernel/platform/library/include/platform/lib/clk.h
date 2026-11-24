@@ -28,8 +28,6 @@
 
 #define CPU_DEFAULT_IDX		CPU_HPRO_FREQ_IDX
 
-#define SSP_DEFAULT_IDX		1
-
 #define NUM_CPU_FREQ		3
 
 #define NUM_SSP_FREQ		3
