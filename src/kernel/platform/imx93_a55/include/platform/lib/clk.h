@@ -6,7 +6,7 @@
 #ifdef __SOF_LIB_CLK_H__
 
 #ifndef __PLATFORM_LIB_CLK_H__
-#define __PLATFORM_LIB_CLK_H___
+#define __PLATFORM_LIB_CLK_H__
 
 #define CLK_CPU(x) (x)
 #define CPU_DEFAULT_IDX 0
