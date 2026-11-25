@@ -24,7 +24,17 @@ EFX_HDA_MIC_TDFB_PARAMS=line2_pass,EFX_HDA_MIC_DRC_PARAMS=passthrough,DOLBY_DAX_
 # 2 or 4 DMIC, no NHLT blob included in topology
 "sof-hda-generic\;sof-hda-generic-1ch\;HDA_CONFIG=mix,NUM_DMICS=1,PDM0_MIC_B_ENABLE=0"
 
+# Mono DMIC on PDM1 (mic A) instead of PDM0
+"sof-hda-generic\;sof-hda-generic-1ch-pdm1\;HDA_CONFIG=mix,NUM_DMICS=1,\
+PDM0_MIC_A_ENABLE=0,PDM0_MIC_B_ENABLE=0,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=0"
+
 "sof-hda-generic\;sof-hda-generic-2ch\;HDA_CONFIG=mix,NUM_DMICS=2,\
+DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,\
+EFX_DMIC0_DRC_PARAMS=dmic_default"
+
+# Stereo DMIC on PDM1 instead of PDM0
+"sof-hda-generic\;sof-hda-generic-2ch-pdm1\;HDA_CONFIG=mix,NUM_DMICS=2,\
+PDM0_MIC_A_ENABLE=0,PDM0_MIC_B_ENABLE=0,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,\
 EFX_DMIC0_DRC_PARAMS=dmic_default"
 
