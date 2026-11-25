@@ -38,6 +38,4 @@ void platform_clock_init(struct sof *sof)
 			.set_freq = NULL,
 		};
 	}
-
-	platform_shared_commit(sof->clocks, sizeof(*sof->clocks) * NUM_CLOCKS);
 }

@@ -104,14 +104,6 @@ struct sof;
 
 void platform_init_memmap(struct sof *sof);
 
-/**
- * \brief Function for keeping shared data synchronized.
- * It's used after usage of data shared by different cores.
- * Such data is dynamically allocated with SOF_MEM_FLAG_SHARED
- * flag. Does nothing, since IMX doesn't support SMP.
- */
-static inline void platform_shared_commit(void *ptr, int bytes) { }
-
 #endif
 
 #define host_to_local(addr) (SDRAM0_BASE + ((addr) - MEM_RESERVED))
