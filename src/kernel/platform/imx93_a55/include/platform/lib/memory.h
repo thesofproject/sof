@@ -20,15 +20,6 @@
  */
 #define cache_to_uncache_init(address) address
 
-/* number of heaps to be used.
- *
- * i.MX93 is non-SMP so we're only going to use 1 heap.
- */
-#define PLATFORM_HEAP_SYSTEM 1
-#define PLATFORM_HEAP_SYSTEM_RUNTIME 1
-#define PLATFORM_HEAP_RUNTIME 1
-#define PLATFORM_HEAP_BUFFER 1
-
 /* host and firmware use shared memory */
 #define host_to_local(addr) (addr)
 #define local_to_host(addr) (addr)

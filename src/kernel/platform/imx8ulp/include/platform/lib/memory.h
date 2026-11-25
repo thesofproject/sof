@@ -100,11 +100,6 @@
 
 #define HEAP_BUFFER_BLOCK_SIZE		0x100
 
-#define PLATFORM_HEAP_SYSTEM		1 /* one per core */
-#define PLATFORM_HEAP_SYSTEM_RUNTIME	1 /* one per core */
-#define PLATFORM_HEAP_RUNTIME		1
-#define PLATFORM_HEAP_BUFFER		1
-
 /* Stack configuration */
 #define SOF_STACK_SIZE		(CONFIG_SOF_STACK_SIZE)
 #define SOF_STACK_TOTAL_SIZE	SOF_STACK_SIZE

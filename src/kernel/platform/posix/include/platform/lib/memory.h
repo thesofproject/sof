@@ -10,11 +10,6 @@
 
 #include <platform/lib/mailbox_layout.h>
 
-#define PLATFORM_HEAP_SYSTEM 1
-#define PLATFORM_HEAP_SYSTEM_RUNTIME 1
-#define PLATFORM_HEAP_RUNTIME 1
-#define PLATFORM_HEAP_BUFFER 1
-
 #define host_to_local(addr) (addr)
 
 #endif /* PLATFORM_HOST_PLATFORM_MEMORY_H */

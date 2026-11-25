@@ -24,13 +24,6 @@
 /* Stack configuration */
 #define SOF_STACK_SIZE			0x1000
 
-#define PLATFORM_HEAP_SYSTEM		CONFIG_CORE_COUNT /* one per core */
-#define PLATFORM_HEAP_SYSTEM_RUNTIME	CONFIG_CORE_COUNT /* one per core */
-#define PLATFORM_HEAP_RUNTIME		1
-#define PLATFORM_HEAP_RUNTIME_SHARED	1
-#define PLATFORM_HEAP_SYSTEM_SHARED	1
-#define PLATFORM_HEAP_BUFFER		2
-
 /**
  * size of HPSRAM system heap
  */
