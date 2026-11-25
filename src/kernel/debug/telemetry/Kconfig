@@ -93,6 +93,9 @@ config SOF_TELEMETRY_THREADS
 	help
 	  Periodically snapshots per-thread CPU load (%) and stack high-water
 	  mark (%) into MW2 Slot 1 without requiring an extra 4 KB debug_stream slot.
+	  The stack high-water mark of user-mode threads is sampled only with
+	  XTENSA_MMU_FLUSH_AUTOREFILL_DTLBS_ON_SWAP enabled, otherwise it is
+	  reported as 0.
 
 config SOF_TELEMETRY_MODULE_RESOURCES
 	bool "Per-module heap usage, CPC violation, and I/O telemetry in MW3"

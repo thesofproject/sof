@@ -865,9 +865,16 @@ static void telemetry_thread_cb(const struct k_thread *cthread, void *user_data)
 #ifdef CONFIG_THREAD_STACK_INFO
 	if (thread->stack_info.size > 0) {
 		size_t unused = 0;
+		/*
+		 * Reading a user stack from this kernel thread leaves kernel-ring
+		 * TLB entries that make the window handlers of that thread fault
+		 * and hang the DSP, unless Zephyr flushes them on domain switch.
+		 */
+		bool scan = !(ti->flags & SOF_TEL_THD_FLG_USER) ||
+			IS_ENABLED(CONFIG_XTENSA_MMU_FLUSH_AUTOREFILL_DTLBS_ON_SWAP);
 
 		ti->stack_size_chunks = (uint16_t)(thread->stack_info.size >> 6);
-		if (z_impl_k_thread_stack_space_get(thread, &unused) == 0 &&
+		if (scan && z_impl_k_thread_stack_space_get(thread, &unused) == 0 &&
 		    unused <= thread->stack_info.size) {
 			ti->stack_usage = (uint8_t)((255ULL * (thread->stack_info.size - unused)) /
 						    thread->stack_info.size);
