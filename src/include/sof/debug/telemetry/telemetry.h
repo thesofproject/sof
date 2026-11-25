@@ -281,7 +281,7 @@ struct sof_tel_thread_info {
 	int8_t   prio;
 	uint8_t  state;
 	uint8_t  cpu_load;		/* 0..255 scaled (0..100%) */
-	uint8_t  stack_usage;		/* 0..255 scaled high-water mark (0..100%) */
+	uint8_t  stack_usage;		/* 0..255 scaled high-water mark (0..100%), 0 if skipped */
 	uint8_t  flags;			/* bit0=idle, bit1=user, bit2=dp, bit3=ll */
 	uint16_t stack_size_chunks;	/* stack size in 64-byte chunks */
 	uint32_t total_exec_kcycles;	/* execution_cycles >> 10 */
