@@ -502,7 +502,7 @@ The **`sof-wcl-rt721-4ch-wov-multi.tplg`** (and corresponding PTL variant `sof-p
 - **SoundWire RT721 Headphone Subsystem**: Standard playback (`PCM 0`, `Jack Out`) and low-power deep buffer (`PCM 31`, `Deepbuffer Jack Out`) mixed into ALH endpoint `Playback-SimpleJack`.
 - **SoundWire RT721 Headset Mic Subsystem**: Hardware capture (`PCM 1`, `Jack In`) via ALH endpoint `Capture-SimpleJack` with dedicated IIR EQ.
 - **48 kHz headset ECNS (Pipelines 150, 151 and 152, `INCLUDE_SDW_JACK_ECNS=true`, `platform/intel/sdw-jack-ecns.conf`)**: `ecns.151.1` (20 ms DP, `lp_mode 1`) takes the 48 kHz stereo headset microphone from `module-copier.11.0` into Pin 0 and the 48 kHz stereo jack echo reference from `siggen.150.1` into Pin 1. The jack playback `module-copier.1.12` feeds `siggen.150.1` (silence when the jack playback is not running). The single `alh-copier.Loopback_Virtual.25` is routed to both `siggen.120.1` and `siggen.150.1` as the dai_out widget that starts the setup of the echo reference pipelines. The stereo s32 output goes to `host-copier.13.capture` (Pipeline 152, `PCM 13`, `Jack In ECNS`, 2ch 48 kHz S16_LE/S32_LE). The controls are `Jack ECNS boost`, `Jack ECNS AEC switch`, `Jack ECNS NS switch` and `Jack ECNS mic channel`. The jack rate must be 48 kHz.
-- **SoundWire SmartAmp Speaker Subsystem**: Standard speaker playback (`PCM 2`, `Speaker`) and deep buffer (`PCM 35`, `Deepbuffer Speaker`) mixed into a post-mixer DSP pipeline (IIR, FIR, DRC) before output to ALH endpoint `Playback-SmartAmp`.
+- **SoundWire SmartAmp Speaker Subsystem**: Standard speaker playback (`PCM 2`, `Speaker`) and deep buffer (`PCM 35`, `Deepbuffer Speaker`) mixed into the basic post-mixer pipeline (`SDW_SPK_ENHANCED_PLAYBACK=false`) with only a 100 Hz high-pass IIR (`SDW_SPK_BASIC_PLAYBACK_IIR=true`, `EFX_SPK_IIR_PARAMS`, control `Post Mixer Speaker Playback IIR Eq bytes`) after the volume, before output to ALH endpoint `Playback-SmartAmp`. The IIR is before `module-copier.21.22`, so the echo reference is the filtered signal.
 - **SoundWire SmartMic Subsystem**: Microphone capture (`PCM 4`, `Microphone`) with hardware Time-Domain Filtered Beamforming (TDFB), Dynamic Range Compression (DRC), and IIR filter via ALH endpoint `Capture-SmartMic`.
 - **Intel Display Audio (HDMI / DP)**: Three independent playback streams (`PCM 5`, `PCM 6`, `PCM 7`) connected to HDA copiers (`iDisp1`, `iDisp2`, `iDisp3`).
 - **Dual-Rate DMIC Subsystem with Multi-Slot WoV**:
@@ -725,9 +725,10 @@ graph TD
     subgraph P21["Pipeline 21 — SmartAmp Mixer, DSP & DAI  (Core 0, LL 1ms)"]
         MO21["mixout.21.1"]
         G21["gain.21.1\n(Post-Mixer Speaker Volume)"]
+        IIR21["eqiir.21.2\n(100 Hz high-pass, 0 dB)"]
         MC21["module-copier.21.22"]
         ALH2["alh-copier.Playback-SmartAmp.0\n(ALH Link 2 · DAI Playback-SmartAmp)"]
-        MO21 --> G21 --> MC21 --> ALH2
+        MO21 --> G21 --> IIR21 --> MC21 --> ALH2
     end
     MIX20 --> MO21
     MIX16 --> MO21
@@ -902,7 +903,7 @@ graph TD
 |---|---|---|---|---|---|---|---|---|
 | **PCM 0** | `Jack Out` | Playback | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P0, P1 | SoundWire headphone playback (`host-copier.0.playback` -> `gain.0.1` -> `mixin.0.1` -> `mixout.1.1` -> `gain.1.1` -> `alh-copier.Playback-SimpleJack.0`) | No |
 | **PCM 1** | `Jack In` | Capture | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P11, P10 | SoundWire headset mic capture (`alh-copier.Capture-SimpleJack.0` -> `eqiir.11.0` -> `module-copier.11.0` -> `host-copier.1.capture`) | No |
-| **PCM 2** | `Speaker` | Playback | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P20, P21 | SoundWire SmartAmp speaker playback, basic pipeline with `SDW_SPK_ENHANCED_PLAYBACK=false` (`host-copier.2.playback` -> `gain.20.1` -> `mixin.20.1` -> `mixout.21.1` -> `gain.21.1` -> `module-copier.21.22` -> `alh-copier.Playback-SmartAmp.0`) | No |
+| **PCM 2** | `Speaker` | Playback | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P20, P21 | SoundWire SmartAmp speaker playback, basic pipeline with `SDW_SPK_ENHANCED_PLAYBACK=false` and `SDW_SPK_BASIC_PLAYBACK_IIR=true` (`host-copier.2.playback` -> `gain.20.1` -> `mixin.20.1` -> `mixout.21.1` -> `gain.21.1` -> `eqiir.21.2` -> `module-copier.21.22` -> `alh-copier.Playback-SmartAmp.0`) | No |
 | **PCM 4** | `Microphone` | Capture | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P41, P40 | SoundWire SmartMic capture, basic pipeline with `SDW_DMIC_ENHANCED_CAPTURE=false` (`alh-copier.Capture-SmartMic.0` -> `eqiir.41.0` -> `module-copier.41.0` -> `host-copier.4.capture`) | No |
 | **PCM 5** | `HDMI1` | Playback | 2–8 | 48 kHz | S16_LE, S32_LE | P50, P51 | Intel Display Audio HDMI/DP 1 (`host-copier.5.playback` -> `dai-copier.HDA.iDisp1.playback`) | No |
 | **PCM 6** | `HDMI2` | Playback | 2–8 | 48 kHz | S16_LE, S32_LE | P60, P61 | Intel Display Audio HDMI/DP 2 (`host-copier.6.playback` -> `dai-copier.HDA.iDisp2.playback`) | No |
@@ -1005,6 +1006,7 @@ SDW_SPK_ECHO_REF=true,\
 SDW_ECHO_REF_DAI=true,\
 SDW_SPK_ECHO_REF_ECNS=true,\
 SDW_SPK_ENHANCED_PLAYBACK=false,\
+SDW_SPK_BASIC_PLAYBACK_IIR=true,\
 SDW_DMIC_ENHANCED_CAPTURE=false,\
 INCLUDE_WOV=multi' \
   -c /tmp/sof-wcl-rt721-4ch-wov-multi.conf \
@@ -1110,7 +1112,7 @@ cat tools/topology/topology2/abi.conf tools/topology/topology2/cavs-sdw.conf > /
 ALSA_CONFIG_DIR=$PWD/tools/topology/topology2 \
 ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
 alsatplg -I $PWD/tools/topology/topology2 -p \
-    -D 'PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,SDW_SPK_ECHO_REF=true,SDW_ECHO_REF_DAI=true,SDW_SPK_ECHO_REF_ECNS=true,SDW_SPK_ENHANCED_PLAYBACK=false,SDW_DMIC_ENHANCED_CAPTURE=false,INCLUDE_WOV=multi' \
+    -D 'PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,SDW_SPK_ECHO_REF=true,SDW_ECHO_REF_DAI=true,SDW_SPK_ECHO_REF_ECNS=true,SDW_SPK_ENHANCED_PLAYBACK=false,SDW_SPK_BASIC_PLAYBACK_IIR=true,SDW_DMIC_ENHANCED_CAPTURE=false,INCLUDE_WOV=multi' \
     -c /tmp/sof-ptl-rt721-4ch-wov-multi.conf \
     -o build/sof-ptl-rt721-4ch-wov-multi.tplg
 ```
