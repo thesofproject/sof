@@ -13,22 +13,11 @@
 #define CLK_CPU(x)	x
 #define CLK_SSP		1
 
-#define CLK_DEFAULT_CPU_HZ	50000000
 #define CLK_MAX_CPU_HZ		343000000
-
-#define NUM_CLOCKS	2
 
 #define CPU_WOVCRO_FREQ_IDX	0
 
-#define CPU_LPRO_FREQ_IDX	1
-
-#define CPU_HPRO_FREQ_IDX	2
-
 #define CPU_LOWEST_FREQ_IDX	CPU_WOVCRO_FREQ_IDX
-
-#define CPU_DEFAULT_IDX		CPU_HPRO_FREQ_IDX
-
-#define NUM_CPU_FREQ		3
 
 #define NUM_SSP_FREQ		3
 

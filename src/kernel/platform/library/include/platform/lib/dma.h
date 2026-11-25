@@ -10,12 +10,6 @@
 #ifndef __PLATFORM_LIB_DMA_H__
 #define __PLATFORM_LIB_DMA_H__
 
-#define DMA_ID_DMAC0	0
-#define DMA_ID_DMAC1	1
-
-#define DMA_DEV_PCM			0
-#define DMA_DEV_WAV			1
-
 #define PLATFORM_NUM_DMACS		1
 #define PLATFORM_MAX_DMA_CHAN		1
 
