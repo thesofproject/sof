@@ -232,13 +232,6 @@
 #define	HEAP_LP_BUFFER_COUNT 0
 #endif
 
-#define PLATFORM_HEAP_SYSTEM		CONFIG_CORE_COUNT /* one per core */
-#define PLATFORM_HEAP_SYSTEM_RUNTIME	CONFIG_CORE_COUNT /* one per core */
-#define PLATFORM_HEAP_RUNTIME		1
-#define PLATFORM_HEAP_RUNTIME_SHARED	1
-#define PLATFORM_HEAP_SYSTEM_SHARED	1
-#define PLATFORM_HEAP_BUFFER		2
-
 /* boot loader in IMR */
 
 #ifndef __ZEPHYR__
