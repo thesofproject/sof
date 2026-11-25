@@ -64,6 +64,18 @@ static inline void zephyr_ll_lock_releasing(int core)
 		zephyr_ll_lock_owner[core] = NULL;
 }
 
+/*
+ * Forget the recorded owner of the core's LL lock. Only for
+ * zephyr_ll_release_locks_of_current(), when the owner is dying and its lock
+ * is about to be force-released on its behalf. Must be called before the
+ * unlock: the new owner's zephyr_ll_lock_acquired() counts depth from 0.
+ */
+void zephyr_ll_lock_shadow_reset(int core)
+{
+	zephyr_ll_lock_owner[core] = NULL;
+	zephyr_ll_lock_depth[core] = 0;
+}
+
 #ifdef CONFIG_ASSERT
 void user_ll_assert_locked(int core)
 {

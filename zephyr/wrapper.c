@@ -13,6 +13,9 @@
 #include <sof/kernel/drivers/interrupt-map.h>
 #include <sof/lib/dma.h>
 #include <sof/schedule/schedule.h>
+#if CONFIG_SOF_USERSPACE_LL
+#include <sof/schedule/zephyr_ll.h>
+#endif
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
 #include <sof/kernel/platform.h>
@@ -30,6 +33,10 @@
 
 /* Zephyr includes */
 #include <zephyr/arch/cpu.h>
+#if defined(CONFIG_XTENSA) && defined(CONFIG_USERSPACE)
+/* Zephyr arch-internal header, from zephyr/arch/xtensa/include */
+#include <xtensa_internal.h>
+#endif
 #include <zephyr/device.h>
 #include <zephyr/fatal.h>
 #include <zephyr/kernel_structs.h>
@@ -352,6 +359,28 @@ static bool sof_boot_test_fault_expected(void)
 }
 #endif
 
+#if defined(CONFIG_XTENSA) && defined(CONFIG_USERSPACE)
+/**
+ * @brief Release kernel resources the faulting user thread still holds.
+ *
+ * Called from k_sys_fatal_error_handler() before returning to
+ * z_fatal_error(), which then aborts only the faulting user thread.
+ * Zephyr does not release mutexes of aborted threads, so locks the thread
+ * holds, e.g. the per-core LL scheduler lock, must be released here or
+ * their waiters pend forever.
+ *
+ * @return Number of locks released.
+ */
+static int sof_user_fault_release_locks(void)
+{
+#if CONFIG_SOF_USERSPACE_LL
+	return zephyr_ll_release_locks_of_current();
+#else
+	return 0;
+#endif
+}
+#endif
+
 void k_sys_fatal_error_handler(unsigned int reason,
 			       const struct arch_esf *esf)
 {
@@ -363,7 +392,32 @@ void k_sys_fatal_error_handler(unsigned int reason,
 		return;
 	}
 #endif
+#if defined(CONFIG_XTENSA) && defined(CONFIG_USERSPACE)
+		/*
+		 * A kernel oops raised from a syscall verifier (K_OOPS) or
+		 * k_oops() arrives with a syscall stack frame, not an exception
+		 * frame, so xtensa_exception_is_user() cannot validate it and
+		 * would wrongly halt the system. If the faulting thread is a
+		 * user thread, the oops is the user thread's fault: just abort
+		 * that thread (z_fatal_error() does so once we return).
+		 */
+		if (reason == K_ERR_KERNEL_OOPS && _current &&
+		    k_thread_is_user_thread(_current)) {
+			int n = sof_user_fault_release_locks();
 
+			LOG_ERR("ERROR: kernel oops from user thread %p; released %d locks; "
+				"aborting thread.", _current, n);
+			return;
+		}
+
+		if (reason != K_ERR_KERNEL_PANIC && xtensa_exception_is_user(esf)) {
+			int n = sof_user_fault_release_locks();
+
+			LOG_ERR("ERROR: Unexpected fatal error %u in Xtensa user mode; "
+				"released %d locks; aborting thread.", reason, n);
+			return;
+		}
+#endif
 	/* flush and switch to immediate mode */
 	LOG_PANIC();
 
