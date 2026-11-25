@@ -435,8 +435,10 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 
 	context->dp_event = NULL;
 
-	/* Allocate memory domain struct */
-	domain = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*domain));
+	/* Allocate memory domain struct. It is a kernel object shared between cores: Zephyr
+	 * links it into a list that is walked on any core mapping or unmapping memory.
+	 */
+	domain = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*domain));
 	if (!domain) {
 		ret = -ENOMEM;
 		goto error;
