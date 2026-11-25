@@ -81,21 +81,10 @@
 
 /* text and data share the same HP L2 SRAM on Tigerlake */
 #define SOF_FW_START		(HP_SRAM_VECBASE_RESET + 0x400)
-#define SOF_FW_BASE		(SOF_FW_START)
 
 #define SOF_FW_END             (HP_SRAM_BASE + HP_SRAM_SIZE)
 
 #define SOF_TEXT_START		(SOF_FW_START)
-
-/* Heap section sizes for system runtime heap for primary core */
-#define HEAP_SYS_RT_0_COUNT64		128
-#define HEAP_SYS_RT_0_COUNT512		16
-#define HEAP_SYS_RT_0_COUNT1024		4
-
-/* Heap section sizes for system runtime heap for secondary core */
-#define HEAP_SYS_RT_X_COUNT64		64
-#define HEAP_SYS_RT_X_COUNT512		8
-#define HEAP_SYS_RT_X_COUNT1024		4
 
 /* Heap section counts base */
 #define HEAP_COUNT64		128
@@ -108,15 +97,12 @@
 
 #if HP_SRAM_SIZE < 0x200000
 #define RT_TIMES	3
-#define RT_SHARED_TIMES	6
 #else
 /* Reserve more memory for RTNR */
 #if defined(CONFIG_COMP_RTNR) || defined(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING)
 #define RT_TIMES	2
-#define RT_SHARED_TIMES	4
 #else
 #define RT_TIMES	8
-#define RT_SHARED_TIMES	16
 #endif /* CONFIG_COMP_RTNR */
 #endif
 
@@ -136,44 +122,8 @@
 	HEAP_RT_COUNT1024 * 1024 + HEAP_RT_COUNT2048 * 2048 + \
 	HEAP_RT_COUNT4096 * 4096)
 
-/* Heap section sizes for runtime shared heap */
-#define HEAP_RUNTIME_SHARED_COUNT64	(HEAP_COUNT64 * RT_SHARED_TIMES)
-#define HEAP_RUNTIME_SHARED_COUNT128	(HEAP_COUNT128 * RT_SHARED_TIMES)
-#define HEAP_RUNTIME_SHARED_COUNT256	(HEAP_COUNT256 * RT_SHARED_TIMES)
-#define HEAP_RUNTIME_SHARED_COUNT512	(HEAP_COUNT512 * RT_SHARED_TIMES)
-#define HEAP_RUNTIME_SHARED_COUNT1024	(HEAP_COUNT1024 * RT_SHARED_TIMES)
-
-#define HEAP_RUNTIME_SHARED_SIZE \
-	(HEAP_RUNTIME_SHARED_COUNT64 * 64 + HEAP_RUNTIME_SHARED_COUNT128 * 128 + \
-	HEAP_RUNTIME_SHARED_COUNT256 * 256 + HEAP_RUNTIME_SHARED_COUNT512 * 512 + \
-	HEAP_RUNTIME_SHARED_COUNT1024 * 1024)
-
-/* Heap section sizes for system shared heap */
-#define HEAP_SYSTEM_SHARED_SIZE		0x1500
-
-#define HEAP_BUFFER_BLOCK_SIZE		0x100
-#define HEAP_BUFFER_COUNT_MAX  (HP_SRAM_SIZE / HEAP_BUFFER_BLOCK_SIZE)
-
-#define HEAP_SYSTEM_M_SIZE		0x8000	/* heap primary core size */
-#define HEAP_SYSTEM_S_SIZE		0x6000	/* heap secondary core size */
-#define HEAP_SYSTEM_T_SIZE \
-	(HEAP_SYSTEM_M_SIZE + ((CONFIG_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))
-
-#define HEAP_SYS_RUNTIME_M_SIZE \
-	(HEAP_SYS_RT_0_COUNT64 * 64 + HEAP_SYS_RT_0_COUNT512 * 512 + \
-	HEAP_SYS_RT_0_COUNT1024 * 1024)
-
-#define HEAP_SYS_RUNTIME_S_SIZE \
-	(HEAP_SYS_RT_X_COUNT64 * 64 + HEAP_SYS_RT_X_COUNT512 * 512 + \
-	HEAP_SYS_RT_X_COUNT1024 * 1024)
-
-#define HEAP_SYS_RUNTIME_T_SIZE \
-	(HEAP_SYS_RUNTIME_M_SIZE + ((CONFIG_CORE_COUNT - 1) * \
-	HEAP_SYS_RUNTIME_S_SIZE))
-
 /* Stack configuration */
 #define SOF_STACK_SIZE		(CONFIG_SOF_STACK_SIZE)
-#define SOF_STACK_TOTAL_SIZE	(CONFIG_CORE_COUNT * SOF_STACK_SIZE)
 
 /*
  * The LP SRAM Heap and Stack on Tigerlake are organised like this :-
@@ -196,41 +146,6 @@
  * | SOF_STACK_BASE      |                |                                   |
  * +---------------------+----------------+-----------------------------------+
  */
-
-/* LP SRAM */
-#ifndef __ZEPHYR__
-#define LP_SRAM_BASE			0xBE800000
-#endif
-
-#if CONFIG_MULTICORE
-/* alternate reset vector */
-#define LP_SRAM_ALT_RESET_VEC_BASE	LP_SRAM_BASE
-#define LP_SRAM_ALT_RESET_VEC_SIZE	0x180
-
-#define LP_SRAM_ALT_RESET_INT_VEC_BASE	(LP_SRAM_ALT_RESET_VEC_BASE + \
-					LP_SRAM_ALT_RESET_VEC_SIZE)
-#define LP_SRAM_ALT_RESET_INT_VEC_SIZE	0x10
-
-#define LP_SRAM_CODE_BASE		(LP_SRAM_ALT_RESET_INT_VEC_BASE + \
-					LP_SRAM_ALT_RESET_INT_VEC_SIZE)
-#define LP_SRAM_CODE_SIZE		0x220
-
-#define LP_SRAM_START			(LP_SRAM_CODE_BASE + LP_SRAM_CODE_SIZE)
-#else
-#define LP_SRAM_START			LP_SRAM_BASE
-#endif
-
-#define HEAP_LP_BUFFER_BASE LP_SRAM_START
-#define HEAP_LP_BUFFER_SIZE (LP_SRAM_SIZE - (LP_SRAM_START - LP_SRAM_BASE))
-
-#define HEAP_LP_BUFFER_BLOCK_SIZE		0x180
-
-#if CONFIG_LP_MEMORY_BANKS
-#define HEAP_LP_BUFFER_COUNT \
-	(HEAP_LP_BUFFER_SIZE / HEAP_LP_BUFFER_BLOCK_SIZE)
-#else
-#define	HEAP_LP_BUFFER_COUNT 0
-#endif
 
 /* boot loader in IMR */
 
