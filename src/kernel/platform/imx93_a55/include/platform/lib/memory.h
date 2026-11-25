@@ -10,16 +10,6 @@
 
 #include <rtos/cache.h>
 
-/* seems like in xtensa architecture cached data
- * may be placed at some special addresses in the
- * SRAM?
- *
- * since we're running on A55 cores, there's no such
- * thing so all the below cache/shared data "management"
- * functions aren't necessary.
- */
-#define cache_to_uncache_init(address) address
-
 /* host and firmware use shared memory */
 #define host_to_local(addr) (addr)
 #define local_to_host(addr) (addr)

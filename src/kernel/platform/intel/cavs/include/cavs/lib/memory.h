@@ -20,13 +20,6 @@
 
 struct sof;
 
-#if !defined UNIT_TEST && !defined __ZEPHYR__
-#define cache_to_uncache_init(address) \
-	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
-#else
-#define cache_to_uncache_init(address)	address
-#endif
-
 void platform_init_memmap(struct sof *sof);
 
 #endif

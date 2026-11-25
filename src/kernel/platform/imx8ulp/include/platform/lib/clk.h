@@ -18,7 +18,6 @@ struct sof;
 
 #define CPU_DEFAULT_IDX		0
 
-#define CLK_DEFAULT_CPU_HZ	528000000
 #define CLK_MAX_CPU_HZ		600000000
 
 #define NUM_CLOCKS	1

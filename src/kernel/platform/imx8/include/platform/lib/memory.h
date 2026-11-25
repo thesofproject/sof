@@ -110,9 +110,6 @@
 struct sof;
 
 void platform_init_memmap(struct sof *sof);
-
-#define cache_to_uncache_init(address)	address
-
 #endif
 
 #define host_to_local(addr) (addr)

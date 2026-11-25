@@ -112,8 +112,6 @@ struct sof;
 
 void platform_init_memmap(struct sof *sof);
 
-#define cache_to_uncache_init(address)	address
-
 /**
  * \brief Function for keeping shared data synchronized.
  * It's used after usage of data shared by different cores.
