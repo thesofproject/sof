@@ -38,10 +38,6 @@
  * +---------------------+----------------+-----------------------------------+
  */
 
- /* window 3 - trace */
-#define MAILBOX_TRACE_SIZE	SRAM_TRACE_SIZE
-#define MAILBOX_TRACE_BASE	SRAM_TRACE_BASE
-
  /* window 2 debug, exception and stream */
 #define MAILBOX_DEBUG_SIZE	SRAM_DEBUG_SIZE
 #define MAILBOX_DEBUG_BASE	SRAM_DEBUG_BASE
