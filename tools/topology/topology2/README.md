@@ -501,6 +501,7 @@ Production hardware integrates the full multi-slot WoV subsystem alongside the p
 The **`sof-wcl-rt721-4ch-wov-multi.tplg`** (and corresponding PTL variant `sof-ptl-rt721-4ch-wov-multi.tplg`) includes:
 - **SoundWire RT721 Headphone Subsystem**: Standard playback (`PCM 0`, `Jack Out`) and low-power deep buffer (`PCM 31`, `Deepbuffer Jack Out`) mixed into ALH endpoint `Playback-SimpleJack`.
 - **SoundWire RT721 Headset Mic Subsystem**: Hardware capture (`PCM 1`, `Jack In`) via ALH endpoint `Capture-SimpleJack` with dedicated IIR EQ.
+- **48 kHz headset ECNS (Pipelines 150, 151 and 152, `INCLUDE_SDW_JACK_ECNS=true`, `platform/intel/sdw-jack-ecns.conf`)**: `ecns.151.1` (20 ms DP, `lp_mode 1`) takes the 48 kHz stereo headset microphone from `module-copier.11.0` into Pin 0 and the 48 kHz stereo jack echo reference from `siggen.150.1` into Pin 1. The jack playback `module-copier.1.12` feeds `siggen.150.1` (silence when the jack playback is not running). The single `alh-copier.Loopback_Virtual.25` is routed to both `siggen.120.1` and `siggen.150.1` as the dai_out widget that starts the setup of the echo reference pipelines. The stereo s32 output goes to `host-copier.13.capture` (Pipeline 152, `PCM 13`, `Jack In ECNS`, 2ch 48 kHz S16_LE/S32_LE). The controls are `Jack ECNS boost`, `Jack ECNS AEC switch`, `Jack ECNS NS switch` and `Jack ECNS mic channel`. The jack rate must be 48 kHz.
 - **SoundWire SmartAmp Speaker Subsystem**: Standard speaker playback (`PCM 2`, `Speaker`) and deep buffer (`PCM 35`, `Deepbuffer Speaker`) mixed into a post-mixer DSP pipeline (IIR, FIR, DRC) before output to ALH endpoint `Playback-SmartAmp`.
 - **SoundWire SmartMic Subsystem**: Microphone capture (`PCM 4`, `Microphone`) with hardware Time-Domain Filtered Beamforming (TDFB), Dynamic Range Compression (DRC), and IIR filter via ALH endpoint `Capture-SmartMic`.
 - **Intel Display Audio (HDMI / DP)**: Three independent playback streams (`PCM 5`, `PCM 6`, `PCM 7`) connected to HDA copiers (`iDisp1`, `iDisp2`, `iDisp3`).
@@ -795,7 +796,7 @@ graph TD
     MC101 --> IIR100
 
     subgraph P122["Pipeline 122 — 48 kHz ECNS  (Core 0, DP 20ms, lp_mode 1)"]
-        ECNS122["ecns.122.1\n(DP Module · 20ms period)\nPin 0 Out: 48 kHz mono"]
+        ECNS122["ecns.122.1\n(DP Module · 20ms period)\nPin 0 Out: 48 kHz 2/4ch"]
     end
     subgraph P123["Pipeline 123 — 48 kHz ECNS Host Capture  (Core 0, LL 1ms)"]
         HC15["host-copier.15.capture\n(PCM 15: 'DMIC48k ECNS')\n2/4ch · 48 kHz · S16_LE/S32_LE"]
@@ -803,6 +804,21 @@ graph TD
     MC101 -->|"Pin 0 In (48k mic)"| ECNS122
     MC120 -->|"Pin 1 In (48k echo ref)"| ECNS122
     ECNS122 --> HC15
+
+    subgraph P150["Pipeline 150 — Jack Echo Reference  (Core 0, LL 1ms)"]
+        SIGGEN150["siggen.150.1\n(48 kHz · 2ch · passthrough,\nsilence when jack playback is idle)"]
+    end
+    LBV --> SIGGEN150
+    MC1 --> SIGGEN150
+    subgraph P151["Pipeline 151 — 48 kHz Jack ECNS  (Core 0, DP 20ms, lp_mode 1)"]
+        ECNS151["ecns.151.1\n(DP Module · 20ms period)\nPin 0 Out: 48 kHz 2ch"]
+    end
+    subgraph P152["Pipeline 152 — 48 kHz Jack ECNS Host Capture  (Core 0, LL 1ms)"]
+        HC13["host-copier.13.capture\n(PCM 13: 'Jack In ECNS')\n2ch · 48 kHz · S16_LE/S32_LE"]
+    end
+    MC11 -->|"Pin 0 In (48k headset mic)"| ECNS151
+    SIGGEN150 -->|"Pin 1 In (48k jack echo ref)"| ECNS151
+    ECNS151 --> HC13
 
     subgraph P116["Pipeline 116 — KPB History Buffer  (Core 0, LL 1ms)"]
         KPB116["kpb.116.1\n(Key Phrase Buffer · 2000ms = 64 KB)\nPin 0: sel_sink (Real-time live feed)\nPin 1: host_sink (Drain History)"]
@@ -894,6 +910,7 @@ graph TD
 | **PCM 10** | `DMIC Raw` | Capture | 2 or 4 | 48 kHz | S32_LE | P101, P100 | Regular DMIC0 capture without TDFB/DRC, 40 Hz high-pass with +20 dB gain, no ECNS (`dai-copier.DMIC.dmic01.capture` -> `gain.101.1` -> `module-copier.101.2` -> `eqiir.100.1` -> `host-copier.10.capture`). HDA generic: PCM 6, P12/P11. ADL rt5682: PCM 99, P14/P13. | No |
 | **PCM 11** | `DMIC16k ECNS` | Capture | 1 | 16 kHz | S16_LE | P119, P120, P124, P115, P117, P121 | 16 kHz ECNS processed microphone (`ecns.115.1` -> `module-copier.117.1` -> `host-copier.11.capture`) | No |
 | **PCM 12** | `DMIC Multi-WOV` | Capture | 1 | 16 kHz | S16_LE, S32_LE | P119, P120, P124, P115, P116, P118, P111-113, P114 | Gated mono Wake-on-Voice capture stream from 4-pin WOV Arbiter (`dai-copier.DMIC.dmic16k.capture` -> `ecns.115.1` Pin 0 in, `siggen.120.1` -> `module-copier.120.2` -> `src.124.1` -> `ecns.115.1` Pin 1 in echo reference, `ecns.115.1` Pin 0 out mono -> `module-copier.117.1` -> `kpb.116.1` -> `wov-arbiter.114.1` -> `host-copier.12.capture`). Supports S0 keyword detection and D0i3 platform suspend/wake via AudioDSP MSI IRQ. | **Yes** (`capture_compatible_d0i3 true`) |
+| **PCM 13** | `Jack In ECNS` | Capture | 2 | 48 kHz | S16_LE, S32_LE | P11, P1, P150, P151, P152 | 48 kHz ECNS processed headset microphone, `INCLUDE_SDW_JACK_ECNS=true` (`module-copier.11.0` -> `ecns.151.1` Pin 0 in, `module-copier.1.12` -> `siggen.150.1` -> `ecns.151.1` Pin 1 in jack echo reference, `ecns.151.1` -> `host-copier.13.capture`) | No |
 | **PCM 15** | `DMIC48k ECNS` | Capture | 2 or 4 (`NUM_DMICS`) | 48 kHz | S16_LE, S32_LE | P101, P120, P122, P123 | 48 kHz ECNS processed microphone for VoIP (`module-copier.101.2` -> `ecns.122.1` Pin 0 in, `siggen.120.1` -> `module-copier.120.2` -> `ecns.122.1` Pin 1 in echo reference, `ecns.122.1` -> `host-copier.15.capture`). HDA generic: P12, ADL rt5682: P14 as the DAI pipeline. | No |
 | **PCM 31** | `Deepbuffer Jack Out` | Playback | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P15, P1 | Low-power deep-buffer playback to headphone jack (`host-copier.31.playback` -> `gain.15.1` -> `mixin.15.1` -> `mixout.1.1`) | No |
 | **PCM 35** | `Deepbuffer Speaker` | Playback | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P16, P21 | Low-power deep-buffer playback to SmartAmp speakers (`host-copier.35.playback` -> `gain.16.1` -> `mixin.16.1` -> `mixout.21.1`) | No |
