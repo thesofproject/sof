@@ -10,6 +10,10 @@ list(APPEND TPLGS
 "cavs-sdw\;sof-adl-rt711-l0-rt1316-l13-rt714-l2\;NUM_SDW_AMP_LINKS=2,\
 SDW_DMIC=1,SDW_DMIC_STREAM=SDW2-Capture"
 
+"cavs-sdw\;sof-rpl-rt711-l2-rt1316-l01-rt714-l3\;NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
+SDW_JACK_OUT_STREAM=SDW2-Playback,SDW_JACK_IN_STREAM=SDW2-Capture,\
+SDW_SPK_STREAM=SDW0-Playback,SDW_SPK_IN_STREAM=SDW0-Capture"
+
 # IPC4 topology for TGL/ADL rt711 Headset + rt1308 Amplifier + rt715 DMIC
 "cavs-sdw\;sof-tgl-rt711-rt1308-rt715\;NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,SDW_AMP_FEEDBACK=false"
 
