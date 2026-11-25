@@ -113,6 +113,15 @@ module-copier, before the raw PCM IIR, and the 48 kHz echo reference from
 count, 2 or 4, so the multichannel output processing described above is
 used.
 
+A third instance, `ecns.151.1` in
+`tools/topology/topology2/platform/intel/sdw-jack-ecns.conf`
+(`INCLUDE_SDW_JACK_ECNS=true`), runs at 48 kHz for the SoundWire headset
+microphone. It takes the stereo microphone from `module-copier.11.0` and the
+stereo jack echo reference from `module-copier.1.12` via `siggen.150.1`. The
+stereo output is captured with PCM 13 `Jack In ECNS`. Its controls are named
+`Jack ECNS boost`, `Jack ECNS AEC switch`, `Jack ECNS NS switch` and
+`Jack ECNS mic channel`.
+
 ## Specifications
 
 | Parameter | Specification |
