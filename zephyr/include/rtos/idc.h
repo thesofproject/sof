@@ -76,10 +76,6 @@ void idc_enable_interrupts(int target_core, int source_core);
 
 void idc_free(uint32_t flags);
 
-int platform_idc_init(void);
-
-int platform_idc_restore(void);
-
 enum task_state idc_do_cmd(void *data);
 
 void idc_cmd(struct idc_msg *msg);
