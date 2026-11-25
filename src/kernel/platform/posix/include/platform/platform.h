@@ -16,6 +16,5 @@
 struct sof;
 
 void posix_dma_init(struct sof *sof);
-void posix_dai_init(struct sof *sof);
 
 #endif /* PLATFORM_POSIX_PLATFORM_PLATFORM_H */
