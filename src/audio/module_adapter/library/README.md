@@ -78,3 +78,11 @@ A crucial aspect of the userspace proxy is dynamic memory permission elevation:
 - Normally, the userspace module can only access its own `heap`, `data`, and `bss` partitions.
 - When an IPC like `GET_CONF` requests large IPC buffers, the proxy temporarily adds the hardware `MAILBOX_HOSTBOX` into the module's `k_mem_domain` using `k_mem_domain_add_partition()`.
 - Once the userspace thread returns, that hardware window is immediately removed from the memory domain to minimize the vulnerability window.
+
+### Memory Domain Lifetime
+
+The library manager owns the proxy. It creates the proxy, and with it the memory domain of the module, before the module adapter component, and it calls `userspace_proxy_destroy()` only after `module_adapter_free()` has returned. The module's `free()` handler, `userspace_proxy_free()`, only runs the module code. The DP thread of the module runs in the module's memory domain and it can still be alive at that point, so the domain must outlive it.
+
+`userspace_proxy_destroy()` releases the memory domain with `k_mem_domain_deinit()` before freeing it. The Xtensa MMU code in Zephyr links every initialized domain into a list, which is walked whenever memory is mapped or unmapped, and holds its page tables and ASID until the domain is deinitialized. `k_mem_domain_deinit()` refuses a domain that still has member threads, so the shared IPC worker thread, which stays in the domain of the module it served last, is moved back to the default domain first if another module still uses it.
+
+The domain object is allocated from coherent memory because that list is walked on every core.

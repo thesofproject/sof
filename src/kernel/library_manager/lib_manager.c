@@ -856,12 +856,22 @@ err:
 __cold static void lib_manager_module_free(struct comp_dev *dev)
 {
 	uint32_t component_id = dev->ipc_config.id;
+#if CONFIG_SOF_USERSPACE_PROXY
+	const struct comp_driver *drv = dev->drv;
+	struct userspace_context *userspace = comp_mod(dev)->user_ctx;
+#endif /* CONFIG_SOF_USERSPACE_PROXY */
 	int ret;
 
 	assert_can_be_cold();
 
 	/* This call invalidates dev, mod and config pointers! */
 	module_adapter_free(dev);
+
+#if CONFIG_SOF_USERSPACE_PROXY
+	/* The DP thread is terminated now, so the memory domain of the module can go. */
+	if (userspace)
+		userspace_proxy_destroy(drv, userspace);
+#endif /* CONFIG_SOF_USERSPACE_PROXY */
 
 	/* Free module resources allocated in L2 memory. */
 	ret = lib_manager_free_module(component_id);
