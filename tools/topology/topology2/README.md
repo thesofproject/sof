@@ -464,7 +464,11 @@ Please do not add any customized feature in the function topology.
 | HDMI-IN (SSP) | `HDMI_IN_CAPTURE=true` | `HDMI_IN_CAPTURE=false` (default) |
 | Bluetooth (SSP) | `ADD_BT=true` | `ADD_BT=false` (default) |
 
-The virtual widgets follow their function, so a disabled function leaves none behind.
+The virtual widgets follow their function, so a disabled function leaves none behind. The
+function topologies are the `sof-<platform>-<function>-id<BE id>` targets (see `sof_hda_get_tplg_files()`;
+the HDA codec and HDMI ones have no NHLT blob and no `<platform>`) in
+`production/tplg-targets-hda-generic.cmake`. They are loaded next to each other, so choose
+non-overlapping PCM and pipeline IDs for each of them.
 
 ### Registering CMake Targets
 
