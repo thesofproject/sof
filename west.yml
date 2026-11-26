@@ -85,6 +85,36 @@ manifest:
       path: modules/audio/vo-aacenc
       revision: c823d30ac87a09ab22903b716b22c87de5bfdf9b
 
+    # Standalone ALSA topologies and build/packaging tooling.
+    # Imports pinned alsa-lib and alsa-utils revisions from sof-topologies/west.yml.
+    #
+    # Workspace update conventions (when initialized via `west init -l sof`):
+    # - Standard sync (updates all pinned projects, not `sof` itself):
+    #     git -C sof pull && west update
+    # - Developing on a branch inside sof-topologies/ or sof-utils/:
+    #     west update --keep-descendants   (avoids detaching local feature branches)
+    # - Firmware-only CI/builds that want to skip sof-utils:
+    #     west config manifest.group-filter -tools && west update
+    - name: sof-topologies
+      repo-path: sof-topologies
+      path: sof-topologies
+      revision: d4a84130d2cd87b0cc25427ea0e0962aa4913f81
+      import:
+        file: west.yml
+        name-allowlist:
+          - alsa-lib
+          - alsa-utils
+
+    # Host utilities, visual tools, remote server, and sof-testbench4.
+    # Do NOT import sof-utils/west.yml here: sof-utils/west.yml references `sof`,
+    # so importing it back would create a circular project entry.
+    - name: sof-utils
+      repo-path: sof-utils
+      path: sof-utils
+      revision: ce253ff4e625990ccc793c4df82da594f4156957
+      groups:
+        - tools
+
     - name: zephyr
       repo-path: zephyr
       revision: 25851fa15cdc2dc9c395807bce97fa81c46c10ee
