@@ -21,7 +21,6 @@
 #include <rtos/cache.h>
 #include <rtos/init.h>
 #include <sof/lib/dai.h>
-#include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
@@ -73,14 +72,20 @@ SOF_DEFINE_REG_UUID(dai);
 
 static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, int cmd);
 
-static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
+/* Trigger all DAIs of a group, called by the last DAI to receive the command */
+static int dai_group_trigger(struct dai_group *group, int cmd)
 {
-	struct comp_dev *dev = arg;
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dai_group *group = dd->group;
+	struct list_item *item;
+	int ret = 0;
 
-	/* Atomic context set by the last DAI to receive trigger command */
-	group->trigger_ret = dai_comp_trigger_internal(dd, dev, group->trigger_cmd);
+	/* return the error of the last trigger */
+	list_for_item(item, &group->dais) {
+		struct dai_data *dd = container_of(item, struct dai_data, group_item);
+
+		ret = dai_comp_trigger_internal(dd, dd->dai_dev, cmd);
+	}
+
+	return ret;
 }
 
 /* Assign DAI to a group */
@@ -109,8 +114,9 @@ __cold int dai_assign_group(struct dai_data *dd, struct comp_dev *dev, uint32_t 
 	comp_dbg(dev, "group %d num %d",
 		 group_id, dd->group->num_dais);
 
-	/* Register for the atomic trigger event */
-	notifier_register(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER, dai_atomic_trigger);
+	/* The group trigger walks the DAIs by their data */
+	dd->dai_dev = dev;
+	list_item_prepend(&dd->group_item, &dd->group->dais);
 
 	return 0;
 }
@@ -799,8 +805,10 @@ __cold void dai_common_free(struct dai_data *dd)
 #endif
 	telemetry_unregister_dai(dd);
 
-	if (dd->group)
+	if (dd->group) {
+		list_item_del(&dd->group_item);
 		dai_group_put(dd->group);
+	}
 
 	dai_dma_release_channel(dd);
 	sof_dma_put(dd->dma);
@@ -821,9 +829,6 @@ __cold static void dai_free(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	assert_can_be_cold();
-
-	if (dd->group)
-		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
 
 	dai_common_free(dd);
 
@@ -1636,7 +1641,9 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 int dai_common_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 {
 	struct dai_group *group = dd->group;
+#ifndef CONFIG_SOF_USERSPACE_LL
 	uint32_t irq_flags;
+#endif
 	int ret = 0;
 
 	/* DAI not in a group, use normal trigger */
@@ -1675,13 +1682,21 @@ int dai_common_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 			 * synchronously.
 			 */
 
+			/* In user-space builds irq_local_disable() is
+			 * privileged, use the LL scheduler lock instead
+			 * (re-entrant, so safe if the caller holds it).
+			 */
+#ifdef CONFIG_SOF_USERSPACE_LL
+			user_ll_lock_sched(dev->ipc_config.core);
+#else
 			irq_local_disable(irq_flags);
-			notifier_event(group, NOTIFIER_ID_DAI_TRIGGER,
-				       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
+#endif
+			ret = dai_group_trigger(group, cmd);
+#ifdef CONFIG_SOF_USERSPACE_LL
+			user_ll_unlock_sched(dev->ipc_config.core);
+#else
 			irq_local_enable(irq_flags);
-
-			/* return error of last trigger */
-			ret = group->trigger_ret;
+#endif
 		}
 	}
 

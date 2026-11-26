@@ -106,6 +106,7 @@ __cold static struct dai_group *dai_group_alloc(void)
 		return NULL;
 	}
 
+	list_init(&group->dais);
 	list_item_prepend(&group->list, dai_groups);
 
 	return group;

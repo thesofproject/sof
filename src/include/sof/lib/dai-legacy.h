@@ -182,6 +182,7 @@ struct dai_data {
 	struct dai *dai;
 	struct dma *dma;
 	struct dai_group *group;		/* NULL if no group assigned */
+	struct list_item group_item;		/* in group->dais */
 	int xrun;				/* true if we are doing xrun recovery */
 
 	pcm_converter_func process;		/* processing function */
@@ -363,9 +364,9 @@ struct dai_group {
 	int trigger_cmd;
 
 	/**
-	 * Last trigger error
+	 * DAIs in this group, linked by struct dai_data::group_item
 	 */
-	int trigger_ret;
+	struct list_item dais;
 
 	/**
 	 * Group list
