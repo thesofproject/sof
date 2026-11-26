@@ -522,7 +522,7 @@ The **`sof-wcl-rt721-4ch-wov-multi.tplg`** (and corresponding PTL variant `sof-p
     - Sink Pin 0 (`sel_sink`): Real-time live audio feed to detector slots.
     - Sink Pin 1 (`host_sink`): Buffered history drain to WOV Arbiter upon keyword trigger.
   - 3 concurrent microWakeWord detector slots (10ms DP MFCC + MWW) armed individually via ALSA volatile controls `wovdebug_111`, `wovdebug_112`, and `wovdebug_113`.
-  - 4-pin WOV Arbiter (`wov-arbiter.114.1`, Pipeline 114) with active slot selection, host wake support, and audio history stream delivery (`PCM 12`, `DMIC Multi-WOV`, 1ch 16 kHz, `capture_compatible_d0i3: true`).
+  - 4-pin WOV Arbiter (`wov-arbiter.114.1`, Pipeline 114) with active slot selection, host wake support, and audio history stream delivery (`PCM 12`, `DMIC WOV`, 1ch 16 kHz, `capture_compatible_d0i3: true`).
 
 #### Dual-Rate DMIC & Multi-Slot WoV Architecture Diagram
 
@@ -639,7 +639,7 @@ flowchart TD
     %% Pipeline 114: WOV Arbiter & Multi-WOV Host Capture
     subgraph P114["Pipeline 114 — WOV Arbiter & Multi-WOV Host Capture (Core 0, LL 1ms)"]
         ARB["wov-arbiter.114.1\n(4-Pin Arbiter · Active Slot Routing)\nPin 0: Audio Drain | Pins 1-3: Trigger Features"]
-        HOST12["host-copier.12.capture\n(PCM 12: 'DMIC Multi-WOV' · hw:0,12)\n1ch · 16 kHz · S16/S32_LE\ncapture_compatible_d0i3: true"]
+        HOST12["host-copier.12.capture\n(PCM 12: 'DMIC WOV' · hw:0,12)\n1ch · 16 kHz · S16/S32_LE\ncapture_compatible_d0i3: true"]
         ARB --> HOST12
     end
 
@@ -856,7 +856,7 @@ graph TD
 
     subgraph P114["Pipeline 114 — WOV Arbiter & Host Capture  (Core 0, LL 1ms)"]
         ARB["wov-arbiter.114.1\n(4-Pin Arbiter · Active Slot Routing)\nPin 0: Audio Drain | Pins 1-3: Features"]
-        HC12["host-copier.12.capture\n(PCM 12: 'DMIC Multi-WOV')\n1ch · 16 kHz · S16/S32_LE\ncapture_compatible_d0i3 = true"]
+        HC12["host-copier.12.capture\n(PCM 12: 'DMIC WOV')\n1ch · 16 kHz · S16/S32_LE\ncapture_compatible_d0i3 = true"]
         ARB --> HC12
     end
 
@@ -910,7 +910,7 @@ graph TD
 | **PCM 7** | `HDMI3` | Playback | 2–8 | 48 kHz | S16_LE, S32_LE | P70, P71 | Intel Display Audio HDMI/DP 3 (`host-copier.7.playback` -> `dai-copier.HDA.iDisp3.playback`) | No |
 | **PCM 10** | `DMIC Raw` | Capture | 2 or 4 | 48 kHz | S32_LE | P101, P100 | Regular DMIC0 capture without TDFB/DRC, 40 Hz high-pass with +20 dB gain, no ECNS (`dai-copier.DMIC.dmic01.capture` -> `gain.101.1` -> `module-copier.101.2` -> `eqiir.100.1` -> `host-copier.10.capture`). HDA generic: PCM 6, P12/P11. ADL rt5682: PCM 99, P14/P13. | No |
 | **PCM 11** | `DMIC16k ECNS` | Capture | 1 | 16 kHz | S16_LE | P119, P120, P124, P115, P117, P121 | 16 kHz ECNS processed microphone (`ecns.115.1` -> `module-copier.117.1` -> `host-copier.11.capture`) | No |
-| **PCM 12** | `DMIC Multi-WOV` | Capture | 1 | 16 kHz | S16_LE, S32_LE | P119, P120, P124, P115, P116, P118, P111-113, P114 | Gated mono Wake-on-Voice capture stream from 4-pin WOV Arbiter (`dai-copier.DMIC.dmic16k.capture` -> `ecns.115.1` Pin 0 in, `siggen.120.1` -> `module-copier.120.2` -> `src.124.1` -> `ecns.115.1` Pin 1 in echo reference, `ecns.115.1` Pin 0 out mono -> `module-copier.117.1` -> `kpb.116.1` -> `wov-arbiter.114.1` -> `host-copier.12.capture`). Supports S0 keyword detection and D0i3 platform suspend/wake via AudioDSP MSI IRQ. | **Yes** (`capture_compatible_d0i3 true`) |
+| **PCM 12** | `DMIC WOV` | Capture | 1 | 16 kHz | S16_LE, S32_LE | P119, P120, P124, P115, P116, P118, P111-113, P114 | Gated mono Wake-on-Voice capture stream from 4-pin WOV Arbiter (`dai-copier.DMIC.dmic16k.capture` -> `ecns.115.1` Pin 0 in, `siggen.120.1` -> `module-copier.120.2` -> `src.124.1` -> `ecns.115.1` Pin 1 in echo reference, `ecns.115.1` Pin 0 out mono -> `module-copier.117.1` -> `kpb.116.1` -> `wov-arbiter.114.1` -> `host-copier.12.capture`). Supports S0 keyword detection and D0i3 platform suspend/wake via AudioDSP MSI IRQ. | **Yes** (`capture_compatible_d0i3 true`) |
 | **PCM 13** | `Jack In ECNS` | Capture | 2 | 48 kHz | S16_LE, S32_LE | P11, P1, P150, P151, P152 | 48 kHz ECNS processed headset microphone, `INCLUDE_SDW_JACK_ECNS=true` (`module-copier.11.0` -> `ecns.151.1` Pin 0 in, `module-copier.1.12` -> `siggen.150.1` -> `ecns.151.1` Pin 1 in jack echo reference, `ecns.151.1` -> `host-copier.13.capture`) | No |
 | **PCM 15** | `DMIC48k ECNS` | Capture | 2 or 4 (`NUM_DMICS`) | 48 kHz | S16_LE, S32_LE | P101, P120, P122, P123 | 48 kHz ECNS processed microphone for VoIP (`module-copier.101.2` -> `ecns.122.1` Pin 0 in, `siggen.120.1` -> `module-copier.120.2` -> `ecns.122.1` Pin 1 in echo reference, `ecns.122.1` -> `host-copier.15.capture`). HDA generic: P12, ADL rt5682: P14 as the DAI pipeline. | No |
 | **PCM 31** | `Deepbuffer Jack Out` | Playback | 2 | 48 kHz | S16_LE, S24_LE, S32_LE | P15, P1 | Low-power deep-buffer playback to headphone jack (`host-copier.31.playback` -> `gain.15.1` -> `mixin.15.1` -> `mixout.1.1`) | No |
