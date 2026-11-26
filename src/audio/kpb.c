@@ -813,6 +813,22 @@ static int kpb_params(struct comp_dev *dev,
 }
 
 /**
+ * \brief Unregister the KPB from the client and WoV control notifications.
+ *
+ * Used when kpb_prepare() fails after the registration, so that no
+ * notification callback runs on a KPB that is not prepared.
+ *
+ * \param[in] dev KPB component device.
+ */
+static void kpb_unregister_notifiers(struct comp_dev *dev)
+{
+#ifndef CONFIG_AMS
+	notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
+	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_CTRL);
+#endif
+}
+
+/**
  * \brief Prepare key phrase buffer.
  * \param[in] dev - kpb component device pointer.
  *
@@ -920,6 +936,7 @@ static int kpb_prepare(struct comp_dev *dev)
 #endif /* CONFIG_AMS */
 
 	if (ret < 0) {
+		kpb_unregister_notifiers(dev);
 		kpb_free_history_buffer(kpb->hd.c_hb);
 		kpb->hd.c_hb = NULL;
 		return -ENOMEM;
@@ -964,7 +981,7 @@ static int kpb_prepare(struct comp_dev *dev)
 			ret = comp_prepare(sink_comp);
 			if (ret < 0) {
 				comp_err(dev, "kpb_prepare: cross-pipeline prepare of wov detector failed: %d", ret);
-				return ret;
+				goto err;
 			}
 		}
 	}
@@ -1054,7 +1071,7 @@ static int kpb_prepare(struct comp_dev *dev)
 				  dev_comp_id(sink_comp), sink_comp->state);
 			if (ret < 0) {
 				comp_err(dev, "kpb_prepare: cross-pipeline prepare failed: %d", ret);
-				return ret;
+				goto err;
 			}
 		}
 	}
@@ -1063,6 +1080,13 @@ static int kpb_prepare(struct comp_dev *dev)
 
 	kpb_change_state(kpb, KPB_STATE_RUN);
 
+	if (ret < 0)
+		goto err;
+
+	return ret;
+
+err:
+	kpb_unregister_notifiers(dev);
 	return ret;
 }
 
