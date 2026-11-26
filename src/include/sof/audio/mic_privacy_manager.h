@@ -8,11 +8,27 @@
 #define ADSP_FW_MIC_PRIVACY_MANAGER_H
 
 #include <zephyr/drivers/mic_privacy/intel/mic_privacy.h>
-#include <sof/lib/notifier.h>
+#include <zephyr/sys/atomic.h>
 #include <ipc4/base-config.h>
 #include "../audio/copier/copier_gain.h"
 
 #define ADSP_RTC_FREQUENCY	32768
+
+/*
+ * The mic privacy state for the copiers is a single word, so that the kernel
+ * can post it from the mic privacy interrupts and IPC, and the copiers can
+ * read it in their LL threads without a lock: an 8-bit sequence number, the
+ * mic disable state and the DMA data zeroing wait time in RTC ticks.
+ */
+#define MIC_PRIV_STATE_WORD(seq, mute, ramp)	((((uint32_t)(seq) & 0xff) << 24) | \
+						 ((uint32_t)!!(mute) << 16) | \
+						 ((uint32_t)(ramp) & 0xffff))
+#define MIC_PRIV_STATE_SEQ(word)		(((uint32_t)(word) >> 24) & 0xff)
+#define MIC_PRIV_STATE_MUTE(word)		(((uint32_t)(word) >> 16) & 0x1)
+#define MIC_PRIV_STATE_RAMP(word)		((uint32_t)(word) & 0xffff)
+
+/* the last mic privacy state, posted by mic_privacy_propagate_settings() */
+extern atomic_t mic_privacy_state_word;
 
 struct mic_privacy_data {
 	enum ipc4_sampling_frequency audio_freq;
@@ -20,6 +36,7 @@ struct mic_privacy_data {
 	bool dma_data_zeroing;
 	uint32_t fade_in_out_bytes;
 	uint32_t max_ramp_time_in_ms;
+	uint8_t state_seq; /**< sequence number of the last mic privacy state taken */
 
 	struct copier_gain_params mic_priv_gain_params;
 };

@@ -11,6 +11,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/mic_privacy_manager.h>
 #include <sof/lib/memory.h>
+#include <rtos/userspace_data.h>
 
 const struct device *mic_priv_dev;
 
@@ -126,11 +127,24 @@ uint32_t mic_privacy_get_policy_register(void)
 	return mic_privacy_api->get_privacy_policy_register_raw_value();
 }
 
+/*
+ * Kernel code writes it, the copiers read it in the LL threads, which can be
+ * user threads.
+ */
+APP_SYSUSER_BSS atomic_t mic_privacy_state_word;
+
+/* Post the mic privacy state for the copiers, which take it in their next copy. */
 void mic_privacy_propagate_settings(struct mic_privacy_settings *settings)
 {
-	notifier_event(mic_priv_dev, NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE,
-		       NOTIFIER_TARGET_CORE_ALL_MASK, settings,
-		       sizeof(struct mic_privacy_settings));
+	atomic_val_t old;
+	atomic_val_t new;
+
+	do {
+		old = atomic_get(&mic_privacy_state_word);
+		new = MIC_PRIV_STATE_WORD(MIC_PRIV_STATE_SEQ(old) + 1,
+					  settings->mic_privacy_state,
+					  settings->max_ramp_time);
+	} while (!atomic_cas(&mic_privacy_state_word, old, new));
 }
 
 uint32_t mic_privacy_get_dma_zeroing_wait_time(void)
