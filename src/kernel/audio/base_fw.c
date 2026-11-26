@@ -116,7 +116,7 @@ static void get_codec_info(struct sof_tlv **tuple)
 	add_codec_info_item(&codec_info, SND_AUDIOCODEC_VORBIS,
 			    SOF_IPC_STREAM_PLAYBACK);
 #endif
-#ifdef CONFIG_COMP_MFCC
+#if defined(CONFIG_COMP_MFCC) || defined(CONFIG_COMP_MFCC_MODULE)
 	add_codec_info_item(&codec_info, SND_AUDIOCODEC_BESPOKE,
 			    SOF_IPC_STREAM_CAPTURE);
 #endif
@@ -235,7 +235,8 @@ static void get_codec_info(struct sof_tlv **tuple)
 #if (defined(CONFIG_FFMPEG_ENC_SBC) || defined(CONFIG_FFMPEG_ENC_G722) || \
 	defined(CONFIG_FFMPEG_ENC_APTX) || defined(CONFIG_FFMPEG_ENC_APTX_HD) || \
 	defined(CONFIG_FFMPEG_ENC_G726) || defined(CONFIG_FFMPEG_ENC_ALAW) || \
-	defined(CONFIG_FFMPEG_ENC_MULAW)) && !defined(CONFIG_COMP_MFCC)
+	defined(CONFIG_FFMPEG_ENC_MULAW)) && \
+	!defined(CONFIG_COMP_MFCC) && !defined(CONFIG_COMP_MFCC_MODULE)
 	/* Also advertise BESPOKE capture for kernels with older SND_AUDIOCODEC_MAX. */
 	add_codec_info_item(&codec_info, SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_CAPTURE);
 #endif
