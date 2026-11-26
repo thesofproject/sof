@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <iterator>
 #include <new>
 
@@ -210,6 +211,45 @@ const unsigned char *MWW_GetDefaultModel(uint8_t slot_id, size_t *size)
 		return mww_model_data_orange;
 	}
 #endif
+}
+
+/** \brief A built-in model and its keyword name for MWW_GetBuiltinModel() */
+struct mww_builtin_model {
+	const char *name;		/**< Keyword name, as in the model header */
+	const unsigned char *data;	/**< Model blob with struct sof_mww_model_hdr */
+	size_t size;			/**< Model blob size in bytes */
+};
+
+/** \brief The models built into the firmware, as selected with COMP_MWW_MODEL */
+static const struct mww_builtin_model mww_builtin_models[] = {
+#if CONFIG_COMP_MWW_MODEL_HI_INTEL
+	{ "hi_intel", mww_model_data_hi_intel, sizeof(mww_model_data_hi_intel) },
+#elif CONFIG_COMP_MWW_MODEL_HEY_JARVIS
+	{ "hey_jarvis", mww_model_data_hey_jarvis, sizeof(mww_model_data_hey_jarvis) },
+#elif CONFIG_COMP_MWW_MODEL_STRAWBERRY
+	{ "strawberry", mww_model_data_strawberry, sizeof(mww_model_data_strawberry) },
+#elif CONFIG_COMP_MWW_MODEL_ORANGE
+	{ "orange", mww_model_data_orange, sizeof(mww_model_data_orange) },
+#elif CONFIG_COMP_MWW_MODEL_BANANA
+	{ "banana", mww_model_data_banana, sizeof(mww_model_data_banana) },
+#else
+	{ "strawberry", mww_model_data_strawberry, sizeof(mww_model_data_strawberry) },
+	{ "hi_intel", mww_model_data_hi_intel, sizeof(mww_model_data_hi_intel) },
+	{ "orange", mww_model_data_orange, sizeof(mww_model_data_orange) },
+#endif
+};
+
+const unsigned char *MWW_GetBuiltinModel(const char *name, size_t *size)
+{
+	for (const struct mww_builtin_model &m : mww_builtin_models) {
+		if (!strncmp(name, m.name, MWW_MODEL_NAME_LEN)) {
+			if (size)
+				*size = m.size;
+			return m.data;
+		}
+	}
+
+	return nullptr;
 }
 
 int MWW_SetModel(struct mww_classify *mwc, const unsigned char *model_tflite, size_t model_size)

@@ -22,6 +22,9 @@
 #define MWW_FEATURE_STRIDE_MS 10
 #define MWW_FEATURE_DURATION_MS 30
 
+/** \brief Keyword name length, equal to SOF_MWW_MODEL_NAME_LEN in user/mww.h */
+#define MWW_MODEL_NAME_LEN 16
+
 struct mww_classify {
 	uint8_t slot_id;	/**< Slot index: 0=strawberry, 1=banana, 2=orange */
 	void *instance;		/**< Opaque pointer to per-instance C++ TFLM context */
@@ -62,6 +65,17 @@ extern "C"
 	size_t MWW_ArenaCapacity(struct mww_classify *mwc);
 
 	const unsigned char *MWW_GetDefaultModel(uint8_t slot_id, size_t *size);
+
+	/**
+	 * \brief Get a built-in model by its keyword name.
+	 * \param[in] name Keyword name as in the name field of struct
+	 *		   sof_mww_model_hdr, zero padded or terminated, at most
+	 *		   16 characters.
+	 * \param[out] size Size of the model blob in bytes.
+	 * \return Model blob with struct sof_mww_model_hdr, or NULL if no
+	 *	   model with the name is built in.
+	 */
+	const unsigned char *MWW_GetBuiltinModel(const char *name, size_t *size);
 
 	/**
 	 * \brief Get per-operator profile of the steady-state inferences.

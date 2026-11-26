@@ -99,6 +99,7 @@ void __assert_func(const char *file, int line, const char *func,
 
 /* The tune scripts write a 64-byte header, which keeps the model 16-byte aligned */
 STATIC_ASSERT(sizeof(struct sof_mww_model_hdr) == 64, mww_model_hdr_size);
+STATIC_ASSERT(SOF_MWW_MODEL_NAME_LEN == MWW_MODEL_NAME_LEN, mww_model_name_len);
 
 /* Number of startup inferences to warm up the temporal ring buffers before enabling triggers (~1 sec). */
 #define MWW_WARMUP_INFERENCES 33
@@ -598,6 +599,47 @@ static int mww_parse_model(struct processing_module *mod, const uint8_t *blob, s
 	return 0;
 }
 
+/**
+ * \brief Resolve a model selection blob to a built-in model.
+ *
+ * A selection blob is struct sof_mww_model_hdr with model_size 0. Its name
+ * selects the built-in model, so a topology can choose the keyword without
+ * the model data.
+ *
+ * \param[in] mod Module.
+ * \param[in,out] blob Control blob, replaced by the built-in model blob.
+ * \param[in,out] size Blob size, replaced by the built-in model blob size.
+ * \param[out] sel Selection header, or NULL if the blob is not a selection.
+ * \return 0 on success, -EINVAL if the selected model is not built in.
+ */
+static int mww_select_builtin(struct processing_module *mod, const uint8_t **blob,
+			      size_t *size, const struct sof_mww_model_hdr **sel)
+{
+	const struct sof_mww_model_hdr *hdr = (const struct sof_mww_model_hdr *)*blob;
+	char name[SOF_MWW_MODEL_NAME_LEN + 1];
+	const uint8_t *model;
+	size_t model_size;
+
+	*sel = NULL;
+	if (*size < sizeof(*hdr) || hdr->magic != SOF_MWW_MODEL_MAGIC ||
+	    hdr->version != SOF_MWW_MODEL_VERSION || hdr->model_size)
+		return 0;
+
+	memcpy_s(name, sizeof(name), hdr->name, SOF_MWW_MODEL_NAME_LEN);
+	name[SOF_MWW_MODEL_NAME_LEN] = '\0';
+	model = MWW_GetBuiltinModel(name, &model_size);
+	if (!model) {
+		comp_err(mod->dev, "model '%s' is not built in", name);
+		return -EINVAL;
+	}
+
+	comp_info(mod->dev, "MWW: selected built-in model '%s'", name);
+	*sel = hdr;
+	*blob = model;
+	*size = model_size;
+	return 0;
+}
+
 static int mww_prepare(struct processing_module *mod,
 		       struct sof_source **sources, int num_of_sources,
 		       struct sof_sink **sinks, int num_of_sinks)
@@ -612,6 +654,7 @@ static int mww_prepare(struct processing_module *mod,
 	dev->period = MWW_MFCC_HOP_MS * 1000;
 
 	if (!cd->initialized) {
+		const struct sof_mww_model_hdr *sel = NULL;
 		const uint8_t *model_ptr = NULL;
 		const uint8_t *tflite;
 		size_t blob_size = 0;
@@ -636,7 +679,12 @@ static int mww_prepare(struct processing_module *mod,
 					blob_size = payload_len;
 				}
 			}
-			comp_info(dev, "MWW: loaded model from control blob, size=%zu", blob_size);
+			ret = mww_select_builtin(mod, &model_ptr, &blob_size, &sel);
+			if (ret < 0)
+				return ret;
+			if (!sel)
+				comp_info(dev, "MWW: loaded model from control blob, size=%zu",
+					  blob_size);
 		} else {
 			model_ptr = MWW_GetDefaultModel(cd->mwc.slot_id, &blob_size);
 			if (!model_ptr) {
@@ -648,6 +696,16 @@ static int mww_prepare(struct processing_module *mod,
 		ret = mww_parse_model(mod, model_ptr, blob_size, &tflite, &tflite_size);
 		if (ret < 0)
 			return ret;
+
+		/* Non-zero trigger settings of a selection override the built-in ones */
+		if (sel) {
+			if (sel->threshold_q8 >= 1 && sel->threshold_q8 <= 255)
+				cd->detect_threshold_q8 = sel->threshold_q8;
+			if (sel->avg_len >= 1 && sel->avg_len <= MWW_DETECT_AVG_MAX)
+				cd->detect_avg_len = sel->avg_len;
+			comp_info(dev, "MWW: trigger threshold %d/256, average of %d",
+				  cd->detect_threshold_q8, cd->detect_avg_len);
+		}
 
 		ret = MWW_SetModel(&cd->mwc, tflite, tflite_size);
 		if (ret < 0) {
