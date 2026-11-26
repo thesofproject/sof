@@ -360,9 +360,13 @@ struct system_tick_info *telemetry_get_systick_info_ptr(void);
 #ifdef CONFIG_SOF_TELEMETRY_EXTENDED_WINDOW
 struct telemetry_wnd_data *telemetry_get_wnd_ptr(void);
 void telemetry_refresh_cold_sections(void);
+void telemetry_notify_d0ix_enabled(void);
+void telemetry_notify_d0ix_disabled(void);
 #else
 static inline struct telemetry_wnd_data *telemetry_get_wnd_ptr(void) { return NULL; }
 static inline void telemetry_refresh_cold_sections(void) {}
+static inline void telemetry_notify_d0ix_enabled(void) {}
+static inline void telemetry_notify_d0ix_disabled(void) {}
 #endif
 
 #ifdef CONFIG_SOF_TELEMETRY_MEMORY
