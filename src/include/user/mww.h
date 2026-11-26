@@ -14,6 +14,9 @@
 /** \brief Current version of struct sof_mww_model_hdr */
 #define SOF_MWW_MODEL_VERSION		1
 
+/** \brief Size of the keyword name in struct sof_mww_model_hdr */
+#define SOF_MWW_MODEL_NAME_LEN		16
+
 /** \brief Type of the int8 audio features the model was trained with */
 enum sof_mww_feature_type {
 	SOF_MWW_FEATURE_UNKNOWN = 0,	/**< Not specified */
@@ -28,6 +31,12 @@ enum sof_mww_feature_type {
  * where it follows struct sof_abi_hdr. The TFLite flatbuffer follows this
  * header at offset hdr_size. Its size is a multiple of 16 bytes to keep the
  * flatbuffer aligned.
+ *
+ * A bytes control blob with only this header and model_size 0 selects a
+ * built-in model by name instead of carrying one, so a topology can choose
+ * the keyword without the model data. In such a selection header the
+ * feature, CRC and arena fields are ignored, and threshold_q8 and avg_len
+ * override the trigger settings of the built-in model when non-zero.
  */
 struct sof_mww_model_hdr {
 	uint32_t magic;		/**< SOF_MWW_MODEL_MAGIC */
@@ -36,7 +45,7 @@ struct sof_mww_model_hdr {
 	uint32_t model_size;	/**< Size of the TFLite flatbuffer in bytes */
 	uint32_t model_crc32;	/**< CRC32 (IEEE 802.3, zlib) of the flatbuffer */
 	uint32_t arena_size;	/**< Needed tensor arena in bytes, 0 if unknown */
-	char name[16];		/**< Keyword name, zero padded, for information */
+	char name[SOF_MWW_MODEL_NAME_LEN]; /**< Keyword name, zero padded */
 	uint8_t feature_type;	/**< enum sof_mww_feature_type */
 	uint8_t num_mels;	/**< Mel bands per feature hop, e.g. 40 */
 	uint8_t hop_ms;		/**< Feature hop length in ms, e.g. 10 */

@@ -28,6 +28,7 @@ This directory contains offline scripts to train, quantize, verify, and export s
 
          For a `Hi Intel` model, useful phrases include `hey siri`, `hey google`,
          `ok google`, `alexa`, `hey copilot`, and `hey jarvis`.
+   - [sof_mww_select_conf.py](sof_mww_select_conf.py): Emits a Topology2 bytes control blob that selects a built-in model by keyword name without the model data, e.g. `./sof_mww_select_conf.py hi_intel ../../../../tools/topology/topology2/include/components/mww/select_hi_intel.conf`. `--threshold` and `--avg-len` optionally override the trigger settings of the built-in model.
 
 4. **Off-Device Verification & Automation:**
    - [sof_mww_verify.py](sof_mww_verify.py): Feeds 3-hop streaming slices through the quantized TFLite model to verify detection rates and false alarm rates.
