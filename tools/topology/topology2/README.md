@@ -453,6 +453,19 @@ ACPI when selecting and loading the corresponding topology.
 Function topologies are intended to be reusable across devices that provide the same function.
 Please do not add any customized feature in the function topology.
 
+`sof-hda-generic.conf` builds the HDA function topologies the same way `cavs-sdw.conf` builds the
+`sof-sdca-*` ones: one conf, and macros that enable a single function and disable the others.
+
+| Function | Enable | Disable |
+|---|---|---|
+| HDA codec | `HDA_CONFIG=mix` (or `efx`, `src`, `dax`, `passthrough`) | `HDA_CONFIG=none` (default) |
+| HDMI/DP (iDisp) | `NUM_HDMIS=3` (default) | `NUM_HDMIS=0` |
+| PCH DMIC | `NUM_DMICS=1..4` | `NUM_DMICS=0` (default) |
+| HDMI-IN (SSP) | `HDMI_IN_CAPTURE=true` | `HDMI_IN_CAPTURE=false` (default) |
+| Bluetooth (SSP) | `ADD_BT=true` | `ADD_BT=false` (default) |
+
+The virtual widgets follow their function, so a disabled function leaves none behind.
+
 ### Registering CMake Targets
 
 Production topologies are registered in `production/tplg-targets-*.cmake` files. Each
