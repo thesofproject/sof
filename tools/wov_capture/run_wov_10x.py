@@ -11,11 +11,11 @@ import sys
 import time
 
 def find_wov_pcm(card=0):
-    """Auto-detect DMIC Multi-WOV capture PCM device index."""
+    """Auto-detect DMIC WOV capture PCM device index."""
     try:
         with open("/proc/asound/pcm") as f:
             for line in f:
-                if "DMIC Multi-WOV" in line:
+                if "DMIC WOV" in line:
                     m = re.match(r"^(\d+)-(\d+):", line)
                     if m and int(m.group(1)) == card:
                         return int(m.group(2))

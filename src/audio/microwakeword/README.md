@@ -70,7 +70,7 @@ graph TD
 
     subgraph P114["Pipeline 114 — WOV Host PCM Capture  (Core 0, LL 1ms)"]
         ARB["wov-arbiter.114.1\n(4 input pins, 1 output pin\nPin 0: Audio | Pins 1-3: Features\n1ch mono 16 kHz S16_LE)"]
-        HC12["host-copier.12\n(hw:0,12 · PCM 12 'DMIC Multi-WOV')\n1ch · 16 kHz · S16_LE / S32_LE"]
+        HC12["host-copier.12\n(hw:0,12 · PCM 12 'DMIC WOV')\n1ch · 16 kHz · S16_LE / S32_LE"]
         ARB --> HC12
     end
 
@@ -131,7 +131,7 @@ The SoundWire headset WoV (`sdw-jack-wov-multi.conf`, `INCLUDE_SDW_JACK_WOV=true
 has no ECNS: `module-copier.11.0` (Jack In, 48 kHz 2ch) -> `micsel.140.1`
 (`(L+R)/2` mono) -> `src.140.1` (48 -> 16 kHz) -> `module-copier.140.1`
 (to 16-bit) -> `kpb.146.1` -> detector slots 141-143 -> `wov-arbiter.144.1` ->
-PCM 14 `Headset Multi-WOV`.
+PCM 14 `Headset WOV`.
 
 ---
 

@@ -44,7 +44,7 @@ In this architecture, two dedicated physical PDM digital microphone interfaces a
 - **PDM0 (`dmic01`)**: 48 kHz 2ch or 4ch (`NUM_DMICS`) 32-bit stream captured with the same regular DMIC0 pipelines of `platform/intel/dmic-generic.conf` as in the non-WoV topologies, without the TDFB/DRC enhancements (`DMIC0_ENHANCED_CAPTURE` false). It does not pass through ECNS: `dai-copier.DMIC.dmic01.capture` -> `gain.101.1` (muting and volume) -> `eqiir.101.1` (`DMIC0_DAI_EQIIR`, 40 Hz high-pass) -> `module-copier.101.2` -> `host-copier.10.capture` (ALSA PCM 10, `hw:0,10`, `DMIC Raw`, S32_LE). The IDs are for SoundWire (DAI pipeline 101, host pipeline 100, PCM 10); HDA generic uses pipelines 12/11 and PCM 6, ADL rt5682 uses pipelines 14/13 and PCM 99. This PCM is not D0i3 compatible.
 
 The ECNS DP module (20 ms period) has a single output:
-- **Pin 0 Out (16 kHz mono)**: The microphone channels of Pin 0 In are averaged to mono, or a single channel is selected with the `DMIC ECNS mic channel` enum (`Average` by default, `Mic1`..`Mic2` or `Mic1`..`Mic4`), and filtered by a 100 Hz high-pass IIR. The `DMIC ECNS boost` switch selects the +30 dB or the 0 dB filter response. When the `DMIC ECNS AEC switch` is on, the `(L+R)/2` average of the echo reference is subtracted after the IIR. The `DMIC ECNS NS switch` has no function yet. Both AEC and NS switches default to off. The output is s16 in the topology (the firmware follows the KPB input bit depth). It routes to KPB (Pipeline 116, 2.0s history depth = 64 KB mono buffer), then fans out via `module-copier.118.1` to 3 concurrent **microWakeWord (MWW)** keyword spotting slots (running MFCC feature extraction + TFLM streaming graph in lock-step). Upon keyword detection, the detector notifies KPB (`NOTIFIER_ID_KPB_CLIENT_EVT`) to drain and the WOV Arbiter (`NOTIFIER_ID_WOV_DETECT`) to set `wov_active_slot` and pause sibling slots. The WOV Arbiter routes the active slot audio (pre-roll + live) to ALSA PCM 12 (`hw:0,12`, `DMIC Multi-WOV`, `capture_compatible_d0i3: true`).
+- **Pin 0 Out (16 kHz mono)**: The microphone channels of Pin 0 In are averaged to mono, or a single channel is selected with the `DMIC ECNS mic channel` enum (`Average` by default, `Mic1`..`Mic2` or `Mic1`..`Mic4`), and filtered by a 100 Hz high-pass IIR. The `DMIC ECNS boost` switch selects the +30 dB or the 0 dB filter response. When the `DMIC ECNS AEC switch` is on, the `(L+R)/2` average of the echo reference is subtracted after the IIR. The `DMIC ECNS NS switch` has no function yet. Both AEC and NS switches default to off. The output is s16 in the topology (the firmware follows the KPB input bit depth). It routes to KPB (Pipeline 116, 2.0s history depth = 64 KB mono buffer), then fans out via `module-copier.118.1` to 3 concurrent **microWakeWord (MWW)** keyword spotting slots (running MFCC feature extraction + TFLM streaming graph in lock-step). Upon keyword detection, the detector notifies KPB (`NOTIFIER_ID_KPB_CLIENT_EVT`) to drain and the WOV Arbiter (`NOTIFIER_ID_WOV_DETECT`) to set `wov_active_slot` and pause sibling slots. The WOV Arbiter routes the active slot audio (pre-roll + live) to ALSA PCM 12 (`hw:0,12`, `DMIC WOV`, `capture_compatible_d0i3: true`).
 
 ```mermaid
 flowchart TD
@@ -131,7 +131,7 @@ flowchart TD
     %% Pipeline 114: WoV Arbiter & Host Capture PCM 12
     subgraph P114 ["Pipeline 114: WoV Arbiter (Core 0, LL 1ms)"]
         ARB["wov-arbiter.114.1<br/>• Pin 0: Drained audio stream<br/>• Pins 1-3: Keyword triggers"]
-        HOST_12["host-copier.12.capture<br/>(PCM 12: 'DMIC Multi-WOV'<br/>hw:0,12 · d0i3_compatible=true)"]
+        HOST_12["host-copier.12.capture<br/>(PCM 12: 'DMIC WOV'<br/>hw:0,12 · d0i3_compatible=true)"]
         ARB --> HOST_12
     end
 
@@ -210,7 +210,7 @@ graph TD
 
     subgraph P104["Pipeline 104 — Host Regular PCM Capture  (Core 0)"]
         ARB["wov_arbiter\n(3 input pins)"]
-        HC["host-copier\npcmC0D11c (hw:0,11)\n'DMIC Multi-WOV'"]
+        HC["host-copier\npcmC0D11c (hw:0,11)\n'DMIC WOV'"]
         ARB --> HC
     end
 
@@ -601,7 +601,7 @@ The WOV audio is exposed as a standard **ALSA PCM** capture device (`hw:0,11` or
 Standard tools like `arecord` and the zero-dependency C capture utility `wov_capture_app` interact directly with this endpoint:
 
 ```text
-Card: 0   PCM device: 11   Name: "DMIC Multi-WOV"   (/dev/snd/pcmC0D11c)
+Card: 0   PCM device: 11   Name: "DMIC WOV"   (/dev/snd/pcmC0D11c)
 Formats:  S16_LE / S32_LE (raw PCM)
 Rate:     16000 Hz
 Channels: 2 (stereo)
@@ -1158,7 +1158,7 @@ modprobe snd_sof_pci_intel_tgl \
     tplg_filename=intel/sof-ipc4-tplg/sof-tgl-dmic-4ch.tplg
 
 # 1. Verify the PCM capture device is visible
-arecord -l                                # expect: card 0, device 11: DMIC Multi-WOV
+arecord -l                                # expect: card 0, device 11: DMIC WOV
 cat /proc/asound/card0/pcm11c/info
 
 # 2. Run capture test with arecord or wov_capture_app
