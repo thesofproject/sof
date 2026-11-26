@@ -191,7 +191,7 @@ The built-in models and the bytes control use the same model blob: `struct sof_m
 - the trigger threshold (Q0.8) and the number of averaged probabilities, so each model carries its own trigger tuning,
 - reserved words.
 
-A bare TFLite flatbuffer without the header is still accepted and uses the default trigger settings `MWW_DETECT_THRESHOLD_Q8` and `MWW_DETECT_AVG_LEN`.
+A bare TFLite flatbuffer without the header is still accepted and uses the default trigger settings `MWW_DETECT_THRESHOLD_Q8` and `MWW_DETECT_AVG_LEN`. The tune scripts `sof_mww_train_pcan.py` and `sof_mww_int8_state.py` emit the blobs with the header.
 
 ---
 
