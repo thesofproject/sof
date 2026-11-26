@@ -16,6 +16,7 @@
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdint.h>
+#include <rtos/symbol.h>
 
 LOG_MODULE_REGISTER(math_auditory, CONFIG_SOF_LOG_LEVEL);
 
@@ -62,6 +63,7 @@ int16_t psy_hz_to_mel(int16_t hz)
 	mel = Q_MULTSR_32X32((int64_t)log, LOG_MULT_HZMEL_Q20, 26, 20, 2);
 	return mel;
 }
+EXPORT_SYMBOL(psy_hz_to_mel);
 
 /**
  * Convert Mel to Hz
@@ -88,6 +90,7 @@ int16_t psy_mel_to_hz(int16_t mel)
 	hz = Q_MULTSR_32X32((int64_t)exp, 700, 20, 0, 0);
 	return hz;
 }
+EXPORT_SYMBOL(psy_mel_to_hz);
 
 int mod_psy_get_mel_filterbank(struct processing_module *mod, struct psy_mel_filterbank *fb)
 {
@@ -239,6 +242,7 @@ int mod_psy_get_mel_filterbank(struct processing_module *mod, struct psy_mel_fil
 		 fb->scratch_data2, sizeof(int16_t) * fb->data_length);
 	return 0;
 }
+EXPORT_SYMBOL(mod_psy_get_mel_filterbank);
 
 int mod_psy_free_mel_filterbank(struct processing_module *mod, struct psy_mel_filterbank *mel_fb)
 {

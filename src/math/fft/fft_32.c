@@ -13,6 +13,7 @@
 
 #ifdef FFT_GENERIC
 #include <sof/audio/coefficients/fft/twiddle_32.h>
+#include <rtos/symbol.h>
 
 /**
  * \brief Execute the 32-bits Fast Fourier Transform (FFT) or Inverse FFT (IFFT)
@@ -93,5 +94,6 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 		}
 	}
 }
+EXPORT_SYMBOL(fft_execute_32);
 
 #endif /* FFT_GENERIC */

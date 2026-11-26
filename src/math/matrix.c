@@ -7,6 +7,7 @@
 #include <sof/math/matrix.h>
 #include <errno.h>
 #include <stdint.h>
+#include <rtos/symbol.h>
 
 int mat_multiply(struct mat_matrix_16b *a, struct mat_matrix_16b *b, struct mat_matrix_16b *c)
 {
@@ -57,6 +58,7 @@ int mat_multiply(struct mat_matrix_16b *a, struct mat_matrix_16b *b, struct mat_
 	}
 	return 0;
 }
+EXPORT_SYMBOL(mat_multiply);
 
 int mat_multiply_elementwise(struct mat_matrix_16b *a, struct mat_matrix_16b *b,
 			     struct mat_matrix_16b *c)
@@ -94,3 +96,4 @@ int mat_multiply_elementwise(struct mat_matrix_16b *a, struct mat_matrix_16b *b,
 
 	return 0;
 }
+EXPORT_SYMBOL(mat_multiply_elementwise);

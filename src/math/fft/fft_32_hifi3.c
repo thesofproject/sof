@@ -12,6 +12,7 @@
 #ifdef FFT_HIFI3
 #include <sof/audio/coefficients/fft/twiddle_32.h>
 #include <xtensa/tie/xt_hifi3.h>
+#include <rtos/symbol.h>
 
 void fft_execute_32(struct fft_plan *plan, bool ifft)
 {
@@ -156,4 +157,5 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 		}
 	}
 }
+EXPORT_SYMBOL(fft_execute_32);
 #endif
