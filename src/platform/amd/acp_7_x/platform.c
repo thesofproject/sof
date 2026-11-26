@@ -153,7 +153,11 @@ int platform_init(struct sof *sof)
 	/*CONFIG_SYSTICK_PERIOD hardcoded as 200000*/
 	sa_init(sof, 200000);
 	acp_clk_tick_cnt_enable();
-	mp1_mailbox_send(ACPSMC_MSG_PllPowerState, ACP_AUDIOPLL_POWER_ON_REQ);
+	ret = mp1_mailbox_send(ACPSMC_MSG_PllPowerState, ACP_AUDIOPLL_POWER_ON_REQ);
+	if (ret == 1)
+		LOG_INF("Audio PLL power on success, resp: 0x%x", ret);
+	else
+		LOG_ERR("Audio PLL power on failed, resp: 0x%x", ret);
 	acp_change_clock_notify(CLK_MAX_CPU_HZ);
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 

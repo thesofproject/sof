@@ -77,13 +77,8 @@ void clk_dfs_bypassexit(void);
 void audio_pll_mode_switch(uint32_t mode, uint32_t fcw_int, uint32_t fcw_frac,
 	uint32_t fcw_denom, uint32_t pllspinediv);
 void clk7_init_vco(void);
-void acp_7_x_reg_wait(void);
 void acp_7_x_get_boot_ref_clock(float *boot_ref_clk);
-uint32_t acp_clk_update_dfs_did(uint32_t did, uint32_t clk_type);
-void acp_cpl_aclk_dfs_did_update(bool poll, uint32_t timeout_cnt, uint8_t did);
-void acp_cpl_audioclk_dfs_did_update(bool poll, uint32_t timeout_cnt, uint8_t did);
-void acp_cpl_aclk_poll_dfs_div_req_idle(uint32_t timeout_cnt);
-void acp_cpl_audioclk_poll_dfs_div_req_idle(uint32_t timeout_cnt);
+void acp_aclk_update_postdiv(uint32_t divisor, bool ramp, uint32_t timeout_cnt);
 void change_clock_notify(uint32_t clock_freq);
 int acp_get_current_clk(acp_clock_type_t clk_type,
 			 float *clk_value);
@@ -164,20 +159,6 @@ void platform_clock_init(struct sof *sof)
 			.set_freq = NULL,
 		};
 	}
-	/* acp_reg_write_via_smn(CLK6_PLL0_DFS0_CNTL, 0x19, sizeof(int)); */
-}
-void acp_cpl_audioclk_poll_dfs_div_req_idle(uint32_t timeout_cnt)
-{
-	uint32_t timeout = 0;
-	clk_dfs_status_u_t clk_dfs_status;
-
-	do {
-		clk_dfs_status.u32All = acp_reg_read_via_smn(
-				mmCLK6_PLL0_DFS0_STATUS, sizeof(uint32_t));
-		timeout++;
-	} while ((clk_dfs_status.bitfields.PLL0_DFS0_DFS_DIV_REQ_IDLE == 0) &
-		 (timeout < timeout_cnt));
-
 }
 
 uint32_t mp1_mailbox_send(uint32_t _reg_id, uint32_t _value)
@@ -232,96 +213,87 @@ void acp_clk_tick_cnt_enable(void)
 
 void acp_clk_d0_sequence(uint32_t clock_freq)
 {
+	uint32_t clk1_bypass_before;
+	uint32_t clk1_bypass_after;
+	uint32_t clk1_status;
+
 	/* Audio PLL is powered on in platform_init(). */
 
 	change_clock_notify(clock_freq);
 
-	/* Audio PLL DFS Output for AUDIOCLK */
-	acp_reg_write_via_smn(mmCLK6_CLK0_BYPASS_CNTL, 0, sizeof(uint32_t));
-	/* Audio PLL DFS Output for ACLK */
-	acp_reg_write_via_smn(mmCLK6_CLK1_BYPASS_CNTL, 0, sizeof(uint32_t));
+	clk1_bypass_before = acp_reg_read_via_smn(mmCLK9_CLK1_BYPASS_CNTL, sizeof(uint32_t));
+	acp_reg_write_via_smn(mmCLK9_CLK1_BYPASS_CNTL, 0, sizeof(uint32_t));
+	clk1_bypass_after = acp_reg_read_via_smn(mmCLK9_CLK1_BYPASS_CNTL, sizeof(uint32_t));
+	tr_info(&acp_clk_tr,
+		"aclk CLK9_CLK1_BYPASS before 0x%x after 0x%x",
+		clk1_bypass_before, clk1_bypass_after);
 
+	/* AUDIOCLK post-divider output (separate from ACLK) */
+	acp_reg_write_via_smn(mmCLK9_CLK0_BYPASS_CNTL, 0, sizeof(uint32_t));
+
+	clk1_status = acp_reg_read_via_smn(mmCLK9_CLK1_STATUS, sizeof(uint32_t));
+	tr_info(&acp_clk_tr, "aclk CLK9_CLK1_STATUS 0x%x postdiv_done %d",
+		clk1_status, (clk1_status >> 4) & 0x1);
 }
 
 void acp_clk_d3_sequence(void)
 {
-	clk6_bypass_cntl_u_t    bypass_cntl;
-
-	bypass_cntl.u32All = 0;
-	bypass_cntl.bitfields.CLK_BYPASS_SEL = 4;
-
-	/* SET AUDIOCLK TO LPPLL 196.608MHz */
-	acp_reg_write_via_smn(mmCLK6_CLK0_BYPASS_CNTL, bypass_cntl.u32All, sizeof(uint32_t));
-
-	bypass_cntl.u32All = 0;
-	bypass_cntl.bitfields.CLK_BYPASS_SEL = 2;
-
-	/* SET ACLK TO LPPLL 393MHz */
-	acp_reg_write_via_smn(mmCLK6_CLK1_BYPASS_CNTL, bypass_cntl.u32All, sizeof(uint32_t));
-	/* mp1_mailbox_send(ACPSMC_MSG_PllPowerState, ACP_AUDIOPLL_POWER_OFF_REQ); */
-
-	/* Leave Audio PLL powered; D3 does not request PMFW power-off. */
+	/* D3 transition: clock changes are not required, so not touching clocks here. */
 }
 
 void change_clock_notify(uint32_t clock_freq)
 {
-	uint32_t final_did = 4; /* Default DID value */
-	float did = 0.0f;
-	float fraction_val = 0.0f;
-	uint32_t int_did_val = 0;
 	float boot_ref_clk = 0.0f;
+	uint32_t postdiv_divisor;
 	acp_clock_type_t clock_type = acp_aclk_clock;
 
 	acp_7_x_get_boot_ref_clock(&boot_ref_clk);
 
-	tr_info(&acp_clk_tr, "acp_change_clock_notify clock_freq : %d clock_type : %d", clock_freq, clock_type);
+	tr_info(&acp_clk_tr,
+		"acp_change_clock_notify clock_freq : %d clock_type : %d boot_ref %d",
+		clock_freq, clock_type, (uint32_t)boot_ref_clk);
 
-	fraction_val = (float)(clock_freq / (float)1000000.0f);   /*converting Hz to Mhz*/
-	clock_freq   = (clock_freq / 1000000);                    /*converting Hz to Mhz*/
+	/* Integer post-divider: output MHz = boot_ref / divisor. */
+	postdiv_divisor = (uint32_t)boot_ref_clk / (clock_freq / 1000000);
+	tr_info(&acp_clk_tr, "aclk postdiv divisor %d for %d MHz",
+		postdiv_divisor, clock_freq / 1000000);
 
-	did  = (float)(boot_ref_clk/(float)fraction_val);
-	if (did > 62.0f) {
-		final_did = 0x7F;
-	} else {
-		/* Fractional part of the divider value. Based on fractional
-		 * value increment the did value.
-		 */
-		/* Refer DID value sheet for reference. */
-		/* Extracting the fractional value from float divider value */
-		fraction_val = did - (uint8_t)(did);
+	acp_aclk_update_postdiv(postdiv_divisor, true, 10);
+}
 
-		/* Extracting only integer part of the divider */
-		did = did - fraction_val;
-		if (did <= 16.00f) {
-			did = (did * 4.0f);
-		} else if ((did > 16.0f) && (did <= 32.0f)) {
-			did = ((did - 16.0f) * 2.0f + 64.0f);
-		} else if ((did > 32.0f) && (did <= 62.0f)) {
-			did = ((did - 32.0f) + 96.0f);
-		}
+void acp_aclk_update_postdiv(uint32_t divisor, bool ramp, uint32_t timeout_cnt)
+{
+	clk9_clk_postdiv_t postdiv;
+	clk9_clk_status_t status;
+	uint32_t timeout = 0;
+	uint32_t readback;
+	uint8_t wrote_id;
+	uint8_t read_id;
 
-		/* Following logic is to ensure the fractional divider value is
-		 * only limited to 2 decimal places, in order to ensure correct
-		 * calculation of DID value
-		 */
-		int_did_val = (uint32_t)(fraction_val * 100.0f);
-		fraction_val = (float)(int_did_val / 100.0f);
+	postdiv.u32All = acp_reg_read_via_smn(mmCLK9_CLK1_POSTDIV_CNTL, sizeof(uint32_t));
+	if (divisor == 0)
+		postdiv.bitfields.CLK0_POSTDIV_DIV_ID = 0;
+	else
+		postdiv.bitfields.CLK0_POSTDIV_DIV_ID = divisor - 1;
+	postdiv.bitfields.CLK0_POSTDIV_RAMP_DIS = ramp ? 1 : 0;
+	wrote_id = postdiv.bitfields.CLK0_POSTDIV_DIV_ID;
+	acp_reg_write_via_smn(mmCLK9_CLK1_POSTDIV_CNTL, postdiv.u32All, sizeof(uint32_t));
 
-		if (fraction_val == 0.0f) {
-			final_did = (uint8_t)(did);
-		} else if (fraction_val <= 0.25f) {
-			final_did = (uint8_t)(did)+1;
-		} else if ((fraction_val > 0.25f) && (fraction_val <= 0.5f)) {
-			final_did = (uint8_t)(did)+2;
-		} else if ((fraction_val > 0.5f) && (fraction_val <= 0.75f)) {
-			final_did = (uint8_t)(did)+3;
-		} else if ((fraction_val > 0.75f)) {
-			final_did = (uint8_t)(did)+4;
-		}
-	}
+	do {
+		status.u32All = acp_reg_read_via_smn(mmCLK9_CLK1_STATUS, sizeof(uint32_t));
+		timeout++;
+	} while ((status.bitfields.CLK0_POSTDIV_DONE == 0) && (timeout < timeout_cnt));
 
-	acp_clk_update_dfs_did((uint32_t)final_did, clock_type);
-
+	readback = acp_reg_read_via_smn(mmCLK9_CLK1_POSTDIV_CNTL, sizeof(uint32_t));
+	read_id = readback & 0xFF;
+	if (read_id == wrote_id)
+		tr_info(&acp_clk_tr,
+			"clock bump success postdiv id 0x%x reg 0x%x done %d",
+			read_id, readback, status.bitfields.CLK0_POSTDIV_DONE);
+	else
+		tr_err(&acp_clk_tr,
+		       "clock bump failed wrote postdiv id 0x%x readback 0x%x reg 0x%x",
+		       wrote_id, read_id, readback);
 }
 void acp_change_clock_notify(uint32_t clock_freq)
 {
@@ -335,57 +307,6 @@ void acp_change_clock_notify(uint32_t clock_freq)
 
 }
 
-uint32_t acp_clk_update_dfs_did(uint32_t did, uint32_t clk_type)
-{
-	uint32_t updated_clk = 0;
-
-	if (clk_type == acp_aclk_clock) {
-		acp_cpl_aclk_dfs_did_update(true, 10, did);
-	} else if (clk_type == acp_sclk_clock) {
-		acp_cpl_audioclk_dfs_did_update(true, 10, did);
-	}
-
-	acp_get_current_clk(acp_aclk_clock, (float *)&updated_clk);
-	return updated_clk;
-
-}
-void acp_cpl_aclk_dfs_did_update(bool poll, uint32_t timeout_cnt, uint8_t did)
-{ /* CLK instance #6, clock slice #1 */
-	clk6_pll_dfs_cntl_u_t clk6_pll0_dfs1_cntl;
-
-	clk6_pll0_dfs1_cntl.u32All = acp_reg_read_via_smn(CLK6_PLL0_DFS1_CNTL, sizeof(int));
-	clk6_pll0_dfs1_cntl.bitfields.PLL0_DFS0_DIVIDER = did;
-	acp_reg_write_via_smn(CLK6_PLL0_DFS1_CNTL, clk6_pll0_dfs1_cntl.u32All, sizeof(int));
-	if (poll) {
-		acp_cpl_aclk_poll_dfs_div_req_idle(10);
-	}
-}
-void acp_cpl_audioclk_dfs_did_update(bool poll, uint32_t timeout_cnt, uint8_t did)
-{ /* CLK instance #6, clock slice #0 */
-	clk6_pll_dfs_cntl_u_t clk6_pll0_dfs0_cntl;
-
-	clk6_pll0_dfs0_cntl.u32All = acp_reg_read_via_smn(CLK6_PLL0_DFS0_CNTL, sizeof(uint32_t));
-	clk6_pll0_dfs0_cntl.bitfields.PLL0_DFS0_DIVIDER = did;
-	acp_reg_write_via_smn(CLK6_PLL0_DFS0_CNTL, clk6_pll0_dfs0_cntl.u32All, sizeof(uint32_t));
-	/* polling DID change done */
-	if (poll) {
-		acp_cpl_audioclk_poll_dfs_div_req_idle(timeout_cnt);
-	}
-}
-
-void acp_cpl_aclk_poll_dfs_div_req_idle(uint32_t timeout_cnt)
-{
-	uint32_t timeout = 0;
-	clk_dfs_status_u_t clk6_pll0_dfs1_status;
-
-	do {
-		clk6_pll0_dfs1_status.u32All = acp_reg_read_via_smn(
-				CLK6_PLL0_DFS1_STATUS, sizeof(uint32_t));
-		timeout++;
-	} while ((clk6_pll0_dfs1_status.bitfields.PLL0_DFS0_DFS_DIV_REQ_IDLE == 0) &&
-		 (timeout < timeout_cnt));
-}
-
 void acp_7_x_get_boot_ref_clock(float *_boot_ref_clk)
 {
 	volatile SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_NON_AI_CTRL0_BRDS_u_t non_ai_ctrl0;
@@ -395,25 +316,31 @@ void acp_7_x_get_boot_ref_clock(float *_boot_ref_clk)
 	volatile SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_AI_FREQ_CTRL9_BRDS_u_t ai_freq_ctrl9_brds;
 
 	non_ai_ctrl0.u32All = acp_reg_read_via_smn(
-			SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_NON_AI_CTRL0_BRDS, sizeof(uint32_t));
+			mmSYSTEMPLL2P0_N3_BUS_CSR_SNAP_16_NON_AI_CTRL0_BRDS, sizeof(uint32_t));
 	clk_pll_refclk.u32All = acp_reg_read_via_smn(
-			SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_REFCLK_BRDS, sizeof(uint32_t));
+			mmSYSTEMPLL2P0_N3_BUS_CSR_SNAP_16_REFCLK_BRDS, sizeof(uint32_t));
 	ai_freq_ctrl6_1_brds.u32All = acp_reg_read_via_smn(
-			SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_AI_FREQ_CTRL6_1_BRDS, sizeof(uint32_t));
+			mmSYSTEMPLL2P0_N3_BUS_CSR_SNAP_16_AI_FREQ_CTRL6_1_BRDS, sizeof(uint32_t));
 	ai_freq_ctrl7_brds.u32All = acp_reg_read_via_smn(
-			SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_AI_FREQ_CTRL7_BRDS, sizeof(uint32_t));
+			mmSYSTEMPLL2P0_N3_BUS_CSR_SNAP_16_AI_FREQ_CTRL7_BRDS, sizeof(uint32_t));
 	ai_freq_ctrl9_brds.u32All = acp_reg_read_via_smn(
-			SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_AI_FREQ_CTRL9_BRDS, sizeof(uint32_t));
+			mmSYSTEMPLL2P0_N3_BUS_CSR_SNAP_16_AI_FREQ_CTRL9_BRDS, sizeof(uint32_t));
 
 	*_boot_ref_clk = 0.0f;
-	/* 16777216 = 2^24 */
+	/* 16777216 = 2^24. 7B multiplies by refclk_rate, not refclk_rate/2. */
 	*_boot_ref_clk =
 		(((float)(ai_freq_ctrl6_1_brds.bitfields.fcw_int) +
 		  ((float)(ai_freq_ctrl7_brds.bitfields.fcw_frac << 8 |
 			   ai_freq_ctrl9_brds.bitfields.fcw0_frac_lsb) /
 			   (16777216.0f))) *
-		 (clk_pll_refclk.bitfields.refclk_rate / 2) *
+		 (clk_pll_refclk.bitfields.refclk_rate) *
 		 (1 << non_ai_ctrl0.bitfields.vco_pre_div));
+
+	tr_info(&acp_clk_tr,
+		"boot_ref raw fcw_int %d refclk_rate %d vco_pre_div %d",
+		ai_freq_ctrl6_1_brds.bitfields.fcw_int,
+		clk_pll_refclk.bitfields.refclk_rate,
+		non_ai_ctrl0.bitfields.vco_pre_div);
 }
 
 int acp_get_current_clk(acp_clock_type_t clk_type, float *clk_value)

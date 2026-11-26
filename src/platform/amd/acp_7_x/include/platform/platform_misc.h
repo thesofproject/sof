@@ -50,9 +50,28 @@
 #define CLK6_PLL0_DFS0_CNTL                    mmCLK6_PLL0_DFS0_CNTL
 #define CLK6_PLL0_DFS1_CNTL                    mmCLK6_PLL0_DFS1_CNTL
 #define CLK6_PLL0_DFS1_STATUS                  mmCLK6_PLL0_DFS1_STATUS
-#define CLK0_CURRENT_CNT                       mmCLK6_CLK0_CURRENT_CNT
-#define CLK1_CURRENT_CNT                       mmCLK6_CLK1_CURRENT_CNT
-#define CLK_TICK_CNT_CONFIG_REG                mmCLK6_CLK_TICK_CNT_CONFIG_REG
+/* ACP 7B uses CLK9 and SYSTEMPLL snapshot 16. */
+#define mmSYSTEMPLL2P0_N3_BUS_CSR_SNAP_16_REFCLK_BRDS          0x6EC04
+#define mmSYSTEMPLL2P0_N3_BUS_CSR_SNAP_16_AI_FREQ_CTRL9_BRDS   0x6EC0C
+#define mmSYSTEMPLL2P0_N3_BUS_CSR_SNAP_16_NON_AI_CTRL0_BRDS    0x6EC14
+#define mmSYSTEMPLL2P0_N3_BUS_CSR_SNAP_16_AI_FREQ_CTRL6_1_BRDS 0x6EC1C
+#define mmSYSTEMPLL2P0_N3_BUS_CSR_SNAP_16_AI_FREQ_CTRL7_BRDS   0x6EC20
+
+#define mmCLK9_CLK0_DS_CNTL                             0x6E810
+#define mmCLK9_CLK0_POSTDIV_CNTL                        0x6E81C
+#define mmCLK9_CLK0_BYPASS_CNTL                         0x6E828
+#define mmCLK9_CLK0_STATUS                              0x6E82C
+#define mmCLK9_CLK1_DS_CNTL                             0x6E830
+#define mmCLK9_CLK1_POSTDIV_CNTL                        0x6E83C
+#define mmCLK9_CLK1_BYPASS_CNTL                         0x6E848
+#define mmCLK9_CLK1_STATUS                              0x6E84C
+#define mmCLK9_CLK_TICK_CNT_CONFIG_REG                  0x6E884
+#define mmCLK9_CLK0_CURRENT_CNT                         0x6E88C
+#define mmCLK9_CLK1_CURRENT_CNT                         0x6E890
+
+#define CLK0_CURRENT_CNT                       mmCLK9_CLK0_CURRENT_CNT
+#define CLK1_CURRENT_CNT                       mmCLK9_CLK1_CURRENT_CNT
+#define CLK_TICK_CNT_CONFIG_REG                mmCLK9_CLK_TICK_CNT_CONFIG_REG
 
 /* SYSTEMPLL2P0 register aliases without ACP_7X prefix */
 #define SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_NON_AI_CTRL0_BRDS    ACP_7X_SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_NON_AI_CTRL0_BRDS
@@ -422,6 +441,26 @@ typedef union SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_AI_FREQ_CTRL9_BRDS_u {
 	int32_t     i32All;
 	float       f32All;
 } SYSTEMPLL2P0_N3_BUS_CSR_SNAP_6_AI_FREQ_CTRL9_BRDS_u_t;
+
+typedef union clk9_clk_postdiv {
+	struct {
+		uint32_t CLK0_POSTDIV_DIV_ID:8;
+		uint32_t CLK0_POSTDIV_RAMP_DIS:1;
+		uint32_t :7;
+		uint32_t CLK0_POSTDIV_RAMP_STEP:4;
+		uint32_t :12;
+	} bitfields, bits;
+	uint32_t u32All;
+} clk9_clk_postdiv_t;
+
+typedef union clk9_clk_status {
+	struct {
+		uint32_t :4;
+		uint32_t CLK0_POSTDIV_DONE:1;
+		uint32_t :27;
+	} bitfields, bits;
+	uint32_t u32All;
+} clk9_clk_status_t;
 
 typedef union clk6_pll_dfs_cntl_u {
 	struct {
