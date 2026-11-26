@@ -569,6 +569,6 @@ COMPRESSED_1=false,COMPRESSED_2=true"
 "cavs-sdw\;sof-ptl-rt713-l3-rt1320-l12-wov\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=2,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
-SDW_DMIC_WOV_SINGLE=true"
+SDW_DMIC_WOV_SINGLE=true,SDW_DMIC_WOV_MWW_MODEL=hi_intel"
 
 )

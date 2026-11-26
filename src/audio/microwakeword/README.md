@@ -182,6 +182,18 @@ Alternatively, a single built-in model can be forced via Kconfig (`CONFIG_COMP_M
 
 Each instance can also be dynamically customized via SOF IPC4 `LARGE_CONFIG_SET` / bytes control or LLEXT model loading.
 
+A topology can select a built-in model by keyword name instead of relying on
+the slot. The bytes control default data is then only the 64-byte
+`struct sof_mww_model_hdr` with `model_size` 0 and the keyword name, e.g.
+`hi_intel`, behind `struct sof_abi_hdr`. Non-zero `threshold_q8` and `avg_len`
+in it override the trigger settings of the built-in model. A name that is not
+built in fails the prepare. The selection blobs are created with
+[tune/sof_mww_select_conf.py](tune/sof_mww_select_conf.py), e.g.
+[select_hi_intel.conf](../../../tools/topology/topology2/include/components/mww/select_hi_intel.conf).
+The single-slot SoundWire DMIC WoV selects it with
+`SDW_DMIC_WOV_MWW_MODEL=hi_intel`, used by the
+`sof-ptl-rt713-l3-rt1320-l12-wov` development topology.
+
 ### 4. Model Blob Format
 The built-in models and the bytes control use the same model blob: `struct sof_mww_model_hdr` from [user/mww.h](../../include/user/mww.h) followed by the TFLite flatbuffer. In the bytes control the blob follows the standard `struct sof_abi_hdr`. The 64-byte header carries:
 - magic `MWWM`, version and header size, so that fields can be added later,
