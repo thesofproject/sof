@@ -51,7 +51,7 @@ manifest:
     - name: webrtc-apm
       repo-path: webrtc-audio-processing
       path: modules/audio/webrtc-apm
-      revision: 3e9c41a268fbeb36a7de2c5cb2f1b02bc7fef098
+      revision: 07232bb5e5252210da688796eac66538ca8d5939
 
     # rnnoise — xiph/rnnoise deep-learning noise suppressor (webrtc_ns2)
     - name: rnnoise
