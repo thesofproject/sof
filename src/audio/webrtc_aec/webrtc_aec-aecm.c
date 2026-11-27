@@ -30,6 +30,7 @@ struct webrtc_aec_real_data {
 	int     num_channels;
 	int     filter_len_ms;
 	int     suppression;
+	int     delay_ms;
 };
 
 static int webrtc_aec_real_init(struct processing_module *mod)
@@ -41,6 +42,7 @@ static int webrtc_aec_real_init(struct processing_module *mod)
 	if (!rd)
 		return -ENOMEM;
 
+	rd->delay_ms = cd->delay_ms;
 	cd->backend_data = rd;
 	comp_info(mod->dev, "webrtc_aec: AECm real backend initialised");
 	return 0;
@@ -86,6 +88,7 @@ static int webrtc_aec_real_configure(struct processing_module *mod, int sample_r
 	rd->num_channels  = 0;
 	rd->filter_len_ms = filter_len_ms;
 	rd->suppression   = suppression;
+	rd->delay_ms      = cd->delay_ms;
 
 	/* AECm is single-channel integer Q15, so instantiate one handle per mic channel. */
 	for (c = 0; c < num_mic_channels; c++) {
@@ -108,9 +111,9 @@ static int webrtc_aec_real_configure(struct processing_module *mod, int sample_r
 	}
 
 	rd->num_channels = num_mic_channels;
-	comp_info(mod->dev, "webrtc_aec: AECm rate=%d filter=%dms high_supp=%d mic_ch=%d ref_ch=%d",
+	comp_info(mod->dev, "webrtc_aec: AECm rate=%d filter=%dms high_supp=%d mic_ch=%d ref_ch=%d delay=%dms",
 		  sample_rate_hz, filter_len_ms, cd->high_suppression,
-		  num_mic_channels, num_ref_channels);
+		  num_mic_channels, num_ref_channels, rd->delay_ms);
 	return 0;
 
 err:
@@ -151,6 +154,18 @@ static int webrtc_aec_real_set_suppression(struct processing_module *mod, bool h
 	return 0;
 }
 
+static int webrtc_aec_real_set_delay(struct processing_module *mod, int delay_ms)
+{
+	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
+	struct webrtc_aec_real_data *rd = cd->backend_data;
+
+	if (!rd)
+		return 0;
+
+	rd->delay_ms = delay_ms;
+	return 0;
+}
+
 static int webrtc_aec_real_process_ch(struct processing_module *mod,
 				      const int16_t *mic, const int16_t *ref, int16_t *out,
 				      int frame_samples, int ch)
@@ -171,9 +186,9 @@ static int webrtc_aec_real_process_ch(struct processing_module *mod,
 		return ret;
 	}
 
-	/* Process near-end (mic) and produce echo-cancelled output.
-	 * Pass 20 ms nominal sound card buffer delay. */
-	ret = WebRtcAecm_Process(rd->aecm[ch], mic, NULL, out, frame_samples, 20);
+	/* Process near-end (mic) and produce echo-cancelled output. */
+	ret = WebRtcAecm_Process(rd->aecm[ch], mic, NULL, out, frame_samples,
+				 (int16_t)rd->delay_ms);
 	if (ret) {
 		comp_err(mod->dev, "webrtc_aec: Process ch%d failed %d", ch, ret);
 		return ret;
@@ -226,6 +241,7 @@ const struct webrtc_aec_backend webrtc_aec_backend = {
 	.init            = webrtc_aec_real_init,
 	.configure       = webrtc_aec_real_configure,
 	.set_suppression = webrtc_aec_real_set_suppression,
+	.set_delay       = webrtc_aec_real_set_delay,
 	.process_ch      = webrtc_aec_real_process_ch,
 	.reset           = webrtc_aec_real_reset,
 	.free            = webrtc_aec_real_free,

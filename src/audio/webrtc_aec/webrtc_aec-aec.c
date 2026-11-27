@@ -23,6 +23,7 @@
 #include "webrtc_aec.h"
 
 #include <webrtc/modules/audio_processing/aec/include/echo_cancellation.h>
+#include <webrtc/modules/audio_processing/aec/aec_core.h>
 
 LOG_MODULE_DECLARE(webrtc_aec, CONFIG_SOF_LOG_LEVEL);
 
@@ -31,6 +32,7 @@ struct webrtc_aec_float_data {
 	int     num_mic_channels;
 	int     num_ref_channels;
 	int     suppression;
+	int     delay_ms;
 	float   ref_f[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FRAME_SAMPLES_16K];
 	float   mic_f[WEBRTC_AEC_FRAME_SAMPLES_16K];
 	float   out_f[WEBRTC_AEC_FRAME_SAMPLES_16K];
@@ -45,6 +47,7 @@ static int webrtc_aec_float_init(struct processing_module *mod)
 	if (!rd)
 		return -ENOMEM;
 
+	rd->delay_ms = cd->delay_ms;
 	cd->backend_data = rd;
 	comp_info(mod->dev, "webrtc_aec: Classic Float AEC backend initialised");
 	return 0;
@@ -55,13 +58,19 @@ static int webrtc_aec_float_apply_cfg(struct processing_module *mod,
 					void *inst, int ch)
 {
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
+	struct AecCore *core = WebRtcAec_aec_core(inst);
 	AecConfig config;
 	int ret;
+
+	if (core && IS_ENABLED(CONFIG_WEBRTC_AEC_DELAY_AGNOSTIC)) {
+		WebRtcAec_enable_delay_agnostic(core, 1);
+		WebRtcAec_enable_extended_filter(core, 1);
+	}
 
 	config.nlpMode = (cd->high_suppression || rd->suppression > 1) ? kAecNlpAggressive :
 			 (rd->suppression == 0) ? kAecNlpConservative : kAecNlpModerate;
 	config.skewMode = kAecFalse;
-	config.metricsMode = kAecFalse;
+	config.metricsMode = kAecTrue;
 	config.delay_logging = kAecFalse;
 
 	ret = WebRtcAec_set_config(inst, config);
@@ -91,6 +100,7 @@ static int webrtc_aec_float_configure(struct processing_module *mod, int sample_
 	rd->num_mic_channels = 0;
 	rd->num_ref_channels = num_ref_channels;
 	rd->suppression      = suppression;
+	rd->delay_ms         = cd->delay_ms;
 
 	/* Classic Float AEC is single-capture-channel per handle, so allocate one per mic. */
 	for (c = 0; c < num_mic_channels; c++) {
@@ -113,8 +123,9 @@ static int webrtc_aec_float_configure(struct processing_module *mod, int sample_
 	}
 
 	rd->num_mic_channels = num_mic_channels;
-	comp_info(mod->dev, "webrtc_aec: Float AEC rate=%d high_supp=%d mic_ch=%d ref_ch=%d",
-		  sample_rate_hz, cd->high_suppression, num_mic_channels, num_ref_channels);
+	comp_info(mod->dev, "webrtc_aec: Float AEC rate=%d high_supp=%d mic_ch=%d ref_ch=%d delay=%dms",
+		  sample_rate_hz, cd->high_suppression, num_mic_channels, num_ref_channels,
+		  rd->delay_ms);
 	return 0;
 
 err:
@@ -139,7 +150,7 @@ static int webrtc_aec_float_set_suppression(struct processing_module *mod, bool 
 
 	config.nlpMode = high_suppression ? kAecNlpAggressive : kAecNlpModerate;
 	config.skewMode = kAecFalse;
-	config.metricsMode = kAecFalse;
+	config.metricsMode = kAecTrue;
 	config.delay_logging = kAecFalse;
 
 	for (c = 0; c < rd->num_mic_channels; c++) {
@@ -154,6 +165,40 @@ static int webrtc_aec_float_set_suppression(struct processing_module *mod, bool 
 
 	comp_info(mod->dev, "webrtc_aec: updated float suppression high=%d nlpMode=%d",
 		  high_suppression, config.nlpMode);
+	return 0;
+}
+
+static int webrtc_aec_float_set_delay(struct processing_module *mod, int delay_ms)
+{
+	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
+	struct webrtc_aec_float_data *rd = cd->backend_data;
+
+	if (!rd)
+		return 0;
+
+	rd->delay_ms = delay_ms;
+	return 0;
+}
+
+static int webrtc_aec_float_get_metrics(struct processing_module *mod,
+					int *erl_db, int *erle_db, int *delay_ms)
+{
+	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
+	struct webrtc_aec_float_data *rd = cd->backend_data;
+	AecMetrics m;
+
+	if (!rd || !rd->aec[0])
+		return -EINVAL;
+
+	if (WebRtcAec_GetMetrics(rd->aec[0], &m) != 0)
+		return -EINVAL;
+
+	if (erl_db)
+		*erl_db = m.erl.instant;
+	if (erle_db)
+		*erle_db = m.erle.instant;
+	if (delay_ms)
+		*delay_ms = rd->delay_ms;
 	return 0;
 }
 
@@ -182,7 +227,7 @@ static int webrtc_aec_float_run_ch(struct processing_module *mod,
 		rd->mic_f[i] = (float)mic[i];
 
 	ret = WebRtcAec_Process(rd->aec[ch], nearend, 1, out_ptrs,
-				(size_t)frame_samples, 20, 0);
+				(size_t)frame_samples, (int16_t)rd->delay_ms, 0);
 	if (ret) {
 		comp_err(mod->dev, "webrtc_aec: Process ch%d failed %d", ch, ret);
 		return ret;
@@ -262,7 +307,7 @@ static int webrtc_aec_float_process_ch(struct processing_module *mod,
 	struct webrtc_aec_float_data *rd = cd->backend_data;
 	int i;
 
-	if (frame_samples <= 0 || frame_samples > WEBRTC_AEC_FRAME_SAMPLES_16K)
+	if (frame_samples > WEBRTC_AEC_FRAME_SAMPLES_16K)
 		return -EINVAL;
 
 	for (i = 0; i < frame_samples; i++)
@@ -315,6 +360,8 @@ const struct webrtc_aec_backend webrtc_aec_backend = {
 	.init            = webrtc_aec_float_init,
 	.configure       = webrtc_aec_float_configure,
 	.set_suppression = webrtc_aec_float_set_suppression,
+	.set_delay       = webrtc_aec_float_set_delay,
+	.get_metrics     = webrtc_aec_float_get_metrics,
 	.process_ch      = webrtc_aec_float_process_ch,
 	.process_frame   = webrtc_aec_float_process_frame,
 	.reset           = webrtc_aec_float_reset,

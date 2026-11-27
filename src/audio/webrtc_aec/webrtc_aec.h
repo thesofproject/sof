@@ -23,9 +23,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* AECm operates on 10 ms frames.
+/* WebRTC AEC operates on 10 ms frames.
  * At 16 kHz: 160 samples/channel.
- * At 48 kHz: 480 samples/channel (resampled to/from 16 kHz for AECm).
+ * At 32 kHz: 320 samples/channel (resampled to/from 16 kHz).
+ * At 48 kHz: 480 samples/channel (resampled to/from 16 kHz).
  */
 #define WEBRTC_AEC_FRAME_SAMPLES_16K	160
 #define WEBRTC_AEC_FRAME_SAMPLES_32K	320
@@ -33,7 +34,7 @@
 #define WEBRTC_AEC_FRAME_SAMPLES_MAX	WEBRTC_AEC_FRAME_SAMPLES_48K
 #define WEBRTC_AEC_FIFO_FRAMES		(WEBRTC_AEC_FRAME_SAMPLES_MAX * 2)
 
-/* Maximum supported channel count (AECm is mono; multi-ch runs N instances). */
+/* Maximum supported channel count per stream (mic or ref). */
 #define WEBRTC_AEC_CHANNELS_MAX		4
 
 /* Maximum DMA buffer alignment. */
@@ -70,7 +71,7 @@ struct webrtc_aec_state_16_to_48 {
 };
 
 /**
- * struct webrtc_aec_backend - AECm backend operations.
+ * struct webrtc_aec_backend - AEC backend operations.
  */
 struct webrtc_aec_backend {
 	const char *name;
@@ -80,11 +81,11 @@ struct webrtc_aec_backend {
 
 	/**
 	 * Open/configure AEC state. Called from prepare().
-	 * @sample_rate_hz:   8000 or 16000
-	 * @filter_len_ms:    adaptive filter length (32/64/128)
-	 * @suppression:      CNG / NLP suppression level 0..2
-	 * @num_mic_channels: microphone / output channel count
-	 * @num_ref_channels: echo reference channel count
+	 * @sample_rate_hz:    8000 or 16000
+	 * @filter_len_ms:     adaptive filter length (32/64/128)
+	 * @suppression:       CNG/NLP level 0..2
+	 * @num_mic_channels:  capture microphone channel count (1..MAX)
+	 * @num_ref_channels:  playback echo reference channel count (1..MAX)
 	 */
 	int (*configure)(struct processing_module *mod, int sample_rate_hz,
 			 int filter_len_ms, int suppression,
@@ -93,8 +94,15 @@ struct webrtc_aec_backend {
 	/* Runtime update of suppression / echo mode. */
 	int (*set_suppression)(struct processing_module *mod, bool high_suppression);
 
+	/* Runtime update of nominal echo path delay (ms). */
+	int (*set_delay)(struct processing_module *mod, int delay_ms);
+
+	/* Optional metrics readback (ERL, ERLE in dB, estimated delay in ms). */
+	int (*get_metrics)(struct processing_module *mod,
+			   int *erl_db, int *erle_db, int *delay_ms);
+
 	/**
-	 * Process one 10 ms frame (interleaved S16 mic + ref → interleaved S16 out).
+	 * Process one 10 ms frame (per-channel S16 mic + ref -> S16 out).
 	 * All arrays are mono; caller provides per-channel slices.
 	 * @mic:  mic input S16 samples (frame_samples)
 	 * @ref:  echo reference S16 samples (frame_samples)
@@ -139,6 +147,7 @@ struct webrtc_aec_comp_data {
 	/* Runtime ALSA mixer controls */
 	bool enabled;          /* master bypass switch (WEBRTC_AEC_CTL_ID_ENABLE) */
 	bool high_suppression; /* suppression switch (WEBRTC_AEC_CTL_ID_HIGH_SUPPRESSION) */
+	int delay_ms;          /* echo path / soundcard buffer delay (ms) */
 	bool downmix_ref;      /* downmix multi-ch ref to mono before backend */
 
 	/* Source routing (resolved in prepare / process). */
@@ -157,7 +166,7 @@ struct webrtc_aec_comp_data {
 	bool is_s32;          /* true for S32_LE pipeline */
 	enum webrtc_aec_resamp_mode resamp_mode;
 
-	/* Processing frame size at proc_rate. */
+	/* Processing frame size at pipeline rate. */
 	int frame_samples;    /* pipeline frames per 10 ms */
 
 	/* Accumulation and lookahead FIFO state. */
