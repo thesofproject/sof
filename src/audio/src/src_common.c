@@ -652,10 +652,35 @@ int src_allocate_copy_stages(struct processing_module *mod, struct src_param *pr
 	return 0;
 }
 
+/**
+ * \brief Drop the input of an SRC that has no sink.
+ *
+ * The sink of the SRC can be unbound while the pipeline of the SRC keeps
+ * running, e.g. when the SRC output goes to another pipeline that is stopped.
+ * The input is dropped so that a shared upstream module, e.g. a copier with
+ * several sinks, is not stalled by the full input buffer of the SRC.
+ *
+ * \param[in] source Input of the SRC
+ * \return 0 or a negative error code
+ */
+static int src_drop_input(struct sof_source *source)
+{
+	size_t bytes = source_get_data_frames_available(source) * source_get_frame_bytes(source);
+
+	return source_drop_data(source, bytes);
+}
+
 bool src_is_ready_to_process(struct processing_module *mod,
 			     struct sof_source **sources, int num_of_sources,
 			     struct sof_sink **sinks, int num_of_sinks)
 {
+	/* Without a sink, process only to drop the input */
+	if (num_of_sources == 1 && !num_of_sinks)
+		return source_get_data_frames_available(sources[0]) > 0;
+
+	if (num_of_sources != 1 || num_of_sinks != 1)
+		return false;
+
 	return sink_get_free_frames(sinks[0]) || source_get_data_frames_available(sources[0]);
 }
 
@@ -667,7 +692,20 @@ int src_process(struct processing_module *mod,
 
 	comp_dbg(mod->dev, "entry");
 
-	/* src component needs 1 source and 1 sink */
+	/* src component needs 1 source and 1 sink. The sink or source can be
+	 * unbound while the pipeline of the SRC keeps running, e.g. when the
+	 * SRC output goes to another pipeline that is stopped. The stale
+	 * sinks[0] or sources[0] must not be used then.
+	 */
+	if (num_of_sources != 1 || num_of_sinks != 1) {
+		comp_dbg(mod->dev, "%d sources and %d sinks, no processing",
+			 num_of_sources, num_of_sinks);
+		if (num_of_sources == 1 && !num_of_sinks)
+			return src_drop_input(sources[0]);
+
+		return 0;
+	}
+
 	if (!src_get_copy_limits(cd, sources[0], sinks[0])) {
 		comp_dbg(mod->dev, "No data to process.");
 		return 0;
