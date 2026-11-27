@@ -45,6 +45,13 @@ static int webrtc_aec_stub_set_suppression(struct processing_module *mod, bool h
 	return 0;
 }
 
+static int webrtc_aec_stub_set_delay(struct processing_module *mod, int delay_ms)
+{
+	(void)mod;
+	(void)delay_ms;
+	return 0;
+}
+
 static int webrtc_aec_stub_reset(struct processing_module *mod)
 {
 	(void)mod;
@@ -62,6 +69,7 @@ const struct webrtc_aec_backend webrtc_aec_backend = {
 	.init            = webrtc_aec_stub_init,
 	.configure       = webrtc_aec_stub_configure,
 	.set_suppression = webrtc_aec_stub_set_suppression,
+	.set_delay       = webrtc_aec_stub_set_delay,
 	.process_ch      = webrtc_aec_stub_process_ch,
 	.reset           = webrtc_aec_stub_reset,
 	.free            = webrtc_aec_stub_free,

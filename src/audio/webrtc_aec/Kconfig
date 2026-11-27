@@ -96,6 +96,15 @@ config WEBRTC_AEC_SAMPLE_RATE_HZ
 	  recommended for best echo suppression quality.
 	  Valid values: 8000, 16000.
 
+config WEBRTC_AEC_DELAY_MS
+	int "Nominal echo path / soundcard buffer delay in ms"
+	range 0 500
+	default 20
+	help
+	  Nominal delay in milliseconds between echo reference playback and
+	  microphone capture. Used by AECm/Float AEC (msInSndCardBuf) and by
+	  AEC3 when WEBRTC_AEC_AEC3_EXTERNAL_DELAY_EST is enabled.
+
 config WEBRTC_AEC_STEREO_DOWNMIX_REF
 	bool "Downmix stereo echo reference to mono before AEC"
 	default n
@@ -104,5 +113,14 @@ config WEBRTC_AEC_STEREO_DOWNMIX_REF
 	  single mono reference channel before feeding the AEC backend,
 	  halving adaptive filter convolution load at the cost of stereo
 	  spatial echo modeling.
+
+config WEBRTC_AEC_DELAY_AGNOSTIC
+	bool "Enable delay-agnostic mode in Classic Float AEC"
+	default n
+	depends on WEBRTC_AEC_BACKEND_FLOAT
+	help
+	  Enable signal-based delay estimation and extended filter mode in
+	  Classic Float AEC so larger or varying echo delays converge without
+	  an exact msInSndCardBuf hint.
 
 endif # COMP_WEBRTC_AEC
