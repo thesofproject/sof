@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2026 Intel Corporation.
+#
+# Mixer unit tests converted from CMock to Ztest
+
+cmake_minimum_required(VERSION 3.20.0)
+
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(sof_unit_audio_mixer)
+
+set(SOF_ROOT "${PROJECT_SOURCE_DIR}/../../../../..")
+set(sof_top_dir ${SOF_ROOT})
+
+include(${SOF_ROOT}/scripts/cmake/misc.cmake)
+include(${SOF_ROOT}/scripts/cmake/uuid-registry.cmake)
+
+target_include_directories(app PRIVATE
+	${SOF_ROOT}/zephyr/include
+	${SOF_ROOT}/src/include
+	${SOF_ROOT}/src/kernel/include
+	${SOF_ROOT}/src/kernel/platform/posix/include
+	${SOF_ROOT}/src/platform/posix/include
+	${SOF_ROOT}/src/audio
+	${PROJECT_BINARY_DIR}/include/generated
+)
+
+target_compile_definitions(app PRIVATE
+	-DCONFIG_ZEPHYR_POSIX=1
+	-DCONFIG_LIBRARY=1
+	-DUNIT_TEST=1
+)
+
+# Keep full ASan/LSan allocation stacks (twister --enable-asan --enable-lsan)
+if(CONFIG_ASAN)
+	target_compile_options(app PRIVATE -fno-omit-frame-pointer)
+endif()
+
+target_sources(app PRIVATE
+	mixer_ztest.c
+	# the generic C mixing functions under test
+	${SOF_ROOT}/src/audio/mixer/mixer_generic.c
+	# the test buffers
+	${SOF_ROOT}/zephyr/lib/alloc.c
+	${SOF_ROOT}/src/audio/buffers/comp_buffer.c
+	${SOF_ROOT}/src/audio/buffers/audio_buffer.c
+	${SOF_ROOT}/src/audio/source_api_helper.c
+	${SOF_ROOT}/src/audio/sink_api_helper.c
+	${SOF_ROOT}/src/audio/sink_source_utils.c
+	${SOF_ROOT}/src/audio/audio_stream.c
+	${SOF_ROOT}/src/module/audio/source_api.c
+	${SOF_ROOT}/src/module/audio/sink_api.c
+	${SOF_ROOT}/src/ipc/ipc-helper.c
+	# audio_stream_recalc_align() needs gcd()
+	${SOF_ROOT}/src/math/numbers.c
+)
+
+sof_append_relative_path_definitions(app)
