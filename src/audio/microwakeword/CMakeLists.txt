@@ -21,6 +21,12 @@ set(FLATBUFFERS_PATH ${sof_top_dir}/../flatbuffers)
 set(GEMMLOWP_PATH ${sof_top_dir}/../gemmlowp)
 set(RUY_PATH ${sof_top_dir}/../ruy)
 
+# Zephyr's -fmacro-prefix-map options don't reach the plain add_library()
+# targets below, so TFLM's __FILE__ strings would embed the absolute host
+# path and make the firmware differ between build machines.
+get_filename_component(MWW_TOPDIR ${sof_top_dir}/.. ABSOLUTE)
+set(MWW_PREFIX_MAP -fmacro-prefix-map=${MWW_TOPDIR}=WEST_TOPDIR)
+
 set(MWW_TOOLCHAIN_LIBC_ARCHIVE "")
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
 	execute_process(
@@ -204,6 +210,7 @@ target_compile_options(mww_tflm_lib PRIVATE
 	-fno-tree-slp-vectorize
 	-ffunction-sections
 	-fdata-sections
+	${MWW_PREFIX_MAP}
 	-imacros ${AUTOCONF_H}
 )
 
@@ -292,6 +299,7 @@ if(CONFIG_COMP_MWW_HIFI_NNLIB AND ZEPHYR_TOOLCHAIN_VARIANT STREQUAL "xt-clang")
 		-Dgcd=xa_nn_gcd
 		-ffunction-sections
 		-fdata-sections
+		${MWW_PREFIX_MAP}
 	)
 	set(MWW_NN_HIFI_LIB mww_nn_hifi_lib)
 else()
