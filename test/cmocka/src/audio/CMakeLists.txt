@@ -1,9 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 add_subdirectory(component)
-if(CONFIG_COMP_MIXER)
-	add_subdirectory(mixer)
-endif()
 add_subdirectory(pipeline)
 if(CONFIG_COMP_SEL)
 	add_subdirectory(selector)
