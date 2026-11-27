@@ -96,4 +96,13 @@ config WEBRTC_AEC_SAMPLE_RATE_HZ
 	  best echo suppression quality.
 	  Valid values: 8000, 16000.
 
+config WEBRTC_AEC_STEREO_DOWNMIX_REF
+	bool "Downmix stereo echo reference to mono before AEC"
+	default n
+	help
+	  When enabled, multi-channel echo reference audio is averaged to a
+	  single mono reference channel before feeding the AEC backend,
+	  halving adaptive filter convolution load at the cost of stereo
+	  spatial echo modeling.
+
 endif # COMP_WEBRTC_AEC

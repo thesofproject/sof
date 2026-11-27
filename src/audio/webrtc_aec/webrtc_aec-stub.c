@@ -19,10 +19,11 @@ static int webrtc_aec_stub_init(struct processing_module *mod)
 }
 
 static int webrtc_aec_stub_configure(struct processing_module *mod, int sample_rate_hz,
-				     int filter_len_ms, int suppression, int num_channels)
+				     int filter_len_ms, int suppression,
+				     int num_mic_channels, int num_ref_channels)
 {
-	comp_info(mod->dev, "webrtc_aec stub: rate=%d filter=%dms sup=%d ch=%d (ignored)",
-		  sample_rate_hz, filter_len_ms, suppression, num_channels);
+	comp_info(mod->dev, "webrtc_aec stub: rate=%d filter=%dms sup=%d mic_ch=%d ref_ch=%d (ignored)",
+		  sample_rate_hz, filter_len_ms, suppression, num_mic_channels, num_ref_channels);
 	return 0;
 }
 

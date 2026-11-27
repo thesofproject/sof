@@ -44,7 +44,8 @@ static int webrtc_aec3_backend_init(struct processing_module *mod)
 }
 
 static int webrtc_aec3_backend_configure(struct processing_module *mod, int sample_rate_hz,
-					 int filter_len_ms, int suppression, int num_channels)
+					 int filter_len_ms, int suppression,
+					 int num_mic_channels, int num_ref_channels)
 {
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
 	struct webrtc_aec3_data *rd = cd->backend_data;
@@ -57,7 +58,8 @@ static int webrtc_aec3_backend_configure(struct processing_module *mod, int samp
 	rd->num_channels = 0;
 	rd->suppression  = suppression;
 
-	int aec_channels = (num_channels > WEBRTC_AEC_CHANNELS_MAX) ? WEBRTC_AEC_CHANNELS_MAX : num_channels;
+	(void)num_ref_channels;
+	int aec_channels = (num_mic_channels > WEBRTC_AEC_CHANNELS_MAX) ? WEBRTC_AEC_CHANNELS_MAX : num_mic_channels;
 
 	rd->aec3 = webrtc_aec3_create(sample_rate_hz, aec_channels, aec_channels);
 	if (!rd->aec3) {
@@ -68,7 +70,7 @@ static int webrtc_aec3_backend_configure(struct processing_module *mod, int samp
 
 	rd->num_channels = aec_channels;
 	comp_info(mod->dev, "webrtc_aec: AEC3 configured rate=%d ch=%d (stream_ch=%d)",
-		  sample_rate_hz, aec_channels, num_channels);
+		  sample_rate_hz, aec_channels, num_mic_channels);
 	return 0;
 }
 
@@ -89,7 +91,8 @@ static int webrtc_aec3_backend_process_frame(struct processing_module *mod,
 					     const int16_t *const *mic,
 					     const int16_t *const *ref,
 					     int16_t *const *out,
-					     int frame_samples, int num_channels)
+					     int frame_samples,
+					     int num_mic_channels, int num_ref_channels)
 {
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
 	struct webrtc_aec3_data *rd = cd->backend_data;
@@ -106,11 +109,13 @@ static int webrtc_aec3_backend_process_frame(struct processing_module *mod,
 	if (frame_samples > WEBRTC_AEC_FRAME_SAMPLES_16K || num_channels > WEBRTC_AEC_CHANNELS_MAX)
 		return -EINVAL;
 
-	if (num_channels != rd->num_channels || !rd->aec3) {
-		for (ch = 0; ch < num_channels; ch++)
+	(void)num_ref_channels;
+	if (num_mic_channels != rd->num_channels || !rd->aec3) {
+		for (ch = 0; ch < num_mic_channels; ch++)
 			memcpy(out[ch], mic[ch], (size_t)frame_samples * sizeof(int16_t));
 		return 0;
 	}
+	int num_channels = num_mic_channels;
 
 	for (ch = 0; ch < num_channels; ch++) {
 		for (i = 0; i < frame_samples; i++) {
