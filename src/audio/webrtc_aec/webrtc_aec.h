@@ -2,26 +2,24 @@
  *
  * Copyright(c) 2026 Intel Corporation.
  *
- * WebRTC AECm (fixed-point Acoustic Echo Canceller Mobile) for SOF.
+ * WebRTC Acoustic Echo Canceller (AEC) module for SOF (IPC4).
  *
- * Two input pins:
- *   sources[mic_src]  — microphone capture (same pipeline as the sink)
- *   sources[ref_src]  — playback reference  (different render pipeline)
+ * Two input pins (resolved via IPC4 sink queue IDs):
+ *   queue 0 (mic_src) — microphone capture (same pipeline as the sink)
+ *   queue 1 (ref_src) — playback echo reference (from the render pipeline)
  * One output pin:
  *   sinks[0]          — echo-cancelled microphone
  *
- * The mic/ref source indices are resolved at prepare() time using the same
- * pipeline-ID heuristic as google_rtc_audio_processing.c.
- *
- * The actual AEC processing is delegated to a pluggable backend so the
- * module can be validated with a stub (webrtc_aec-stub.c) before the
- * real AECm backend (webrtc_aec-webrtc.c) is linked in.
+ * Processing is delegated to a pluggable backend selected at build time:
+ *   - Modern C++17 WebRTC AEC3 (webrtc_aec-aec3.c + webrtc_aec3_wrapper.cpp)
+ *   - Classic Float MDF AEC    (webrtc_aec-aec.c)
+ *   - Fixed-point AECm         (webrtc_aec-aecm.c)
+ *   - Dependency-free stub     (webrtc_aec-stub.c)
  */
 #ifndef __SOF_AUDIO_WEBRTC_AEC_H__
 #define __SOF_AUDIO_WEBRTC_AEC_H__
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <ipc4/aec.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -39,6 +37,17 @@
 
 /* Maximum DMA buffer alignment. */
 #define WEBRTC_AEC_MEM_ALIGN		64
+
+/*
+ * IPC4 SOF_IPC4_SWITCH_CONTROL_PARAM_ID switch control IDs.
+ * These match the 0-based order of Object.Control.mixer instances defined in
+ * tools/topology/topology2/include/components/webrtc-aec.conf:
+ *   mixer."1" (enable switch)           -> WEBRTC_AEC_CTL_ID_ENABLE
+ *   mixer."2" (high suppression switch) -> WEBRTC_AEC_CTL_ID_HIGH_SUPPRESSION
+ */
+#define WEBRTC_AEC_CTL_ID_ENABLE		0
+#define WEBRTC_AEC_CTL_ID_HIGH_SUPPRESSION	1
+#define WEBRTC_AEC_CTL_NUM_ELEMS		1
 
 /* Fixed-point 48kHz <-> 16kHz resampler states (WebRTC APM SPL). */
 struct webrtc_aec_state_48_to_16 {
@@ -119,8 +128,8 @@ struct webrtc_aec_comp_data {
 	void *backend_data;
 
 	/* Runtime ALSA mixer controls */
-	bool enabled;          /* master bypass switch (ctl->id == 0) */
-	bool high_suppression; /* suppression level switch (ctl->id == 1) */
+	bool enabled;          /* master bypass switch (WEBRTC_AEC_CTL_ID_ENABLE) */
+	bool high_suppression; /* suppression switch (WEBRTC_AEC_CTL_ID_HIGH_SUPPRESSION) */
 
 	/* Source routing (resolved in prepare). */
 	int mic_src;          /* index into sources[] for microphone */
@@ -156,9 +165,6 @@ struct webrtc_aec_comp_data {
 
 	/* Ref stream liveness (IPC4: always active). */
 	bool last_ref_ok;
-
-	/* IPC4 tuning (echo path delay, etc.) — reserved for set_config. */
-	struct sof_ipc4_aec_config config;
 
 	bool configured;
 };

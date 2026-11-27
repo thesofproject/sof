@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_WEBRTC_AEC
-	tristate "WebRTC AECm — fixed-point Acoustic Echo Canceller"
+	tristate "WebRTC AEC — Acoustic Echo Canceller"
+	depends on IPC_MAJOR_4
 	help
 	  Select to include the WebRTC AECm (Mobile) acoustic echo canceller.
 	  AECm is a fixed-point Q15 implementation derived from the WebRTC

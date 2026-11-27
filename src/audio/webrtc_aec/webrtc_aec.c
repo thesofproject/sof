@@ -2,26 +2,19 @@
 //
 // Copyright(c) 2026 Intel Corporation.
 //
-// WebRTC AECm module — SOF module_interface core.
+// WebRTC AEC module — SOF IPC4 module_interface core.
 //
-// This is the SOF glue layer for the AECm fixed-point echo canceller.
-// The dual-source topology and source-routing heuristic are copied
-// directly from google_rtc_audio_processing.c which is the canonical
-// reference for this pattern in SOF.
-//
-// Key differences from google_rtc_audio_processing:
-//  - Uses fixed-point S16 throughout (no float intermediate buffers)
-//  - AECm runs per-channel independently, not as a multi-channel block
-//  - Operates at 8 or 16 kHz maximum (pipeline downsampling is out-of-scope
-//    for this first revision — see CONFIG_WEBRTC_AEC_SAMPLE_RATE_HZ)
+// Accepts dual IPC4 input pins (queue 0 = microphone capture, queue 1 = playback
+// echo reference) and produces a single echo-cancelled capture stream.
+// Handles multi-rate 10 ms frame accumulation, optional 48/32 <-> 16 kHz
+// resampling, S16/S32 sample conversion, and IPC4 switch controls before
+// delegating echo cancellation to the selected backend.
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <module/audio/source_api.h>
 #include <module/audio/sink_api.h>
 #include <sof/audio/audio_stream.h>
-#include <ipc4/aec.h>
 #include <ipc4/header.h>
-#include <ipc4/module.h>
 #include <sof/math/numbers.h>
 #include <rtos/init.h>
 #include <rtos/string.h>
@@ -231,15 +224,8 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 		cd->mic_src = 0;
 		cd->ref_src = -1;
 	} else {
-#ifdef CONFIG_IPC_MAJOR_4
-		/* Bind order is arbitrary, input pin 0 is mic and pin 1 is reference */
+		/* Bind order is arbitrary, IPC4 input pin 0 (queue 0) is mic and pin 1 is ref */
 		cd->mic_src = IPC4_SINK_QUEUE_ID(source_get_id(sources[0])) == 0 ? 0 : 1;
-#else
-		/* The mic is the source in the same pipeline as the output */
-		cd->mic_src = source_get_pipeline_id(sources[1]) == sink_get_pipeline_id(sinks[0]) &&
-			      source_get_pipeline_id(sources[0]) != sink_get_pipeline_id(sinks[0]) ?
-			      1 : 0;
-#endif
 		cd->ref_src = 1 - cd->mic_src;
 	}
 
@@ -568,11 +554,37 @@ __cold static int webrtc_aec_free(struct processing_module *mod)
 	assert_can_be_cold();
 	comp_dbg(mod->dev, "webrtc_aec: free");
 
-	if (cd->backend->free)
+	if (cd && cd->backend && cd->backend->free)
 		cd->backend->free(mod);
+
+	if (webrtc_aec_get_active_mod() == mod)
+		webrtc_aec_set_active_mod(NULL);
 
 	mod_free(mod, cd);
 	return 0;
+}
+
+static int webrtc_aec_apply_ctl(struct processing_module *mod,
+				struct webrtc_aec_comp_data *cd,
+				uint32_t id, uint32_t value)
+{
+	struct comp_dev *dev = mod->dev;
+
+	switch (id) {
+	case WEBRTC_AEC_CTL_ID_ENABLE:
+		cd->enabled = (value != 0);
+		comp_info(dev, "webrtc_aec: switch enable = %d", cd->enabled);
+		return 0;
+	case WEBRTC_AEC_CTL_ID_HIGH_SUPPRESSION:
+		cd->high_suppression = (value != 0);
+		comp_info(dev, "webrtc_aec: high suppression = %d", cd->high_suppression);
+		if (cd->backend && cd->backend->set_suppression)
+			return cd->backend->set_suppression(mod, cd->high_suppression);
+		return 0;
+	default:
+		comp_err(dev, "webrtc_aec: unknown control id %u", id);
+		return -EINVAL;
+	}
 }
 
 static int webrtc_aec_set_config(struct processing_module *mod, uint32_t param_id,
@@ -595,26 +607,12 @@ static int webrtc_aec_set_config(struct processing_module *mod, uint32_t param_i
 			return -EINVAL;
 		}
 
-		if (ctl->num_elems != 1) {
+		if (ctl->num_elems != WEBRTC_AEC_CTL_NUM_ELEMS) {
 			comp_err(dev, "webrtc_aec: invalid num_elems %d", ctl->num_elems);
 			return -EINVAL;
 		}
 
-		if (ctl->id == 0) {
-			cd->enabled = (ctl->chanv[0].value != 0);
-			comp_info(dev, "webrtc_aec: switch enable = %d", cd->enabled);
-			return 0;
-		}
-		if (ctl->id == 1) {
-			cd->high_suppression = (ctl->chanv[0].value != 0);
-			comp_info(dev, "webrtc_aec: high suppression = %d", cd->high_suppression);
-			if (cd->backend && cd->backend->set_suppression)
-				return cd->backend->set_suppression(mod, cd->high_suppression);
-			return 0;
-		}
-
-		comp_err(dev, "webrtc_aec: unknown control id %d", ctl->id);
-		return -EINVAL;
+		return webrtc_aec_apply_ctl(mod, cd, ctl->id, ctl->chanv[0].value);
 	}
 
 	comp_err(dev, "webrtc_aec: unsupported param_id 0x%x", param_id);
@@ -630,15 +628,24 @@ static int webrtc_aec_get_config(struct processing_module *mod, uint32_t config_
 	if (config_id == SOF_IPC4_SWITCH_CONTROL_PARAM_ID) {
 		struct sof_ipc4_control_msg_payload *ctl =
 			(struct sof_ipc4_control_msg_payload *)fragment;
-		ctl->num_elems = 1;
-		ctl->chanv[0].channel = 0;
-		if (ctl->id == 0) {
+
+		if (fragment_size < sizeof(struct sof_ipc4_control_msg_payload) +
+		    sizeof(struct sof_ipc4_ctrl_value_chan))
+			return -EINVAL;
+
+		switch (ctl->id) {
+		case WEBRTC_AEC_CTL_ID_ENABLE:
 			ctl->chanv[0].value = cd->enabled ? 1 : 0;
-		} else if (ctl->id == 1) {
+			break;
+		case WEBRTC_AEC_CTL_ID_HIGH_SUPPRESSION:
 			ctl->chanv[0].value = cd->high_suppression ? 1 : 0;
-		} else {
+			break;
+		default:
 			return -EINVAL;
 		}
+
+		ctl->num_elems = WEBRTC_AEC_CTL_NUM_ELEMS;
+		ctl->chanv[0].channel = 0;
 		*data_offset_size = sizeof(struct sof_ipc4_control_msg_payload) +
 				    sizeof(struct sof_ipc4_ctrl_value_chan);
 		return 0;
