@@ -11,10 +11,11 @@ Wraps WebRTC's Acoustic Echo Cancellation algorithms behind the SOF `module_inte
   - **Classic Float AEC (MDF)**: Single-precision floating-point Multidelay Block Frequency Domain adaptive filter (`echo_cancellation.c`) for FPU-enabled DSPs.
   - **Classic Fixed-Point AECm**: Q15 integer echo canceller (`echo_control_mobile.c`) for low-power DSPs without hardware FPU.
   - **Pass-Through Stub**: Zero-dependency pass-through for CI and staging pipeline validation.
-- **Stereo 2x2 MIMO Echo Cancellation ($2\text{R} \times 2\text{C}$)**:
-  - Supports 2 render playback reference channels and 2 microphone capture channels.
-  - **Virtual Mono Reference Downmix**: Downmixes stereo render channels for the linear adaptive filter subtractor, reducing FFT and partition convolution load by 50%.
-  - **Stereo Power Tracking & Suppression**: Independent residual echo spectral power estimation per capture channel with a joint psychoacoustic suppression envelope.
+- **Multi-Channel & Asymmetric Echo Cancellation ($R\text{R} \times C\text{C}$, up to $4 \times 4$)**:
+  - Decoupled reference (`ref_channels`) and microphone (`mic_channels`) counts (`WEBRTC_AEC_CHANNELS_MAX = 4`), eliminating ch0 output cloning.
+  - Supports $1\text{R} \times N\text{C}$, $2\text{R} \times 2\text{C}$, asymmetric $2\text{R} \times 1\text{C}$ / $2\text{R} \times 4\text{C}$, and optional multi-channel reference downmixing (`CONFIG_WEBRTC_AEC_STEREO_DOWNMIX_REF`).
+  - **Multi-Rate Pipeline Support**: Native 8 kHz / 16 kHz plus WebRTC SPL resampling for 32 kHz (`WebRtcSpl_DownsampleBy2` / `UpsampleBy2`) and 48 kHz (`WebRtcSpl_Resample48khzTo16khz` / `16khzTo48khz`).
+  - **AEC3 Stereo Power Tracking & Suppression**: Full $R \times C$ `EchoCanceller3::CreateDefaultMultichannelConfig()` support with configurable filter length, coarse filter fallback, stereo content detector, and external/internal delay estimation.
 - **DSP Mathematical Accelerations**:
   - **Fast Ooura RDFT**: 128-point split-radix real discrete Fourier transform replacing generic recursive FFTs.
   - **Branchless Soft-Float**: Fast mantissa seed lookup + Newton-Raphson iterations (`FastFloatSqrt`, `FastFloatDiv`).
@@ -113,7 +114,14 @@ CONFIG_WEBRTC_AEC_SUPPRESSION_LEVEL=1
 | `CONFIG_WEBRTC_AEC_PERF_TELEMETRY` | y | bool | Enable real-time cycle profiling via printk |
 | `CONFIG_WEBRTC_AEC_FILTER_LEN_MS` | 64 | int (`32`, `64`, `128`) | AECm adaptive filter length in ms |
 | `CONFIG_WEBRTC_AEC_SUPPRESSION_LEVEL` | 1 | int (`0` - `2`) | AECm comfort-noise suppression level |
-| `CONFIG_WEBRTC_AEC_SAMPLE_RATE_HZ` | 16000 | int (`8000`, `16000`) | Native AEC processing rate |
+| `CONFIG_WEBRTC_AEC_SAMPLE_RATE_HZ` | 16000 | int (`8000`, `16000`) | Native AEC processing rate (32/48 kHz resampled) |
+| `CONFIG_WEBRTC_AEC_DELAY_MS` | 20 | int (`0` - `500`) | Nominal echo path / soundcard buffer delay in ms |
+| `CONFIG_WEBRTC_AEC_STEREO_DOWNMIX_REF` | n | bool | Downmix multi-channel reference to mono before AEC |
+| `CONFIG_WEBRTC_AEC_STEREO_CONTENT_DETECT` | y | bool (AEC3) | Dynamic stereo vs. dual-mono content detector |
+| `CONFIG_WEBRTC_AEC_AEC3_EXTERNAL_DELAY_EST` | n | bool (AEC3) | Lock AEC3 to `WEBRTC_AEC_DELAY_MS` instead of matched filter |
+| `CONFIG_WEBRTC_AEC_AEC3_FILTER_BLOCKS` | 12 | int (`1` - `30`, AEC3) | AEC3 refined/coarse adaptive filter length in 4 ms blocks |
+| `CONFIG_WEBRTC_AEC_AEC3_COARSE_FILTER` | y | bool (AEC3) | Enable AEC3 coarse filter output fallback |
+| `CONFIG_WEBRTC_AEC_DELAY_AGNOSTIC` | n | bool (Float) | Enable signal-based delay estimation and extended filter |
 
 ---
 
