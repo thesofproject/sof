@@ -34,7 +34,6 @@
 #define __KERNEL_EXT_MANIFEST_H__
 
 #include <ipc/info.h>
-#include <sof/compiler_attributes.h>
 #include <stdint.h>
 
 /* Top-level headers shared with rimage */
