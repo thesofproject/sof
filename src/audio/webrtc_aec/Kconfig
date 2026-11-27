@@ -87,13 +87,13 @@ config WEBRTC_AEC_SUPPRESSION_LEVEL
 	    2 - medium suppression
 
 config WEBRTC_AEC_SAMPLE_RATE_HZ
-	int "AECm processing sample rate in Hz"
+	int "AEC processing sample rate in Hz"
 	default 16000
 	help
-	  AECm operates at 8000 or 16000 Hz. When the pipeline runs at a
-	  higher rate (e.g. 48 kHz), the module downsamples before AEC
-	  processing and upsamples afterward. 16 kHz is recommended for
-	  best echo suppression quality.
+	  Native AEC processing sample rate in Hz (8000 or 16000).
+	  When the pipeline runs at 32 kHz or 48 kHz, the module downsamples
+	  to 16 kHz before AEC processing and upsamples afterward. 16 kHz is
+	  recommended for best echo suppression quality.
 	  Valid values: 8000, 16000.
 
 config WEBRTC_AEC_STEREO_DOWNMIX_REF

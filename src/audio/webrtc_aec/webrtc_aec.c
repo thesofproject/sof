@@ -42,6 +42,14 @@ static inline void WebRtcSpl_ResetResample16khzTo48khz(void *state)
 {
 	(void)state;
 }
+static inline void WebRtcSpl_DownsampleBy2(const int16_t *in, size_t len, int16_t *out, int32_t *state)
+{
+	(void)in; (void)len; (void)out; (void)state;
+}
+static inline void WebRtcSpl_UpsampleBy2(const int16_t *in, size_t len, int16_t *out, int32_t *state)
+{
+	(void)in; (void)len; (void)out; (void)state;
+}
 #endif
 
 SOF_DEFINE_REG_UUID(webrtc_aec);
@@ -254,13 +262,20 @@ static void webrtc_aec_reset_resamplers(struct webrtc_aec_comp_data *cd)
 {
 	int c;
 
-	if (cd->needs_resample) {
+	if (cd->resamp_mode == WEBRTC_AEC_RESAMP_48_TO_16) {
 		for (c = 0; c < cd->mic_channels; c++) {
 			WebRtcSpl_ResetResample48khzTo16khz((void *)&cd->mic_resamp[c]);
 			WebRtcSpl_ResetResample16khzTo48khz((void *)&cd->out_resamp[c]);
 		}
 		for (c = 0; c < cd->ref_channels; c++)
 			WebRtcSpl_ResetResample48khzTo16khz((void *)&cd->ref_resamp[c]);
+	} else if (cd->resamp_mode == WEBRTC_AEC_RESAMP_32_TO_16) {
+		for (c = 0; c < cd->mic_channels; c++) {
+			memset(cd->mic_resamp32[c], 0, sizeof(cd->mic_resamp32[c]));
+			memset(cd->out_resamp32[c], 0, sizeof(cd->out_resamp32[c]));
+		}
+		for (c = 0; c < cd->ref_channels; c++)
+			memset(cd->ref_resamp32[c], 0, sizeof(cd->ref_resamp32[c]));
 	}
 }
 
@@ -319,20 +334,24 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 	cd->effective_ref_ch = (cd->downmix_ref && cd->ref_channels > 1) ? 1 : cd->ref_channels;
 	cd->rate = mic_rate;
 
-	/* AECm operates at 16 kHz or 8 kHz natively.
-	 * When the pipeline operates at 48 kHz, we use WebRTC APM's fixed-point
-	 * resampler to downsample 48kHz -> 16kHz for AECm and upsample 16kHz -> 48kHz.
+	/* Backends operate at 16 kHz or 8 kHz natively.
+	 * When the pipeline operates at 32 kHz or 48 kHz, downsample to 16 kHz
+	 * before AEC processing and upsample afterward.
 	 */
 	if (cd->rate == 48000) {
 		cd->proc_rate = 16000;
-		cd->needs_resample = true;
+		cd->resamp_mode = WEBRTC_AEC_RESAMP_48_TO_16;
 		cd->frame_samples = WEBRTC_AEC_FRAME_SAMPLES_48K;
+	} else if (cd->rate == 32000) {
+		cd->proc_rate = 16000;
+		cd->resamp_mode = WEBRTC_AEC_RESAMP_32_TO_16;
+		cd->frame_samples = WEBRTC_AEC_FRAME_SAMPLES_32K;
 	} else if (cd->rate == 16000 || cd->rate == 8000) {
 		cd->proc_rate = cd->rate;
-		cd->needs_resample = false;
+		cd->resamp_mode = WEBRTC_AEC_RESAMP_NONE;
 		cd->frame_samples = (cd->proc_rate * 10) / 1000;
 	} else {
-		comp_err(dev, "webrtc_aec: unsupported pipeline rate %d (must be 48000, 16000, or 8000)",
+		comp_err(dev, "webrtc_aec: unsupported pipeline rate %d (must be 48000, 32000, 16000, or 8000)",
 			 cd->rate);
 		return -EINVAL;
 	}
@@ -360,7 +379,7 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 	comp_info(dev, "webrtc_aec: mic_src=%d ref_src=%d rate=%d/%d mic_ch=%d ref_ch=%d (eff_ref=%d) frame=%d %s resamp=%d",
 		  cd->mic_src, cd->ref_src, cd->rate, cd->proc_rate,
 		  cd->mic_channels, cd->ref_channels, cd->effective_ref_ch,
-		  cd->frame_samples, cd->is_s32 ? "S32" : "S16", cd->needs_resample);
+		  cd->frame_samples, cd->is_s32 ? "S32" : "S16", cd->resamp_mode);
 
 	if (cd->backend->configure) {
 		ret = cd->backend->configure(mod, cd->proc_rate,
@@ -449,24 +468,32 @@ static void webrtc_aec_run_block(struct processing_module *mod,
 	if (cd->downmix_ref && cd->ref_channels > 1)
 		webrtc_aec_downmix_ref_s16(cd->ref_buf, cd->ref_channels, fs);
 
-	if (cd->needs_resample) {
+	if (cd->resamp_mode != WEBRTC_AEC_RESAMP_NONE) {
 		const int16_t *mic_ptrs[WEBRTC_AEC_CHANNELS_MAX];
 		const int16_t *ref_ptrs[WEBRTC_AEC_CHANNELS_MAX];
 		int16_t *out_ptrs[WEBRTC_AEC_CHANNELS_MAX];
 
-		/* Downsample 48 kHz mic and ref into 16 kHz 10 ms scratch buffers. */
+		/* Downsample 48 kHz or 32 kHz mic and ref into 16 kHz 10 ms scratch buffers. */
 		for (c = 0; c < cd->mic_channels; c++) {
-			WebRtcSpl_Resample48khzTo16khz(cd->mic_buf[c], cd->mic16[c],
-						      (void *)&cd->mic_resamp[c],
-						      cd->resamp_tmpmem);
+			if (cd->resamp_mode == WEBRTC_AEC_RESAMP_48_TO_16)
+				WebRtcSpl_Resample48khzTo16khz(cd->mic_buf[c], cd->mic16[c],
+							      (void *)&cd->mic_resamp[c],
+							      cd->resamp_tmpmem);
+			else
+				WebRtcSpl_DownsampleBy2(cd->mic_buf[c], WEBRTC_AEC_FRAME_SAMPLES_32K,
+							cd->mic16[c], cd->mic_resamp32[c]);
 			mic_ptrs[c] = cd->mic16[c];
 			out_ptrs[c] = cd->out16[c];
 		}
 
 		for (c = 0; c < cd->effective_ref_ch; c++) {
-			WebRtcSpl_Resample48khzTo16khz(cd->ref_buf[c], cd->ref16[c],
-						      (void *)&cd->ref_resamp[c],
-						      cd->resamp_tmpmem);
+			if (cd->resamp_mode == WEBRTC_AEC_RESAMP_48_TO_16)
+				WebRtcSpl_Resample48khzTo16khz(cd->ref_buf[c], cd->ref16[c],
+							      (void *)&cd->ref_resamp[c],
+							      cd->resamp_tmpmem);
+			else
+				WebRtcSpl_DownsampleBy2(cd->ref_buf[c], WEBRTC_AEC_FRAME_SAMPLES_32K,
+							cd->ref16[c], cd->ref_resamp32[c]);
 			ref_ptrs[c] = cd->ref16[c];
 		}
 
@@ -510,10 +537,15 @@ static void webrtc_aec_run_block(struct processing_module *mod,
 
 		/* Upsample processed 16 kHz frames back to pipeline rate inside out_fifo. */
 		for (c = 0; c < cd->mic_channels; c++) {
-			WebRtcSpl_Resample16khzTo48khz(cd->out16[c],
+			if (cd->resamp_mode == WEBRTC_AEC_RESAMP_48_TO_16)
+				WebRtcSpl_Resample16khzTo48khz(cd->out16[c],
+							      &cd->out_fifo[c][cd->buffered_out_frames],
+							      (void *)&cd->out_resamp[c],
+							      cd->resamp_tmpmem);
+			else
+				WebRtcSpl_UpsampleBy2(cd->out16[c], WEBRTC_AEC_FRAME_SAMPLES_16K,
 						      &cd->out_fifo[c][cd->buffered_out_frames],
-						      (void *)&cd->out_resamp[c],
-						      cd->resamp_tmpmem);
+						      cd->out_resamp32[c]);
 		}
 		return;
 	}
