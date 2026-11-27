@@ -1,0 +1,145 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Platform layout for scripts/check_platform_headers.py.
+#
+# A platform is a directory with include/ under src/kernel/platform/ and
+# src/platform/ (both trees use the same names). Every such directory is a
+# platform of its own, unless it is listed in [groups].
+
+# platform: the platform header directories its builds use together, as
+# zephyr/CMakeLists.txt puts them on the include path
+[groups]
+tigerlake: tigerlake intel/cavs
+meteorlake: meteorlake intel/ace
+lunarlake: lunarlake intel/ace
+ace30: ace30 intel/ace
+novalake: novalake intel/ace
+rembrandt: amd/rembrandt amd/common
+acp_7_0: amd/acp_7_0 amd/common
+acp_7_x: amd/acp_7_x amd/common
+
+# platform name pattern: the vendor driver directory its builds compile
+[vendor]
+imx*: src/kernel/drivers/imx/
+rembrandt: src/kernel/drivers/amd/
+acp_7_*: src/kernel/drivers/amd/
+mtk: src/kernel/drivers/mediatek/
+
+# platforms of the host builds (host library, testbench, cmocka): they see
+# the host-only code and not the Zephyr glue
+[host]
+library
+
+# platforms of the native_sim builds: they also see the ztest unit tests
+[posix]
+posix
+
+# Known unused headers ("path") and macros ("path:NAME"). This list may only
+# shrink: check_platform_headers.py --strict fails on findings that are not
+# here. Regenerate with check_platform_headers.py --update-baseline.
+[baseline]
+src/kernel/platform/ace30/include/platform/lib/clk.h:CPU_LPRO_FREQ_IDX
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:BT_RX_FIFO_OFFST
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:BT_TX_FIFO_OFFST
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:DAI_BASE
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:DAI_BASE_REM
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:DAI_SIZE
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:DRAM0_BASE
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:DRAM0_SIZE
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:HEAP_BUFFER_BLOCK_SIZE
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:HEAP_SYSTEM_0_BASE
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:HS_RX_FIFO_OFFST
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:HS_TX_FIFO_OFFST
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:PLATFORM_HEAP_BUFFER
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:PLATFORM_HEAP_RUNTIME
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:PLATFORM_HEAP_SYSTEM
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:PLATFORM_HEAP_SYSTEM_RUNTIME
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:SOF_MAILBOX_SIZE
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:SOF_STACK_TOTAL_SIZE
+src/kernel/platform/amd/acp_7_0/include/platform/lib/memory.h:SRAM1_SIZE
+src/kernel/platform/amd/acp_7_0/include/platform/platform.h:PLATFORM_IPC_INTERRUPT
+src/kernel/platform/amd/acp_7_0/include/platform/platform_misc.h:CLK7_CLK2_BYPASS_CNTL
+src/kernel/platform/amd/acp_7_0/include/platform/platform_misc.h:CLK7_CLK2_CURRENT_CNT
+src/kernel/platform/amd/acp_7_0/include/platform/platform_misc.h:CLK7_CLK2_DFS_STATUS
+src/kernel/platform/amd/acp_7_0/include/platform/platform_misc.h:MP1_SMN_C2PMSG_69
+src/kernel/platform/amd/acp_7_0/include/platform/platform_misc.h:MP1_SMN_C2PMSG_85
+src/kernel/platform/amd/acp_7_0/include/platform/platform_misc.h:MP1_SMN_C2PMSG_93
+src/kernel/platform/amd/acp_7_x/include/platform/lib/memory.h:DRAM0_BASE
+src/kernel/platform/amd/acp_7_x/include/platform/lib/memory.h:DRAM0_SIZE
+src/kernel/platform/amd/acp_7_x/include/platform/lib/memory.h:DRAM1_BASE
+src/kernel/platform/amd/acp_7_x/include/platform/lib/memory.h:DRAM1_SIZE
+src/kernel/platform/amd/acp_7_x/include/platform/lib/memory.h:HEAP_BUFFER_BLOCK_SIZE
+src/kernel/platform/amd/acp_7_x/include/platform/lib/memory.h:HEAP_SYSTEM_0_BASE
+src/kernel/platform/amd/acp_7_x/include/platform/lib/memory.h:PLATFORM_HEAP_BUFFER
+src/kernel/platform/amd/acp_7_x/include/platform/lib/memory.h:PLATFORM_HEAP_RUNTIME
+src/kernel/platform/amd/acp_7_x/include/platform/lib/memory.h:PLATFORM_HEAP_SYSTEM
+src/kernel/platform/amd/acp_7_x/include/platform/lib/memory.h:PLATFORM_HEAP_SYSTEM_RUNTIME
+src/kernel/platform/amd/acp_7_x/include/platform/lib/memory.h:SOF_MAILBOX_SIZE
+src/kernel/platform/amd/acp_7_x/include/platform/lib/memory.h:SRAM1_SIZE
+src/kernel/platform/amd/acp_7_x/include/platform/platform.h:PLATFORM_IPC_INTERRUPT
+src/kernel/platform/amd/acp_7_x/include/platform/platform_misc.h:ACP_AUDIOPLL_POWER_OFF_REQ
+src/kernel/platform/amd/acp_7_x/include/platform/platform_misc.h:ACP_AUDIOPLL_POWER_ON_REQ_WITH_WOV_EN
+src/kernel/platform/amd/acp_7_x/include/platform/platform_misc.h:ACP_CLK_BYPASS_SEL_AUDIO_PLL
+src/kernel/platform/amd/acp_7_x/include/platform/platform_misc.h:ACP_CLK_BYPASS_SEL_LPPLL
+src/kernel/platform/amd/acp_7_x/include/platform/platform_misc.h:ACP_CLK_DIV_BY_1
+src/kernel/platform/amd/acp_7_x/include/platform/platform_misc.h:ACP_CLK_DIV_BY_16
+src/kernel/platform/amd/acp_7_x/include/platform/platform_misc.h:ACP_DEEPSLEEP_ENABLE
+src/kernel/platform/amd/acp_7_x/include/platform/platform_misc.h:ACP_FUTURE_REG_ACLK_1
+src/kernel/platform/amd/acp_7_x/include/platform/platform_misc.h:ACP_FUTURE_REG_ACLK_2
+src/kernel/platform/amd/acp_7_x/include/platform/platform_misc.h:ACP_FUTURE_REG_ACLK_3
+src/kernel/platform/amd/acp_7_x/include/platform/platform_misc.h:ACP_FUTURE_REG_ACLK_4
+src/kernel/platform/amd/common/include/platform/lib/dma.h:DMA_ID_DAI_HS_VIRTUAL
+src/kernel/platform/amd/common/include/platform/lib/dma.h:DMA_ID_DAI_SW_AUDIO
+src/kernel/platform/amd/common/include/platform/lib/dma.h:DMA_ID_HOST
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_BTTDM_RXFRMT
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_BTTDM_TXFRMT
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_DMA_CH_GROUP
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_DMA_CH_RST_STS
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_DMA_CUR_DSCR_0
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_DMA_CUR_TRANS_CNT_0
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_EXTERNAL_INTR_CNTL
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_EXTERNAL_INTR_CNTL1
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_EXTERNAL_INTR_STAT
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_EXTERNAL_INTR_STAT1
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_I2STDM0_MSTRCLKGEN
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_I2STDM1_MSTRCLKGEN
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_I2STDM_REFCLKGEN
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_I2STDM_RXFRMT
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_I2STDM_TXFRMT
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_P1_BT_RX_LINKPOSITIONCNTR
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_P1_BT_TX_LINKPOSITIONCNTR
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_P1_HS_RX_LINKPOSITIONCNTR
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_P1_HS_TX_LINKPOSITIONCNTR
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_P1_I2S_RX_LINKPOSITIONCNTR
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_P1_I2S_TX_LINKPOSITIONCNTR
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_PDM_CLKDIV
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_PDM_VAD_DYNAMIC_CLK_GATING_EN
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_WOV_BUFFER_STATUS
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_WOV_ERROR_STATUS_REGISTER
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_WOV_PDM_VAD_CTRL
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_WOV_RX_LINEARPOSITIONCNTR_HIGH
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_WOV_RX_LINEARPOSITIONCNTR_LOW
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_WOV_RX_LINKPOSITIONCNTR
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:ACP_WOV_WAKE
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:MP0_C2PMSG_114
+src/kernel/platform/amd/rembrandt/include/platform/chip_offset_byte.h:MP0_C2PMSG_73
+src/kernel/platform/amd/rembrandt/include/platform/lib/memory.h:DRAM1_BASE
+src/kernel/platform/amd/rembrandt/include/platform/lib/memory.h:DRAM1_SIZE
+src/kernel/platform/amd/rembrandt/include/platform/lib/memory.h:HEAP_BUFFER_BLOCK_SIZE
+src/kernel/platform/amd/rembrandt/include/platform/lib/memory.h:HEAP_SYSTEM_0_BASE
+src/kernel/platform/amd/rembrandt/include/platform/lib/memory.h:PLATFORM_HEAP_BUFFER
+src/kernel/platform/amd/rembrandt/include/platform/lib/memory.h:PLATFORM_HEAP_RUNTIME
+src/kernel/platform/amd/rembrandt/include/platform/lib/memory.h:PLATFORM_HEAP_SYSTEM
+src/kernel/platform/amd/rembrandt/include/platform/lib/memory.h:PLATFORM_HEAP_SYSTEM_RUNTIME
+src/kernel/platform/amd/rembrandt/include/platform/lib/memory.h:SOF_MAILBOX_SIZE
+src/kernel/platform/amd/rembrandt/include/platform/lib/memory.h:SOF_STACK_TOTAL_SIZE
+src/kernel/platform/amd/rembrandt/include/platform/lib/memory.h:SRAM1_SIZE
+src/kernel/platform/amd/rembrandt/include/platform/platform.h:PLATFORM_IPC_INTERRUPT
+src/kernel/platform/intel/cavs/include/cavs/drivers/sideband-ipc.h:IPC_DIPCIDR_MSG_MASK
+src/kernel/platform/mtk/include/platform/lib/memory.h:PLATFORM_HEAP_BUFFER
+src/kernel/platform/mtk/include/platform/lib/memory.h:PLATFORM_HEAP_RUNTIME
+src/kernel/platform/mtk/include/platform/lib/memory.h:PLATFORM_HEAP_SYSTEM
+src/kernel/platform/mtk/include/platform/lib/memory.h:PLATFORM_HEAP_SYSTEM_RUNTIME
+src/kernel/platform/novalake/include/platform/lib/clk.h:CPU_LPRO_FREQ_IDX
+src/platform/qemu_xtensa/include/platform/lib/mailbox.h:MAILBOX_TRACE_BASE
+src/platform/qemu_xtensa/include/platform/lib/mailbox.h:MAILBOX_TRACE_SIZE
