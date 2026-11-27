@@ -162,6 +162,52 @@ static void s16_to_sink(struct sof_sink *dst, int16_t src[][WEBRTC_AEC_FIFO_FRAM
 	sink_commit_buffer(dst, nbytes);
 }
 
+static int src_drop_frames(struct sof_source *src, int frames)
+{
+	size_t frame_bytes = source_get_frame_bytes(src);
+	const void *data_ptr, *buf_start;
+	size_t buf_size, nbytes;
+	int err;
+
+	if (frames <= 0 || !frame_bytes)
+		return 0;
+
+	nbytes = (size_t)frames * frame_bytes;
+	err = source_get_data(src, nbytes, &data_ptr, &buf_start, &buf_size);
+	if (err)
+		return err;
+
+	source_release_data(src, nbytes);
+	return 0;
+}
+
+static void webrtc_aec_resolve_sources(struct sof_source **sources, int num_of_sources,
+				       int *mic_idx, int *ref_idx)
+{
+	uint32_t q0, q1;
+
+	*mic_idx = 0;
+	*ref_idx = -1;
+
+	if (num_of_sources <= 1)
+		return;
+
+	/*
+	 * IPC4 binds topology Pin 0 (queue 0) to the capture microphone stream and
+	 * Pin 1 (queue 1) to the playback echo reference. Resolve via queue IDs
+	 * because sources[] order depends on pipeline attachment order.
+	 */
+	q0 = IPC4_SINK_QUEUE_ID(source_get_id(sources[0]));
+	q1 = IPC4_SINK_QUEUE_ID(source_get_id(sources[1]));
+	if (q0 != q1 && q1 < q0) {
+		*mic_idx = 1;
+		*ref_idx = 0;
+	} else {
+		*mic_idx = 0;
+		*ref_idx = 1;
+	}
+}
+
 /* ----------------------------------------------------------------
  * module_interface operations
  * ---------------------------------------------------------------- */
@@ -233,20 +279,17 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
-	if (num_of_sources == 1) {
-		cd->mic_src = 0;
-		cd->ref_src = -1;
-	} else {
-		/* Bind order is arbitrary, IPC4 input pin 0 (queue 0) is mic and pin 1 is ref */
-		cd->mic_src = IPC4_SINK_QUEUE_ID(source_get_id(sources[0])) == 0 ? 0 : 1;
-		cd->ref_src = 1 - cd->mic_src;
-	}
+	webrtc_aec_resolve_sources(sources, num_of_sources, &cd->mic_src, &cd->ref_src);
 
 	mic_fmt  = source_get_frm_fmt(sources[cd->mic_src]);
 	mic_rate = source_get_rate(sources[cd->mic_src]);
 	cd->channels = source_get_channels(sources[cd->mic_src]);
 
 	if (cd->ref_src >= 0) {
+		/* Pin 1 may come from a separate render pipeline; apply its IPC4 pin format. */
+		if (mod->priv.cfg.nb_input_pins > 1 && mod->priv.cfg.input_pins)
+			ipc4_update_source_format(sources[cd->ref_src],
+						  &mod->priv.cfg.input_pins[1].audio_fmt);
 		ref_fmt  = source_get_frm_fmt(sources[cd->ref_src]);
 		ref_rate = source_get_rate(sources[cd->ref_src]);
 		if (mic_rate != ref_rate) {
@@ -307,18 +350,6 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 		  cd->mic_src, cd->ref_src, cd->rate, cd->proc_rate, cd->channels,
 		  cd->frame_samples, cd->is_s32 ? "S32" : "S16", cd->needs_resample);
 
-#ifdef CONFIG_IPC_MAJOR_4
-	/* Apply reference format override from topology pin descriptor. */
-	if (cd->ref_src >= 0) {
-		if (!mod->priv.cfg.input_pins || mod->priv.cfg.nb_input_pins < 2) {
-			comp_err(dev, "webrtc_aec: no reference pin format");
-			return -EINVAL;
-		}
-		ipc4_update_source_format(sources[cd->ref_src],
-					  &mod->priv.cfg.input_pins[1].audio_fmt);
-	}
-#endif
-
 	if (cd->backend->configure) {
 		ret = cd->backend->configure(mod, cd->proc_rate,
 					     CONFIG_WEBRTC_AEC_FILTER_LEN_MS,
@@ -335,8 +366,37 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 		memset(cd->out_fifo[ret], 0, sizeof(int16_t) * cd->frame_samples);
 	cd->buffered_out_frames = cd->frame_samples;
 	cd->last_ref_ok = true;
+	cd->ref_mismatch_warned = false;
 	cd->configured = true;
 	return 0;
+}
+
+static int webrtc_aec_ref_surplus(struct sof_source *mic, struct sof_source *ref,
+				  int *ref_min_out)
+{
+	int fmic, fref, ref_min;
+	size_t ref_fb;
+
+	if (!ref) {
+		if (ref_min_out)
+			*ref_min_out = 0;
+		return 0;
+	}
+
+	fmic = mic ? (int)source_get_data_frames_available(mic) : 0;
+	fref = (int)source_get_data_frames_available(ref);
+	ref_fb = source_get_frame_bytes(ref);
+	ref_min = ref_fb ? (int)(source_get_min_available(ref) / ref_fb) : 0;
+
+	if (ref_min_out)
+		*ref_min_out = ref_min;
+
+	/*
+	 * Preserve reference frames matching queued mic backlog (and at least
+	 * one ref period so freshly starting capture remains aligned); only
+	 * frames beyond MAX(fmic, ref_min) are true surplus.
+	 */
+	return fref - MAX(fmic, ref_min);
 }
 
 static int webrtc_aec_process(struct processing_module *mod,
@@ -344,29 +404,72 @@ static int webrtc_aec_process(struct processing_module *mod,
 			      struct sof_sink **sinks, int num_of_sinks)
 {
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
-	struct sof_source *mic = sources[cd->mic_src];
-	struct sof_source *ref = cd->ref_src >= 0 ? sources[cd->ref_src] : NULL;
-	struct sof_sink   *out = sinks[0];
-	int fmic = (int)source_get_data_frames_available(mic);
-	int fref = ref ? (int)source_get_data_frames_available(ref) : 0;
-	int n, drain, c;
+	struct sof_source *mic;
+	struct sof_source *ref;
+	struct sof_sink   *out;
+	int mic_idx, ref_idx;
+	int fmic, fref, n, drain, c, ref_min, surplus;
+	bool ref_s32;
 
-	if (fmic <= 0)
+	if (num_of_sources < 1 || num_of_sinks < 1)
 		return 0;
 
-	/* Cap to available space in input accumulation buffers */
+	webrtc_aec_resolve_sources(sources, num_of_sources, &mic_idx, &ref_idx);
+	cd->mic_src = mic_idx;
+	cd->ref_src = ref_idx;
+
+	mic = sources[mic_idx];
+	ref = ref_idx >= 0 ? sources[ref_idx] : NULL;
+	out = sinks[0];
+	fmic = (int)source_get_data_frames_available(mic);
+	fref = ref ? (int)source_get_data_frames_available(ref) : 0;
+
+	/* Cap copy size to mic availability, input FIFO capacity, and free sink frames. */
 	n = MIN(fmic, WEBRTC_AEC_FIFO_FRAMES - cd->buffered_in_frames);
-	if (n <= 0)
+	n = MIN(n, (int)sink_get_free_frames(out));
+	if (n <= 0) {
+		/* Drain surplus reference data even when mic/sink stalls so render never blocks. */
+		surplus = webrtc_aec_ref_surplus(mic, ref, &ref_min);
+		if (surplus > 0 && surplus >= ref_min)
+			src_drop_frames(ref, surplus);
 		return 0;
+	}
 
 	/* Convert mic input to per-channel S16 */
 	src_to_s16(mic, n, cd->mic_buf, cd->buffered_in_frames, cd->channels, cd->is_s32);
 
-	/* Convert ref input to per-channel S16; if starved/silent, fill with silence */
+	/*
+	 * Validate dynamically attached reference source format/channels and trim
+	 * only genuine surplus beyond queued mic frames so alignment stays intact.
+	 */
+	if (ref) {
+		int ref_ch = source_get_channels(ref);
+		int ref_fmt = source_get_frm_fmt(ref);
+
+		if (ref_ch != cd->channels ||
+		    (ref_fmt != SOF_IPC_FRAME_S16_LE && ref_fmt != SOF_IPC_FRAME_S32_LE)) {
+			if (!cd->ref_mismatch_warned) {
+				comp_warn(mod->dev,
+					  "webrtc_aec: ref mismatch ch=%d (exp %d) fmt=%d, dropping",
+					  ref_ch, cd->channels, ref_fmt);
+				cd->ref_mismatch_warned = true;
+			}
+			src_drop_frames(ref, fref);
+			fref = 0;
+			ref_s32 = cd->is_s32;
+		} else {
+			ref_s32 = (ref_fmt == SOF_IPC_FRAME_S32_LE);
+		}
+	} else {
+		ref_s32 = cd->is_s32;
+	}
+
+	if (fref > fmic && src_drop_frames(ref, fref - fmic) == 0)
+		fref = fmic;
 	if (fref >= n) {
-		src_to_s16(ref, n, cd->ref_buf, cd->buffered_in_frames, cd->channels, cd->is_s32);
+		src_to_s16(ref, n, cd->ref_buf, cd->buffered_in_frames, cd->channels, ref_s32);
 	} else if (fref > 0) {
-		src_to_s16(ref, fref, cd->ref_buf, cd->buffered_in_frames, cd->channels, cd->is_s32);
+		src_to_s16(ref, fref, cd->ref_buf, cd->buffered_in_frames, cd->channels, ref_s32);
 		for (c = 0; c < cd->channels; c++)
 			memset(&cd->ref_buf[c][cd->buffered_in_frames + fref], 0,
 			       (size_t)(n - fref) * sizeof(int16_t));
@@ -538,6 +641,7 @@ static int webrtc_aec_reset(struct processing_module *mod)
 	webrtc_aec_set_active_mod(mod);
 	comp_dbg(mod->dev, "webrtc_aec: reset");
 	cd->buffered_in_frames = 0;
+	cd->ref_mismatch_warned = false;
 	for (c = 0; c < cd->channels; c++)
 		memset(cd->out_fifo[c], 0, sizeof(int16_t) * cd->frame_samples);
 	cd->buffered_out_frames = cd->frame_samples;
@@ -664,17 +768,31 @@ static bool webrtc_aec_is_ready_to_process(struct processing_module *mod,
 					   int num_of_sinks)
 {
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
-	struct sof_source *mic;
+	struct sof_source *mic, *ref;
 	struct sof_sink *out;
+	int mic_idx, ref_idx;
 
-	if (!cd || !cd->configured || num_of_sources <= cd->mic_src || num_of_sinks < 1)
+	if (!cd || !cd->configured || num_of_sources < 1 || num_of_sinks < 1)
 		return false;
 
-	mic = sources[cd->mic_src];
+	webrtc_aec_resolve_sources(sources, num_of_sources, &mic_idx, &ref_idx);
+	mic = sources[mic_idx];
+	ref = ref_idx >= 0 ? sources[ref_idx] : NULL;
 	out = sinks[0];
 
-	return source_get_data_available(mic) >= source_get_min_available(mic) &&
-	       sink_get_free_size(out) >= sink_get_min_free_space(out);
+	if (source_get_data_available(mic) >= source_get_min_available(mic) &&
+	    sink_get_free_size(out) >= sink_get_min_free_space(out))
+		return true;
+
+	{
+		int ref_min;
+		int surplus = webrtc_aec_ref_surplus(mic, ref, &ref_min);
+
+		if (ref_min > 0 && surplus >= ref_min)
+			return true;
+	}
+
+	return false;
 }
 
 static const struct module_interface webrtc_aec_interface = {
