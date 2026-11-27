@@ -114,6 +114,42 @@ config WEBRTC_AEC_STEREO_DOWNMIX_REF
 	  halving adaptive filter convolution load at the cost of stereo
 	  spatial echo modeling.
 
+config WEBRTC_AEC_STEREO_CONTENT_DETECT
+	bool "Enable AEC3 stereo content detector"
+	default y
+	depends on WEBRTC_AEC_BACKEND_AEC3
+	help
+	  Allow AEC3 to dynamically detect stereo vs. dual-mono playback
+	  content, using full 2-channel MIMO linear filtering only when
+	  true stereo content is present.
+
+config WEBRTC_AEC_AEC3_EXTERNAL_DELAY_EST
+	bool "Use fixed external delay estimate in AEC3"
+	default n
+	depends on WEBRTC_AEC_BACKEND_AEC3
+	help
+	  When disabled (recommended), AEC3 uses its internal matched-filter
+	  delay estimator to align render and capture automatically. Enable
+	  to lock AEC3 to WEBRTC_AEC_DELAY_MS for reduced cycle usage when
+	  the hardware echo path delay is fixed and known.
+
+config WEBRTC_AEC_AEC3_FILTER_BLOCKS
+	int "AEC3 linear adaptive filter length in 4 ms blocks"
+	range 1 30
+	default 12
+	depends on WEBRTC_AEC_BACKEND_AEC3
+	help
+	  Length of the AEC3 refined/coarse adaptive filter in 4 ms blocks
+	  (e.g., 12 blocks = 48 ms echo tail, 1 block = 4 ms minimal CPU).
+
+config WEBRTC_AEC_AEC3_COARSE_FILTER
+	bool "Enable AEC3 coarse filter output fallback"
+	default y
+	depends on WEBRTC_AEC_BACKEND_AEC3
+	help
+	  Enable AEC3 coarse linear filter output selection when the refined
+	  filter temporarily diverges.
+
 config WEBRTC_AEC_DELAY_AGNOSTIC
 	bool "Enable delay-agnostic mode in Classic Float AEC"
 	default n
