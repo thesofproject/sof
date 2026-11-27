@@ -166,8 +166,9 @@ struct webrtc_aec_comp_data {
 	struct webrtc_aec_state_16_to_48 out_resamp[WEBRTC_AEC_CHANNELS_MAX];
 	int32_t resamp_tmpmem[512];
 
-	/* Ref stream liveness (IPC4: always active). */
+	/* Ref stream liveness. */
 	bool last_ref_ok;
+	bool ref_mismatch_warned;
 
 	bool configured;
 };
