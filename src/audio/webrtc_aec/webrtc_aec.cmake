@@ -86,6 +86,7 @@ SRCS=\"${_aec_backend_srcs}
   $SRC/common_audio/signal_processing/randomization_functions.c
   $SRC/common_audio/signal_processing/real_fft.c
   $SRC/common_audio/signal_processing/resample_48khz.c
+  $SRC/common_audio/signal_processing/resample_by_2.c
   $SRC/common_audio/signal_processing/resample_by_2_internal.c
   $SRC/common_audio/signal_processing/resample_fractional.c
   $SRC/common_audio/signal_processing/spl_init.c
