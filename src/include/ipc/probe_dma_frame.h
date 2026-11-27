@@ -12,7 +12,7 @@
 #ifndef __IPC_PROBE_DMA_FRAME_H__
 #define __IPC_PROBE_DMA_FRAME_H__
 
-#include <rtos/bit.h>
+#include <stdint.h>
 
 /**
  * \brief Header for data packets sent via compressed PCM from extraction probes.
@@ -46,16 +46,16 @@ struct probe_data_packet {
 #define PROBE_SHIFT_SAMPLE_END		8	/**< Endianness (0 = little-endian) */
 #define PROBE_SHIFT_INTERLEAVING_ST	7	/**< Interleaving (1 = sample interleaved) */
 
-#define PROBE_MASK_FMT_TYPE		MASK(31, 31)	/**< Type encoding mask */
-#define PROBE_MASK_STANDARD_TYPE	MASK(30, 27)	/**< Standard type mask */
-#define PROBE_MASK_AUDIO_FMT		MASK(26, 23)	/**< Audio format mask */
-#define PROBE_MASK_SAMPLE_RATE		MASK(22, 19)	/**< Sample rate mask */
-#define PROBE_MASK_NB_CHANNELS		MASK(18, 14)	/**< Channel count mask */
-#define PROBE_MASK_SAMPLE_SIZE		MASK(13, 12)	/**< Sample size mask */
-#define PROBE_MASK_CONTAINER_SIZE	MASK(11, 10)	/**< Container size mask */
-#define PROBE_MASK_SAMPLE_FMT		MASK(9, 9)	/**< Sample format mask */
-#define PROBE_MASK_SAMPLE_END		MASK(8, 8)	/**< Endianness mask */
-#define PROBE_MASK_INTERLEAVING_ST	MASK(7, 7)	/**< Interleaving mask */
+#define PROBE_MASK_FMT_TYPE		0x80000000ULL	/**< Type encoding mask */
+#define PROBE_MASK_STANDARD_TYPE	0x78000000ULL	/**< Standard type mask */
+#define PROBE_MASK_AUDIO_FMT		0x07800000ULL	/**< Audio format mask */
+#define PROBE_MASK_SAMPLE_RATE		0x00780000ULL	/**< Sample rate mask */
+#define PROBE_MASK_NB_CHANNELS		0x0007c000ULL	/**< Channel count mask */
+#define PROBE_MASK_SAMPLE_SIZE		0x00003000ULL	/**< Sample size mask */
+#define PROBE_MASK_CONTAINER_SIZE	0x00000c00ULL	/**< Container size mask */
+#define PROBE_MASK_SAMPLE_FMT		0x00000200ULL	/**< Sample format mask */
+#define PROBE_MASK_SAMPLE_END		0x00000100ULL	/**< Endianness mask */
+#define PROBE_MASK_INTERLEAVING_ST	0x00000080ULL	/**< Interleaving mask */
 /** @} */
 
 #endif /* __IPC_PROBE_DMA_FRAME_H__ */
