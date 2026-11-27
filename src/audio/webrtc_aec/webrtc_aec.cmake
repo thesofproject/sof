@@ -33,6 +33,16 @@ set(WEBRTC_AECM_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-install"
 
 set(_aecm_src "${SOF_WEBRTC_APM_SRC_DIR}/webrtc")
 
+if("${ARCH}" STREQUAL "xtensa")
+  if(CONFIG_LLEXT_BUILD_PIC)
+    set(_aecm_arch_cflags "-fPIC -mlongcalls -mtext-section-literals")
+  else()
+    set(_aecm_arch_cflags "-fno-pic -fno-pie -mlongcalls -mtext-section-literals")
+  endif()
+else()
+  set(_aecm_arch_cflags "-fPIC")
+endif()
+
 if(CONFIG_WEBRTC_AEC_BACKEND_FLOAT)
   set(_aec_backend_srcs "
   $SRC/modules/audio_processing/aec/echo_cancellation.c
@@ -58,7 +68,7 @@ OBJ=${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-obj
 rm -rf \"$OBJ\" \"$INST/lib/libwebrtc_aecm.a\"
 mkdir -p \"$OBJ\" \"$INST/lib\" \"$INST/include\" \"$INST/include/webrtc\"
 
-CFLAGS=\"-O2 -fPIC -DNDEBUG -I${SOF_WEBRTC_APM_SRC_DIR} -I$SRC -I$SRC/common_audio/signal_processing/include -DWEBRTC_ARCH_32_BITS= -DWEBRTC_ARCH_LITTLE_ENDIAN= -Dmalloc=webrtc_malloc -Dcalloc=webrtc_calloc -Drealloc=webrtc_realloc -Dfree=webrtc_free\"
+CFLAGS=\"-O2 ${_aecm_arch_cflags} -DNDEBUG -I${SOF_WEBRTC_APM_SRC_DIR} -I$SRC -I$SRC/common_audio/signal_processing/include -DWEBRTC_ARCH_32_BITS= -DWEBRTC_ARCH_LITTLE_ENDIAN= -Dmalloc=webrtc_malloc -Dcalloc=webrtc_calloc -Drealloc=webrtc_realloc -Dfree=webrtc_free\"
 
 # AEC backend core
 SRCS=\"${_aec_backend_srcs}
@@ -95,8 +105,6 @@ cp ${_aec_backend_hdr} \"$INST/include/\"
 cp $SRC/typedefs.h \"$INST/include/webrtc/\" 2>/dev/null || true
 ")
 
-# Only touch the script when its content changes so that the library is
-# rebuilt on flag changes but not on every reconfigure.
 configure_file("${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-build.sh.tmp"
   "${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-build.sh" COPYONLY)
 

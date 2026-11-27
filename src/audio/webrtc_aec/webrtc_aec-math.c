@@ -9,6 +9,20 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/*
+ * TODO: Remove this workaround and restore uniform __attribute__((weak))
+ * linkage once Zephyr's Xtensa LLEXT loader (llext_link_plt()) supports
+ * STB_WEAK relocations. Currently it only relocates STB_GLOBAL and STB_LOCAL
+ * symbols, silently skipping STB_WEAK and leaving literal pool entries zeroed
+ * (triggering an InstFetchPrivilegeCause / PC=0 panic at runtime). Keep strong
+ * linkage when building inside an LLEXT module until Zephyr is fixed.
+ */
+#ifdef LL_EXTENSION_BUILD
+#define WEBRTC_MATH_WEAK
+#else
+#define WEBRTC_MATH_WEAK __attribute__((weak))
+#endif
+
 /* --- helpers --- */
 
 static inline float aec_ldexp2(int n)
@@ -42,7 +56,7 @@ static float aec_log2f(float x)
 }
 
 /* --- fast exp2f: split x = n + f, degree-3 polynomial --- */
-float exp2f(float x)
+WEBRTC_MATH_WEAK float exp2f(float x)
 {
 	int n;
 	float f, p;
@@ -61,9 +75,7 @@ float exp2f(float x)
 	return p * aec_ldexp2(n);
 }
 
-#ifdef LL_EXTENSION_BUILD
-/* --- sqrtf: not exported by the base firmware, bit estimate + 3 Newton steps --- */
-float sqrtf(float x)
+WEBRTC_MATH_WEAK float sqrtf(float x)
 {
 	union { float f; uint32_t i; } u = { .f = x };
 	float y;
@@ -78,11 +90,10 @@ float sqrtf(float x)
 	y = 0.5f * (y + x / y);
 	return y;
 }
-#endif
 
 
 /* --- powf: x^y = 2^(y * log2(x)) --- */
-float powf(float x, float y)
+WEBRTC_MATH_WEAK float powf(float x, float y)
 {
 	if (x <= 0.0f)
 		return (x == 0.0f && y > 0.0f) ? 0.0f : 1.0f;
@@ -95,38 +106,38 @@ float powf(float x, float y)
 	if (y == 2.0f)
 		return x * x;
 	if (y == 0.5f)
-		return __builtin_sqrtf(x);
+		return sqrtf(x);
 	return exp2f((float)(y * aec_log2f(x)));
 }
 
-double pow(double x, double y)
+WEBRTC_MATH_WEAK double pow(double x, double y)
 {
 	return (double)powf((float)x, (float)y);
 }
 
 /* --- logf and log10f --- */
-float logf(float x)
+WEBRTC_MATH_WEAK float logf(float x)
 {
 	return aec_log2f(x) * 0.6931471805599453f;
 }
 
-double log(double x)
+WEBRTC_MATH_WEAK double log(double x)
 {
 	return (double)logf((float)x);
 }
 
-float log10f(float x)
+WEBRTC_MATH_WEAK float log10f(float x)
 {
 	return aec_log2f(x) * 0.3010299956639812f;
 }
 
-double log10(double x)
+WEBRTC_MATH_WEAK double log10(double x)
 {
 	return (double)log10f((float)x);
 }
 
 /* --- floor / ceil / round --- */
-float floorf(float x)
+WEBRTC_MATH_WEAK float floorf(float x)
 {
 	int i = (int)x;
 	if (x < 0.0f && (float)i != x)
@@ -134,12 +145,12 @@ float floorf(float x)
 	return (float)i;
 }
 
-double floor(double x)
+WEBRTC_MATH_WEAK double floor(double x)
 {
 	return (double)floorf((float)x);
 }
 
-float ceilf(float x)
+WEBRTC_MATH_WEAK float ceilf(float x)
 {
 	int i = (int)x;
 	if (x > 0.0f && (float)i != x)
@@ -147,17 +158,17 @@ float ceilf(float x)
 	return (float)i;
 }
 
-double ceil(double x)
+WEBRTC_MATH_WEAK double ceil(double x)
 {
 	return (double)ceilf((float)x);
 }
 
-float roundf(float x)
+WEBRTC_MATH_WEAK float roundf(float x)
 {
 	return (x >= 0.0f) ? floorf(x + 0.5f) : ceilf(x - 0.5f);
 }
 
-double round(double x)
+WEBRTC_MATH_WEAK double round(double x)
 {
 	return (double)roundf((float)x);
 }
@@ -173,7 +184,7 @@ static inline void aec_sincosf_poly(float z, float *s_out, float *c_out)
 	*c_out = 1.0f + z2 * (-0.5f + z2 * (0.041666667f + z2 * (-0.0013888889f + z2 * 0.0000248016f)));
 }
 
-float sinf(float x)
+WEBRTC_MATH_WEAK float sinf(float x)
 {
 	const float inv_half_pi = 0.636619772367581343f; /* 2 / pi */
 	const float half_pi_hi  = 1.5707963267948966f;
@@ -191,12 +202,12 @@ float sinf(float x)
 	}
 }
 
-double sin(double x)
+WEBRTC_MATH_WEAK double sin(double x)
 {
 	return (double)sinf((float)x);
 }
 
-float cosf(float x)
+WEBRTC_MATH_WEAK float cosf(float x)
 {
 	const float inv_half_pi = 0.636619772367581343f;
 	const float half_pi_hi  = 1.5707963267948966f;
@@ -214,7 +225,7 @@ float cosf(float x)
 	}
 }
 
-double cos(double x)
+WEBRTC_MATH_WEAK double cos(double x)
 {
 	return (double)cosf((float)x);
 }
