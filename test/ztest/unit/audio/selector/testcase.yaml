@@ -16,3 +16,8 @@ tests:
   sof.unit.audio.selector:
     platform_allow:
       - native_sim
+  sof.unit.audio.selector.ipc3:
+    platform_allow:
+      - native_sim
+    extra_args:
+      - CONF_FILE=prj_ipc3.conf

@@ -29,41 +29,61 @@ target_compile_definitions(app PRIVATE
 	-DUNIT_TEST=1
 )
 
-target_sources(app PRIVATE
-	selector_ztest.c
-	${SOF_ROOT}/test/ztest/unit/common/alloc.c
-	${SOF_ROOT}/test/ztest/unit/common/sof_context.c
-	${SOF_ROOT}/src/audio/selector/selector.c
-	${SOF_ROOT}/src/audio/selector/selector_generic.c
-	${SOF_ROOT}/src/audio/module_adapter/module_adapter.c
-	${SOF_ROOT}/src/audio/module_adapter/module_adapter_ipc4.c
-	${SOF_ROOT}/src/audio/module_adapter/module/generic.c
-	${SOF_ROOT}/src/audio/buffers/comp_buffer.c
-	${SOF_ROOT}/src/audio/buffers/audio_buffer.c
-	${SOF_ROOT}/src/audio/source_api_helper.c
-	${SOF_ROOT}/src/audio/sink_api_helper.c
-	${SOF_ROOT}/src/audio/sink_source_utils.c
-	${SOF_ROOT}/src/audio/audio_stream.c
-	${SOF_ROOT}/src/audio/component.c
-	${SOF_ROOT}/src/audio/data_blob.c
-	${SOF_ROOT}/src/module/audio/source_api.c
-	${SOF_ROOT}/src/module/audio/sink_api.c
-	${SOF_ROOT}/src/ipc/ipc4/helper.c
-	${SOF_ROOT}/src/ipc/ipc-common.c
-	${SOF_ROOT}/src/ipc/ipc-helper.c
-	${SOF_ROOT}/src/lib/objpool.c
-	${SOF_ROOT}/src/math/numbers.c
-)
+if(CONFIG_IPC_MAJOR_3)
+	# The cases ported from the CMocka selector test, which is built for IPC3
+	# and tests the IPC3 channel selection functions in selector_generic.c
+	target_sources(app PRIVATE
+		selector_ipc3_ztest.c
+		${SOF_ROOT}/test/ztest/unit/common/alloc.c
+		${SOF_ROOT}/src/audio/selector/selector_generic.c
+		${SOF_ROOT}/src/audio/buffers/comp_buffer.c
+		${SOF_ROOT}/src/audio/buffers/audio_buffer.c
+		${SOF_ROOT}/src/audio/source_api_helper.c
+		${SOF_ROOT}/src/audio/sink_api_helper.c
+		${SOF_ROOT}/src/audio/sink_source_utils.c
+		${SOF_ROOT}/src/audio/audio_stream.c
+		${SOF_ROOT}/src/module/audio/source_api.c
+		${SOF_ROOT}/src/module/audio/sink_api.c
+		${SOF_ROOT}/src/ipc/ipc-helper.c
+		${SOF_ROOT}/src/math/numbers.c
+	)
+else()
+	target_sources(app PRIVATE
+		selector_ztest.c
+		${SOF_ROOT}/test/ztest/unit/common/alloc.c
+		${SOF_ROOT}/test/ztest/unit/common/sof_context.c
+		${SOF_ROOT}/src/audio/selector/selector.c
+		${SOF_ROOT}/src/audio/selector/selector_generic.c
+		${SOF_ROOT}/src/audio/module_adapter/module_adapter.c
+		${SOF_ROOT}/src/audio/module_adapter/module_adapter_ipc4.c
+		${SOF_ROOT}/src/audio/module_adapter/module/generic.c
+		${SOF_ROOT}/src/audio/buffers/comp_buffer.c
+		${SOF_ROOT}/src/audio/buffers/audio_buffer.c
+		${SOF_ROOT}/src/audio/source_api_helper.c
+		${SOF_ROOT}/src/audio/sink_api_helper.c
+		${SOF_ROOT}/src/audio/sink_source_utils.c
+		${SOF_ROOT}/src/audio/audio_stream.c
+		${SOF_ROOT}/src/audio/component.c
+		${SOF_ROOT}/src/audio/data_blob.c
+		${SOF_ROOT}/src/module/audio/source_api.c
+		${SOF_ROOT}/src/module/audio/sink_api.c
+		${SOF_ROOT}/src/ipc/ipc4/helper.c
+		${SOF_ROOT}/src/ipc/ipc-common.c
+		${SOF_ROOT}/src/ipc/ipc-helper.c
+		${SOF_ROOT}/src/lib/objpool.c
+		${SOF_ROOT}/src/math/numbers.c
+	)
+
+	# The standalone target compiles the full IPC4 helper translation unit while
+	# linking only its format helpers; other helper paths leave one local ID unused.
+	set_source_files_properties(
+		${SOF_ROOT}/src/ipc/ipc4/helper.c
+		PROPERTIES COMPILE_OPTIONS "-Wno-unused-variable"
+	)
+endif()
 
 target_link_libraries(app PRIVATE
 	"-Wl,--wrap=rzalloc,--wrap=rfree,--wrap=sof_heap_alloc,--wrap=sof_heap_free,--wrap=sof_sys_user_heap_get"
-)
-
-# The standalone target compiles the full IPC4 helper translation unit while
-# linking only its format helpers; other helper paths leave one local ID unused.
-set_source_files_properties(
-	${SOF_ROOT}/src/ipc/ipc4/helper.c
-	PROPERTIES COMPILE_OPTIONS "-Wno-unused-variable"
 )
 
 sof_append_relative_path_definitions(app)
