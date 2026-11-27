@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2026 Intel Corporation.
+#
+# FIR equalizer processing unit tests converted from CMock to Ztest
+#
+# These contents may have been developed with support from one or more Intel-operated
+# generative artificial intelligence solutions.
+#
+
+common:
+  tags:
+    - SOF
+    - unit_test
+    - audio
+    - eq_fir
+  integration_platforms:
+    - native_sim
+  arch_exclude: xtensa
+
+tests:
+  sof.unit.audio.eq_fir:
+    platform_allow:
+      - native_sim
+    build_only: false
