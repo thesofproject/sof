@@ -101,6 +101,7 @@ struct vregion {
 
 	/* current allocation mode */
 	enum vregion_mem_type type;	/* LIFETIME at creation, switch to INTERIM */
+	bool interim_pending;		/* vregion_set_interim() called, heap not yet created */
 
 	/* interim heap - created lazily on first interim allocation */
 	struct interim_heap interim;	/* interim heap */
@@ -259,6 +260,7 @@ __cold struct vregion *vregion_create(size_t memsize)
 
 	/* start in lifetime allocation mode */
 	vr->type = VREGION_MEM_TYPE_LIFETIME;
+	vr->interim_pending = false;
 
 	k_mutex_init(&vr->lock);
 	/* The creator is the first user */
@@ -495,8 +497,17 @@ void z_impl_vregion_set_interim(struct vregion *vr)
 
 	k_mutex_lock(&vr->lock, K_FOREVER);
 
-	interim_heap_init(vr);
-	vregion_tel_sync_locked(vr);
+	/*
+	 * Only mark the switch here, the interim heap is created on the
+	 * next allocation. The heap metadata is in cached memory, so it
+	 * must be initialized on the core that allocates from it, but this
+	 * is called on the pipeline core, which can differ from the core of
+	 * a DP module in the pipeline.
+	 */
+	if (vr->type == VREGION_MEM_TYPE_LIFETIME && !vr->interim_pending)
+		vr->interim_pending = true;
+	else
+		LOG_WRN("vregion %p already in interim mode", (void *)vr);
 
 	k_mutex_unlock(&vr->lock);
 }
@@ -644,6 +655,11 @@ void *z_impl_vregion_alloc_align(struct vregion *vr,
 		alignment = PLATFORM_DCACHE_ALIGN;
 
 	k_mutex_lock(&vr->lock, K_FOREVER);
+
+	if (vr->interim_pending) {
+		vr->interim_pending = false;
+		interim_heap_init(vr);
+	}
 
 	switch (vr->type) {
 	case VREGION_MEM_TYPE_INTERIM:
