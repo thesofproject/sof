@@ -352,6 +352,11 @@ AEC_RATE=16000,AEC_HW_CONF_ID=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-no
 AEC_RATE=16000,AEC_HW_CONF_ID=1,MIC_CH=1,REF_CH=2,MIC_CH_CFG=0,MIC_CH_MAP=0xFFFFFFF0,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec-webrtc-aec-2r1c.bin"
 
+# WebRTC AEC hybrid DMIC0 capture + SSP2 digital loopback (lbm_mode) echo reference
+"development/cavs-dmic-ssp-lbm-webrtc-aec\;sof-tgl-dmic-ssp-lbm-webrtc-aec\;PLATFORM=tgl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-dmic-ssp-lbm-webrtc-aec.bin"
+"development/cavs-dmic-ssp-lbm-webrtc-aec\;sof-ptl-dmic-ssp-lbm-webrtc-aec\;PLATFORM=ptl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-dmic-ssp-lbm-webrtc-aec.bin"
 
 # WebRTC NS2/RNNoise (48 kHz float) on TGL nocodec SSP
 "development/cavs-nocodec-webrtc-ns2\;sof-tgl-nocodec-webrtc-ns2\;PLATFORM=tgl,\
