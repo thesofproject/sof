@@ -415,7 +415,6 @@ target_include_directories(tflm_lib PRIVATE
 	${RUY_PATH}
 	${NN_HIFI_PATH}
 	${NN_HIFI_PATH}/include
-	${sof_top_dir}/posix/include
 )
 
 # TODO: Need to detect and add mul16/32 options.
