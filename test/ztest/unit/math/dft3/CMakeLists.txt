@@ -17,9 +17,6 @@ target_include_directories(app PRIVATE
 	${SOF_ROOT}/zephyr/include
 	${SOF_ROOT}/src/include
 	${SOF_ROOT}/src/platform/posix/include
-	# Reference test vectors are #included in place from the CMocka tree
-	# rather than copied, so both frameworks share identical data.
-	${SOF_ROOT}/test/cmocka/src/math/fft
 	${PROJECT_BINARY_DIR}/include/generated
 )
 

@@ -12,10 +12,7 @@
 #include <sof/math/icomplex32.h>
 #include <sof/math/fft.h>
 
-/* Reference test vectors shared with the legacy CMocka test. They are
- * #included in place from the CMocka tree (added to the include path in
- * CMakeLists.txt) so the exact same fixed-point data is exercised.
- */
+/* Reference test vectors, generated with ref_dft3.m */
 #include "ref_dft3_32.h"
 
 #include <stdint.h>
