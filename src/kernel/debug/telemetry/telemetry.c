@@ -76,6 +76,7 @@ static struct telemetry_perf_queue telemetry_perf_queue[CONFIG_MAX_CORE_COUNT];
 #define TELEMETRY_BG_REFRESH_PERIOD K_MSEC(1000)
 
 static struct k_work_delayable telemetry_bg_dwork;
+static struct k_spinlock tel_bg_lock;
 static bool telemetry_wnd_initialized;
 static bool telemetry_ext_ready;
 
@@ -89,6 +90,7 @@ struct telemetry_shared_state {
 #endif
 	uint32_t total_tick_counter;
 	uint16_t ll_task_count[SOF_TEL_MAX_CORES];
+	bool bg_paused;
 } __aligned(64);
 
 static struct telemetry_shared_state tel_state_storage __aligned(64);
@@ -1013,12 +1015,54 @@ void telemetry_refresh_cold_sections(void)
 	telemetry_seq_end(wnd);
 }
 
+static void telemetry_bg_reschedule(k_timeout_t delay)
+{
+	k_spinlock_key_t key = k_spin_lock(&tel_bg_lock);
+
+	if (telemetry_ext_ready && !tel_state()->bg_paused)
+		k_work_reschedule(&telemetry_bg_dwork, delay);
+
+	k_spin_unlock(&tel_bg_lock, key);
+}
+
 static void telemetry_bg_work_handler(struct k_work *work)
 {
 	(void)work;
+
+	if (tel_state()->bg_paused)
+		return;
+
 	telemetry_refresh_cold_sections();
-	if (telemetry_ext_ready)
-		k_work_reschedule(&telemetry_bg_dwork, TELEMETRY_BG_REFRESH_PERIOD);
+	telemetry_bg_reschedule(TELEMETRY_BG_REFRESH_PERIOD);
+}
+
+/* Pause or resume periodic cold-section refresh across D0ix policy changes. */
+static void telemetry_set_bg_paused(bool paused)
+{
+	k_spinlock_key_t key = k_spin_lock(&tel_bg_lock);
+
+	if (tel_state()->bg_paused != paused) {
+		tel_state()->bg_paused = paused;
+
+		if (telemetry_ext_ready) {
+			if (paused)
+				k_work_cancel_delayable(&telemetry_bg_dwork);
+			else
+				k_work_reschedule(&telemetry_bg_dwork, TELEMETRY_BG_REFRESH_PERIOD);
+		}
+	}
+
+	k_spin_unlock(&tel_bg_lock, key);
+}
+
+void telemetry_notify_d0ix_enabled(void)
+{
+	telemetry_set_bg_paused(true);
+}
+
+void telemetry_notify_d0ix_disabled(void)
+{
+	telemetry_set_bg_paused(false);
 }
 
 static void telemetry_ext_init(struct telemetry_wnd_data *wnd)
@@ -1274,7 +1318,7 @@ void telemetry_update(uint32_t begin_stamp, uint32_t current_stamp)
 		ticks = ++tel_state()->total_tick_counter;
 
 		if ((ticks & 0x3ff) == 0)
-			k_work_reschedule(&telemetry_bg_dwork, K_NO_WAIT);
+			telemetry_bg_reschedule(K_NO_WAIT);
 	}
 #endif
 }
@@ -1291,8 +1335,10 @@ static int telemetry_late_init(void)
 		return 0;
 
 	telemetry_ext_ready = true;
+	dcache_writeback_region((__sparse_force void __sparse_cache *)&telemetry_ext_ready,
+				sizeof(telemetry_ext_ready));
 	telemetry_refresh_cold_sections();
-	k_work_reschedule(&telemetry_bg_dwork, TELEMETRY_BG_REFRESH_PERIOD);
+	telemetry_bg_reschedule(TELEMETRY_BG_REFRESH_PERIOD);
 #endif
 	return 0;
 }

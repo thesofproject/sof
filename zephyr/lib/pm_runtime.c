@@ -10,6 +10,7 @@
 #include <user/trace.h>
 #include <sof_versions.h>
 #include <stdint.h>
+#include <sof/debug/telemetry/telemetry.h>
 #include <zephyr/pm/policy.h>
 #include <sof/kernel/ipc/driver.h>
 
@@ -70,6 +71,7 @@ void pm_runtime_enable(enum pm_runtime_context context, uint32_t index)
 	switch (context) {
 	case PM_RUNTIME_DSP:
 		pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+		telemetry_notify_d0ix_enabled();
 		tr_dbg(&power_tr, "removing prevent on d0i3 (lock is active=%d)",
 		       pm_policy_state_lock_is_active(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES));
 		break;
@@ -85,6 +87,7 @@ void pm_runtime_disable(enum pm_runtime_context context, uint32_t index)
 	case PM_RUNTIME_DSP:
 		tr_dbg(&power_tr, "putting prevent on d0i3");
 		pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+		telemetry_notify_d0ix_disabled();
 		break;
 	default:
 		break;
