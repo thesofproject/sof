@@ -108,6 +108,7 @@ struct tel_ppl_slot {
 };
 
 static struct tel_ppl_slot tel_ppl_slots[SOF_TEL_MAX_PIPELINES];
+static struct tel_ppl_slot tel_ppl_slots_staging[SOF_TEL_MAX_PIPELINES];
 #endif
 
 #ifdef CONFIG_SOF_TELEMETRY_DAIS
@@ -208,12 +209,12 @@ static void telemetry_update_pipelines_section(struct telemetry_wnd_data *wnd)
 	struct ipc *ipc = ipc_get();
 	struct sof_tel_ppl_section *psec = &wnd->ppl_sec;
 	struct sof_tel_hot_line0 *hot0 = telemetry_get_hot_line0();
-	struct tel_ppl_slot new_slots[SOF_TEL_MAX_PIPELINES];
+	struct tel_ppl_slot *new_slots = tel_ppl_slots_staging;
 	struct list_item *clist;
 	uint16_t ppl_cnt = 0;
 	uint16_t comp_cnt = 0;
 
-	memset(new_slots, 0, sizeof(new_slots));
+	memset(new_slots, 0, sizeof(tel_ppl_slots_staging));
 	memset(psec->core_sched, 0, sizeof(psec->core_sched));
 	for (int c = 0; c < MIN(CONFIG_MAX_CORE_COUNT, SOF_TEL_MAX_CORES); c++) {
 		uint16_t ll_tasks = tel_state()->ll_task_count[c];
@@ -825,6 +826,8 @@ struct tel_thread_collect_ctx {
 #endif
 };
 
+static struct tel_thread_collect_ctx tel_thd_collect_ctx;
+
 static void telemetry_thread_cb(const struct k_thread *cthread, void *user_data)
 {
 	struct tel_thread_collect_ctx *ctx = user_data;
@@ -901,8 +904,10 @@ static void telemetry_thread_cb(const struct k_thread *cthread, void *user_data)
 
 static void telemetry_collect_threads_section(struct sof_tel_thread_section *tsec)
 {
-	struct tel_thread_collect_ctx ctx = { .tsec = tsec };
+	struct tel_thread_collect_ctx *ctx = &tel_thd_collect_ctx;
 
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->tsec = tsec;
 	memset(tsec, 0, sizeof(*tsec));
 
 #ifdef CONFIG_THREAD_RUNTIME_STATS
@@ -926,7 +931,7 @@ static void telemetry_collect_threads_section(struct sof_tel_thread_section *tse
 	}
 #endif
 
-	k_thread_foreach_unlocked(telemetry_thread_cb, &ctx);
+	k_thread_foreach_unlocked(telemetry_thread_cb, ctx);
 	tsec->sample_seq = ++tel_thd_sample_seq;
 
 #ifdef CONFIG_THREAD_RUNTIME_STATS
@@ -934,13 +939,13 @@ static void telemetry_collect_threads_section(struct sof_tel_thread_section *tse
 		struct sof_tel_thread_info *ti = &tsec->threads[idx];
 		uint32_t delta_cyc = 0;
 
-		if (!ctx.has_stats[idx])
+		if (!ctx->has_stats[idx])
 			continue;
 
 		for (int i = 0; i < SOF_TEL_MAX_THREADS; i++) {
 			if (tel_prev_thread_cycles[i].valid &&
-			    tel_prev_thread_cycles[i].tid == ctx.threads[idx]) {
-				delta_cyc = (uint32_t)(ctx.exec_cycles[idx] -
+			    tel_prev_thread_cycles[i].tid == ctx->threads[idx]) {
+				delta_cyc = (uint32_t)(ctx->exec_cycles[idx] -
 						       tel_prev_thread_cycles[i].cycles);
 				break;
 			}
@@ -955,9 +960,9 @@ static void telemetry_collect_threads_section(struct sof_tel_thread_section *tse
 	}
 
 	for (uint16_t idx = 0; idx < tsec->thread_count; idx++) {
-		tel_prev_thread_cycles[idx].tid = ctx.threads[idx];
-		tel_prev_thread_cycles[idx].cycles = ctx.exec_cycles[idx];
-		tel_prev_thread_cycles[idx].valid = ctx.has_stats[idx];
+		tel_prev_thread_cycles[idx].tid = ctx->threads[idx];
+		tel_prev_thread_cycles[idx].cycles = ctx->exec_cycles[idx];
+		tel_prev_thread_cycles[idx].valid = ctx->has_stats[idx];
 	}
 	for (uint16_t idx = tsec->thread_count; idx < SOF_TEL_MAX_THREADS; idx++) {
 		tel_prev_thread_cycles[idx].tid = NULL;
