@@ -2,9 +2,6 @@
 
 add_subdirectory(component)
 add_subdirectory(pipeline)
-if(CONFIG_COMP_SEL)
-	add_subdirectory(selector)
-endif()
 if(CONFIG_COMP_IIR)
 	add_subdirectory(eq_iir)
 endif()
