@@ -40,13 +40,30 @@ else()
       else()
         set(_xtensa_target "intel_ace30_ptl")
       endif()
-      set(_sdk_cxx_dir "/home/lrg/zephyr-sdk-1.0.1/gnu/xtensa-${_xtensa_target}_zephyr-elf/xtensa-${_xtensa_target}_zephyr-elf")
 
-      target_include_directories(zephyr_interface SYSTEM BEFORE INTERFACE
-        $<$<COMPILE_LANGUAGE:CXX>:${_sdk_cxx_dir}/include/c++/14.3.0>
-        $<$<COMPILE_LANGUAGE:CXX>:${_sdk_cxx_dir}/include/c++/14.3.0/xtensa-${_xtensa_target}_zephyr-elf>
-        $<$<COMPILE_LANGUAGE:CXX>:${_sdk_cxx_dir}/include>
-      )
+      set(_sdk_cxx_dir "")
+      if(CMAKE_CXX_COMPILER)
+        get_filename_component(_cxx_bin_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        get_filename_component(_cxx_tc_dir "${_cxx_bin_dir}" DIRECTORY)
+        if(EXISTS "${_cxx_tc_dir}/xtensa-${_xtensa_target}_zephyr-elf/include/c++")
+          set(_sdk_cxx_dir "${_cxx_tc_dir}/xtensa-${_xtensa_target}_zephyr-elf")
+        endif()
+      endif()
+      if(NOT _sdk_cxx_dir AND DEFINED ENV{ZEPHYR_SDK_INSTALL_DIR})
+        set(_sdk_cxx_dir "$ENV{ZEPHYR_SDK_INSTALL_DIR}/gnu/xtensa-${_xtensa_target}_zephyr-elf/xtensa-${_xtensa_target}_zephyr-elf")
+      endif()
+
+      if(_sdk_cxx_dir)
+        file(GLOB _sdk_cxx_ver_dirs LIST_DIRECTORIES true "${_sdk_cxx_dir}/include/c++/*")
+        if(_sdk_cxx_ver_dirs)
+          list(GET _sdk_cxx_ver_dirs 0 _sdk_cxx_ver_dir)
+          target_include_directories(zephyr_interface SYSTEM BEFORE INTERFACE
+            $<$<COMPILE_LANGUAGE:CXX>:${_sdk_cxx_ver_dir}>
+            $<$<COMPILE_LANGUAGE:CXX>:${_sdk_cxx_ver_dir}/xtensa-${_xtensa_target}_zephyr-elf>
+            $<$<COMPILE_LANGUAGE:CXX>:${_sdk_cxx_dir}/include>
+          )
+        endif()
+      endif()
 
       # Do not link heavy libstdc++.a to prevent out-of-range relocations and unwinder bloat.
       # Minimal C++ runtime, new/delete, and exception stubs are provided in webrtc_aec3_shims.cpp.
