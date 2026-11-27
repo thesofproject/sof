@@ -339,9 +339,19 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-rtcaec.bin"
 "development/cavs-nocodec-webrtc-ns\;sof-tgl-nocodec-webrtc-ns\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-ns.bin"
 
-# WebRTC AECm echo canceller (dual SSP: mic + ref) on TGL nocodec
+# WebRTC AEC echo canceller (dual SSP lbm_mode: mic + ref) on TGL/PTL nocodec
 "development/cavs-nocodec-webrtc-aec\;sof-tgl-nocodec-webrtc-aec\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-aec.bin"
+"development/cavs-nocodec-webrtc-aec\;sof-ptl-nocodec-webrtc-aec\;PLATFORM=ptl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec-webrtc-aec.bin"
+"development/cavs-nocodec-webrtc-aec\;sof-tgl-nocodec-webrtc-aec-16k\;PLATFORM=tgl,\
+AEC_RATE=16000,AEC_HW_CONF_ID=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-aec-16k.bin"
+"development/cavs-nocodec-webrtc-aec\;sof-ptl-nocodec-webrtc-aec-16k\;PLATFORM=ptl,\
+AEC_RATE=16000,AEC_HW_CONF_ID=1,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec-webrtc-aec-16k.bin"
+"development/cavs-nocodec-webrtc-aec\;sof-ptl-nocodec-webrtc-aec-2r1c\;PLATFORM=ptl,\
+AEC_RATE=16000,AEC_HW_CONF_ID=1,MIC_CH=1,REF_CH=2,MIC_CH_CFG=0,MIC_CH_MAP=0xFFFFFFF0,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec-webrtc-aec-2r1c.bin"
+
 
 # WebRTC NS2/RNNoise (48 kHz float) on TGL nocodec SSP
 "development/cavs-nocodec-webrtc-ns2\;sof-tgl-nocodec-webrtc-ns2\;PLATFORM=tgl,\
