@@ -49,12 +49,34 @@ static int webrtc_aec_float_init(struct processing_module *mod)
 	return 0;
 }
 
+static int webrtc_aec_float_apply_cfg(struct processing_module *mod,
+					struct webrtc_aec_float_data *rd,
+					void *inst, int ch)
+{
+	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
+	AecConfig config;
+	int ret;
+
+	config.nlpMode = (cd->high_suppression || rd->suppression > 1) ? kAecNlpAggressive :
+			 (rd->suppression == 0) ? kAecNlpConservative : kAecNlpModerate;
+	config.skewMode = kAecFalse;
+	config.metricsMode = kAecFalse;
+	config.delay_logging = kAecFalse;
+
+	ret = WebRtcAec_set_config(inst, config);
+	if (ret) {
+		comp_err(mod->dev, "webrtc_aec: set_config ch%d failed %d", ch, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int webrtc_aec_float_configure(struct processing_module *mod, int sample_rate_hz,
 				      int filter_len_ms, int suppression, int num_channels)
 {
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
 	struct webrtc_aec_float_data *rd = cd->backend_data;
-	AecConfig config;
 	int c, ret;
 
 	/* Free previously allocated handles. */
@@ -84,22 +106,13 @@ static int webrtc_aec_float_configure(struct processing_module *mod, int sample_
 			goto err;
 		}
 
-		config.nlpMode = (cd->high_suppression || suppression > 1) ? kAecNlpAggressive :
-				 (suppression == 0) ? kAecNlpConservative : kAecNlpModerate;
-		config.skewMode = kAecFalse;
-		config.metricsMode = kAecFalse;
-		config.delay_logging = kAecFalse;
-
-		ret = WebRtcAec_set_config(rd->aec[c], config);
-		if (ret) {
-			comp_err(mod->dev, "webrtc_aec: set_config ch%d failed %d", c, ret);
+		if (webrtc_aec_float_apply_cfg(mod, rd, rd->aec[c], c))
 			goto err;
-		}
 	}
 
 	rd->num_channels = aec_channels;
-	comp_info(mod->dev, "webrtc_aec: Float AEC rate=%d nlpMode=%d ch=%d (stream_ch=%d)",
-		  sample_rate_hz, config.nlpMode, aec_channels, num_channels);
+	comp_info(mod->dev, "webrtc_aec: Float AEC rate=%d high_supp=%d ch=%d (stream_ch=%d)",
+		  sample_rate_hz, cd->high_suppression, aec_channels, num_channels);
 	return 0;
 
 err:
@@ -208,8 +221,11 @@ static int webrtc_aec_float_reset(struct processing_module *mod)
 		if (!rd->aec[c])
 			continue;
 		ret = WebRtcAec_Init(rd->aec[c], cd->proc_rate, cd->proc_rate);
-		if (ret)
+		if (ret) {
 			comp_warn(mod->dev, "webrtc_aec: reset ch%d failed %d", c, ret);
+			continue;
+		}
+		webrtc_aec_float_apply_cfg(mod, rd, rd->aec[c], c);
 	}
 	return 0;
 }

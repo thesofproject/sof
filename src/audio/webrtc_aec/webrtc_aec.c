@@ -203,6 +203,19 @@ __cold static int webrtc_aec_init(struct processing_module *mod)
 	return 0;
 }
 
+static void webrtc_aec_reset_resamplers(struct webrtc_aec_comp_data *cd)
+{
+	int c;
+
+	if (cd->needs_resample) {
+		for (c = 0; c < cd->channels; c++) {
+			WebRtcSpl_ResetResample48khzTo16khz((void *)&cd->mic_resamp[c]);
+			WebRtcSpl_ResetResample48khzTo16khz((void *)&cd->ref_resamp[c]);
+			WebRtcSpl_ResetResample16khzTo48khz((void *)&cd->out_resamp[c]);
+		}
+	}
+}
+
 __cold static int webrtc_aec_prepare(struct processing_module *mod,
 				     struct sof_source **sources, int num_of_sources,
 				     struct sof_sink **sinks, int num_of_sinks)
@@ -259,12 +272,7 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 	if (cd->rate == 48000) {
 		cd->proc_rate = 16000;
 		cd->needs_resample = true;
-		cd->frame_samples = WEBRTC_AEC_FRAME_SAMPLES_48K; /* 480 samples per 10 ms */
-		for (ret = 0; ret < cd->channels; ret++) {
-			WebRtcSpl_ResetResample48khzTo16khz((void *)&cd->mic_resamp[ret]);
-			WebRtcSpl_ResetResample48khzTo16khz((void *)&cd->ref_resamp[ret]);
-			WebRtcSpl_ResetResample16khzTo48khz((void *)&cd->out_resamp[ret]);
-		}
+		cd->frame_samples = WEBRTC_AEC_FRAME_SAMPLES_48K;
 	} else if (cd->rate == 16000 || cd->rate == 8000) {
 		cd->proc_rate = cd->rate;
 		cd->needs_resample = false;
@@ -274,6 +282,7 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 			 cd->rate);
 		return -EINVAL;
 	}
+	webrtc_aec_reset_resamplers(cd);
 
 	if ((mic_fmt != SOF_IPC_FRAME_S16_LE && mic_fmt != SOF_IPC_FRAME_S32_LE) ||
 	    (ref_fmt != SOF_IPC_FRAME_S16_LE && ref_fmt != SOF_IPC_FRAME_S32_LE)) {
@@ -385,23 +394,20 @@ static int webrtc_aec_process(struct processing_module *mod,
 		} else if (cd->needs_resample) {
 			/* 48 kHz -> 16 kHz -> AEC -> 48 kHz */
 			if (cd->backend->process_frame) {
-				int16_t mic16[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FRAME_SAMPLES_16K];
-				int16_t ref16[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FRAME_SAMPLES_16K];
-				int16_t out16[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FRAME_SAMPLES_16K];
 				const int16_t *mic_ptrs[WEBRTC_AEC_CHANNELS_MAX];
 				const int16_t *ref_ptrs[WEBRTC_AEC_CHANNELS_MAX];
 				int16_t *out_ptrs[WEBRTC_AEC_CHANNELS_MAX];
 
 				for (c = 0; c < cd->channels; c++) {
-					WebRtcSpl_Resample48khzTo16khz(cd->mic_buf[c], mic16[c],
+					WebRtcSpl_Resample48khzTo16khz(cd->mic_buf[c], cd->mic16[c],
 								      (void *)&cd->mic_resamp[c],
 								      cd->resamp_tmpmem);
-					WebRtcSpl_Resample48khzTo16khz(cd->ref_buf[c], ref16[c],
+					WebRtcSpl_Resample48khzTo16khz(cd->ref_buf[c], cd->ref16[c],
 								      (void *)&cd->ref_resamp[c],
 								      cd->resamp_tmpmem);
-					mic_ptrs[c] = mic16[c];
-					ref_ptrs[c] = ref16[c];
-					out_ptrs[c] = out16[c];
+					mic_ptrs[c] = cd->mic16[c];
+					ref_ptrs[c] = cd->ref16[c];
+					out_ptrs[c] = cd->out16[c];
 				}
 
 				ret = cd->backend->process_frame(mod, mic_ptrs, ref_ptrs, out_ptrs,
@@ -409,21 +415,17 @@ static int webrtc_aec_process(struct processing_module *mod,
 								 cd->channels);
 				if (ret) {
 					for (c = 0; c < cd->channels; c++)
-						memcpy(out16[c], mic16[c], sizeof(out16[c]));
+						memcpy(cd->out16[c], cd->mic16[c], sizeof(cd->out16[c]));
 				}
 
 				for (c = 0; c < cd->channels; c++) {
-					WebRtcSpl_Resample16khzTo48khz(out16[c],
+					WebRtcSpl_Resample16khzTo48khz(cd->out16[c],
 								      &cd->out_fifo[c][cd->buffered_out_frames],
 								      (void *)&cd->out_resamp[c],
 								      cd->resamp_tmpmem);
 				}
 			} else {
 				for (c = 0; c < cd->channels; c++) {
-					int16_t mic16[WEBRTC_AEC_FRAME_SAMPLES_16K];
-					int16_t ref16[WEBRTC_AEC_FRAME_SAMPLES_16K];
-					int16_t out16[WEBRTC_AEC_FRAME_SAMPLES_16K];
-
 					if (c > 0 && cd->channels > 1) {
 						/* Replicate processed ch0 to secondary mic channels */
 						memcpy(&cd->out_fifo[c][cd->buffered_out_frames],
@@ -432,23 +434,23 @@ static int webrtc_aec_process(struct processing_module *mod,
 						continue;
 					}
 
-					WebRtcSpl_Resample48khzTo16khz(cd->mic_buf[c], mic16,
+					WebRtcSpl_Resample48khzTo16khz(cd->mic_buf[c], cd->mic16[c],
 								      (void *)&cd->mic_resamp[c],
 								      cd->resamp_tmpmem);
-					WebRtcSpl_Resample48khzTo16khz(cd->ref_buf[c], ref16,
+					WebRtcSpl_Resample48khzTo16khz(cd->ref_buf[c], cd->ref16[c],
 								      (void *)&cd->ref_resamp[c],
 								      cd->resamp_tmpmem);
 
 					ret = cd->backend->process_ch(mod,
-								      mic16,
-								      ref16,
-								      out16,
+								      cd->mic16[c],
+								      cd->ref16[c],
+								      cd->out16[c],
 								      WEBRTC_AEC_FRAME_SAMPLES_16K,
 								      c);
 					if (ret)
-						memcpy(out16, mic16, sizeof(out16));
+						memcpy(cd->out16[c], cd->mic16[c], sizeof(cd->out16[c]));
 
-					WebRtcSpl_Resample16khzTo48khz(out16,
+					WebRtcSpl_Resample16khzTo48khz(cd->out16[c],
 								      &cd->out_fifo[c][cd->buffered_out_frames],
 								      (void *)&cd->out_resamp[c],
 								      cd->resamp_tmpmem);
@@ -539,6 +541,7 @@ static int webrtc_aec_reset(struct processing_module *mod)
 	for (c = 0; c < cd->channels; c++)
 		memset(cd->out_fifo[c], 0, sizeof(int16_t) * cd->frame_samples);
 	cd->buffered_out_frames = cd->frame_samples;
+	webrtc_aec_reset_resamplers(cd);
 
 	if (cd->backend->reset)
 		return cd->backend->reset(mod);

@@ -46,12 +46,33 @@ static int webrtc_aec_real_init(struct processing_module *mod)
 	return 0;
 }
 
+static int webrtc_aec_real_apply_cfg(struct processing_module *mod,
+				       struct webrtc_aec_real_data *rd,
+				       void *inst, int ch)
+{
+	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
+	AecmConfig config;
+	int ret;
+
+	config.cngMode  = (cd->high_suppression || rd->suppression > 0) ? AecmTrue : AecmFalse;
+	config.echoMode = cd->high_suppression ? 4 :
+			  (rd->filter_len_ms == 128) ? 4 :
+			  (rd->filter_len_ms == 64)  ? 3 :
+			  (rd->filter_len_ms == 32)  ? 2 : 3;
+	ret = WebRtcAecm_set_config(inst, config);
+	if (ret) {
+		comp_err(mod->dev, "webrtc_aec: set_config ch%d failed %d", ch, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int webrtc_aec_real_configure(struct processing_module *mod, int sample_rate_hz,
 				     int filter_len_ms, int suppression, int num_channels)
 {
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
 	struct webrtc_aec_real_data *rd = cd->backend_data;
-	AecmConfig config;
 	int c, ret;
 
 	/* Free previously allocated handles. */
@@ -80,21 +101,13 @@ static int webrtc_aec_real_configure(struct processing_module *mod, int sample_r
 			goto err;
 		}
 
-		config.cngMode         = (cd->high_suppression || suppression > 0) ? AecmTrue : AecmFalse;
-		config.echoMode        = cd->high_suppression ? 4 :
-					 (filter_len_ms == 128) ? 4 :
-					 (filter_len_ms == 64)  ? 3 :
-					 (filter_len_ms == 32)  ? 2 : 3;
-		ret = WebRtcAecm_set_config(rd->aecm[c], config);
-		if (ret) {
-			comp_err(mod->dev, "webrtc_aec: set_config ch%d failed %d", c, ret);
+		if (webrtc_aec_real_apply_cfg(mod, rd, rd->aecm[c], c))
 			goto err;
-		}
 	}
 
 	rd->num_channels = num_channels;
-	comp_info(mod->dev, "webrtc_aec: AECm rate=%d filter=%dms cng=%d echoMode=%d ch=%d",
-		  sample_rate_hz, filter_len_ms, config.cngMode, config.echoMode, num_channels);
+	comp_info(mod->dev, "webrtc_aec: AECm rate=%d filter=%dms high_supp=%d ch=%d",
+		  sample_rate_hz, filter_len_ms, cd->high_suppression, num_channels);
 	return 0;
 
 err:
@@ -171,8 +184,11 @@ static int webrtc_aec_real_reset(struct processing_module *mod)
 		if (!rd->aecm[c])
 			continue;
 		ret = WebRtcAecm_Init(rd->aecm[c], cd->proc_rate);
-		if (ret)
+		if (ret) {
 			comp_warn(mod->dev, "webrtc_aec: reset ch%d failed %d", c, ret);
+			continue;
+		}
+		webrtc_aec_real_apply_cfg(mod, rd, rd->aecm[c], c);
 	}
 	return 0;
 }
