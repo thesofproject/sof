@@ -6,7 +6,7 @@
 
 function ref_dft3()
 
-	path(path(), '../../../m');
+	path(path(), '../../../../cmocka/m');
 	opt.describe = export_get_git_describe();
 
 	N = 3;
