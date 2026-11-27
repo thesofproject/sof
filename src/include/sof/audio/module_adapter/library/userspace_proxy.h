@@ -59,6 +59,8 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 /**
  * Destroy userspace module proxy
  *
+ * Also destroys the module's memory domain, so its DP thread must be terminated first.
+ *
  * @param drv - pointer to component driver
  * @param user_ctx - pointer to userspace module context
  */

@@ -64,6 +64,8 @@ static inline int user_worker_get(void)
 
 static inline void user_worker_put(void) { }
 
+static inline void user_worker_leave_domain(struct k_mem_domain *domain) { }
+
 struct k_work_user *userspace_proxy_register_ipc_handler(struct processing_module *mod,
 							 struct k_event *event)
 {
@@ -139,6 +141,23 @@ static void user_worker_put(void)
 		k_thread_abort(worker.thread_id);
 		user_stack_free(worker.stack_ptr);
 	}
+}
+
+/* Move the worker out of the domain it served last, before that domain is destroyed. */
+static void user_worker_leave_domain(struct k_mem_domain *domain)
+{
+	int ret;
+
+	if (!worker.reference_count || worker.thread_id->mem_domain_info.mem_domain != domain)
+		return;
+
+	/* The worker must not run while its memory domain is reconfigured. */
+	k_thread_suspend(worker.thread_id);
+	ret = k_mem_domain_add_thread(&k_mem_domain_default, worker.thread_id);
+	k_thread_resume(worker.thread_id);
+
+	if (ret < 0)
+		tr_err(&userspace_proxy_tr, "Failed to move worker out of domain, error: %d", ret);
 }
 #endif
 
@@ -418,6 +437,28 @@ static int userspace_proxy_start_agent(struct userspace_context *user_ctx,
 	return 0;
 }
 
+/* Free a memory domain. No thread other than the worker may still be a member. */
+static void userspace_proxy_domain_free(struct k_mem_domain *domain)
+{
+	int ret;
+
+	user_worker_leave_domain(domain);
+
+	/* drop messages still queued by the module, before the domain is reused */
+	ipc_user_msg_purge(domain);
+
+	/* Zephyr walks its list of initialized domains on every map and unmap. */
+	ret = k_mem_domain_deinit(domain);
+	if (ret == -EBUSY) {
+		/* A thread still runs in the domain, so it can only be leaked. */
+		tr_err(&userspace_proxy_tr, "Memory domain %p is still in use, not freed",
+		       (void *)domain);
+		return;
+	}
+
+	rfree(domain);
+}
+
 int userspace_proxy_create(struct userspace_context **user_ctx, const struct comp_driver *drv,
 			   const struct sof_man_module *manifest, system_agent_start_fn agent_fn,
 			   const struct system_agent_params *agent_params,
@@ -435,8 +476,10 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 
 	context->dp_event = NULL;
 
-	/* Allocate memory domain struct */
-	domain = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*domain));
+	/* Allocate memory domain struct. It is a kernel object shared between cores: Zephyr
+	 * links it into a list that is walked on any core mapping or unmapping memory.
+	 */
+	domain = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*domain));
 	if (!domain) {
 		ret = -ENOMEM;
 		goto error;
@@ -485,7 +528,7 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 error_work_item:
 	user_work_item_free(context, drv->user_heap);
 error_dom:
-	rfree(domain);
+	userspace_proxy_domain_free(domain);
 error:
 	k_heap_free(drv->user_heap, context);
 	return ret;
@@ -495,9 +538,7 @@ void userspace_proxy_destroy(const struct comp_driver *drv, struct userspace_con
 {
 	tr_dbg(&userspace_proxy_tr, "userspace proxy destroy");
 	user_work_item_free(user_ctx, drv->user_heap);
-	/* drop messages still queued by the module, before the domain is reused */
-	ipc_user_msg_purge(user_ctx->comp_dom);
-	rfree(user_ctx->comp_dom);
+	userspace_proxy_domain_free(user_ctx->comp_dom);
 	k_heap_free(drv->user_heap, user_ctx);
 }
 
@@ -622,29 +663,27 @@ static int userspace_proxy_reset(struct processing_module *mod)
  * Queue module free() operation and return its result.
  * Module free() code is performed in user workqueue.
  *
+ * The proxy is destroyed later by the library manager, once the DP thread is terminated.
+ *
  * @param mod - pointer to processing module structure.
  * @return 0 for success, error otherwise.
  */
 static int userspace_proxy_free(struct processing_module *mod)
 {
 	struct module_params *params = user_work_get_params(mod->user_ctx);
-	int ret = 0;
+	int ret;
 
 	comp_dbg(mod->dev, "start");
 
-	if (mod->user_ctx->interface->free) {
-		ret = userspace_proxy_invoke(mod->user_ctx, USER_PROXY_MOD_CMD_FREE, false);
-		if (ret)
-			return ret;
-		ret = params->status;
-	}
+	if (!mod->user_ctx->interface->free)
+		return 0;
 
-	/* Destroy workqueue if this was last active userspace module */
-	userspace_proxy_destroy(mod->dev->drv, mod->user_ctx);
-	mod->user_ctx = NULL;
+	ret = userspace_proxy_invoke(mod->user_ctx, USER_PROXY_MOD_CMD_FREE, false);
+	if (ret)
+		return ret;
 
 	/* Return status from module code operation. */
-	return ret;
+	return params->status;
 }
 
 /**
