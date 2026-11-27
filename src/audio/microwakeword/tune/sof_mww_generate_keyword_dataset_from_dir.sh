@@ -14,7 +14,7 @@
 #   5. Additive background noise mixing across a range of SNR levels (10-30 dB).
 #   6. Gaussian level / gain jitter across volume levels (-12 dB to +6 dB / peak target).
 #
-# Output layout (ready for sof_mfcc_extract_features.sh / sof_mww_train_pipeline.sh):
+# Output layout (ready for sof_mww_train_pcan.py):
 #   <out_root>/<label>/*.wav       augmented and clean 16 kHz 16-bit mono clips
 #   <out_root>/_raw/<label>/*.wav  clean resampled baseline clips
 #
@@ -61,7 +61,7 @@ Usage: $0 --src-dir <dir> [--label <name>] \\
                           Defaults to the basename of DIR or common file prefix.
   --keyword-dir [LBL:]DIR Combination argument specifying label and source dir.
   out_root                Dataset root; <label>/*.wav is produced under it,
-                          ready for sof_mfcc_extract_features.sh / sof_mww_train_pipeline.sh.
+                          ready for sof_mww_train_pcan.py.
 
 Optional env:
   MAX_SAMPLES, PERTURB_PER_UTT, PITCH_CENTS_MAX, TEMPO_MIN/MAX,
@@ -507,4 +507,4 @@ KW_ARGS=""
 for lbl in "${LABELS[@]}"; do
 	KW_ARGS+=" --keyword $lbl"
 done
-echo ">>> Next step: sof_mww_train_pipeline.sh$KW_ARGS $OUT_ROOT <feat_root> <out_dir>"
+echo ">>> Next step: sof_mww_train_pcan.py --wav-root $OUT_ROOT$KW_ARGS --name <name> --out-dir <out_dir>"

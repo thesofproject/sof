@@ -498,4 +498,4 @@ KW_ARGS=""
 for lbl in "${LABELS[@]}"; do
 	KW_ARGS+=" --keyword $lbl"
 done
-echo ">>> Next: sof_mww_train_pipeline.sh$KW_ARGS $OUT_ROOT <feat_root> <out_dir>"
+echo ">>> Next: sof_mww_train_pcan.py --wav-root $OUT_ROOT$KW_ARGS --name <name> --out-dir <out_dir>"
