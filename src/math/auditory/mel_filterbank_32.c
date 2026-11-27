@@ -11,6 +11,7 @@
 #include <sof/math/numbers.h>
 #include <sof/math/sqrt.h>
 #include <stdint.h>
+#include <rtos/symbol.h>
 
 static inline uint32_t mel_sqrt32(uint32_t num)
 {
@@ -137,3 +138,4 @@ void psy_apply_mel_filterbank_32(struct psy_mel_filterbank *fb, struct icomplex3
 {
 	psy_apply_mel_filterbank_with_linear_32(fb, fft_out, power_spectra, mel_log, NULL, bitshift);
 }
+EXPORT_SYMBOL(psy_apply_mel_filterbank_32);

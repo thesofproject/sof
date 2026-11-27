@@ -12,6 +12,7 @@
 #include <sof/math/trig.h>
 #include <errno.h>
 #include <stdint.h>
+#include <rtos/symbol.h>
 
 #define PI_Q29 Q_CONVERT_FLOAT(3.1415926536, 29)
 #define TWO_PI_Q24 Q_CONVERT_FLOAT(6.2831853072, 24)
@@ -78,6 +79,7 @@ int mod_dct_initialize_16(struct processing_module *mod, struct dct_plan_16 *dct
 
 	return 0;
 }
+EXPORT_SYMBOL(mod_dct_initialize_16);
 
 int mod_dct_free_16(struct processing_module *mod, struct dct_plan_16 *dct)
 {

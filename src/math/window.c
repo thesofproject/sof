@@ -11,6 +11,7 @@
 #include <sof/math/window.h>
 #include <errno.h>
 #include <stdint.h>
+#include <rtos/symbol.h>
 
 #define WIN_ONE_Q15 INT16_MAX
 #define WIN_ONE_Q31 INT32_MAX
@@ -41,6 +42,7 @@ void win_rectangular_16b(int16_t *win, int length)
 	for (i = 0; i < length; i++)
 		win[i] = WIN_ONE_Q15;
 }
+EXPORT_SYMBOL(win_rectangular_16b);
 
 void win_rectangular_32b(int32_t *win, int length)
 {
@@ -76,6 +78,7 @@ void win_blackman_16b(int16_t win[], int length, int16_t a0)
 		win[n] = sat_int16(val);
 	}
 }
+EXPORT_SYMBOL(win_blackman_16b);
 
 void win_blackman_32b(int32_t win[], int length, int32_t a0)
 {
@@ -118,6 +121,7 @@ void win_hann_16b(int16_t win[], int length)
 		win[n] = sat_int16(val);
 	}
 }
+EXPORT_SYMBOL(win_hann_16b);
 
 void win_hann_32b(int32_t win[], int length)
 {
@@ -152,6 +156,7 @@ void win_hamming_16b(int16_t win[], int length)
 		win[n] = sat_int16(Q_SHIFT_RND(val, 30, 15));
 	}
 }
+EXPORT_SYMBOL(win_hamming_16b);
 
 void win_hamming_32b(int32_t win[], int length)
 {
@@ -195,3 +200,4 @@ void win_povey_16b(int16_t win[], int length)
 		win[n] = sat_int16(Q_SHIFT_RND(x4, 20, 15));
 	}
 }
+EXPORT_SYMBOL(win_povey_16b);
