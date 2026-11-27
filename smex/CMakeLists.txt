@@ -30,8 +30,3 @@ target_include_directories(smex PRIVATE
 	"${SOF_ROOT_SOURCE_DIRECTORY}/src/include"
 	"${SOF_ROOT_SOURCE_DIRECTORY}/tools/rimage/src/include"
 )
-
-# TODO: smex should not need RTOS headers: FIX.
-target_include_directories(smex PRIVATE
-	"${SOF_ROOT_SOURCE_DIRECTORY}/posix/include"
-)
