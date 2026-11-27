@@ -72,14 +72,16 @@ struct webrtc_aec_backend {
 	int (*init)(struct processing_module *mod);
 
 	/**
-	 * Open/configure AECm state. Called from prepare().
-	 * @sample_rate_hz:  8000 or 16000
-	 * @filter_len_ms:   adaptive filter length (32/64/128)
-	 * @suppression:     CNG level 0..2
-	 * @num_channels:    mic and ref channel count (same; AECm runs per-ch)
+	 * Open/configure AEC state. Called from prepare().
+	 * @sample_rate_hz:   8000 or 16000
+	 * @filter_len_ms:    adaptive filter length (32/64/128)
+	 * @suppression:      CNG / NLP suppression level 0..2
+	 * @num_mic_channels: microphone / output channel count
+	 * @num_ref_channels: echo reference channel count
 	 */
 	int (*configure)(struct processing_module *mod, int sample_rate_hz,
-			 int filter_len_ms, int suppression, int num_channels);
+			 int filter_len_ms, int suppression,
+			 int num_mic_channels, int num_ref_channels);
 
 	/* Runtime update of suppression / echo mode. */
 	int (*set_suppression)(struct processing_module *mod, bool high_suppression);
@@ -90,24 +92,28 @@ struct webrtc_aec_backend {
 	 * @mic:  mic input S16 samples (frame_samples)
 	 * @ref:  echo reference S16 samples (frame_samples)
 	 * @out:  denoised output S16 samples (frame_samples)
-	 * @ch:   channel index (for multi-channel instances)
+	 * @ch:   mic channel index (for multi-channel instances)
 	 */
 	int (*process_ch)(struct processing_module *mod,
 			  const int16_t *mic, const int16_t *ref, int16_t *out,
 			  int frame_samples, int ch);
 
 	/**
-	 * Process complete multi-channel 10 ms frame.
+	 * Process complete multi-channel 10 ms frame (supports asymmetric R x C).
 	 * If provided, called instead of per-channel process_ch loop.
-	 * @mic:  array of mic channel pointers
-	 * @ref:  array of echo reference channel pointers
-	 * @out:  array of output channel pointers
+	 * @mic:               array of mic channel pointers (num_mic_channels)
+	 * @ref:               array of echo reference channel pointers (num_ref_channels)
+	 * @out:               array of output channel pointers (num_mic_channels)
+	 * @frame_samples:     samples per channel at proc_rate
+	 * @num_mic_channels:  number of mic/output channels
+	 * @num_ref_channels:  number of echo reference channels
 	 */
 	int (*process_frame)(struct processing_module *mod,
 			     const int16_t *const *mic,
 			     const int16_t *const *ref,
 			     int16_t *const *out,
-			     int frame_samples, int num_channels);
+			     int frame_samples,
+			     int num_mic_channels, int num_ref_channels);
 
 	/* Reset adaptive filters (keep configuration). Called from reset(). */
 	int (*reset)(struct processing_module *mod);
@@ -118,10 +124,6 @@ struct webrtc_aec_backend {
 
 /**
  * struct webrtc_aec_comp_data - webrtc_aec module private data.
- *
- * All buffers are S16 because AECm is a fixed-point Q15 algorithm.
- * We do S32→S16 downshift on input and S16→S32 upshift on output when
- * the pipeline format is S32.
  */
 struct webrtc_aec_comp_data {
 	const struct webrtc_aec_backend *backend;
@@ -130,15 +132,18 @@ struct webrtc_aec_comp_data {
 	/* Runtime ALSA mixer controls */
 	bool enabled;          /* master bypass switch (WEBRTC_AEC_CTL_ID_ENABLE) */
 	bool high_suppression; /* suppression switch (WEBRTC_AEC_CTL_ID_HIGH_SUPPRESSION) */
+	bool downmix_ref;      /* downmix multi-ch ref to mono before backend */
 
-	/* Source routing (resolved in prepare). */
+	/* Source routing (resolved in prepare / process). */
 	int mic_src;          /* index into sources[] for microphone */
 	int ref_src;          /* index into sources[] for echo reference */
 
 	/* Negotiated format. */
 	int rate;             /* pipeline sample rate (Hz) */
-	int proc_rate;        /* AECm processing rate (8000 or 16000 Hz) */
-	int channels;
+	int proc_rate;        /* AEC processing rate (8000 or 16000 Hz) */
+	int mic_channels;     /* microphone / output channel count */
+	int ref_channels;     /* playback reference channel count */
+	int effective_ref_ch; /* ref channels fed to backend (1 if downmixed) */
 	int mic_frame_bytes;  /* bytes per pipeline frame on mic input */
 	int ref_frame_bytes;  /* bytes per pipeline frame on ref input */
 	int out_frame_bytes;

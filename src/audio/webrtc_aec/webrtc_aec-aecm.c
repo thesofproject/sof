@@ -69,7 +69,8 @@ static int webrtc_aec_real_apply_cfg(struct processing_module *mod,
 }
 
 static int webrtc_aec_real_configure(struct processing_module *mod, int sample_rate_hz,
-				     int filter_len_ms, int suppression, int num_channels)
+				     int filter_len_ms, int suppression,
+				     int num_mic_channels, int num_ref_channels)
 {
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
 	struct webrtc_aec_real_data *rd = cd->backend_data;
@@ -86,7 +87,8 @@ static int webrtc_aec_real_configure(struct processing_module *mod, int sample_r
 	rd->filter_len_ms = filter_len_ms;
 	rd->suppression   = suppression;
 
-	for (c = 0; c < num_channels; c++) {
+	/* AECm is single-channel integer Q15, so instantiate one handle per mic channel. */
+	for (c = 0; c < num_mic_channels; c++) {
 		rd->aecm[c] = WebRtcAecm_Create();
 		if (!rd->aecm[c]) {
 			comp_err(mod->dev, "webrtc_aec: WebRtcAecm_Create() failed ch%d", c);
@@ -105,13 +107,14 @@ static int webrtc_aec_real_configure(struct processing_module *mod, int sample_r
 			goto err;
 	}
 
-	rd->num_channels = num_channels;
-	comp_info(mod->dev, "webrtc_aec: AECm rate=%d filter=%dms high_supp=%d ch=%d",
-		  sample_rate_hz, filter_len_ms, cd->high_suppression, num_channels);
+	rd->num_channels = num_mic_channels;
+	comp_info(mod->dev, "webrtc_aec: AECm rate=%d filter=%dms high_supp=%d mic_ch=%d ref_ch=%d",
+		  sample_rate_hz, filter_len_ms, cd->high_suppression,
+		  num_mic_channels, num_ref_channels);
 	return 0;
 
 err:
-	for (c = 0; c < num_channels; c++) {
+	for (c = 0; c < num_mic_channels; c++) {
 		if (rd->aecm[c]) {
 			WebRtcAecm_Free(rd->aecm[c]);
 			rd->aecm[c] = NULL;
@@ -155,6 +158,11 @@ static int webrtc_aec_real_process_ch(struct processing_module *mod,
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
 	struct webrtc_aec_real_data *rd = cd->backend_data;
 	int ret;
+
+	if (ch >= rd->num_channels || !rd->aecm[ch]) {
+		memcpy(out, mic, (size_t)frame_samples * sizeof(int16_t));
+		return 0;
+	}
 
 	/* Queue the far-end (reference/playback) frame first. */
 	ret = WebRtcAecm_BufferFarend(rd->aecm[ch], ref, frame_samples);
