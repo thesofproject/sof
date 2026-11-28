@@ -30,7 +30,8 @@ add_custom_command(
 	COMMAND
 	${PYTHON_EXECUTABLE} ${TOPDIR}/scripts/gen-uuid-reg.py
 	                     ${TOPDIR}/uuid-registry.txt
-			     ${UUID_REG_H})
+			     ${UUID_REG_H}
+	DEPENDS ${TOPDIR}/uuid-registry.txt)
 
 add_custom_target(uuid_reg_h DEPENDS ${UUID_REG_H})
 

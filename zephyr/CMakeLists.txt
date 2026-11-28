@@ -41,11 +41,12 @@ previously added LLEXT module for the establishment of a dependency chain."
 # Build an LLEXT module. Provice a module name, a list of sources and an address
 # of the .text section as arguments.
 function(sof_llext_build module)
-	set(multi_args SOURCES INCLUDES CFLAGS LIBS LIBS_PATH)
+	set(options)
+	set(multi_args SOURCES INCLUDES CFLAGS LIBS LIBS_PATH LINK_OPTIONS)
 	set(single_args LIB)
 	cmake_parse_arguments(PARSE_ARGV 1 SOF_LLEXT "${options}" "${single_args}" "${multi_args}")
 
-	cmake_path(SET SOF_BASE NORMALIZE ${APPLICATION_SOURCE_DIR}/..)
+	cmake_path(SET SOF_BASE NORMALIZE ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/..)
 
 	add_llext_target(${module}
 		OUTPUT  ${PROJECT_BINARY_DIR}/${module}_llext/${module}.llext
@@ -107,6 +108,11 @@ function(sof_llext_build module)
 		set(EXTRA_LINKER_PARAMS ${EXTRA_LINKER_PARAMS} -L${path})
 	endforeach()
 
+	foreach(opt ${SOF_LLEXT_LINK_OPTIONS})
+		llext_link_options(${module} ${opt})
+		set(EXTRA_LINKER_PARAMS ${EXTRA_LINKER_PARAMS} ${opt})
+	endforeach()
+
 	get_target_property(proc_in_file ${module} lib_output)
 	get_target_property(proc_out_file ${module} pkg_input)
 	get_target_property(proc_pkg_file ${module} pkg_output)
@@ -117,6 +123,7 @@ function(sof_llext_build module)
 		add_dependencies(${module}_llext_proc ${last_target})
 	endif()
 	set_property(GLOBAL PROPERTY SOF_LLEXT_LAST_TARGET ${module})
+	set_property(GLOBAL APPEND PROPERTY SOF_LLEXT_ALL_TARGETS ${module})
 
 	add_llext_command(TARGET ${module}
 		POST_BUILD
@@ -701,5 +708,13 @@ endif()
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)
 sof_append_relative_path_definitions(sof_kernel)
+
+# Ensure all LLEXT module objects wait for generated uuid-registry.h before compiling.
+get_property(_all_llexts GLOBAL PROPERTY SOF_LLEXT_ALL_TARGETS)
+if(_all_llexts)
+	foreach(_mod IN LISTS _all_llexts)
+		add_dependencies(${_mod}_llext_lib uuid_reg_h)
+	endforeach()
+endif()
 
 endif() # CONFIG_SOF_FULL_ZEPHYR_APPLICATION
