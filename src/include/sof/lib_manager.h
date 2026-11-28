@@ -222,6 +222,26 @@ void lib_manager_get_instance_bss_address(uint32_t instance_id,
  */
 int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type);
 
+/**
+ * \brief Unload a previously loaded external library.
+ *
+ * \param[in] lib_id Library ID to unload (1..LIB_MANAGER_MAX_LIBS - 1).
+ *
+ * Unregisters codec capabilities, unloads any cached LLEXT contexts, and frees
+ * library storage when no module instance is active.
+ *
+ * \return 0 on success, negative error code on failure (-EBUSY if in use).
+ */
+#ifdef CONFIG_LIBRARY_MANAGER
+int lib_manager_unload_library(uint32_t lib_id);
+#else
+static inline int lib_manager_unload_library(uint32_t lib_id)
+{
+	(void)lib_id;
+	return -ENOTSUP;
+}
+#endif
+
 struct userspace_context;
 /*
  * \brief Allocate the module and start the agent if needed

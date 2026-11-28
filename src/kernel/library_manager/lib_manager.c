@@ -1388,3 +1388,54 @@ cleanup:
 
 	return ret;
 }
+
+/* Unload an idle LLEXT library, releasing its ELF image and descriptor slot. */
+__cold int lib_manager_unload_library(uint32_t lib_id)
+{
+	struct ext_library *_ext_lib = ext_lib_get();
+	struct lib_manager_mod_ctx *ctx;
+	uint32_t module_id;
+	int ret;
+
+	assert_can_be_cold();
+
+	/* Validate library ID bounds and ensure library table is initialized. */
+	if (lib_id == 0 || lib_id >= LIB_MANAGER_MAX_LIBS || !_ext_lib) {
+		LOG_ERR("Invalid library id %u (ext_lib %p)", lib_id, _ext_lib);
+		return -EINVAL;
+	}
+
+	/* Ensure the requested library slot is currently populated. */
+	ctx = _ext_lib->desc[lib_id];
+	if (!ctx) {
+		LOG_ERR("Library id %u is not loaded", lib_id);
+		return -ENOENT;
+	}
+
+	/* Only LLEXT libraries can be safely unloaded at runtime. */
+	module_id = LIB_MANAGER_PACK_LIB_ID(lib_id);
+	if (ctx->load_type == SOF_MAN_MOD_TYPE_LLEXT ||
+	    ctx->load_type == SOF_MAN_MOD_TYPE_LLEXT_AUX) {
+		ret = llext_manager_remove_library(module_id);
+		if (ret < 0) {
+			LOG_ERR("Failed to remove LLEXT library id %u (mod %#x): %d",
+				lib_id, module_id, ret);
+			return ret;
+		}
+	} else {
+		LOG_ERR("Unsupported load type %u for unloading library id %u",
+			ctx->load_type, lib_id);
+		return -ENOTSUP;
+	}
+
+	/* Free the cached library binary buffer and descriptor entry. */
+	if (ctx->base_addr)
+		rfree(ctx->base_addr);
+
+	rfree(ctx);
+	_ext_lib->desc[lib_id] = NULL;
+
+	LOG_INF("unloaded library id: %u", lib_id);
+
+	return 0;
+}
