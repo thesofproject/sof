@@ -47,8 +47,5 @@ jobs:
   user-space-other-tools:
     uses: ./.github/workflows/tools.yml
 
-  cmocka-unit-tests:
-    uses: ./.github/workflows/unit-tests.yml
-
   zephyr-builds:
     uses: ./.github/workflows/zephyr.yml

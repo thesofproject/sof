@@ -96,7 +96,6 @@ zephyr/lib/regions_mm.c			@dabekjakub
 # dumb list of source files and generate too much noise.
 # /CMakeLists.txt			TODO
 #/*/CMakeLists.txt			TODO
-# /test/cmocka/CMakeLists.txt		TODO
 
 # There's a small enough number of files in tools/ and little
 # churn: keep it simple and take them all.

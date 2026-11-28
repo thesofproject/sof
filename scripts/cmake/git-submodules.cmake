@@ -38,8 +38,7 @@ if(GIT_FOUND AND EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/.git")
 "There are submodule changes, check git status and git diff\n${stdout}")
 		endif()
 
-	elseif(NOT BUILD_UNIT_TESTS AND
-	    NOT CONFIG_LIBRARY)
+	elseif(NOT CONFIG_LIBRARY)
 
 		message(FATAL_ERROR
 "${TOMLC99_MAKE} not found. You should have used 'git clone --recursive'. \

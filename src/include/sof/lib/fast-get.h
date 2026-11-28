@@ -30,7 +30,7 @@ struct mod_alloc_ctx;
  * SDK (CONFIG_LLEXT_TYPE_ELF_RELOCATABLE=n while
  * CONFIG_LLEXT_TYPE_ELF_SHAREDLIB=y).
  * For unit-testing full versions of fast_get() and fast_put() are checked by
- * test/ztest/unit/fast-get/ and test/cmocka/src/lib/fast-get/
+ * test/ztest/unit/fast-get/
  */
 #if (CONFIG_COLD_STORE_EXECUTE_DRAM &&					\
 	(CONFIG_LLEXT_TYPE_ELF_RELOCATABLE || !defined(LL_EXTENSION_BUILD))) || \

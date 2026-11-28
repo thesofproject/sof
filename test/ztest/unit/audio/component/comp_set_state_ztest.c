@@ -1,24 +1,26 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2018 Intel Corporation. All rights reserved.
+// Copyright(c) 2026 Intel Corporation.
 //
+// These contents may have been developed with support from one or more
+// Intel-operated generative artificial intelligence solutions.
+//
+// Converted from CMock to Ztest
+// Original tests from test/cmocka/src/audio/component/comp_set_state.c:
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
 
-#include <sof/audio/component.h>
-#include <errno.h>
+#include <zephyr/ztest.h>
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
+#include <sof/audio/component.h>
+#include <sof/common.h>
+
+#include <errno.h>
 #include <stdint.h>
-#include <cmocka.h>
-#include <rtos/sof.h>
 
 enum test_type {
 	SUCCEED = 0,
 	FAIL,
 	CORRECT_OUTPUT_STATE,
-
 };
 
 struct test_case {
@@ -42,7 +44,7 @@ enum {
 	NULL_STATE = -1
 };
 
-struct test_case test_cases[] = {
+static const struct test_case test_cases[] = {
 
 	/*succeed set state*/
 	TEST_CASE(SUCCEED,		COMP_STATE_PREPARE,
@@ -141,7 +143,7 @@ struct test_case test_cases[] = {
 		NULL_STATE),
 	TEST_CASE(FAIL,		COMP_STATE_PREPARE,	COMP_TRIGGER_PRE_RELEASE,
 		NULL_STATE),
-	
+
 	/*correct output state*/
 	TEST_CASE(CORRECT_OUTPUT_STATE,		COMP_STATE_PREPARE,
 		COMP_TRIGGER_PRE_START,	COMP_STATE_PRE_ACTIVE),
@@ -185,67 +187,68 @@ struct test_case test_cases[] = {
 		COMP_TRIGGER_PREPARE,	COMP_STATE_PREPARE),
 };
 
-static void test_audio_component_comp_set_state_succeed(struct test_case *tc)
+/**
+ * @brief Run comp_set_state() on a component in the input state of a test case.
+ * @param[in] tc Test case.
+ * @param[out] state State of the component after the call.
+ * @return Return value of comp_set_state().
+ */
+static int run_comp_set_state(const struct test_case *tc, uint16_t *state)
 {
-	struct comp_dev test_dev;
+	struct comp_dev test_dev = {
+		.state = tc->in_state,
+	};
+	int ret = comp_set_state(&test_dev, tc->cmd);
 
-	test_dev.state = tc->in_state;
+	*state = test_dev.state;
 
-	assert_int_equal(comp_set_state(&test_dev, tc->cmd), 0);
+	return ret;
 }
 
-static void test_audio_component_comp_set_state_correct_output_state(struct test_case *tc)
+/**
+ * @brief Verify that comp_set_state() accepts the valid state transitions
+ */
+ZTEST(audio_component_suite, test_audio_component_comp_set_state_succeed)
 {
-	struct comp_dev test_dev;
+	uint16_t state;
 
-	test_dev.state = tc->in_state;
-	comp_set_state(&test_dev, tc->cmd);
+	ARRAY_FOR_EACH_PTR(test_cases, tc) {
+		if (tc->type != SUCCEED)
+			continue;
 
-	assert_int_equal(test_dev.state, tc->out_state);
-}
-
-static void test_audio_component_comp_set_state_fail(struct test_case *tc)
-{
-	struct comp_dev test_drv;
-
-	test_drv.state = tc->in_state;
-	assert_int_equal(comp_set_state(&test_drv, tc->cmd), -EINVAL);
-}
-
-static void test_audio_component_comp_set_state(void **state)
-{
-	struct test_case *tc = *((struct test_case **) state);
-
-	switch (tc->type) {
-	case SUCCEED:
-		test_audio_component_comp_set_state_succeed(tc);
-		break;
-	case FAIL:
-		test_audio_component_comp_set_state_fail(tc);
-		break;
-	case CORRECT_OUTPUT_STATE:
-		test_audio_component_comp_set_state_correct_output_state(tc);
-		break;
+		zassert_equal(run_comp_set_state(tc, &state), 0, "%s", tc->name);
 	}
 }
 
-int main(void)
+/**
+ * @brief Verify that comp_set_state() rejects the invalid state transitions
+ */
+ZTEST(audio_component_suite, test_audio_component_comp_set_state_fail)
 {
-	struct CMUnitTest tests[ARRAY_SIZE(test_cases)];
+	uint16_t state;
 
-	int i;
+	ARRAY_FOR_EACH_PTR(test_cases, tc) {
+		if (tc->type != FAIL)
+			continue;
 
-	for (i = 0; i < ARRAY_SIZE(test_cases); i++) {
-		struct CMUnitTest *t = &tests[i];
-
-		t->name = test_cases[i].name;
-		t->test_func = test_audio_component_comp_set_state;
-		t->initial_state = &test_cases[i];
-		t->setup_func = NULL;
-		t->teardown_func = NULL;
-
+		zassert_equal(run_comp_set_state(tc, &state), -EINVAL, "%s", tc->name);
 	}
-	cmocka_set_message_output(CM_OUTPUT_TAP);
-
-	return cmocka_run_group_tests(tests, NULL, NULL);
 }
+
+/**
+ * @brief Verify the component state after comp_set_state()
+ */
+ZTEST(audio_component_suite, test_audio_component_comp_set_state_correct_output_state)
+{
+	uint16_t state;
+
+	ARRAY_FOR_EACH_PTR(test_cases, tc) {
+		if (tc->type != CORRECT_OUTPUT_STATE)
+			continue;
+
+		run_comp_set_state(tc, &state);
+		zassert_equal(state, tc->out_state, "%s", tc->name);
+	}
+}
+
+ZTEST_SUITE(audio_component_suite, NULL, NULL, NULL, NULL, NULL);

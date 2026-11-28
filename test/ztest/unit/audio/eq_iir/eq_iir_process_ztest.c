@@ -34,7 +34,7 @@
 
 #include <eq_iir/eq_iir.h>
 
-/* Shared with the remaining CMocka tests, from test/cmocka/include */
+/* Shared test signal, from test/ztest/unit/include */
 #include <cmocka_chirp_2ch.h>
 
 #include "cmocka_chirp_iir_ref_2ch.h"

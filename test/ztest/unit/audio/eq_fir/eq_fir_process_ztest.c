@@ -35,7 +35,7 @@
 
 #include <eq_fir/eq_fir.h>
 
-/* Shared with the remaining CMocka tests, from test/cmocka/include */
+/* Shared test signal, from test/ztest/unit/include */
 #include <cmocka_chirp_2ch.h>
 
 #include "cmocka_fir_ref.h"

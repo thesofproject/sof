@@ -21,7 +21,7 @@ target_include_directories(app PRIVATE
 	${SOF_ROOT}/src/platform/posix/include
 	${SOF_ROOT}/src/audio
 	${SOF_ROOT}/test/ztest/unit/common
-	${SOF_ROOT}/test/cmocka/include
+	${SOF_ROOT}/test/ztest/unit/include
 	${PROJECT_BINARY_DIR}/include/generated
 )
 
@@ -46,7 +46,7 @@ target_sources(app PRIVATE
 	${SOF_ROOT}/test/ztest/unit/common/mod_alloc.c
 	${SOF_ROOT}/test/ztest/unit/common/sof_context.c
 	${SOF_ROOT}/zephyr/lib/alloc.c
-	${SOF_ROOT}/test/cmocka/src/notifier_mocks.c
+	${SOF_ROOT}/test/ztest/unit/common/notifier_mocks.c
 	${SOF_ROOT}/src/math/fft/fft_common.c
 	${SOF_ROOT}/src/math/fft/fft_16.c
 	${SOF_ROOT}/src/math/fft/fft_16_hifi3.c
