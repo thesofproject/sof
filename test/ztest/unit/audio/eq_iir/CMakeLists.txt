@@ -24,8 +24,6 @@ target_include_directories(app PRIVATE
 	${SOF_ROOT}/src/audio
 	# cmocka_chirp_2ch.h, still shared with the remaining CMocka tests
 	${SOF_ROOT}/test/cmocka/include
-	# Reference data, only used by this test
-	${SOF_ROOT}/test/cmocka/src/audio/eq_iir
 	${PROJECT_BINARY_DIR}/include/generated
 )
 
