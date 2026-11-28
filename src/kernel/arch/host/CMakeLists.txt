@@ -24,6 +24,4 @@ target_compile_options(sof_options INTERFACE -g -O3 -fPIC -DPIC -std=c99 -std=gn
   -Wno-int-to-pointer-cast -Wpointer-arith
   -DCONFIG_LIBRARY "-imacros${CONFIG_H_PATH}")
 
-if(NOT BUILD_UNIT_TESTS_HOST)
-	add_subdirectory(lib)
-endif()
+add_subdirectory(lib)

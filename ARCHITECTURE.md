@@ -15,7 +15,7 @@ The SOF firmware is built with a modular, layered architecture to support multip
 
 ### 2.1 OS Abstraction and RTOS
 *   **Zephyr RTOS:** Modern SOF extensively leverages the Zephyr RTOS for core operating system services, including thread scheduling, synchronization, logging, and hardware abstraction.
-*   **Host builds:** The host library, testbench and unit tests run on the host, with POSIX replacements for the RTOS headers (`posix/include`).
+*   **Host builds:** The host library and testbench run on the host, with POSIX replacements for the RTOS headers (`posix/include`).
 
 ### 2.2 Inter-Process Communication (IPC)
 The IPC subsystem is responsible for all communication between the Host OS and the DSP Firmware.

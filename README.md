@@ -27,7 +27,15 @@ The script will guide you through the process of installing system dependencies,
 
 ## Running the tests
 
-See [unit testing documentation](https://thesofproject.github.io/latest/developer_guides/unit_tests.html)
+The unit tests are Zephyr ztest suites in `test/ztest/unit`, run on
+`native_sim`. From the west workspace, as in CI
+(`.github/workflows/zephyr-unit-tests.yml`):
+
+```
+west twister --testsuite-root sof/test/ztest/unit/ --platform native_sim --enable-asan --enable-lsan
+```
+
+See also the [unit testing documentation](https://thesofproject.github.io/latest/developer_guides/unit_tests.html).
 
 ## Deployment
 

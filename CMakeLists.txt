@@ -13,19 +13,12 @@ endif()
 find_package(Python3 COMPONENTS Interpreter)
 set(PYTHON3 "${Python3_EXECUTABLE}")
 
-option(BUILD_UNIT_TESTS "Build unit tests" OFF)
-option(BUILD_UNIT_TESTS_HOST "Build unit tests for host" OFF)
 option(BUILD_COUNTERS "Enable build counter(s), timestamps and any other
 non-deterministic build features" OFF)
 
-if(BUILD_UNIT_TESTS AND NOT BUILD_UNIT_TESTS_HOST)
-	message(FATAL_ERROR "Unit tests can only be built for the host, "
-		"use -DBUILD_UNIT_TESTS_HOST=ON")
-endif()
-
 # The firmware is built with Zephyr (scripts/xtensa-build-zephyr.py), this
-# top-level project only builds the host library and the unit tests.
-if(NOT (CONFIG_LIBRARY OR BUILD_UNIT_TESTS_HOST OR CONFIG_ZEPHYR_POSIX))
+# top-level project only builds the host library.
+if(NOT (CONFIG_LIBRARY OR CONFIG_ZEPHYR_POSIX))
 	message(FATAL_ERROR "The XTOS firmware build has been removed, "
 		"use scripts/xtensa-build-zephyr.py to build the firmware")
 endif()
@@ -143,10 +136,4 @@ if(CONFIG_LIBRARY)
 
 	# rest of this file is not needed for host build
 	return()
-endif()
-
-if(BUILD_UNIT_TESTS)
-	enable_testing()
-	add_subdirectory(src/kernel/arch/${ARCH})
-	add_subdirectory(test)
 endif()

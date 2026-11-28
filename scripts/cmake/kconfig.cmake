@@ -15,12 +15,9 @@ set(INIT_CONFIG "initial.config" CACHE STRING "Initial .config file")
 # - ".' is the top source directory.
 # - "src/kernel/arch/host/configs" holds the library (testbench) configurations
 #   and is also used by defconfigs.cmake.
-# - "test/cmocka/configs" holds the unit test configurations.
 # - First found wins.
-# - If two directories ever use the same defconfig name then a full
-#   path must be used, e.g.: -DINIT_CONFIG=test/cmocka/configs/collision_defconfig
 
-set(init_config_search_list "." "src/kernel/arch/host/configs" "test/cmocka/configs")
+set(init_config_search_list "." "src/kernel/arch/host/configs")
 
 find_file(INIT_CONFIG_found
 	NAMES ${INIT_CONFIG}
