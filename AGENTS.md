@@ -5,13 +5,13 @@ This document outlines the rules AI agents must follow when checking out branche
 ## Development Standards
 
 ### Commitment and Sign-off Rules
-* **Commit Subject:** Must follow the format `subsystem: component: short description` matching the SOF project convention. Use the git history of the modified file(s) (`git log --oneline -10 -- <file>`) to determine the correct subsystem and component prefix. Examples:
+* **Commit Subject:** Must be 75 characters or fewer and follow the format `subsystem: component: short description` matching the SOF project convention. Use the git history of the modified file(s) (`git log --oneline -10 -- <file>`) to determine the correct subsystem and component prefix. Examples:
   * `audio: chain_dma: add user-space scheduling support`
   * `ipc4: handler: fix large config dispatch`
   * `schedule: zephyr_domain: add user-space LL thread`
+* **Patch Scope:** Keep each commit small and focused on one logical change (or tightly bound helpers), ensuring every commit compiles cleanly and is easy to review and bisect. Avoid bundling unrelated DSP, core, topology, test, or manifest changes into a single commit.
 * **Commit Body:** Should describe the changes in detail in the commit message body.
-* **Sign-off:** All commits must be signed off by the developer (`Signed-off-by: Name <email>`) using the identity from the local git config.
-* AI agents MUST NOT add Signed-off-by tags.
+* **Sign-off:** All commits must carry a `Signed-off-by: Name <email>` trailer matching the local git config identity (`git commit -s`). When an AI agent creates or updates commits on the developer's behalf, it SHOULD include `Signed-off-by:` using the developer's configured git identity (`git commit -s`) unless the developer instructs otherwise.
 
 ### Documentation Requirements
 * **Doxygen Comments:** Any new C code or features must include Doxygen comments.
