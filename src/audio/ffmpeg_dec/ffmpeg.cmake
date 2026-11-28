@@ -133,8 +133,18 @@ if(CONFIG_FFMPEG_BUILD_AVFILTER)
 endif()
 
 # --- 3. Derive the cross toolchain + per-compiler cross flags ---
+if(CONFIG_LLEXT_BUILD_PIC OR NOT CONFIG_COMP_FFMPEG_DEC STREQUAL "m")
+	set(_ff_pic_cflag "-fPIC")
+	set(_ff_pic_cfg "--enable-pic")
+else()
+	set(_ff_pic_cflag "-fno-pic -fno-pie")
+	set(_ff_pic_cfg "--disable-pic")
+endif()
 # GCC 14 (Zephyr SDK) promotes these to errors; FFmpeg 7.x trips them.
-set(_ff_extra_cflags "-fPIC -mlongcalls -mtext-section-literals -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration")
+set(_ff_extra_cflags "${_ff_pic_cflag} -mlongcalls -mtext-section-literals -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration")
+if(NOT CONFIG_FFMPEG_DEC_COLD_SPLIT)
+	set(_ff_extra_cflags "${_ff_extra_cflags} -ffunction-sections -fdata-sections -fvisibility=hidden")
+endif()
 
 # SOF decodes AAC-LC only. Tell the AAC decoder to skip the per-element SBR/PS
 # storage (~437 KiB of a ~554 KiB ExtChannelElement); LC never exercises SBR,
@@ -487,13 +497,13 @@ export PATH=${_tc_dir}:\$PATH
 CC=\"${_ff_cc}\"
 mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/shine-obj
 for f in ${SHINE_SRC}/src/lib/*.c; do
-	\$CC -O2 -fPIC -mlongcalls -mtext-section-literals -DSHINE_HAVE_BSWAP_H \\
+	\$CC -O2 ${_ff_pic_cflag} -ffunction-sections -fdata-sections -fvisibility=hidden -mlongcalls -mtext-section-literals -DSHINE_HAVE_BSWAP_H \\
 		-I${SHINE_SRC}/src/lib -c \"\$f\" \\
 		-o ${CMAKE_CURRENT_BINARY_DIR}/shine-obj/\$(basename \"\$f\").o
 done
 ${_ff_cross_prefix}ar rcs ${SHINE_INSTALL}/lib/libshine.a ${CMAKE_CURRENT_BINARY_DIR}/shine-obj/*.o
 cp ${SHINE_SRC}/src/lib/layer3.h ${SHINE_INSTALL}/include/shine/layer3.h
-\$CC -fPIC -c ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.c \\
+\$CC ${_ff_pic_cflag} -c ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.c \\
 	-o ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.o
 ")
 	add_custom_command(
@@ -583,7 +593,7 @@ export PATH=${_tc_dir}:\$PATH
 CC=\"${_ff_cc}\"
 mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-obj
 for f in ${_vo_aacenc_srclist}; do
-	\$CC -O2 -DNDEBUG -fPIC -mlongcalls -mtext-section-literals -D__unused= \\
+	\$CC -O2 -DNDEBUG ${_ff_pic_cflag} -ffunction-sections -fdata-sections -fvisibility=hidden -mlongcalls -mtext-section-literals -D__unused= \\
 		-I${VO_AACENC_SRC}/aacenc/inc \\
 		-I${VO_AACENC_SRC}/aacenc/basic_op \\
 		-I${VO_AACENC_SRC}/common/include \\
@@ -606,17 +616,40 @@ cp ${VO_AACENC_SRC}/common/include/*.h ${VO_AACENC_INSTALL}/include/vo-aacenc/
 endif()
 
 # --- 4. Configure + make + install (out-of-tree; source must be clean) ---
+set(FFMPEG_EXT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-build" CACHE INTERNAL "ffmpeg_ext build dir")
+set(FFMPEG_CC_FF "${_ff_cc_ff}" CACHE INTERNAL "ffmpeg C compiler command")
+set(FFMPEG_EXTRA_CFLAGS "${_ff_extra_cflags}" CACHE INTERNAL "ffmpeg extra cflags")
+set(FFMPEG_CROSS_PREFIX "${_ff_cross_prefix}" CACHE INTERNAL "ffmpeg cross prefix")
+
 set(_ff_byproducts
 	${FFMPEG_INSTALL_DIR}/lib/libavcodec.a
+	${FFMPEG_INSTALL_DIR}/lib/libavcodec_noco.a
 	${FFMPEG_INSTALL_DIR}/lib/libavutil.a
 	${FFMPEG_INSTALL_DIR}/lib/libswresample.a)
+set(_ff_noco_cmds
+	COMMAND ${CMAKE_COMMAND} -E copy
+		${FFMPEG_INSTALL_DIR}/lib/libavcodec.a
+		${FFMPEG_INSTALL_DIR}/lib/libavcodec_noco.a
+	COMMAND ${_ff_cross_prefix}ar d
+		${FFMPEG_INSTALL_DIR}/lib/libavcodec_noco.a
+		allcodecs.o parsers.o)
 if(CONFIG_FFMPEG_BUILD_AVFILTER)
-	list(APPEND _ff_byproducts ${FFMPEG_INSTALL_DIR}/lib/libavfilter.a)
+	list(APPEND _ff_byproducts
+		${FFMPEG_INSTALL_DIR}/lib/libavfilter.a
+		${FFMPEG_INSTALL_DIR}/lib/libavfilter_noco.a)
+	list(APPEND _ff_noco_cmds
+		COMMAND ${CMAKE_COMMAND} -E copy
+			${FFMPEG_INSTALL_DIR}/lib/libavfilter.a
+			${FFMPEG_INSTALL_DIR}/lib/libavfilter_noco.a
+		COMMAND ${_ff_cross_prefix}ar d
+			${FFMPEG_INSTALL_DIR}/lib/libavfilter_noco.a
+			allfilters.o)
 endif()
 
 ExternalProject_Add(ffmpeg_ext
 	DEPENDS ${_ff_shine_dep} ${_ff_vo_aacenc_dep}
 	SOURCE_DIR      "${SOF_FFMPEG_SRC_DIR}"
+	BINARY_DIR      "${FFMPEG_EXT_BUILD_DIR}"
 	BUILD_IN_SOURCE 0
 	CONFIGURE_COMMAND
 		${CMAKE_COMMAND} -E env ${_ff_cfg_env}
@@ -639,13 +672,14 @@ ExternalProject_Add(ffmpeg_ext
 			${_ff_dec_cfg}
 			${_ff_enc_cfg}
 			${_ff_shine_cfg}
-			--enable-small --enable-pic --enable-hardcoded-tables
+			--enable-small ${_ff_pic_cfg} --enable-hardcoded-tables
 			"--extra-cflags=${_ff_extra_cflags}"
 		${_ff_flacenc_prep}
 	BUILD_COMMAND
 		${CMAKE_COMMAND} -E env "PATH=${_tc_dir}:$ENV{PATH}" make -j 8
 	INSTALL_COMMAND make install
 		${_ff_cold_rename}
+		${_ff_noco_cmds}
 	BUILD_BYPRODUCTS
 		${_ff_byproducts}
 )

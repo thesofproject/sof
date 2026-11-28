@@ -1,0 +1,20 @@
+#include <tools/rimage/config/platform.toml>
+
+	REM # FFmpeg individual audio module config (@FFMPEG_MOD_NAME@)
+	[[module.entry]]
+	name = "@FFMPEG_MOD_MANIFEST_NAME@"
+	uuid = @FFMPEG_MOD_UUID_MACRO@
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "2"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
+	mod_cfg = [0, 0, 0, 0, 8192, 5000000, @FFMPEG_MOD_IBS@, @FFMPEG_MOD_OBS@, 0, 5000, 0]
+
+	index = __COUNTER__
+
+[module]
+count = __COUNTER__

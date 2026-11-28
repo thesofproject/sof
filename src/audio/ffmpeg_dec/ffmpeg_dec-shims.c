@@ -405,11 +405,18 @@ unsigned long strtoul(const char *nptr, char **endptr, int base)
 /*
  * Double-precision libm is provided by the real newlib math archive
  * (libnewlib_m.a, see llext/CMakeLists.txt). newlib math functions report
- * domain/range errors through *__errno().
+ * domain/range errors through *__errno(), and picolibc <errno.h> inline
+ * accesses *z_errno_wrap() from libavutil objects.
  */
+static int llext_errno;
+
 int *__errno(void)
 {
-	static int llext_errno;
+	return &llext_errno;
+}
+
+int *z_errno_wrap(void)
+{
 	return &llext_errno;
 }
 

@@ -420,4 +420,15 @@ void ffmpeg_dec_libc_bind(struct processing_module *mod);
 size_t ffmpeg_dec_heap_free(void);
 size_t ffmpeg_dec_heap_lastfail(void); /*DBG*/
 
+#ifndef FFMPEG_SECTION_RETAIN
+#ifdef __has_attribute
+#if __has_attribute(__retain__)
+#define FFMPEG_SECTION_RETAIN __attribute__((__retain__))
+#endif
+#endif
+#ifndef FFMPEG_SECTION_RETAIN
+#define FFMPEG_SECTION_RETAIN
+#endif
+#endif
+
 #endif /* __SOF_AUDIO_FFMPEG_DEC_H__ */

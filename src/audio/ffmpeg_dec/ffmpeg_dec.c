@@ -27,195 +27,35 @@
 #include <ipc4/notification.h>
 #endif
 
+#if !CONFIG_COMP_FFMPEG_DEC_MODULE
 /* UUID identifies the component. Registered in uuid-registry.txt. */
 SOF_DEFINE_REG_UUID(ffmpeg_dec);
+#endif
 
 /* Creates logging data for the component */
 LOG_MODULE_REGISTER(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
 
-#if CONFIG_IPC_MAJOR_4
-/*
- * Build the module notification the driver expects to unblock compress_drain().
- * The kernel's compress EOS handler (sof_ipc4_compr_drain_done) matches on the
- * COMPR "magic" event id, so use the same template the Cadence decoder does.
- */
-__cold struct ipc_msg *ffmpeg_dec_eos_notification_init(struct processing_module *mod)
-{
-	struct comp_ipc_config *ipc_config = &mod->dev->ipc_config;
-	struct sof_ipc4_notify_module_data *msg_data;
-	union ipc4_notification_header primary;
-	struct ipc_msg *msg;
-
-	primary.dat = 0;
-	primary.r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
-	primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
-	primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
-	primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
-
-	msg = mod_ipc_msg_w_ext_init(mod, primary.dat, 0, sizeof(*msg_data));
-	if (!msg)
-		return NULL;
-
-	msg_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
-	msg_data->instance_id = IPC4_INST_ID(ipc_config->id);
-	msg_data->module_id = IPC4_MOD_ID(ipc_config->id);
-	msg_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_COMPR_MAGIC_VAL;
-	msg_data->event_data_size = 0;
-
-	return msg;
-}
-
-/*
- * Report that the compress drain is complete: send the EOS notification (which
- * unblocks the host's compress_drain()) exactly once, and mark the sink so the
- * end-of-stream state propagates downstream to the DAI.
- */
-void ffmpeg_dec_signal_eos(struct processing_module *mod, struct sof_sink *sink)
-{
-	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
-
-	if (cd->eos_sent || !cd->eos_msg)
-		return;
-
-	ipc_msg_send(cd->eos_msg, NULL, false);
-	cd->eos_sent = true;
-	audio_buffer_set_eos(sof_audio_buffer_from_sink(sink));
-	comp_info(mod->dev, "EOS: compress drain complete");
-}
-#endif /* CONFIG_IPC_MAJOR_4 */
-
-/* Decoder-mode ops (compressed -> PCM). */
-int ffmpeg_dec_store_extradata(struct processing_module *mod,
-			       const uint8_t *data, size_t size)
-{
-	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-
-	if (!size)
-		return 0;
-
-	if (size > FFMPEG_DEC_MAX_EXTRADATA) {
-		comp_err(dev, "extradata too large: %zu", size);
-		return -EINVAL;
-	}
-
-	memcpy_s(cd->extradata, sizeof(cd->extradata), data, size);
-	cd->extradata_size = size;
-	comp_info(dev, "stored %zu bytes of codec extradata", size);
-	return 0;
-}
+#if defined(CONFIG_FFMPEG_ENC) && !defined(FFMPEG_MOD_ROLE_DEC)
+#define FFMPEG_DEC_ENABLE_ENC 1
+#endif
+#if defined(CONFIG_FFMPEG_FILTER) && !defined(FFMPEG_MOD_ROLE_DEC)
+#define FFMPEG_DEC_ENABLE_FILTER 1
+#endif
 
 static inline size_t ffmpeg_dec_min(size_t a, size_t b)
 {
 	return a < b ? a : b;
 }
 
-/* Copy @bytes out of a circular source buffer (starting at @src) into the
- * linear @dst, wrapping at the buffer end if necessary.
- */
-void ffmpeg_dec_copy_from_circular(void *dst, const void *src,
-				   const void *buf_start, size_t buf_size,
-				   size_t bytes)
-{
-	size_t to_end = (size_t)((const uint8_t *)buf_start + buf_size -
-				 (const uint8_t *)src);
-
-	if (to_end >= bytes) {
-		memcpy_s(dst, bytes, src, bytes);
-		return;
-	}
-	memcpy_s(dst, to_end, src, to_end);
-	memcpy_s((uint8_t *)dst + to_end, bytes - to_end,
-		 buf_start, bytes - to_end);
-}
-
-/* Copy @bytes from the linear @src into a circular sink buffer (starting at
- * @dst), wrapping at the buffer end if necessary.
- */
-void ffmpeg_dec_copy_to_circular(void *dst, void *buf_start,
-				 size_t buf_size, const void *src,
-				 size_t bytes)
-{
-	size_t to_end = (size_t)((uint8_t *)buf_start + buf_size -
-				 (uint8_t *)dst);
-
-	if (to_end >= bytes) {
-		memcpy_s(dst, bytes, src, bytes);
-		return;
-	}
-	memcpy_s(dst, to_end, src, to_end);
-	memcpy_s(buf_start, bytes - to_end,
-		 (const uint8_t *)src + to_end, bytes - to_end);
-}
-
-/*
- * Peek at the start of the stream and skip a leading ID3v2 tag if present.
- * Returns:
- *   1 if an ID3v2 tag was completely skipped (caller should re-check),
- *   0 if the stream does not start with an ID3v2 tag (cd->in_buf holds the
- *     peeked header bytes),
- *  -ENODATA while waiting for enough bytes to inspect or finish skipping.
- */
-int ffmpeg_dec_skip_id3v2(struct processing_module *mod, struct sof_source *src)
-{
-	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-	const void *sp, *sstart;
-	size_t sbytes, avail, req;
-	int ret;
-
-	/* Drain any pending skip bytes from a previous chunk */
-	if (cd->skip_bytes > 0) {
-		avail = source_get_data_available(src);
-		if (!avail)
-			return -ENODATA;
-		size_t to_skip = ffmpeg_dec_min(avail, cd->skip_bytes);
-
-		source_drop_data(src, to_skip);
-		cd->skip_bytes -= to_skip;
-		if (cd->skip_bytes > 0)
-			return -ENODATA;
-	}
-
-	avail = source_get_data_available(src);
-	if (avail < 4)
-		return -ENODATA;
-
-	req = ffmpeg_dec_min(avail, cd->in_buf_size);
-	ret = source_get_data(src, req, &sp, &sstart, &sbytes);
-	if (ret)
-		return ret;
-	ffmpeg_dec_copy_from_circular(cd->in_buf, sp, sstart, sbytes, req);
-	source_release_data(src, 0);
-
-	/* ID3v2 tag: 10-byte header with 28-bit syncsafe length */
-	if (memcmp(cd->in_buf, "ID3", 3) == 0) {
-		uint32_t tag;
-		size_t total_tag;
-
-		if (req < 10)
-			return -ENODATA;
-
-		tag = ((uint32_t)(cd->in_buf[6] & 0x7f) << 21) |
-		      ((uint32_t)(cd->in_buf[7] & 0x7f) << 14) |
-		      ((uint32_t)(cd->in_buf[8] & 0x7f) << 7) |
-		      (uint32_t)(cd->in_buf[9] & 0x7f);
-		total_tag = 10 + tag + ((cd->in_buf[5] & 0x10) ? 10 : 0);
-		comp_info(dev, "ID3v2 tag detected: %zu bytes", total_tag);
-
-		if (avail >= total_tag) {
-			source_drop_data(src, total_tag);
-			return 1;
-		}
-
-		source_drop_data(src, avail);
-		cd->skip_bytes = total_tag - avail;
-		return -ENODATA;
-	}
-
-	return 0;
-}
-
+#ifdef FFMPEG_MOD_ROLE_DEC
+#ifndef FFMPEG_MOD_BESPOKE
+#define FFMPEG_MOD_BESPOKE 0
+#endif
+extern const struct ffmpeg_dec_codec_ops FFMPEG_MOD_CODEC_OPS;
+static const struct ffmpeg_dec_codec_ops * const ffmpeg_dec_codecs[] = {
+	&FFMPEG_MOD_CODEC_OPS,
+};
+#else
 static const struct ffmpeg_dec_codec_ops * const ffmpeg_dec_codecs[] = {
 #if defined(CONFIG_FFMPEG_DEC_FLAC) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
 	&ffmpeg_dec_flac_ops,
@@ -263,6 +103,7 @@ static const struct ffmpeg_dec_codec_ops *ffmpeg_dec_find_codec_ops(enum ffmpeg_
 	}
 	return NULL;
 }
+#endif /* FFMPEG_MOD_ROLE_DEC */
 
 #if CONFIG_IPC_MAJOR_4
 static const struct ffmpeg_dec_codec_ops *
@@ -333,7 +174,7 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 		}
 
 		if (direction == SOF_IPC_STREAM_CAPTURE) {
-#if defined(CONFIG_FFMPEG_ENC)
+#ifdef FFMPEG_DEC_ENABLE_ENC
 			return ffmpeg_enc_mod_init(mod);
 #else
 			comp_err(dev, "capture (encode) requested but no encoders enabled");
@@ -345,14 +186,14 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 			return -EINVAL;
 		}
 		if (codec_params->id == SND_AUDIOCODEC_PCM) {
-#if defined(CONFIG_FFMPEG_FILTER)
+#ifdef FFMPEG_DEC_ENABLE_FILTER
 			return ffmpeg_af_mod_init(mod);
 #else
 			comp_err(dev, "PCM filter requested but no filters enabled");
 			return -ENOTSUP;
 #endif
 		}
-#if defined(CONFIG_FFMPEG_FILTER)
+#ifdef FFMPEG_DEC_ENABLE_FILTER
 	} else {
 		return ffmpeg_af_mod_init(mod);
 #endif
@@ -365,8 +206,13 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 
 	md->private = cd;
 	cd->backend = &ffmpeg_dec_backend;
+#ifdef FFMPEG_MOD_ROLE_DEC
+	cd->codec_ops = &FFMPEG_MOD_CODEC_OPS;
+	cd->codec = cd->codec_ops->id;
+#else
 	cd->codec = FFMPEG_DEC_DEFAULT_CODEC;
 	cd->codec_ops = ffmpeg_dec_find_codec_ops(cd->codec);
+#endif
 
 #if CONFIG_IPC_MAJOR_4
 	if (mod->priv.cfg.ext_data &&
@@ -481,12 +327,12 @@ static int ffmpeg_dec_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "entry");
 
-#if defined(CONFIG_FFMPEG_ENC)
+#ifdef FFMPEG_DEC_ENABLE_ENC
 	if (cd && cd->is_encoder)
 		return ffmpeg_enc_mod_prepare(mod, sources, num_of_sources,
 					      sinks, num_of_sinks);
 #endif
-#if defined(CONFIG_FFMPEG_FILTER)
+#ifdef FFMPEG_DEC_ENABLE_FILTER
 	if (cd && cd->is_filter)
 		return ffmpeg_af_mod_prepare(mod, sources, num_of_sources,
 					     sinks, num_of_sinks);
@@ -614,12 +460,12 @@ static bool ffmpeg_dec_is_ready_to_process(struct processing_module *mod,
 {
 	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
 
-#if defined(CONFIG_FFMPEG_ENC)
+#ifdef FFMPEG_DEC_ENABLE_ENC
 	if (cd && cd->is_encoder)
 		return ffmpeg_enc_is_ready_to_process(mod, sources, num_of_sources,
 						      sinks, num_of_sinks);
 #endif
-#if defined(CONFIG_FFMPEG_FILTER)
+#ifdef FFMPEG_DEC_ENABLE_FILTER
 	if (cd && cd->is_filter)
 		return ffmpeg_af_is_ready_to_process(mod, sources, num_of_sources,
 						     sinks, num_of_sinks);
@@ -687,12 +533,12 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 	size_t consumed = 0, produced = 0;
 	int ret;
 
-#if defined(CONFIG_FFMPEG_ENC)
+#ifdef FFMPEG_DEC_ENABLE_ENC
 	if (cd && cd->is_encoder)
 		return ffmpeg_enc_mod_process(mod, sources, num_of_sources,
 					      sinks, num_of_sinks);
 #endif
-#if defined(CONFIG_FFMPEG_FILTER)
+#ifdef FFMPEG_DEC_ENABLE_FILTER
 	if (cd && cd->is_filter)
 		return ffmpeg_af_mod_process(mod, sources, num_of_sources,
 					     sinks, num_of_sinks);
@@ -944,7 +790,7 @@ ffmpeg_dec_set_config(struct processing_module *mod, uint32_t config_id,
 		return 0;
 	}
 
-#if defined(CONFIG_FFMPEG_FILTER)
+#ifdef FFMPEG_DEC_ENABLE_FILTER
 	{
 		struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
 
@@ -970,11 +816,11 @@ static int ffmpeg_dec_reset(struct processing_module *mod)
 
 	comp_dbg(mod->dev, "entry");
 
-#if defined(CONFIG_FFMPEG_ENC)
+#ifdef FFMPEG_DEC_ENABLE_ENC
 	if (cd && cd->is_encoder)
 		return ffmpeg_enc_mod_reset(mod);
 #endif
-#if defined(CONFIG_FFMPEG_FILTER)
+#ifdef FFMPEG_DEC_ENABLE_FILTER
 	if (cd && cd->is_filter)
 		return ffmpeg_af_mod_reset(mod);
 #endif
@@ -1013,11 +859,11 @@ __cold static int ffmpeg_dec_free(struct processing_module *mod)
 	assert_can_be_cold();
 	comp_dbg(mod->dev, "entry");
 
-#if defined(CONFIG_FFMPEG_ENC)
+#ifdef FFMPEG_DEC_ENABLE_ENC
 	if (cd && cd->is_encoder)
 		return ffmpeg_enc_mod_free(mod);
 #endif
-#if defined(CONFIG_FFMPEG_FILTER)
+#ifdef FFMPEG_DEC_ENABLE_FILTER
 	if (cd && cd->is_filter)
 		return ffmpeg_af_mod_free(mod);
 #endif
@@ -1052,9 +898,16 @@ static const struct module_interface ffmpeg_dec_interface = {
 
 static const uint32_t ffmpeg_dec_codec_info_items[]
 #if CONFIG_COMP_FFMPEG_DEC_MODULE
-	__section(SOF_CODEC_INFO_SECTION) __used
+	__section(SOF_CODEC_INFO_SECTION) __used FFMPEG_SECTION_RETAIN
 #endif
 	= {
+#ifdef FFMPEG_MOD_ROLE_DEC
+	SOF_CODEC_INFO_ITEM(FFMPEG_MOD_SND_CODEC_ID, SOF_IPC_STREAM_PLAYBACK),
+#if FFMPEG_MOD_BESPOKE
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#else
+/* Built-in monolithic / stub fallback when not built as standalone per-codec LLEXT. */
 #if defined(CONFIG_FFMPEG_FILTER)
 	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_PCM, SOF_IPC_STREAM_PLAYBACK),
 #endif
@@ -1100,8 +953,34 @@ static const uint32_t ffmpeg_dec_codec_info_items[]
 #if defined(CONFIG_FFMPEG_ENC_APTX)
 	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_APTX, SOF_IPC_STREAM_CAPTURE),
 #endif
+#if defined(CONFIG_FFMPEG_DEC_APTX_HD) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_APTX_HD, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#if defined(CONFIG_FFMPEG_ENC_APTX_HD)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_APTX_HD, SOF_IPC_STREAM_CAPTURE),
+#endif
+#if defined(CONFIG_FFMPEG_DEC_G726) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_G726, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#if defined(CONFIG_FFMPEG_ENC_G726)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_G726, SOF_IPC_STREAM_CAPTURE),
+#endif
+#if defined(CONFIG_FFMPEG_DEC_ALAW) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_ALAW, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#if defined(CONFIG_FFMPEG_ENC_ALAW)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_ALAW, SOF_IPC_STREAM_CAPTURE),
+#endif
+#if defined(CONFIG_FFMPEG_DEC_MULAW) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_MULAW, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#if defined(CONFIG_FFMPEG_ENC_MULAW)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_MULAW, SOF_IPC_STREAM_CAPTURE),
+#endif
 #if defined(CONFIG_FFMPEG_ENC_SBC) || defined(CONFIG_FFMPEG_ENC_G722) || \
-	defined(CONFIG_FFMPEG_ENC_APTX)
+	defined(CONFIG_FFMPEG_ENC_APTX) || defined(CONFIG_FFMPEG_ENC_APTX_HD) || \
+	defined(CONFIG_FFMPEG_ENC_G726) || defined(CONFIG_FFMPEG_ENC_ALAW) || \
+	defined(CONFIG_FFMPEG_ENC_MULAW)
 	/* Also advertise BESPOKE capture for kernels with older SND_AUDIOCODEC_MAX. */
 	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_CAPTURE),
 #endif
@@ -1110,9 +989,12 @@ static const uint32_t ffmpeg_dec_codec_info_items[]
 #endif
 #if defined(CONFIG_FFMPEG_DEC_OPUS) || defined(CONFIG_FFMPEG_DEC_SBC) || \
 	defined(CONFIG_FFMPEG_DEC_G722) || defined(CONFIG_FFMPEG_DEC_APTX) || \
+	defined(CONFIG_FFMPEG_DEC_APTX_HD) || defined(CONFIG_FFMPEG_DEC_G726) || \
+	defined(CONFIG_FFMPEG_DEC_ALAW) || defined(CONFIG_FFMPEG_DEC_MULAW) || \
 	defined(CONFIG_COMP_FFMPEG_DEC_STUB)
 	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_PLAYBACK),
 #endif
+#endif /* FFMPEG_MOD_ROLE_DEC */
 };
 
 /* If COMP_FFMPEG_DEC is =m in Kconfig this is built as a loadable LLEXT module. */
@@ -1122,9 +1004,18 @@ static const uint32_t ffmpeg_dec_codec_info_items[]
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
+#ifdef FFMPEG_MOD_ROLE_DEC
+#define FFMPEG_REG_UUID(sym) SOF_REG_UUID(sym)
+static const struct sof_man_module_manifest mod_manifest
+	__section(".module") __used FFMPEG_SECTION_RETAIN =
+	SOF_LLEXT_MODULE_MANIFEST(FFMPEG_MOD_MANIFEST_NAME, &ffmpeg_dec_interface, 1,
+				  FFMPEG_REG_UUID(FFMPEG_MOD_UUID_SYM), 40);
+#else
+static const struct sof_man_module_manifest mod_manifest
+	__section(".module") __used FFMPEG_SECTION_RETAIN =
 	SOF_LLEXT_MODULE_MANIFEST("FFMPGDEC", &ffmpeg_dec_interface, 1,
 				  SOF_REG_UUID(ffmpeg_dec), 40);
+#endif
 
 SOF_LLEXT_BUILDINFO;
 

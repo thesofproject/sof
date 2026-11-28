@@ -11,6 +11,7 @@
 // domain, so a DP-scheduled codec (needed to keep the heavy codec init and
 // per-frame encode off the LL tick) must use the sink/source .process interface.
 
+#include <sof/audio/codec_info.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_api.h>
@@ -19,7 +20,11 @@
 #include <errno.h>
 #include "ffmpeg_dec.h"
 
+#ifdef FFMPEG_MOD_ROLE_ENC
+LOG_MODULE_REGISTER(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
+#else
 LOG_MODULE_DECLARE(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
+#endif
 
 #define FFMPEG_ENC_DEFAULT_BITRATE	128000
 
@@ -35,6 +40,15 @@ LOG_MODULE_DECLARE(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
  */
 #define FFMPEG_ENC_PCM_STAGE		16384
 
+#ifdef FFMPEG_MOD_ROLE_ENC
+#ifndef FFMPEG_MOD_BESPOKE
+#define FFMPEG_MOD_BESPOKE 0
+#endif
+extern const struct ffmpeg_enc_codec_ops FFMPEG_MOD_CODEC_OPS;
+static const struct ffmpeg_enc_codec_ops * const ffmpeg_enc_codecs[] = {
+	&FFMPEG_MOD_CODEC_OPS,
+};
+#else
 static const struct ffmpeg_enc_codec_ops * const ffmpeg_enc_codecs[] = {
 #if defined(CONFIG_FFMPEG_ENC_MP3)
 	&ffmpeg_enc_mp3_ops,
@@ -70,6 +84,7 @@ static const struct ffmpeg_enc_codec_ops * const ffmpeg_enc_codecs[] = {
 	&ffmpeg_enc_mulaw_ops,
 #endif
 };
+#endif /* FFMPEG_MOD_ROLE_ENC */
 
 static const struct ffmpeg_enc_codec_ops *
 ffmpeg_enc_find_codec_ops_by_snd_id(const struct snd_codec *codec_params)
@@ -528,3 +543,35 @@ int ffmpeg_enc_mod_free(struct processing_module *mod)
 	mod->priv.private = NULL;
 	return 0;
 }
+
+#ifdef FFMPEG_MOD_ROLE_ENC
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+static const struct module_interface ffmpeg_enc_mod_interface = {
+	.init = ffmpeg_enc_mod_init,
+	.prepare = ffmpeg_enc_mod_prepare,
+	.process = ffmpeg_enc_mod_process,
+	.is_ready_to_process = ffmpeg_enc_is_ready_to_process,
+	.reset = ffmpeg_enc_mod_reset,
+	.free = ffmpeg_enc_mod_free,
+};
+
+static const uint32_t ffmpeg_enc_codec_info_items[]
+	__section(SOF_CODEC_INFO_SECTION) __used FFMPEG_SECTION_RETAIN = {
+	SOF_CODEC_INFO_ITEM(FFMPEG_MOD_SND_CODEC_ID, SOF_IPC_STREAM_CAPTURE),
+#if FFMPEG_MOD_BESPOKE
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_CAPTURE),
+#endif
+};
+
+#define FFMPEG_REG_UUID(sym) SOF_REG_UUID(sym)
+
+static const struct sof_man_module_manifest mod_manifest
+	__section(".module") __used FFMPEG_SECTION_RETAIN =
+	SOF_LLEXT_MODULE_MANIFEST(FFMPEG_MOD_MANIFEST_NAME, &ffmpeg_enc_mod_interface, 1,
+				  FFMPEG_REG_UUID(FFMPEG_MOD_UUID_SYM), 40);
+
+SOF_LLEXT_BUILDINFO;
+#endif /* FFMPEG_MOD_ROLE_ENC */
