@@ -31,4 +31,15 @@ target_include_directories(sof-ctl PRIVATE
 	"${SOF_ROOT_SOURCE_DIRECTORY}"
 )
 
-install(TARGETS sof-ctl DESTINATION bin)
+install(TARGETS sof-ctl DESTINATION "${CMAKE_INSTALL_BINDIR}")
+
+# Install the sof-ctl blob configuration files, keeping the
+# ipc3/ and ipc4/ split and the per-component subdirectories:
+#   <prefix>/share/sof/ctl/ipc3/{eq_iir,eq_fir}/*.txt
+#   <prefix>/share/sof/ctl/ipc4/{eq_iir,eq_fir,drc}/*.txt
+install(DIRECTORY
+		"${CMAKE_CURRENT_SOURCE_DIR}/ipc3"
+		"${CMAKE_CURRENT_SOURCE_DIR}/ipc4"
+	DESTINATION "${CMAKE_INSTALL_DATADIR}/sof/ctl"
+	FILES_MATCHING PATTERN "*.txt"
+)
