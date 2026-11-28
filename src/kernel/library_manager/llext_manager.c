@@ -81,17 +81,33 @@ static int llext_manager_align_unmap(void __sparse_cache *vma, size_t size)
 	return sys_mm_drv_unmap_region(aligned_vma, ALIGN_UP(pre_pad_size + size, PAGE_SZ));
 }
 
+/*
+ * Update MMU permissions for detached .cold/.coldrodata pages backed by l3_heap.
+ * Used both to tighten loaded pages to RX/RO and to restore K_MEM_PERM_RW when
+ * unmapping or rolling back so freeing back to l3_heap never panics later loads.
+ */
 static void llext_manager_detached_update_flags(void __sparse_cache *vma,
 						size_t size, uint32_t flags)
 {
 #ifdef CONFIG_MMU
 	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
 	void *aligned_vma = (__sparse_force uint8_t *)vma - pre_pad_size;
+	/* Always preserve write-back cacheability on DRAM-backed heap pages. */
+	uint32_t k_flags = K_MEM_CACHE_WB;
+
+	/* Skip empty segments so arch_mem_map() is not called with zero size. */
+	if (!size)
+		return;
+
+	if (flags & SYS_MM_MEM_PERM_RW)
+		k_flags |= K_MEM_PERM_RW;
+	if (flags & SYS_MM_MEM_PERM_EXEC)
+		k_flags |= K_MEM_PERM_EXEC;
 
 	/* Use cached virtual address */
 	uintptr_t va = POINTER_TO_UINT(sys_cache_cached_ptr_get(aligned_vma));
 
-	arch_mem_map(aligned_vma, va, ALIGN_UP(pre_pad_size + size, PAGE_SZ), flags);
+	arch_mem_map(aligned_vma, va, ALIGN_UP(pre_pad_size + size, PAGE_SZ), k_flags);
 #endif
 }
 
@@ -208,7 +224,8 @@ static int llext_manager_rm_partition(struct k_mem_domain *domain,
 }
 
 /**
- * Detach .cold and .coldrodata partitions from @domain and clear their metadata.
+ * Detach .cold and .coldrodata partitions from @domain without clearing
+ * segment metadata, since a DP module may belong to both DP and LL domains.
  */
 static int llext_manager_rm_cold_partitions(struct lib_manager_module *mctx,
 					    struct k_mem_domain *domain)
@@ -222,8 +239,6 @@ static int llext_manager_rm_cold_partitions(struct lib_manager_module *mctx,
 						 K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
 		if (ret < 0)
 			LOG_ERR("failed to remove .cold memory partition: %d", ret);
-		mctx->segment[LIB_MANAGER_COLD].addr = 0;
-		mctx->segment[LIB_MANAGER_COLD].size = 0;
 	}
 
 	if (mctx->segment[LIB_MANAGER_COLDRODATA].addr) {
@@ -236,11 +251,17 @@ static int llext_manager_rm_cold_partitions(struct lib_manager_module *mctx,
 			if (!ret)
 				ret = err;
 		}
-		mctx->segment[LIB_MANAGER_COLDRODATA].addr = 0;
-		mctx->segment[LIB_MANAGER_COLDRODATA].size = 0;
 	}
 
 	return ret;
+}
+
+static void llext_manager_clear_cold_partitions(struct lib_manager_module *mctx)
+{
+	mctx->segment[LIB_MANAGER_COLD].addr = 0;
+	mctx->segment[LIB_MANAGER_COLD].size = 0;
+	mctx->segment[LIB_MANAGER_COLDRODATA].addr = 0;
+	mctx->segment[LIB_MANAGER_COLDRODATA].size = 0;
 }
 #endif /* CONFIG_USERSPACE */
 
@@ -263,12 +284,12 @@ static void llext_manager_unmap_detached_sections(struct llext_loader *ldr,
 		if (s_region != region)
 			continue;
 
-		/* unmap detached sections (will be outside requested VMA area) */
+		/* restore writable heap permissions for detached sections */
 		if ((uintptr_t)shdr->sh_addr < (uintptr_t)vma ||
 		    (uintptr_t)shdr->sh_addr >= (uintptr_t)vma + size)
 			llext_manager_detached_update_flags((__sparse_force void __sparse_cache *)
 							    llext_peek(ldr, shdr->sh_offset),
-							    shdr->sh_size, 0);
+							    shdr->sh_size, SYS_MM_MEM_PERM_RW);
 	}
 #endif /* CONFIG_MMU */
 }
@@ -397,13 +418,19 @@ __cold static int llext_manager_load_module(struct lib_manager_module *mctx)
 	return 0;
 #ifdef CONFIG_SOF_USERSPACE_LL
 e_data:
+	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_DATA,
+					      va_base_data, data_size);
 	if (data_size)
 		llext_manager_align_unmap(va_base_data, data_size);
 #endif
 e_rodata:
+	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_RODATA,
+					      va_base_rodata, rodata_size);
 	if (rodata_size)
 		llext_manager_align_unmap(va_base_rodata, rodata_size);
 e_text:
+	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_TEXT,
+					      va_base_text, text_size);
 	llext_manager_align_unmap(va_base_text, text_size);
 
 	return ret;
@@ -440,6 +467,7 @@ __cold static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	 * llext_manager_align_unmap() so cache writeback does not fault.
 	 */
 	llext_manager_rm_cold_partitions(mctx, zephyr_ll_mem_domain());
+	llext_manager_clear_cold_partitions(mctx);
 
 	unsigned int sect_cnt = llext_section_count(ext);
 	size_t total = sect_cnt * sizeof(elf_shdr_t);
@@ -479,6 +507,9 @@ __cold static int llext_manager_unload_module(struct lib_manager_module *mctx)
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 	llext_manager_rm_mod_domain(mctx, zephyr_ll_mem_domain());
+#endif
+#ifdef CONFIG_USERSPACE
+	llext_manager_clear_cold_partitions(mctx);
 #endif
 
 	return err;
@@ -1522,7 +1553,7 @@ __cold int llext_manager_add_library(uint32_t module_id)
 	return 0;
 }
 
-/* Unload all idle LLEXT modules in @p module_id and free their metadata. */
+/* Unload all idle LLEXT modules in @p module_id and free their vpages/metadata. */
 __cold int llext_manager_remove_library(uint32_t module_id)
 {
 	struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(module_id);
@@ -1545,7 +1576,7 @@ __cold int llext_manager_remove_library(uint32_t module_id)
 	/* Remove runtime codec capabilities before freeing module descriptors. */
 	llext_manager_unregister_lib_codecs(ctx);
 
-	/* Release retained ELF inspection data, LLEXT instances, and loaders. */
+	/* Release retained ELF inspection data, LLEXT instances, vpages, and loaders. */
 	for (k = 0; k < ctx->n_mod; k++) {
 		struct lib_manager_module *mctx = &ctx->mod[k];
 
@@ -1561,6 +1592,11 @@ __cold int llext_manager_remove_library(uint32_t module_id)
 			if (ret < 0)
 				LOG_WRN("llext_unload(%u) failed: %d", k, ret);
 			mctx->llext = NULL;
+		}
+		if (mctx->vma.size) {
+			vpage_release((void *)mctx->vma.addr);
+			mctx->vma.addr = 0;
+			mctx->vma.size = 0;
 		}
 		if (mctx->ebl) {
 			rfree(mctx->ebl);
