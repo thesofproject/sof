@@ -60,12 +60,64 @@ __cold static int webrtc_agc_init(struct processing_module *mod)
 	return 0;
 }
 
+static void webrtc_agc_cir_passthrough(struct cir_buf_source *source_buf,
+				       struct cir_buf_sink *sink_buf,
+				       size_t frames, size_t channels,
+				       enum sof_ipc_frame in_fmt,
+				       enum sof_ipc_frame out_fmt)
+{
+	size_t in_sample_bytes = (in_fmt == SOF_IPC_FRAME_S16_LE) ?
+				 sizeof(int16_t) : sizeof(int32_t);
+	size_t out_sample_bytes = (out_fmt == SOF_IPC_FRAME_S16_LE) ?
+				  sizeof(int16_t) : sizeof(int32_t);
+	size_t in_frame_bytes = in_sample_bytes * channels;
+	size_t out_frame_bytes = out_sample_bytes * channels;
+
+	if (in_fmt == out_fmt) {
+		cir_buf_copy(source_buf->ptr, source_buf->buf_start, source_buf->buf_end,
+			     sink_buf->ptr, sink_buf->buf_start, sink_buf->buf_end,
+			     frames * in_frame_bytes);
+		return;
+	}
+
+	while (frames) {
+		size_t fmax_src = circ_buf_frames_without_wrap(source_buf->ptr, source_buf->buf_end,
+							      in_sample_bytes, channels);
+		size_t fmax_snk = circ_buf_frames_without_wrap(sink_buf->ptr, sink_buf->buf_end,
+							      out_sample_bytes, channels);
+		size_t f = MIN(frames, MIN(fmax_src, fmax_snk));
+		size_t samples = f * channels;
+		size_t i;
+
+		if (in_fmt == SOF_IPC_FRAME_S32_LE) {
+			const int32_t *s = source_buf->ptr;
+			int16_t *d = sink_buf->ptr;
+
+			for (i = 0; i < samples; i++)
+				d[i] = (int16_t)(s[i] >> 16);
+		} else {
+			const int16_t *s = source_buf->ptr;
+			int32_t *d = sink_buf->ptr;
+
+			for (i = 0; i < samples; i++)
+				d[i] = ((int32_t)s[i]) << 16;
+		}
+
+		frames -= f;
+		source_buf->ptr = source_cir_buf_wrap((const char *)source_buf->ptr + f * in_frame_bytes,
+						      source_buf->buf_start, source_buf->buf_end);
+		sink_buf->ptr = cir_buf_wrap((char *)sink_buf->ptr + f * out_frame_bytes,
+					     sink_buf->buf_start, sink_buf->buf_end);
+	}
+}
+
 __cold static int webrtc_agc_prepare(struct processing_module *mod,
 				    struct sof_source **sources, int num_of_sources,
 				    struct sof_sink **sinks, int num_of_sinks)
 {
 	struct webrtc_agc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+	enum sof_ipc_frame in_fmt, out_fmt;
 	int ret;
 
 	if (num_of_sources != 1 || num_of_sinks != 1) {
@@ -75,6 +127,20 @@ __cold static int webrtc_agc_prepare(struct processing_module *mod,
 
 	cd->rate = source_get_rate(sources[0]);
 	cd->channels = source_get_channels(sources[0]);
+	in_fmt = source_get_frm_fmt(sources[0]);
+	out_fmt = sink_get_frm_fmt(sinks[0]);
+
+	if (cd->channels != sink_get_channels(sinks[0]) ||
+	    cd->rate != sink_get_rate(sinks[0])) {
+		comp_err(dev, "webrtc_agc: source/sink mismatch");
+		return -EINVAL;
+	}
+
+	if ((in_fmt != SOF_IPC_FRAME_S16_LE && in_fmt != SOF_IPC_FRAME_S32_LE) ||
+	    (out_fmt != SOF_IPC_FRAME_S16_LE && out_fmt != SOF_IPC_FRAME_S32_LE)) {
+		comp_err(dev, "webrtc_agc: unsupported format in=%d out=%d", in_fmt, out_fmt);
+		return -EINVAL;
+	}
 
 	if (cd->rate != 8000 && cd->rate != 16000 &&
 	    cd->rate != 32000 && cd->rate != 48000) {
@@ -89,7 +155,8 @@ __cold static int webrtc_agc_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
-	comp_info(dev, "webrtc_agc: prepare rate=%d ch=%d", cd->rate, cd->channels);
+	comp_info(dev, "webrtc_agc: prepare rate=%d ch=%d in_fmt=%d out_fmt=%d",
+		  cd->rate, cd->channels, in_fmt, out_fmt);
 
 	if (cd->backend->prepare) {
 		ret = cd->backend->prepare(mod);
@@ -109,13 +176,16 @@ static int webrtc_agc_process(struct processing_module *mod,
 	struct webrtc_agc_comp_data *cd = module_get_private_data(mod);
 	struct sof_source *src = sources[0];
 	struct sof_sink *snk = sinks[0];
-	enum sof_ipc_frame fmt = source_get_frm_fmt(src);
-	size_t sample_bytes = (fmt == SOF_IPC_FRAME_S16_LE) ? sizeof(int16_t) : sizeof(int32_t);
-	size_t frame_bytes = source_get_frame_bytes(src);
+	enum sof_ipc_frame in_fmt = source_get_frm_fmt(src);
+	enum sof_ipc_frame out_fmt = sink_get_frm_fmt(snk);
+	size_t in_sample_bytes = (in_fmt == SOF_IPC_FRAME_S16_LE) ? sizeof(int16_t) : sizeof(int32_t);
+	size_t out_sample_bytes = (out_fmt == SOF_IPC_FRAME_S16_LE) ? sizeof(int16_t) : sizeof(int32_t);
+	size_t in_frame_bytes = source_get_frame_bytes(src);
+	size_t out_frame_bytes = sink_get_frame_bytes(snk);
 	int avail = (int)source_get_data_frames_available(src);
 	int free_frames = (int)sink_get_free_frames(snk);
 	int n = MIN(avail, free_frames);
-	size_t nbytes, src_bytes, snk_bytes;
+	size_t in_nbytes, out_nbytes, src_bytes, snk_bytes;
 	struct cir_buf_source source_buf;
 	struct cir_buf_sink sink_buf;
 	int ret;
@@ -123,14 +193,15 @@ static int webrtc_agc_process(struct processing_module *mod,
 	if (n <= 0)
 		return 0;
 
-	nbytes = (size_t)n * frame_bytes;
+	in_nbytes = (size_t)n * in_frame_bytes;
+	out_nbytes = (size_t)n * out_frame_bytes;
 
-	ret = source_get_data(src, nbytes, &source_buf.ptr, &source_buf.buf_start, &src_bytes);
+	ret = source_get_data(src, in_nbytes, &source_buf.ptr, &source_buf.buf_start, &src_bytes);
 	if (ret)
 		return ret;
 	source_buf.buf_end = (const char *)source_buf.buf_start + src_bytes;
 
-	ret = sink_get_buffer(snk, nbytes, &sink_buf.ptr, &sink_buf.buf_start, &snk_bytes);
+	ret = sink_get_buffer(snk, out_nbytes, &sink_buf.ptr, &sink_buf.buf_start, &snk_bytes);
 	if (ret) {
 		source_release_data(src, 0);
 		return ret;
@@ -142,33 +213,31 @@ static int webrtc_agc_process(struct processing_module *mod,
 
 		while (remaining_frames) {
 			size_t fmax_src = circ_buf_frames_without_wrap(source_buf.ptr, source_buf.buf_end,
-								      sample_bytes, cd->channels);
+								      in_sample_bytes, cd->channels);
 			size_t fmax_snk = circ_buf_frames_without_wrap(sink_buf.ptr, sink_buf.buf_end,
-								      sample_bytes, cd->channels);
+								      out_sample_bytes, cd->channels);
 			size_t f = MIN(remaining_frames, MIN(fmax_src, fmax_snk));
 
-			ret = cd->backend->process(mod, source_buf.ptr, sink_buf.ptr, f, fmt);
+			ret = cd->backend->process(mod, source_buf.ptr, sink_buf.ptr, f,
+						   in_fmt, out_fmt);
 			if (ret) {
-				cir_buf_copy(source_buf.ptr, source_buf.buf_start, source_buf.buf_end,
-					     sink_buf.ptr, sink_buf.buf_start, sink_buf.buf_end,
-					     remaining_frames * frame_bytes);
+				webrtc_agc_cir_passthrough(&source_buf, &sink_buf, remaining_frames,
+							   cd->channels, in_fmt, out_fmt);
 				break;
 			}
 
 			remaining_frames -= f;
-			source_buf.ptr = source_cir_buf_wrap((const char *)source_buf.ptr + f * frame_bytes,
+			source_buf.ptr = source_cir_buf_wrap((const char *)source_buf.ptr + f * in_frame_bytes,
 							     source_buf.buf_start, source_buf.buf_end);
-			sink_buf.ptr = cir_buf_wrap((char *)sink_buf.ptr + f * frame_bytes,
+			sink_buf.ptr = cir_buf_wrap((char *)sink_buf.ptr + f * out_frame_bytes,
 						    sink_buf.buf_start, sink_buf.buf_end);
 		}
 	} else {
-		cir_buf_copy(source_buf.ptr, source_buf.buf_start, source_buf.buf_end,
-			     sink_buf.ptr, sink_buf.buf_start, sink_buf.buf_end,
-			     nbytes);
+		webrtc_agc_cir_passthrough(&source_buf, &sink_buf, n, cd->channels, in_fmt, out_fmt);
 	}
 
-	source_release_data(src, nbytes);
-	sink_commit_buffer(snk, nbytes);
+	source_release_data(src, in_nbytes);
+	sink_commit_buffer(snk, out_nbytes);
 	return 0;
 }
 

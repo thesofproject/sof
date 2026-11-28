@@ -41,9 +41,9 @@ LOG_MODULE_DECLARE(webrtc_ns2, CONFIG_SOF_LOG_LEVEL);
 
 struct webrtc_ns2_rnn_data {
 	DenoiseState *st[WEBRTC_NS2_CHANNELS_MAX];
+	void	     *scratch;
 	int	      num_channels;
-	float rnn_in[WEBRTC_NS2_FRAME_SAMPLES];
-	float rnn_out[WEBRTC_NS2_FRAME_SAMPLES];
+	float	      rnn_buf[WEBRTC_NS2_FRAME_SAMPLES];
 };
 
 static int webrtc_ns2_rnn_init(struct processing_module *mod)
@@ -69,6 +69,20 @@ static int webrtc_ns2_rnn_configure(struct processing_module *mod, int num_chann
 
 	webrtc_ns2_set_active_mod(mod);
 
+	if (!rd->scratch) {
+		rd->scratch = mod_zalloc(mod, (size_t)rnnoise_get_scratch_size());
+		if (!rd->scratch) {
+			comp_err(mod->dev, "webrtc_ns2: scratch alloc failed");
+			return -ENOMEM;
+		}
+	}
+	if (rnnoise_init_scratch(rd->scratch) < 0) {
+		comp_err(mod->dev, "webrtc_ns2: scratch init failed");
+		mod_free(mod, rd->scratch);
+		rd->scratch = NULL;
+		return -ENOMEM;
+	}
+
 	/* Free any previous instances from a re-prepare. */
 	for (c = 0; c < rd->num_channels; c++) {
 		if (rd->st[c]) {
@@ -86,6 +100,7 @@ static int webrtc_ns2_rnn_configure(struct processing_module *mod, int num_chann
 				 "webrtc_ns2: rnnoise_create() failed ch%d", c);
 			goto err;
 		}
+		rnnoise_set_scratch(rd->st[c], rd->scratch);
 	}
 
 	rd->num_channels = num_channels;
@@ -116,12 +131,12 @@ static float webrtc_ns2_rnn_process_ch(struct processing_module *mod,
 	 * down afterward.
 	 */
 	for (i = 0; i < WEBRTC_NS2_FRAME_SAMPLES; i++)
-		rd->rnn_in[i] = in[i] * RNN_FULL_SCALE;
+		rd->rnn_buf[i] = in[i] * RNN_FULL_SCALE;
 
-	vad_prob = rnnoise_process_frame(rd->st[ch], rd->rnn_out, rd->rnn_in);
+	vad_prob = rnnoise_process_frame(rd->st[ch], rd->rnn_buf, rd->rnn_buf);
 
 	for (i = 0; i < WEBRTC_NS2_FRAME_SAMPLES; i++)
-		out[i] = rd->rnn_out[i] / RNN_FULL_SCALE;
+		out[i] = rd->rnn_buf[i] / RNN_FULL_SCALE;
 
 	return vad_prob;
 }
@@ -145,6 +160,7 @@ static int webrtc_ns2_rnn_reset(struct processing_module *mod)
 				comp_err(mod->dev, "webrtc_ns2: reset failed ch%d", c);
 				return -ENOMEM;
 			}
+			rnnoise_set_scratch(rd->st[c], rd->scratch);
 		}
 	}
 	return 0;
@@ -166,6 +182,11 @@ static int webrtc_ns2_rnn_free(struct processing_module *mod)
 			rnnoise_destroy(rd->st[c]);
 			rd->st[c] = NULL;
 		}
+	}
+	if (rd->scratch) {
+		rnnoise_free_scratch(rd->scratch);
+		mod_free(mod, rd->scratch);
+		rd->scratch = NULL;
 	}
 	mod_free(mod, rd);
 	cd->backend_data = NULL;

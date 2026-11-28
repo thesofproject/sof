@@ -25,20 +25,13 @@ if(NOT EXISTS "${SOF_LIBFVAD_SRC_DIR}/src/fvad.c")
     "-DSOF_LIBFVAD_SRC_DIR=<path-to-libfvad-checkout>.")
 endif()
 
-if(NOT DEFINED CMAKE_AR)
-  set(_fvad_ar "ar")
-else()
-  set(_fvad_ar "${CMAKE_AR}")
-endif()
+include("${sof_top_dir}/scripts/cmake/xtensa_ext_cc.cmake")
+xtensa_ext_cc_get_flags(_fvad_arch_cflags _fvad_ar)
 
 # --- 3. Output directories ---
 set(LIBFVAD_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/libfvad-install"
     CACHE INTERNAL "webrtc_vad: libfvad install prefix")
 
-# libfvad has exactly two source files (fvad.c and the internal vad/ sources).
-# Rather than invoking its CMakeLists (which would need a CMake toolchain file),
-# we compile the objects directly and archive them. This mirrors the libshine
-# approach in ffmpeg.cmake.
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/fvad-build.sh"
 "#!/bin/sh
 set -e
@@ -66,7 +59,7 @@ SRCS=\"
 
 for f in \$SRCS; do
   bn=\$(basename \"\$f\" .c)
-  ${CMAKE_C_COMPILER} -O2 -fPIC \
+  ${CMAKE_C_COMPILER} -O2 ${_fvad_arch_cflags} -DNDEBUG \
     -I$SRC/include \
     -I$SRC/src \
     -c \"\$f\" -o \"$OBJ/\${bn}.o\"

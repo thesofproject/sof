@@ -26,11 +26,8 @@ if(NOT EXISTS "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/ns/ns_c
     "-DSOF_WEBRTC_APM_SRC_DIR=<path>.")
 endif()
 
-if(NOT DEFINED CMAKE_AR)
-  set(_ns_ar "ar")
-else()
-  set(_ns_ar "${CMAKE_AR}")
-endif()
+include("${sof_top_dir}/scripts/cmake/xtensa_ext_cc.cmake")
+xtensa_ext_cc_get_flags(_ns_arch_cflags _ns_ar)
 
 set(WEBRTC_NS_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/webrtc-ns-install"
     CACHE INTERNAL "webrtc_ns: NS library install prefix")
@@ -46,7 +43,7 @@ OBJ=${CMAKE_CURRENT_BINARY_DIR}/webrtc-ns-obj
 
 mkdir -p \"$OBJ\" \"$INST/lib\" \"$INST/include\"
 
-CFLAGS=\"-O2 -fPIC -DWEBRTC_ARCH_32_BITS= -DWEBRTC_ARCH_LITTLE_ENDIAN= -I${SOF_WEBRTC_APM_SRC_DIR} -I$SRC/modules/audio_processing/ns/include -Dmalloc=webrtc_ns_malloc -Dcalloc=webrtc_ns_calloc -Dfree=webrtc_ns_free\"
+CFLAGS=\"-O2 ${_ns_arch_cflags} -DNDEBUG -DWEBRTC_ARCH_32_BITS= -DWEBRTC_ARCH_LITTLE_ENDIAN= -I${SOF_WEBRTC_APM_SRC_DIR} -I$SRC/modules/audio_processing/ns/include -Dmalloc=webrtc_ns_malloc -Dcalloc=webrtc_ns_calloc -Dfree=webrtc_ns_free\"
 
 SRCS=\"
   $SRC/modules/audio_processing/ns/noise_suppression.c

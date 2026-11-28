@@ -57,7 +57,7 @@ manifest:
     - name: rnnoise
       repo-path: rnnoise
       path: modules/audio/rnnoise
-      revision: 24dbb35115c6d27f9f14cc654bf0a32417f70bf9
+      revision: 5bd733d7a950715774582dda49aeff0e8f71ccc2
 
     # FFmpeg (libavcodec) source for the ffmpeg_dec module. Cross-built by
     # src/audio/ffmpeg_dec/ffmpeg.cmake, enabling only the Kconfig-selected

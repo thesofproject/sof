@@ -65,7 +65,8 @@ struct webrtc_ns2_comp_data {
 	void    *backend_data;
 
 	int      channels;
-	bool     is_s32;           /* true when pipeline format is S32_LE */
+	bool     in_s32;           /* true when source format is S32_LE */
+	bool     out_s32;          /* true when sink format is S32_LE */
 	int      buffered_in_frames;
 	int      buffered_out_frames;
 

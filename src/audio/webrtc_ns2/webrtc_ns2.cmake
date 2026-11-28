@@ -22,11 +22,8 @@ if(NOT EXISTS "${SOF_RNNOISE_SRC_DIR}/src/denoise.c")
     "-DSOF_RNNOISE_SRC_DIR=<path>.")
 endif()
 
-if(NOT DEFINED CMAKE_AR)
-  set(_rnn_ar "ar")
-else()
-  set(_rnn_ar "${CMAKE_AR}")
-endif()
+include("${sof_top_dir}/scripts/cmake/xtensa_ext_cc.cmake")
+xtensa_ext_cc_get_flags(_rnn_arch_cflags _rnn_ar)
 
 set(WEBRTC_NS2_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/rnnoise-install"
     CACHE INTERNAL "webrtc_ns2: RNNoise library install prefix")
@@ -44,7 +41,7 @@ OBJ=${CMAKE_CURRENT_BINARY_DIR}/rnnoise-obj
 
 mkdir -p \"$OBJ\" \"$INST/lib\" \"$INST/include\"
 
-CFLAGS=\"-O2 -fPIC -I$SRC -I$INC -DOUTSIDE_SPEEX -DRANDOM_PREFIX=rnn -DFLOAT_APPROX\"
+CFLAGS=\"-O2 ${_rnn_arch_cflags} -DNDEBUG -I$SRC -I$INC -DOUTSIDE_SPEEX -DRANDOM_PREFIX=rnn -DFLOAT_APPROX\"
 
 # Core RNNoise sources (excludes dump_features.c and train-only files).
 SRCS=\"

@@ -290,7 +290,7 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 {
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	int mic_fmt, ref_fmt, mic_rate, ref_rate, ret;
+	int mic_fmt, ref_fmt, out_fmt, mic_rate, ref_rate, ret;
 
 	webrtc_aec_set_active_mod(mod);
 	assert_can_be_cold();
@@ -362,14 +362,31 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 	}
 	webrtc_aec_reset_resamplers(cd);
 
+#ifdef CONFIG_IPC_MAJOR_4
+	/* Apply reference format override from topology pin descriptor. */
+	if (cd->ref_src >= 0) {
+		if (!mod->priv.cfg.input_pins || mod->priv.cfg.nb_input_pins < 2) {
+			comp_err(dev, "webrtc_aec: no reference pin format");
+			return -EINVAL;
+		}
+		ipc4_update_source_format(sources[cd->ref_src],
+					  &mod->priv.cfg.input_pins[1].audio_fmt);
+		ref_fmt = source_get_frm_fmt(sources[cd->ref_src]);
+	}
+#endif
+
+	out_fmt = sink_get_frm_fmt(sinks[0]);
 	if ((mic_fmt != SOF_IPC_FRAME_S16_LE && mic_fmt != SOF_IPC_FRAME_S32_LE) ||
-	    (ref_fmt != SOF_IPC_FRAME_S16_LE && ref_fmt != SOF_IPC_FRAME_S32_LE)) {
-		comp_err(dev, "webrtc_aec: unsupported format mic=%d ref=%d",
-			 mic_fmt, ref_fmt);
+	    (ref_fmt != SOF_IPC_FRAME_S16_LE && ref_fmt != SOF_IPC_FRAME_S32_LE) ||
+	    (out_fmt != SOF_IPC_FRAME_S16_LE && out_fmt != SOF_IPC_FRAME_S32_LE)) {
+		comp_err(dev, "webrtc_aec: unsupported format mic=%d ref=%d out=%d",
+			 mic_fmt, ref_fmt, out_fmt);
 		return -EINVAL;
 	}
 
-	cd->is_s32 = (mic_fmt == SOF_IPC_FRAME_S32_LE);
+	cd->mic_is_s32 = (mic_fmt == SOF_IPC_FRAME_S32_LE);
+	cd->ref_is_s32 = (ref_fmt == SOF_IPC_FRAME_S32_LE);
+	cd->out_is_s32 = (out_fmt == SOF_IPC_FRAME_S32_LE);
 	cd->mic_frame_bytes = source_get_frame_bytes(sources[cd->mic_src]);
 	cd->ref_frame_bytes = cd->ref_src >= 0 ?
 		source_get_frame_bytes(sources[cd->ref_src]) : cd->mic_frame_bytes;
@@ -381,10 +398,12 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
-	comp_info(dev, "webrtc_aec: mic_src=%d ref_src=%d rate=%d/%d mic_ch=%d ref_ch=%d (eff_ref=%d) frame=%d %s resamp=%d",
+	comp_info(dev, "webrtc_aec: mic_src=%d ref_src=%d rate=%d/%d mic_ch=%d ref_ch=%d (eff_ref=%d) frame=%d %s/%s->%s resamp=%d",
 		  cd->mic_src, cd->ref_src, cd->rate, cd->proc_rate,
 		  cd->mic_channels, cd->ref_channels, cd->effective_ref_ch,
-		  cd->frame_samples, cd->is_s32 ? "S32" : "S16", cd->resamp_mode);
+		  cd->frame_samples, cd->mic_is_s32 ? "S32" : "S16",
+		  cd->ref_is_s32 ? "S32" : "S16", cd->out_is_s32 ? "S32" : "S16",
+		  cd->resamp_mode);
 
 	if (cd->backend->configure) {
 		ret = cd->backend->configure(mod, cd->proc_rate,
@@ -635,7 +654,7 @@ static int webrtc_aec_process(struct processing_module *mod,
 	}
 
 	/* Convert mic input to per-channel S16 */
-	src_to_s16(mic, n, cd->mic_buf, cd->buffered_in_frames, cd->mic_channels, cd->is_s32);
+	src_to_s16(mic, n, cd->mic_buf, cd->buffered_in_frames, cd->mic_channels, cd->mic_is_s32);
 
 	/*
 	 * Validate dynamically attached reference source format/channels and trim
@@ -655,12 +674,12 @@ static int webrtc_aec_process(struct processing_module *mod,
 			}
 			src_drop_frames(ref, fref);
 			fref = 0;
-			ref_s32 = cd->is_s32;
+			ref_s32 = cd->ref_is_s32;
 		} else {
 			ref_s32 = (ref_fmt == SOF_IPC_FRAME_S32_LE);
 		}
 	} else {
-		ref_s32 = cd->is_s32;
+		ref_s32 = cd->ref_is_s32;
 	}
 
 	/* Keep reference aligned with mic cadence and zero-pad if render underruns or is silent. */
@@ -706,7 +725,7 @@ static int webrtc_aec_process(struct processing_module *mod,
 	/* Drain exactly n frames from out_fifo to sink to maintain symmetric period I/O */
 	drain = MIN(n, cd->buffered_out_frames);
 	if (drain > 0) {
-		s16_to_sink(out, cd->out_fifo, drain, cd->mic_channels, cd->is_s32);
+		s16_to_sink(out, cd->out_fifo, drain, cd->mic_channels, cd->out_is_s32);
 		cd->buffered_out_frames -= drain;
 		if (cd->buffered_out_frames > 0) {
 			for (c = 0; c < cd->mic_channels; c++)

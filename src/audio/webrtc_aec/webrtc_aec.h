@@ -163,7 +163,9 @@ struct webrtc_aec_comp_data {
 	int mic_frame_bytes;  /* bytes per pipeline frame on mic input */
 	int ref_frame_bytes;  /* bytes per pipeline frame on ref input */
 	int out_frame_bytes;
-	bool is_s32;          /* true for S32_LE pipeline */
+	bool mic_is_s32;      /* true for S32_LE mic input */
+	bool ref_is_s32;      /* true for S32_LE ref input */
+	bool out_is_s32;      /* true for S32_LE sink output */
 	enum webrtc_aec_resamp_mode resamp_mode;
 
 	/* Processing frame size at pipeline rate. */

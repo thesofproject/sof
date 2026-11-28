@@ -26,7 +26,7 @@ struct webrtc_hpf_backend {
 	int (*prepare)(struct processing_module *mod);
 	int (*process)(struct processing_module *mod,
 		       const void *src, void *dst, int frames,
-		       enum sof_ipc_frame fmt);
+		       enum sof_ipc_frame in_fmt, enum sof_ipc_frame out_fmt);
 	int (*reset)(struct processing_module *mod);
 	int (*free)(struct processing_module *mod);
 };
@@ -34,6 +34,8 @@ struct webrtc_hpf_backend {
 struct webrtc_hpf_comp_data {
 	struct webrtc_hpf_state state[WEBRTC_HPF_CHANNELS_MAX];
 	const struct webrtc_hpf_backend *backend;
+	enum sof_ipc_frame in_fmt;
+	enum sof_ipc_frame out_fmt;
 	int channels;
 	int rate;
 	bool enabled;
@@ -42,12 +44,10 @@ struct webrtc_hpf_comp_data {
 extern const struct webrtc_hpf_backend webrtc_hpf_real_backend;
 extern const struct webrtc_hpf_backend webrtc_hpf_stub_backend;
 
-void webrtc_hpf_filter_channel_s16(struct webrtc_hpf_state *hpf,
-				   const int16_t *src, int16_t *dst,
-				   size_t samples, size_t stride);
-
-void webrtc_hpf_filter_channel_s32(struct webrtc_hpf_state *hpf,
-				   const int32_t *src, int32_t *dst,
-				   size_t samples, size_t stride);
+void webrtc_hpf_filter_channel(struct webrtc_hpf_state *hpf,
+			       const void *src, void *dst,
+			       size_t samples, size_t stride,
+			       enum sof_ipc_frame in_fmt,
+			       enum sof_ipc_frame out_fmt);
 
 #endif /* __SOF_AUDIO_WEBRTC_HPF_H__ */

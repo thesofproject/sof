@@ -83,7 +83,7 @@ __cold static int webrtc_ns_prepare(struct processing_module *mod,
 {
 	struct webrtc_ns_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	int rate, fmt, ret;
+	int rate, in_fmt, out_fmt, ret;
 
 	assert_can_be_cold();
 
@@ -93,8 +93,15 @@ __cold static int webrtc_ns_prepare(struct processing_module *mod,
 	}
 
 	rate = source_get_rate(sources[0]);
-	fmt  = source_get_frm_fmt(sources[0]);
+	in_fmt = source_get_frm_fmt(sources[0]);
+	out_fmt = sink_get_frm_fmt(sinks[0]);
 	cd->channels = source_get_channels(sources[0]);
+
+	if (cd->channels != sink_get_channels(sinks[0]) ||
+	    rate != sink_get_rate(sinks[0])) {
+		comp_err(dev, "webrtc_ns: source/sink mismatch");
+		return -EINVAL;
+	}
 
 	if (cd->channels > WEBRTC_NS_CHANNELS_MAX) {
 		comp_err(dev, "webrtc_ns: too many channels %d (max %d)",
@@ -108,12 +115,9 @@ __cold static int webrtc_ns_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
-	switch (fmt) {
-	case SOF_IPC_FRAME_S16_LE:
-	case SOF_IPC_FRAME_S32_LE:
-		break;
-	default:
-		comp_err(dev, "webrtc_ns: unsupported frame format %d", fmt);
+	if ((in_fmt != SOF_IPC_FRAME_S16_LE && in_fmt != SOF_IPC_FRAME_S32_LE) ||
+	    (out_fmt != SOF_IPC_FRAME_S16_LE && out_fmt != SOF_IPC_FRAME_S32_LE)) {
+		comp_err(dev, "webrtc_ns: unsupported format in=%d out=%d", in_fmt, out_fmt);
 		return -EINVAL;
 	}
 
@@ -123,8 +127,9 @@ __cold static int webrtc_ns_prepare(struct processing_module *mod,
 	cd->proc_frame_samples = (cd->proc_rate * 10) / 1000; /* 10 ms */
 	cd->in_frame_samples   = cd->proc_frame_samples;
 
-	comp_info(dev, "webrtc_ns: in_rate=%d proc_rate=%d ch=%d proc_frame=%d",
-		  cd->in_rate, cd->proc_rate, cd->channels, cd->proc_frame_samples);
+	comp_info(dev, "webrtc_ns: in_rate=%d proc_rate=%d ch=%d in_fmt=%d out_fmt=%d proc_frame=%d",
+		  cd->in_rate, cd->proc_rate, cd->channels, in_fmt, out_fmt,
+		  cd->proc_frame_samples);
 
 	webrtc_ns_set_active_mod(mod);
 
@@ -225,13 +230,16 @@ static int webrtc_ns_process(struct processing_module *mod,
 	struct webrtc_ns_comp_data *cd = module_get_private_data(mod);
 	struct sof_source *src = sources[0];
 	struct sof_sink *snk = sinks[0];
-	enum sof_ipc_frame fmt = source_get_frm_fmt(src);
-	size_t sample_bytes = (fmt == SOF_IPC_FRAME_S16_LE) ? sizeof(int16_t) : sizeof(int32_t);
-	size_t frame_bytes = source_get_frame_bytes(src);
+	enum sof_ipc_frame in_fmt = source_get_frm_fmt(src);
+	enum sof_ipc_frame out_fmt = sink_get_frm_fmt(snk);
+	size_t in_sample_bytes = (in_fmt == SOF_IPC_FRAME_S16_LE) ? sizeof(int16_t) : sizeof(int32_t);
+	size_t out_sample_bytes = (out_fmt == SOF_IPC_FRAME_S16_LE) ? sizeof(int16_t) : sizeof(int32_t);
+	size_t in_frame_bytes = source_get_frame_bytes(src);
+	size_t out_frame_bytes = sink_get_frame_bytes(snk);
 	int avail = (int)source_get_data_frames_available(src);
 	int free  = (int)sink_get_free_frames(snk);
 	int n = MIN(avail, free);
-	size_t nbytes, src_bytes, snk_bytes;
+	size_t in_nbytes, out_nbytes, src_bytes, snk_bytes;
 	struct cir_buf_source source_buf;
 	struct cir_buf_sink sink_buf;
 	int ret, drain, c;
@@ -244,14 +252,15 @@ static int webrtc_ns_process(struct processing_module *mod,
 	if (n <= 0)
 		return 0;
 
-	nbytes = (size_t)n * frame_bytes;
+	in_nbytes = (size_t)n * in_frame_bytes;
+	out_nbytes = (size_t)n * out_frame_bytes;
 
-	ret = source_get_data(src, nbytes, &source_buf.ptr, &source_buf.buf_start, &src_bytes);
+	ret = source_get_data(src, in_nbytes, &source_buf.ptr, &source_buf.buf_start, &src_bytes);
 	if (ret)
 		return ret;
 	source_buf.buf_end = (const char *)source_buf.buf_start + src_bytes;
 
-	ret = sink_get_buffer(snk, nbytes, &sink_buf.ptr, &sink_buf.buf_start, &snk_bytes);
+	ret = sink_get_buffer(snk, out_nbytes, &sink_buf.ptr, &sink_buf.buf_start, &snk_bytes);
 	if (ret) {
 		source_release_data(src, 0);
 		return ret;
@@ -266,22 +275,22 @@ static int webrtc_ns_process(struct processing_module *mod,
 
 		while (remaining) {
 			size_t fmax = circ_buf_frames_without_wrap(r_ptr, source_buf.buf_end,
-								  sample_bytes, cd->channels);
+								  in_sample_bytes, cd->channels);
 			size_t f = MIN(remaining, fmax);
 
-			if (fmt == SOF_IPC_FRAME_S32_LE)
+			if (in_fmt == SOF_IPC_FRAME_S32_LE)
 				s32_to_float(cd, r_ptr, f, offset);
 			else
 				s16_to_float(cd, r_ptr, f, offset);
 
 			remaining -= f;
 			offset += f;
-			r_ptr = source_cir_buf_wrap((const char *)r_ptr + f * frame_bytes,
+			r_ptr = source_cir_buf_wrap((const char *)r_ptr + f * in_frame_bytes,
 						    source_buf.buf_start, source_buf.buf_end);
 		}
 	}
 
-	source_release_data(src, nbytes);
+	source_release_data(src, in_nbytes);
 	cd->buffered_in_frames += n;
 
 	/*
@@ -327,17 +336,17 @@ static int webrtc_ns_process(struct processing_module *mod,
 
 		while (remaining) {
 			size_t fmax = circ_buf_frames_without_wrap(w_ptr, sink_buf.buf_end,
-								  sample_bytes, cd->channels);
+								  out_sample_bytes, cd->channels);
 			size_t f = MIN(remaining, fmax);
 
-			if (fmt == SOF_IPC_FRAME_S32_LE)
+			if (out_fmt == SOF_IPC_FRAME_S32_LE)
 				float_to_s32(cd, w_ptr, f, offset);
 			else
 				float_to_s16(cd, w_ptr, f, offset);
 
 			remaining -= f;
 			offset += f;
-			w_ptr = cir_buf_wrap((char *)w_ptr + f * frame_bytes,
+			w_ptr = cir_buf_wrap((char *)w_ptr + f * out_frame_bytes,
 					     sink_buf.buf_start, sink_buf.buf_end);
 		}
 
@@ -352,22 +361,22 @@ static int webrtc_ns_process(struct processing_module *mod,
 	/* If buffered_out_frames was somehow less than n, zero remainder */
 	if (drain < n) {
 		size_t remaining = n - drain;
-		void *w_ptr = (char *)sink_buf.ptr + drain * frame_bytes;
+		void *w_ptr = (char *)sink_buf.ptr + drain * out_frame_bytes;
 		w_ptr = cir_buf_wrap(w_ptr, sink_buf.buf_start, sink_buf.buf_end);
 
 		while (remaining) {
 			size_t fmax = circ_buf_frames_without_wrap(w_ptr, sink_buf.buf_end,
-								  sample_bytes, cd->channels);
+								  out_sample_bytes, cd->channels);
 			size_t f = MIN(remaining, fmax);
 
-			memset(w_ptr, 0, f * frame_bytes);
+			memset(w_ptr, 0, f * out_frame_bytes);
 			remaining -= f;
-			w_ptr = cir_buf_wrap((char *)w_ptr + f * frame_bytes,
+			w_ptr = cir_buf_wrap((char *)w_ptr + f * out_frame_bytes,
 					     sink_buf.buf_start, sink_buf.buf_end);
 		}
 	}
 
-	sink_commit_buffer(snk, nbytes);
+	sink_commit_buffer(snk, out_nbytes);
 	return 0;
 }
 

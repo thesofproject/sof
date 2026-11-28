@@ -29,7 +29,7 @@
 
 LOG_MODULE_DECLARE(webrtc_vad, CONFIG_SOF_LOG_LEVEL);
 
-#if defined(LLEXT_MODULE)
+#if defined(LLEXT_MODULE) || defined(LL_EXTENSION_BUILD)
 void webrtc_vad_set_active_mod(struct processing_module *mod);
 #else
 static inline void webrtc_vad_set_active_mod(struct processing_module *mod) { (void)mod; }

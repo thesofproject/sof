@@ -24,20 +24,37 @@ static const int16_t kFilterCoefficients48kHz[5] = {
 	4058, -8116, 4058, 8116, -4021
 };
 
-void webrtc_hpf_filter_channel_s16(struct webrtc_hpf_state *hpf,
-				   const int16_t *src, int16_t *dst,
-				   size_t samples, size_t stride)
+void webrtc_hpf_filter_channel(struct webrtc_hpf_state *hpf,
+			       const void *src, void *dst,
+			       size_t samples, size_t stride,
+			       enum sof_ipc_frame in_fmt,
+			       enum sof_ipc_frame out_fmt)
 {
+	const bool in_s16 = (in_fmt == SOF_IPC_FRAME_S16_LE);
+	const bool out_s16 = (out_fmt == SOF_IPC_FRAME_S16_LE);
+	const int16_t *s16 = src;
+	const int32_t *s32 = src;
+	int16_t *d16 = dst;
+	int32_t *d32 = dst;
 	int16_t *y = hpf->y;
 	int16_t *x = hpf->x;
 	const int16_t *ba = hpf->ba;
 	size_t i;
 
 	for (i = 0; i < samples; i++) {
-		int16_t sample = *src;
-		src += stride;
+		int16_t sample;
+		int16_t out16;
+		int32_t tmp;
 
-		int32_t tmp = y[1] * ba[3] + y[3] * ba[4];
+		if (in_s16) {
+			sample = *s16;
+			s16 += stride;
+		} else {
+			sample = (int16_t)(*s32 >> 16);
+			s32 += stride;
+		}
+
+		tmp = y[1] * ba[3] + y[3] * ba[4];
 		tmp = (tmp >> 15);
 		tmp += y[0] * ba[3] + y[2] * ba[4];
 		tmp = (tmp << 1);
@@ -58,48 +75,14 @@ void webrtc_hpf_filter_channel_s16(struct webrtc_hpf_state *hpf,
 		else if (tmp < -134217728)
 			tmp = -134217728;
 
-		*dst = (int16_t)(tmp >> 12);
-		dst += stride;
-	}
-}
-
-void webrtc_hpf_filter_channel_s32(struct webrtc_hpf_state *hpf,
-				   const int32_t *src, int32_t *dst,
-				   size_t samples, size_t stride)
-{
-	int16_t *y = hpf->y;
-	int16_t *x = hpf->x;
-	const int16_t *ba = hpf->ba;
-	size_t i;
-
-	for (i = 0; i < samples; i++) {
-		int16_t sample = (int16_t)(*src >> 16);
-		src += stride;
-
-		int32_t tmp = y[1] * ba[3] + y[3] * ba[4];
-		tmp = (tmp >> 15);
-		tmp += y[0] * ba[3] + y[2] * ba[4];
-		tmp = (tmp << 1);
-
-		tmp += sample * ba[0] + x[0] * ba[1] + x[1] * ba[2];
-
-		x[1] = x[0];
-		x[0] = sample;
-
-		y[2] = y[0];
-		y[3] = y[1];
-		y[0] = (int16_t)(tmp >> 13);
-		y[1] = (int16_t)((tmp - ((int32_t)y[0] << 13)) << 2);
-
-		tmp += 2048;
-		if (tmp > 134217727)
-			tmp = 134217727;
-		else if (tmp < -134217728)
-			tmp = -134217728;
-
-		int16_t out16 = (int16_t)(tmp >> 12);
-		*dst = ((int32_t)out16) << 16;
-		dst += stride;
+		out16 = (int16_t)(tmp >> 12);
+		if (out_s16) {
+			*d16 = out16;
+			d16 += stride;
+		} else {
+			*d32 = ((int32_t)out16) << 16;
+			d32 += stride;
+		}
 	}
 }
 
@@ -132,25 +115,22 @@ static int webrtc_hpf_real_prepare(struct processing_module *mod)
 
 static int webrtc_hpf_real_process(struct processing_module *mod,
 				   const void *src, void *dst, int frames,
-				   enum sof_ipc_frame fmt)
+				   enum sof_ipc_frame in_fmt,
+				   enum sof_ipc_frame out_fmt)
 {
 	struct webrtc_hpf_comp_data *cd = module_get_private_data(mod);
+	size_t in_sample_bytes = (in_fmt == SOF_IPC_FRAME_S16_LE) ?
+				 sizeof(int16_t) : sizeof(int32_t);
+	size_t out_sample_bytes = (out_fmt == SOF_IPC_FRAME_S16_LE) ?
+				  sizeof(int16_t) : sizeof(int32_t);
 	size_t ch = cd->channels;
 	size_t c;
 
-	if (fmt == SOF_IPC_FRAME_S16_LE) {
-		const int16_t *s = src;
-		int16_t *d = dst;
-
-		for (c = 0; c < ch; c++)
-			webrtc_hpf_filter_channel_s16(&cd->state[c], s + c, d + c, frames, ch);
-	} else {
-		const int32_t *s = src;
-		int32_t *d = dst;
-
-		for (c = 0; c < ch; c++)
-			webrtc_hpf_filter_channel_s32(&cd->state[c], s + c, d + c, frames, ch);
-	}
+	for (c = 0; c < ch; c++)
+		webrtc_hpf_filter_channel(&cd->state[c],
+					  (const char *)src + c * in_sample_bytes,
+					  (char *)dst + c * out_sample_bytes,
+					  frames, ch, in_fmt, out_fmt);
 
 	return 0;
 }

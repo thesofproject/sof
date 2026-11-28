@@ -5,7 +5,6 @@ if(CONFIG_COMP_WEBRTC_AGC_STUB)
   sof_llext_build("webrtc_agc"
     SOURCES ../webrtc_agc.c
             ../webrtc_agc-stub.c
-    LIB openmodules
   )
 else()
   if(NOT DEFINED SOF_WEBRTC_APM_SRC_DIR)
@@ -34,6 +33,5 @@ else()
              "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/agc/legacy"
              "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/include"
     CFLAGS -DWEBRTC_ARCH_32_BITS= -DWEBRTC_ARCH_LITTLE_ENDIAN=
-    LIB openmodules
   )
 endif()

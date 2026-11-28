@@ -75,7 +75,8 @@ WEBRTC_MATH_WEAK float exp2f(float x)
 	return p * aec_ldexp2(n);
 }
 
-WEBRTC_MATH_WEAK float sqrtf(float x)
+/* --- sqrtf: bit estimate + 3 Newton steps --- */
+static inline float aec_sqrtf(float x)
 {
 	union { float f; uint32_t i; } u = { .f = x };
 	float y;
@@ -89,6 +90,11 @@ WEBRTC_MATH_WEAK float sqrtf(float x)
 	y = 0.5f * (y + x / y);
 	y = 0.5f * (y + x / y);
 	return y;
+}
+
+WEBRTC_MATH_WEAK float sqrtf(float x)
+{
+	return aec_sqrtf(x);
 }
 
 
@@ -106,7 +112,7 @@ WEBRTC_MATH_WEAK float powf(float x, float y)
 	if (y == 2.0f)
 		return x * x;
 	if (y == 0.5f)
-		return sqrtf(x);
+		return aec_sqrtf(x);
 	return exp2f((float)(y * aec_log2f(x)));
 }
 
