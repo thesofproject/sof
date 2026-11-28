@@ -2,9 +2,11 @@
 
 if(CONFIG_COMP_FFMPEG_DEC STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   add_subdirectory(llext ${PROJECT_BINARY_DIR}/ffmpeg_dec_llext)
-  add_dependencies(app ffmpeg_dec)
+  if(FFMPEG_LLEXT_TARGETS)
+    add_dependencies(app ${FFMPEG_LLEXT_TARGETS})
+  endif()
 else()
-  add_local_sources(sof ffmpeg_dec.c)
+  add_local_sources(sof ffmpeg_common.c ffmpeg_dec.c)
 
   if(CONFIG_FFMPEG_DEC_FLAC OR CONFIG_COMP_FFMPEG_DEC_STUB)
     add_local_sources(sof ffmpeg_dec-flac.c)
@@ -88,6 +90,7 @@ else()
     # must target THAT scope via TARGET_DIRECTORY, else CMake silently
     # ignores it and the glue keeps hardware FP0.
     set(_ffmpeg_dec_sources
+        ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_common.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-ffmpeg.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-convert.c

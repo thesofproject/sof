@@ -13,6 +13,7 @@
 // Built when CONFIG_FFMPEG_FILTER is enabled (selected by any
 // CONFIG_FFMPEG_FILTER_* option), which pulls libavfilter into the module.
 
+#include <sof/audio/codec_info.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_api.h>
@@ -32,7 +33,11 @@
 #include <libavutil/opt.h>
 #include <libavutil/samplefmt.h>
 
+#ifdef FFMPEG_MOD_ROLE_AF
+LOG_MODULE_REGISTER(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
+#else
 LOG_MODULE_DECLARE(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
+#endif
 
 #define FFMPEG_AF_MAX_NAME		32
 #define FFMPEG_AF_MAX_ARGS		128
@@ -52,7 +57,8 @@ struct ffmpeg_af_filter_desc {
 };
 
 static const struct ffmpeg_af_filter_desc ffmpeg_af_filters[] = {
-#if defined(CONFIG_FFMPEG_FILTER_AFFTDN)
+#if (!defined(FFMPEG_MOD_ROLE_AF) && defined(CONFIG_FFMPEG_FILTER_AFFTDN)) || \
+	defined(FFMPEG_AF_SINGLE_AFFTDN)
 	{
 		.id = FFMPEG_AF_FILTER_AFFTDN,
 		.name = "afftdn",
@@ -60,7 +66,8 @@ static const struct ffmpeg_af_filter_desc ffmpeg_af_filters[] = {
 		.sample_fmt = AV_SAMPLE_FMT_FLTP,
 	},
 #endif
-#if defined(CONFIG_FFMPEG_FILTER_ALIMITER)
+#if (!defined(FFMPEG_MOD_ROLE_AF) && defined(CONFIG_FFMPEG_FILTER_ALIMITER)) || \
+	defined(FFMPEG_AF_SINGLE_ALIMITER)
 	{
 		.id = FFMPEG_AF_FILTER_ALIMITER,
 		.name = "alimiter",
@@ -943,3 +950,63 @@ int ffmpeg_af_mod_free(struct processing_module *mod)
 	md->private = NULL;
 	return 0;
 }
+
+#ifdef FFMPEG_MOD_ROLE_AF
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+__cold static int
+ffmpeg_af_set_config_ext(struct processing_module *mod, uint32_t config_id,
+			 enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			 const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			 size_t response_size)
+{
+	struct comp_dev *dev = mod->dev;
+	struct module_config *config = &mod->priv.cfg;
+	int ret;
+
+	assert_can_be_cold();
+
+	ret = module_set_configuration(mod, config_id, pos, data_offset_size, fragment,
+				       fragment_size, response, response_size);
+	if (ret < 0) {
+		comp_err(dev, "module_set_configuration failed %d", ret);
+		return ret;
+	}
+
+	if (pos != MODULE_CFG_FRAGMENT_LAST && pos != MODULE_CFG_FRAGMENT_SINGLE)
+		return 0;
+
+	if (!config->size || !config->data) {
+		comp_warn(dev, "empty filter config");
+		return 0;
+	}
+
+	return ffmpeg_af_mod_set_config(mod, config->data, config->size);
+}
+
+static const struct module_interface ffmpeg_af_mod_interface = {
+	.init = ffmpeg_af_mod_init,
+	.prepare = ffmpeg_af_mod_prepare,
+	.process = ffmpeg_af_mod_process,
+	.is_ready_to_process = ffmpeg_af_is_ready_to_process,
+	.set_configuration = ffmpeg_af_set_config_ext,
+	.reset = ffmpeg_af_mod_reset,
+	.free = ffmpeg_af_mod_free,
+};
+
+static const uint32_t ffmpeg_af_codec_info_items[]
+	__section(SOF_CODEC_INFO_SECTION) __used FFMPEG_SECTION_RETAIN = {
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_PCM, SOF_IPC_STREAM_PLAYBACK),
+};
+
+#define FFMPEG_REG_UUID(sym) SOF_REG_UUID(sym)
+
+static const struct sof_man_module_manifest mod_manifest
+	__section(".module") __used FFMPEG_SECTION_RETAIN =
+	SOF_LLEXT_MODULE_MANIFEST(FFMPEG_MOD_MANIFEST_NAME, &ffmpeg_af_mod_interface, 1,
+				  FFMPEG_REG_UUID(FFMPEG_MOD_UUID_SYM), 40);
+
+SOF_LLEXT_BUILDINFO;
+#endif /* FFMPEG_MOD_ROLE_AF */
