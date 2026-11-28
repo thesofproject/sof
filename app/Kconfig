@@ -1,6 +1,12 @@
 config SCHED_CPU_MASK_PIN_ONLY
 	default y if SMP
 
+# Zephyr's LLEXT loader allocates ELF section/symbol metadata from this static
+# .llext_heap during llext_load(), independent of the DP module vregion heap
+# sized by topology (heap_bytes_requirement). Relocatable FFmpeg LLEXTs need 32 KB.
+config LLEXT_HEAP_SIZE
+	default 32 if COMP_FFMPEG_DEC = m && LLEXT_TYPE_ELF_RELOCATABLE
+
 # Allow compiler to determine whether to generate FLIX instructions.
 choice COMPILER_CODEGEN_VLIW
 	default COMPILER_CODEGEN_VLIW_AUTO if "$(ZEPHYR_TOOLCHAIN_VARIANT)" = "xt-clang"
