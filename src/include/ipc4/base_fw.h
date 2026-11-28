@@ -190,6 +190,12 @@ enum ipc4_basefw_params {
 
 	/** Set policy mask for microphone privacy in firmware-managed mode. */
 	IPC4_SET_MIC_PRIVACY_FW_MANAGED_POLICY_MASK = 36,
+
+	/** Discover SOF specific runtime capabilities/information in TLV format via LARGE_CONFIG_GET. */
+	IPC4_SOF_INFO_GET                           = 37,
+
+	/** Unload an idle dynamic library by ID via LARGE_CONFIG_SET. */
+	IPC4_SOF_LIBRARY_UNLOAD                     = 38,
 };
 
 /**
@@ -289,12 +295,20 @@ enum ipc4_fw_config_params {
 enum ipc4_fw_sof_info_params {
 	/** Decoder/encoder codec information. */
 	IPC4_SOF_CODEC_INFO = 0,
+	/** Bitmask of runtime SOF info capabilities (IPC4_SOF_CAP_*). */
+	IPC4_SOF_CAPS = 1,
 
 	/** Total number of SOF config parameters. */
 	IPC4_SOF_CFG_PARAMS_COUNT,
 	/** Maximum SOF config parameter ID value. */
 	IPC4_MAX_SOF_CFG_PARAM = IPC4_SOF_CFG_PARAMS_COUNT - 1,
 };
+
+/** BaseFW supports runtime query via IPC4_SOF_INFO_GET. */
+#define IPC4_SOF_CAP_RUNTIME_SOF_INFO	(1U << 0)
+
+/** BaseFW supports unloading idle dynamic libraries via IPC4_SOF_LIBRARY_UNLOAD. */
+#define IPC4_SOF_CAP_LIBRARY_UNLOAD	(1U << 1)
 
 /**
  * \brief Hardware configuration parameter TLV IDs returned by IPC4_HW_CONFIG_GET.
