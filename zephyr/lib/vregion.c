@@ -9,6 +9,7 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <zephyr/init.h>
+#include <zephyr/cache.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/dlist.h>
 #include <zephyr/app_memory/mem_domain.h>
@@ -481,6 +482,11 @@ static void interim_heap_init(struct vregion *vr)
 	vr->interim.heap.heap.init_bytes = interim_size;
 
 	k_heap_init(&vr->interim.heap, interim_base, interim_size);
+	/*
+	 * Ensure the heap metadata written into interim_base on the IPC core
+	 * is visible to DP worker cores running on other CPUs without L1 cache coherency.
+	 */
+	sys_cache_data_flush_range(interim_base, interim_size);
 	vr->type = VREGION_MEM_TYPE_INTERIM;
 
 	/* Update lifetime heap with the interim heap usage. */
