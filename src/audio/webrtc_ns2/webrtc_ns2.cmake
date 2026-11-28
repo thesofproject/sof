@@ -22,27 +22,14 @@ if(NOT EXISTS "${SOF_RNNOISE_SRC_DIR}/src/denoise.c")
     "-DSOF_RNNOISE_SRC_DIR=<path>.")
 endif()
 
-if(NOT DEFINED CMAKE_AR)
-  set(_rnn_ar "ar")
-else()
-  set(_rnn_ar "${CMAKE_AR}")
-endif()
+include("${sof_top_dir}/scripts/cmake/xtensa_ext_cc.cmake")
+xtensa_ext_cc_get_flags(_rnn_arch_cflags _rnn_ar)
 
 set(WEBRTC_NS2_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/rnnoise-install"
     CACHE INTERNAL "webrtc_ns2: RNNoise library install prefix")
 
 set(_rnn_src "${SOF_RNNOISE_SRC_DIR}/src")
 set(_rnn_inc "${SOF_RNNOISE_SRC_DIR}/include")
-
-if("${ARCH}" STREQUAL "xtensa")
-  if(CONFIG_LLEXT_BUILD_PIC)
-    set(_rnn_arch_cflags "-fPIC -mlongcalls -mtext-section-literals")
-  else()
-    set(_rnn_arch_cflags "-fno-pic -fno-pie -mlongcalls -mtext-section-literals")
-  endif()
-else()
-  set(_rnn_arch_cflags "-fPIC")
-endif()
 
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/rnnoise-build.sh"
 "#!/bin/sh

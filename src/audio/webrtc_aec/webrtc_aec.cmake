@@ -22,26 +22,13 @@ if(NOT EXISTS "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/ae
     "Run 'west update' or pass -DSOF_WEBRTC_APM_SRC_DIR=<path>.")
 endif()
 
-if(NOT DEFINED CMAKE_AR)
-  set(_aecm_ar "ar")
-else()
-  set(_aecm_ar "${CMAKE_AR}")
-endif()
+include("${sof_top_dir}/scripts/cmake/xtensa_ext_cc.cmake")
+xtensa_ext_cc_get_flags(_aecm_arch_cflags _aecm_ar)
 
 set(WEBRTC_AECM_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-install"
     CACHE INTERNAL "webrtc_aec: AECm library install prefix")
 
 set(_aecm_src "${SOF_WEBRTC_APM_SRC_DIR}/webrtc")
-
-if("${ARCH}" STREQUAL "xtensa")
-  if(CONFIG_LLEXT_BUILD_PIC)
-    set(_aecm_arch_cflags "-fPIC -mlongcalls -mtext-section-literals")
-  else()
-    set(_aecm_arch_cflags "-fno-pic -fno-pie -mlongcalls -mtext-section-literals")
-  endif()
-else()
-  set(_aecm_arch_cflags "-fPIC")
-endif()
 
 if(CONFIG_WEBRTC_AEC_BACKEND_FLOAT)
   set(_aec_backend_srcs "

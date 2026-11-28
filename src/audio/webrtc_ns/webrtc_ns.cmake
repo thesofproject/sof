@@ -26,26 +26,13 @@ if(NOT EXISTS "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/ns/ns_c
     "-DSOF_WEBRTC_APM_SRC_DIR=<path>.")
 endif()
 
-if(NOT DEFINED CMAKE_AR)
-  set(_ns_ar "ar")
-else()
-  set(_ns_ar "${CMAKE_AR}")
-endif()
+include("${sof_top_dir}/scripts/cmake/xtensa_ext_cc.cmake")
+xtensa_ext_cc_get_flags(_ns_arch_cflags _ns_ar)
 
 set(WEBRTC_NS_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/webrtc-ns-install"
     CACHE INTERNAL "webrtc_ns: NS library install prefix")
 
 set(_ns_src "${SOF_WEBRTC_APM_SRC_DIR}/webrtc")
-
-if("${ARCH}" STREQUAL "xtensa")
-  if(CONFIG_LLEXT_BUILD_PIC)
-    set(_ns_arch_cflags "-fPIC -mlongcalls -mtext-section-literals")
-  else()
-    set(_ns_arch_cflags "-fno-pic -fno-pie -mlongcalls -mtext-section-literals")
-  endif()
-else()
-  set(_ns_arch_cflags "-fPIC")
-endif()
 
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/webrtc-ns-build.sh"
 "#!/bin/sh
