@@ -9,6 +9,7 @@
 // ffmpeg_dec-stub.c and ffmpeg_dec-ffmpeg.c). The input is a compressed audio
 // elementary stream (raw data), the output is interleaved PCM.
 
+#include <sof/audio/codec_info.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/sink_source_utils.h>
@@ -1049,6 +1050,71 @@ static const struct module_interface ffmpeg_dec_interface = {
 	.free = ffmpeg_dec_free
 };
 
+static const uint32_t ffmpeg_dec_codec_info_items[]
+#if CONFIG_COMP_FFMPEG_DEC_MODULE
+	__section(SOF_CODEC_INFO_SECTION) __used
+#endif
+	= {
+#if defined(CONFIG_FFMPEG_FILTER)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_PCM, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#if defined(CONFIG_FFMPEG_DEC_FLAC) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_FLAC, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#if defined(CONFIG_FFMPEG_DEC_ALAC) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_ALAC, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#if defined(CONFIG_FFMPEG_DEC_AAC) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_AAC, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#if defined(CONFIG_FFMPEG_DEC_MP3) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#if defined(CONFIG_FFMPEG_ENC_MP3)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_CAPTURE),
+#endif
+#if defined(CONFIG_FFMPEG_ENC_AAC)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_AAC, SOF_IPC_STREAM_CAPTURE),
+#endif
+#if defined(CONFIG_FFMPEG_ENC_FLAC)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_FLAC, SOF_IPC_STREAM_CAPTURE),
+#endif
+#if defined(CONFIG_FFMPEG_ENC_ALAC)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_ALAC, SOF_IPC_STREAM_CAPTURE),
+#endif
+#if defined(CONFIG_FFMPEG_DEC_SBC) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_SBC, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#if defined(CONFIG_FFMPEG_ENC_SBC)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_SBC, SOF_IPC_STREAM_CAPTURE),
+#endif
+#if defined(CONFIG_FFMPEG_DEC_G722) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_G722, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#if defined(CONFIG_FFMPEG_ENC_G722)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_G722, SOF_IPC_STREAM_CAPTURE),
+#endif
+#if defined(CONFIG_FFMPEG_DEC_APTX) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_APTX, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#if defined(CONFIG_FFMPEG_ENC_APTX)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_APTX, SOF_IPC_STREAM_CAPTURE),
+#endif
+#if defined(CONFIG_FFMPEG_ENC_SBC) || defined(CONFIG_FFMPEG_ENC_G722) || \
+	defined(CONFIG_FFMPEG_ENC_APTX)
+	/* Also advertise BESPOKE capture for kernels with older SND_AUDIOCODEC_MAX. */
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_CAPTURE),
+#endif
+#if defined(CONFIG_FFMPEG_DEC_OPUS) || defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_OPUS_RAW, SOF_IPC_STREAM_PLAYBACK),
+#endif
+#if defined(CONFIG_FFMPEG_DEC_OPUS) || defined(CONFIG_FFMPEG_DEC_SBC) || \
+	defined(CONFIG_FFMPEG_DEC_G722) || defined(CONFIG_FFMPEG_DEC_APTX) || \
+	defined(CONFIG_COMP_FFMPEG_DEC_STUB)
+	SOF_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_PLAYBACK),
+#endif
+};
+
 /* If COMP_FFMPEG_DEC is =m in Kconfig this is built as a loadable LLEXT module. */
 #if CONFIG_COMP_FFMPEG_DEC_MODULE
 
@@ -1067,6 +1133,14 @@ SOF_LLEXT_BUILDINFO;
 /* Only used for the module adapter trace context, soon to be deprecated */
 DECLARE_TR_CTX(ffmpeg_dec_tr, SOF_UUID(ffmpeg_dec_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(ffmpeg_dec_interface, ffmpeg_dec_uuid, ffmpeg_dec_tr);
-SOF_MODULE_INIT(ffmpeg_dec, sys_comp_module_ffmpeg_dec_interface_init);
+
+static __maybe_unused void sys_comp_ffmpeg_dec_init(void)
+{
+	sys_comp_module_ffmpeg_dec_interface_init();
+	sof_codec_info_add_items(&ffmpeg_dec_interface, ffmpeg_dec_codec_info_items,
+				 ARRAY_SIZE(ffmpeg_dec_codec_info_items));
+}
+
+SOF_MODULE_INIT(ffmpeg_dec, sys_comp_ffmpeg_dec_init);
 
 #endif
