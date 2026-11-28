@@ -205,6 +205,42 @@ static int llext_manager_rm_partition(struct k_mem_domain *domain,
 	tr_dbg(&lib_manager_tr, "remove %#zx @ %lx partition", part.size, part.start);
 	return k_mem_domain_remove_partition(domain, &part);
 }
+
+/**
+ * Detach .cold and .coldrodata partitions from @domain and clear their metadata.
+ */
+static int llext_manager_rm_cold_partitions(struct lib_manager_module *mctx,
+					    struct k_mem_domain *domain)
+{
+	int err, ret = 0;
+
+	if (mctx->segment[LIB_MANAGER_COLD].addr) {
+		ret = llext_manager_rm_partition(domain,
+						 mctx->segment[LIB_MANAGER_COLD].addr,
+						 mctx->segment[LIB_MANAGER_COLD].size,
+						 K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
+		if (ret < 0)
+			LOG_ERR("failed to remove .cold memory partition: %d", ret);
+		mctx->segment[LIB_MANAGER_COLD].addr = 0;
+		mctx->segment[LIB_MANAGER_COLD].size = 0;
+	}
+
+	if (mctx->segment[LIB_MANAGER_COLDRODATA].addr) {
+		err = llext_manager_rm_partition(domain,
+						 mctx->segment[LIB_MANAGER_COLDRODATA].addr,
+						 mctx->segment[LIB_MANAGER_COLDRODATA].size,
+						 K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB);
+		if (err < 0) {
+			LOG_ERR("failed to remove .coldrodata memory partition: %d", err);
+			if (!ret)
+				ret = err;
+		}
+		mctx->segment[LIB_MANAGER_COLDRODATA].addr = 0;
+		mctx->segment[LIB_MANAGER_COLDRODATA].size = 0;
+	}
+
+	return ret;
+}
 #endif /* CONFIG_USERSPACE */
 
 static void llext_manager_unmap_detached_sections(struct llext_loader *ldr,
@@ -395,6 +431,15 @@ __cold static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	assert_can_be_cold();
 
 #ifdef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * Detach .cold/.coldrodata partitions before mapping shdr: in small
+	 * LLEXT ELF buffers, section headers can share a 4 KiB DRAM page with
+	 * .cold/.coldrodata, and reset_region() restores boot-time kernel access.
+	 * Keep .text/.rodata/.data mapped in the domain until after
+	 * llext_manager_align_unmap() so cache writeback does not fault.
+	 */
+	llext_manager_rm_cold_partitions(mctx, zephyr_ll_mem_domain());
+
 	unsigned int sect_cnt = llext_section_count(ext);
 	size_t total = sect_cnt * sizeof(elf_shdr_t);
 	const elf_shdr_t *shdr;
@@ -1195,30 +1240,9 @@ static int llext_manager_rm_mod_domain(struct lib_manager_module *mctx, struct k
 		}
 	}
 
-	if (mctx->segment[LIB_MANAGER_COLD].addr) {
-		err = llext_manager_rm_partition(domain,
-						 mctx->segment[LIB_MANAGER_COLD].addr,
-						 mctx->segment[LIB_MANAGER_COLD].size,
-						 K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
-		if (err < 0) {
-			tr_err(&lib_manager_tr, "failed to remove .cold memory partition: %d", err);
-			if (!ret)
-				ret = err;
-		}
-	}
-
-	if (mctx->segment[LIB_MANAGER_COLDRODATA].addr) {
-		err = llext_manager_rm_partition(domain,
-						 mctx->segment[LIB_MANAGER_COLDRODATA].addr,
-						 mctx->segment[LIB_MANAGER_COLDRODATA].size,
-						 K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB);
-		if (err < 0) {
-			tr_err(&lib_manager_tr,
-			       "failed to remove .coldrodata memory partition: %d", err);
-			if (!ret)
-				ret = err;
-		}
-	}
+	err = llext_manager_rm_cold_partitions(mctx, domain);
+	if (err < 0 && !ret)
+		ret = err;
 
 	return ret;
 }
