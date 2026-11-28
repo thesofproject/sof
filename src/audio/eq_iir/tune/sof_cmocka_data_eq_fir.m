@@ -13,10 +13,11 @@ sof_eq_paths(true);
 
 % Output files and paths
 sof_cmocka = '../../../../test/cmocka';
+sof_ztest = '../../../../test/ztest/unit/audio';
 
 chirp_fn = fullfile(sof_cmocka, 'include/cmocka_chirp_2ch.h');
-ref_fn = fullfile(sof_cmocka, 'src/audio/eq_fir/cmocka_fir_ref.h');
-coef_fn = fullfile(sof_cmocka, 'src/audio/eq_fir/cmocka_fir_coef_2ch.h');
+ref_fn = fullfile(sof_ztest, 'eq_fir/cmocka_fir_ref.h');
+coef_fn = fullfile(sof_ztest, 'eq_fir/cmocka_fir_coef_2ch.h');
 
 % Input data
 fs = 48e3;
