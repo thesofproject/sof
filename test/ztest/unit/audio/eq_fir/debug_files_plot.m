@@ -4,7 +4,10 @@
 %
 % Copyright(c) 2022 Intel Corporation. All rights reserved.
 
-load ../../../../../build_ut/test/cmocka/src/audio/eq_fir/fir_test_16.txt;
+% Run in the directory where eq_fir_process_ztest.c with DEBUG_FILES defined
+% wrote its output, with twister the build directory of the suite.
+
+load fir_test_16.txt;
 iref = fir_test_16(:,1);
 iout = fir_test_16(:,2);
 ref = reshape(iref, size(iref, 1)/2, 2);
@@ -21,7 +24,7 @@ subplot(2,1,2);
 plot(ref - out);
 grid on
 
-load ../../../../../build_ut/test/cmocka/src/audio/eq_fir/fir_test_24.txt;
+load fir_test_24.txt;
 iref = fir_test_24(:,1);
 iout = fir_test_24(:,2);
 ref = reshape(iref, size(iref, 1)/2, 2);
@@ -38,7 +41,7 @@ subplot(2,1,2);
 plot(ref - out);
 grid on
 
-load ../../../../../build_ut/test/cmocka/src/audio/eq_fir/fir_test_32.txt;
+load fir_test_32.txt;
 iref = fir_test_32(:,1);
 iout = fir_test_32(:,2);
 ref = reshape(iref, size(iref, 1)/2, 2);
