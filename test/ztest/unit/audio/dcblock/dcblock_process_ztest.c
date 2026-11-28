@@ -34,7 +34,7 @@
 
 #include "dcblock.h"
 
-/* Shared with the remaining CMocka tests, from test/cmocka/include */
+/* Shared test signal, from test/ztest/unit/include */
 #include <cmocka_chirp_2ch.h>
 
 /* Allow a few LSB of error due to the internal Q-format rounding. */

@@ -12,9 +12,8 @@ function sof_cmocka_data_eq_iir()
 sof_eq_paths(true);
 
 % Output files and paths
-sof_cmocka = '../../../../test/cmocka';
 sof_ztest = '../../../../test/ztest/unit/audio';
-chirp_fn = fullfile(sof_cmocka, 'include/cmocka_chirp_2ch.h');
+chirp_fn = '../../../../test/ztest/unit/include/cmocka_chirp_2ch.h';
 ref_fn = fullfile(sof_ztest, 'eq_iir/cmocka_chirp_iir_ref_2ch.h');
 coef_fn = fullfile(sof_ztest, 'eq_iir/cmocka_iir_coef_2ch.h');
 

@@ -22,8 +22,7 @@ target_include_directories(app PRIVATE
 	${SOF_ROOT}/src/kernel/platform/posix/include
 	${SOF_ROOT}/src/platform/posix/include
 	${SOF_ROOT}/src/audio
-	# cmocka_chirp_2ch.h, still shared with the remaining CMocka tests
-	${SOF_ROOT}/test/cmocka/include
+	${SOF_ROOT}/test/ztest/unit/include
 	${PROJECT_BINARY_DIR}/include/generated
 )
 

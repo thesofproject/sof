@@ -5,7 +5,7 @@
 
 function ref_pcan()
 	% Add path to export helper functions
-	path(path(), '../../../../../cmocka/m');
+	path(path(), '../../../../m');
 
 	try
 		opt.describe = export_get_git_describe();
